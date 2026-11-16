@@ -108,7 +108,7 @@ The parts in the picture:
 | Client | PWA in plain TypeScript, no framework | Small, fast, installable, supports Web Push. |
 | Deploy | One self-contained binary + systemd, no Docker | Docker Hub refuses Iranian IP addresses (section 14). |
 
-**Module boundaries inside the one program:** Auth, Bot API (core), Telegram adapter, Client API, Push, Admin. The Telegram adapter depends on the core; the core never mentions Telegram.
+**Service boundaries inside the one program:** Identity, Relay (core, with the Client API and Bot API doors), Notification (Push and SMS), Admin, plus the Telegram adapter as a plugin. The core never mentions Telegram. Details and decisions: `docs/ARCHITECTURE.md`.
 
 ## 6. Core concepts and data model
 
@@ -211,7 +211,7 @@ Every account starts with an SMS code to an Iranian mobile number, so builders a
 
 **What a bot learns about a user:** the stable numeric id, display name and username. It never gets the phone number unless the user chooses to share it. This protects users, and it stops anyone from building a bot only to collect phone numbers.
 
-**Storage.** Passwords use a slow salted hash. Sessions use `HttpOnly`, `Secure`, `SameSite` cookies on `dalanet.ir`.
+**Storage.** Passwords use a slow salted hash. Login uses a JWT access token and a refresh token, kept in `HttpOnly`, `Secure`, `SameSite` cookies on `dalanet.ir` (`docs/ARCHITECTURE.md` section 7).
 
 **Layer 2: "Login with Dalan".** An app on its own domain cannot read Dalan's cookie. It sends the user to Dalan's login page and gets a token back. This is OAuth 2 with PKCE (OpenID Connect).
 
@@ -221,7 +221,7 @@ Every limit is a setting the admin can change from the dashboard, globally, per 
 
 **Queue rules:**
 
-- Each bot has one in-memory queue. A server restart loses pending updates; this is acceptable because they expire quickly.
+- Each bot has one in-memory queue. On start, the server reloads undelivered, unexpired messages from the database, so a restart or deploy loses nothing (`docs/ARCHITECTURE.md` section 6).
 - An update that the bot does not read before its expiry (about 1 minute) is dropped and marked "not delivered".
 - Only one long-polling call per bot token is active. A second call replaces the first, as in Telegram.
 - **Button mode: latest command wins.** If a user taps 20 times before the bot reads, only that user's last command stays in the queue. This is a per-bot setting, on by default.
@@ -396,7 +396,7 @@ Each piece of Dalan exists somewhere, but no service found combines them inside 
 | SMS abuse | Direct money loss | Per-number caps, proof of work, global daily budget, alerts |
 | Hosting other people's content and phone numbers | Legal responsibility | Lawyer review before public launch; admin approval for builders and showcase |
 | One server | A crash stops every bot | Accepted for version 1; daily backups, quick rollback |
-| In-memory queues | A restart drops pending commands | Accepted; commands expire in about a minute anyway |
+| In-memory queues | A restart could drop pending commands | Reloaded from the database on start |
 | Home machine is off | That app is down for all its users | The builder's responsibility; show bot status and "not delivered" clearly |
 | Telegram API changes | The adapter falls behind | Pin one version; the core does not depend on Telegram |
 | Web Push depends on foreign services | No notifications during a shutdown | Sync on open; a native Android app later |
