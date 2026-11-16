@@ -38,6 +38,7 @@ HOW TO WORK WITH ME
 - Work step by step. Show me a short plan before each milestone and wait for my OK.
 - If something is unclear or the design has a gap, ask me one question at a time. Do not guess on anything that is hard to undo.
 - If you disagree with the design, say so with your reason before you build.
+- Section 18 of the design lists starting values for limits. Before you first use a value marked "Assumed", ask me to confirm it. Ask these questions in Persian.
 
 FIRST TASK
 Do milestone 1 (Skeleton) from section 19 of the design:
@@ -48,5 +49,6 @@ Stop after milestone 1 and summarize what exists and what comes next.
 
 ## Before you start
 
-- [ ] Register `dalanet.ir` under your own IRNIC handle.
-- [ ] Have the US test server ready with SSH access for CI.
+- [ ] Finish registering `dalanet.ir` (bought on 2026-11-16).
+- [x] The US test server exists. Give CI SSH access to it.
+- [ ] Open an account with an SMS provider before milestone 4 (see section 18 of the design).
