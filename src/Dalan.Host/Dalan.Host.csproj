@@ -6,4 +6,12 @@
     <ProjectReference Include="../Admin/Dalan.Admin/Dalan.Admin.csproj" />
     <ProjectReference Include="../Plugins/Dalan.Telegram/Dalan.Telegram.csproj" />
   </ItemGroup>
+  <!-- Only for "dotnet ef migrations add" on a developer machine; it must not ship in the release. -->
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+  </ItemGroup>
+  <!-- Local settings stay out of the release (DEL-03: the release is the binary and appsettings.json). -->
+  <ItemGroup>
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
 </Project>

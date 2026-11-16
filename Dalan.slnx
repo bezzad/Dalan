@@ -14,5 +14,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Dalan.Architecture.Tests/Dalan.Architecture.Tests.csproj" />
     <Project Path="tests/Dalan.Host.Tests/Dalan.Host.Tests.csproj" />
+    <Project Path="tests/Dalan.Identity.Tests/Dalan.Identity.Tests.csproj" />
+    <Project Path="tests/Dalan.Relay.Tests/Dalan.Relay.Tests.csproj" />
   </Folder>
 </Solution>

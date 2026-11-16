@@ -1,10 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.Mvc.Testing;
+using Dalan.Testing;
 
 namespace Dalan.Host.Tests;
 
-public class ProbeTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public class ProbeTests(PostgresServer postgres)
 {
     private sealed record Health(string Status, string Version);
 
@@ -12,7 +12,9 @@ public class ProbeTests(WebApplicationFactory<Program> factory) : IClassFixture<
     [Trait("Rule", "OPS-01")]
     public async Task OPS01_health_returns_ok_and_version()
     {
-        var response = await factory.CreateClient().GetAsync("/health", TestContext.Current.CancellationToken);
+        await using var app = new DalanApp(await postgres.NewDatabaseAsync());
+
+        var response = await app.CreateClient().GetAsync("/health", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<Health>(TestContext.Current.CancellationToken);
@@ -23,7 +25,10 @@ public class ProbeTests(WebApplicationFactory<Program> factory) : IClassFixture<
     [Trait("Rule", "OPS-02")]
     public async Task OPS02_ready_returns_200_when_started()
     {
-        var response = await factory.CreateClient().GetAsync("/ready", TestContext.Current.CancellationToken);
+        await using var app = new DalanApp(await postgres.NewDatabaseAsync());
+        await app.ReadyAsync();
+
+        var response = await app.CreateClient().GetAsync("/ready", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }

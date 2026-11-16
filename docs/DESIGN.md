@@ -102,7 +102,7 @@ The parts in the picture:
 | Server | C# on .NET 11, ASP.NET Core, Kestrel | The work is network-bound, so any fast runtime is enough. The owner has used C# since 2007 and can maintain it without AI if the internet is down. .NET 11 shipped on 2026-11-10 (STS, supported to November 2028). |
 | Bot connection | Long polling (and webhook for bots that have a server) | Outbound only, no public IP, near-zero delay. One open connection per bot costs a few KB in Kestrel. |
 | Browser connection | POST for commands, SSE for live messages | Simpler than WebSocket; one direction is enough. |
-| Queue | `System.Threading.Channels`, one per bot, in memory | Updates expire in about a minute, so they do not need a disk. |
+| Queue | A small list per bot, in memory | Updates expire in about a minute, so they do not need a disk. (Not a `Channel`: an update must stay until the bot confirms it.) |
 | Database | PostgreSQL, message content in `jsonb` | Users, bots and memberships are relational; message bodies are JSON. Kafka is the wrong tool for "last 50 messages of this chat", Redis keeps everything in RAM, MongoDB adds nothing over `jsonb`. |
 | Front proxy | Caddy | Gets and renews HTTPS certificates by itself; later gives on-demand certificates for custom domains. |
 | Client | PWA in plain TypeScript, no framework | Small, fast, installable, supports Web Push. |
@@ -424,7 +424,7 @@ None of these is planned work. They are recorded so the design does not block th
 
 ## 18. Assumptions and open questions
 
-**Starting values.** The owner agreed to the rules but not to exact numbers, except where marked. All are admin settings. During implementation, ask the owner in Persian to confirm each value marked "Assumed" before it is first used.
+**Starting values.** The owner agreed to the rules but not to exact numbers, except where marked. All are admin settings. On 2026-11-16 the owner said: use these values as the defaults now, without asking for each one; he will change them from the admin panel when needed. New settings a milestone adds are listed in that milestone's OpenSpec change.
 
 | Setting | Starting value | Source |
 | --- | --- | --- |

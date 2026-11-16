@@ -12,6 +12,7 @@ WorkingDirectory=/opt/dalan/current
 ExecStart=/opt/dalan/current/Dalan.Host
 Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
 # Secrets live only on the server, never in the repository.
+# Must hold the database: ConnectionStrings__Dalan=Host=localhost;Database=dalan;Username=dalan;Password=...
 EnvironmentFile=/etc/dalan/dalan.env
 # Written by deploy.sh: Dalan__Version=<git commit>
 EnvironmentFile=-/opt/dalan/current/version.env
