@@ -47,7 +47,7 @@ openspec/                          specs and changes
 8. Security from day one: slow password hashing, hashed bot tokens, rate limits on every public endpoint, proof of work before each SMS, audit log.
 9. Spec first: change the rule in an OpenSpec change, owner reviews, write the failing test (tag it with the rule ID), then the code. Archive the change when the milestone is done.
 10. Always use the latest stable version of every tool and package; check the real version, do not trust memory.
-11. Every PR merges automatically once CI passes (GitHub auto-merge). Never merge with red or missing CI.
+11. After CI passes on a PR, do a final code review of the whole diff. If all is OK, merge it yourself; if not, fix and repeat. Never merge with red or missing CI.
 12. Keep docs short and current.
 
 ## Working with the owner
