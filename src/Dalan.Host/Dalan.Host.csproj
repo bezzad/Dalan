@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="../Identity/Dalan.Identity/Dalan.Identity.csproj" />
+    <ProjectReference Include="../Relay/Dalan.Relay/Dalan.Relay.csproj" />
+    <ProjectReference Include="../Notification/Dalan.Notification/Dalan.Notification.csproj" />
+    <ProjectReference Include="../Admin/Dalan.Admin/Dalan.Admin.csproj" />
+    <ProjectReference Include="../Plugins/Dalan.Telegram/Dalan.Telegram.csproj" />
+  </ItemGroup>
+</Project>

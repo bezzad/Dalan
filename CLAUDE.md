@@ -1,0 +1,56 @@
+# Dalan
+
+Relay platform hosted in Iran. A bot or web app on a home computer (no public IP) makes only outbound long-polling calls to Dalan; users talk to Dalan; Dalan passes messages between them. Site `dalanet.ir`, Bot API `api.dalanet.ir`.
+
+Read first:
+- `docs/DESIGN.md`: what we build and why (product). Source of truth for scope.
+- `docs/ARCHITECTURE.md`: services, communication, data, scale, decisions log.
+- `docs/TESTING.md`: rule IDs, test-first workflow, test kinds.
+- `openspec/specs/`: current rules. `openspec/changes/`: work in progress, one change per milestone.
+
+## Commands
+
+```bash
+dotnet build Dalan.slnx -c Release          # needs .NET SDK 11 (global.json)
+dotnet test -c Release                      # all .NET tests (Microsoft.Testing.Platform)
+dotnet run --project src/Dalan.Host         # run the server; GET /health
+(cd client && npm ci && npm run check)      # client type check
+bash scripts/check-rules.sh                 # every spec rule ID has a test
+bash tests/deploy/deploy_test.sh            # deploy script tests
+bash tests/proxy/caddy_test.sh              # needs caddy on PATH
+bash scripts/publish.sh out                 # self-contained linux-x64 release
+openspec validate --all --strict            # OpenSpec CLI 2.0.0
+```
+
+## Layout
+
+```
+src/Dalan.Host/                    the one process; wires services; /health, /ready
+src/<Service>/Dalan.<Service>      Identity, Relay (core), Notification, Admin
+src/<Service>/Dalan.<Service>.Contracts   the only thing other services may reference
+src/Plugins/Dalan.Telegram         Telegram adapter plugin (no data, no domain)
+tests/                             one project or script folder per area
+client/                            PWA, plain TypeScript, no framework
+deploy/                            deploy.sh, dalan.service (systemd), Caddyfile
+openspec/                          specs and changes
+```
+
+## Rules
+
+1. KISS, YAGNI, Clean Code. Smallest thing that works. Feature folders inside a service; no Repository or Mediator layers.
+2. Services reference only other services' `.Contracts`. Relay never mentions Telegram. Only the host references implementations and plugins. Architecture tests enforce this.
+3. Sync calls through contracts; async through the PostgreSQL outbox. One schema per service, no cross-schema joins.
+4. Every limit, expiry, size and domain is configuration the admin can change. Never hard-code. Starting values: `docs/DESIGN.md` section 18. Before first use of a value marked "Assumed", ask the owner **in Persian**.
+5. A bot never receives a user's phone number.
+6. Production: one self-contained binary under systemd, deployed by CI over SSH. No Docker on the Iran server (Docker is fine locally).
+7. The running product loads nothing from a foreign host: no CDN fonts, scripts or analytics.
+8. Security from day one: slow password hashing, hashed bot tokens, rate limits on every public endpoint, proof of work before each SMS, audit log.
+9. Spec first: change the rule in an OpenSpec change, owner reviews, write the failing test (tag it with the rule ID), then the code. Archive the change when the milestone is done.
+10. Always use the latest stable version of every tool and package; check the real version, do not trust memory.
+11. Every PR merges automatically once CI passes (GitHub auto-merge). Never merge with red or missing CI.
+12. Keep docs short and current.
+
+## Working with the owner
+
+- Senior .NET developer who mostly reviews. Not a native English speaker: short, simple English.
+- Show a short plan before each milestone and wait for OK. Ask one question at a time. Do not guess on anything hard to undo. If you disagree with the design, say so with the reason before building.

@@ -1,0 +1,115 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy to the server after all gates pass
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  OPENSPEC_TELEMETRY: "0"
+  CADDY_VERSION: "2.11.9"
+
+jobs:
+  ci:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Build
+        run: dotnet build Dalan.slnx -c Release
+
+      - name: Test
+        run: dotnet test -c Release --no-build
+
+      - name: Client type check
+        working-directory: client
+        run: npm ci && npm run check
+
+      - name: Specs are valid
+        run: npx --yes @fission-ai/openspec@2.0.0 validate --all --strict
+
+      - name: Every rule has a test
+        run: |
+          bash scripts/check-rules.sh
+          bash tests/scripts/check_rules_test.sh
+          bash tests/delivery/ci_workflow_test.sh
+
+      - name: Deploy script tests
+        run: bash tests/deploy/deploy_test.sh
+
+      - name: Install Caddy
+        run: |
+          file="caddy_${CADDY_VERSION}_linux_amd64.tar.gz"
+          base="https://github.com/caddyserver/caddy/releases/download/v${CADDY_VERSION}"
+          curl -fsSLO "$base/$file"
+          curl -fsSLO "$base/caddy_${CADDY_VERSION}_checksums.txt"
+          grep " $file\$" "caddy_${CADDY_VERSION}_checksums.txt" | sha512sum -c -
+          sudo tar -xzf "$file" -C /usr/local/bin caddy
+
+      - name: Proxy test
+        run: bash tests/proxy/caddy_test.sh
+
+      - name: Publish release
+        run: bash scripts/publish.sh out
+
+      - name: Release smoke test
+        run: bash tests/delivery/release_smoke_test.sh out
+
+      - name: Docker image
+        run: |
+          docker build -t dalan .
+          docker run -d --name dalan -p 127.0.0.1:18095:8080 dalan
+          for _ in $(seq 50); do curl -fs -o /dev/null http://127.0.0.1:18095/health && break; sleep 0.2; done
+          curl -fs http://127.0.0.1:18095/health
+
+  deploy:
+    needs: ci
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: SSH key
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          bash scripts/publish.sh out
+          tar -czf release.tar.gz -C out .
+          bash deploy/deploy.sh release.tar.gz "${GITHUB_SHA::12}"
