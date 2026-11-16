@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../src/Relay/Dalan.Relay/Dalan.Relay.csproj" />
+  </ItemGroup>
+</Project>

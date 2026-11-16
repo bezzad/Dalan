@@ -1,0 +1,29 @@
+# systemd unit for the Dalan server. Install to /etc/systemd/system/dalan.service.
+[Unit]
+Description=Dalan relay server
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dalan
+Group=dalan
+WorkingDirectory=/opt/dalan/current
+ExecStart=/opt/dalan/current/Dalan.Host
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
+# Secrets live only on the server, never in the repository.
+EnvironmentFile=/etc/dalan/dalan.env
+# Written by deploy.sh: Dalan__Version=<git commit>
+EnvironmentFile=-/opt/dalan/current/version.env
+Restart=on-failure
+RestartSec=5
+# Must be longer than Dalan:ShutdownTimeoutSeconds.
+TimeoutStopSec=40
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

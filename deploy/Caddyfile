@@ -1,0 +1,15 @@
+# Front proxy. Domains come from the environment, never from this file.
+#   DALAN_SITE_DOMAIN  for example dalanet.ir
+#   DALAN_API_DOMAIN   for example api.dalanet.ir
+#   DALAN_UPSTREAM     Kestrel address, default 127.0.0.1:5000
+{
+	admin off
+}
+
+{$DALAN_SITE_DOMAIN}, {$DALAN_API_DOMAIN} {
+	# OPS-06: probes are for the server itself only.
+	@probes path /health /ready
+	respond @probes 404
+
+	reverse_proxy {$DALAN_UPSTREAM:127.0.0.1:5000}
+}

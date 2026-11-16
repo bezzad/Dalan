@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Admin/Dalan.Admin.Contracts/Dalan.Admin.Contracts.csproj" />
+    <Project Path="src/Admin/Dalan.Admin/Dalan.Admin.csproj" />
+    <Project Path="src/Dalan.Host/Dalan.Host.csproj" />
+    <Project Path="src/Identity/Dalan.Identity.Contracts/Dalan.Identity.Contracts.csproj" />
+    <Project Path="src/Identity/Dalan.Identity/Dalan.Identity.csproj" />
+    <Project Path="src/Notification/Dalan.Notification.Contracts/Dalan.Notification.Contracts.csproj" />
+    <Project Path="src/Notification/Dalan.Notification/Dalan.Notification.csproj" />
+    <Project Path="src/Plugins/Dalan.Telegram/Dalan.Telegram.csproj" />
+    <Project Path="src/Relay/Dalan.Relay.Contracts/Dalan.Relay.Contracts.csproj" />
+    <Project Path="src/Relay/Dalan.Relay/Dalan.Relay.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Dalan.Architecture.Tests/Dalan.Architecture.Tests.csproj" />
+    <Project Path="tests/Dalan.Host.Tests/Dalan.Host.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -43,7 +43,7 @@ The server SHALL write logs to stdout as one JSON object per line, with time, le
 The server SHALL read settings from its settings file and from environment variables, and an environment variable SHALL win over the file. Secrets MUST NOT be stored in the repository.
 
 #### Scenario: Environment overrides file
-- **GIVEN** the settings file sets `Dalan:Version` to `file`
+- **GIVEN** the settings file sets `Dalan:Version` to `dev`
 - **WHEN** the environment variable `Dalan__Version` is `env`
 - **THEN** `GET /health` reports version `env`
 

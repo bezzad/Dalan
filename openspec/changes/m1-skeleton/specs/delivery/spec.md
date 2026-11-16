@@ -22,7 +22,7 @@ CI SHALL fail when a rule ID in a requirement name in `openspec/specs` or in an 
 - **THEN** the rule check fails and names `OPS-99`
 
 ### Requirement: DEL-03 Self-contained release
-A release SHALL be one self-contained linux-x64 executable that runs on a server with no .NET installed.
+A release SHALL be one self-contained linux-x64 executable, plus its settings file, that runs on a server with no .NET installed.
 
 #### Scenario: Run on a clean machine
 - **WHEN** the release file runs on Linux x64 without .NET

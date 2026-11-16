@@ -16,13 +16,13 @@ The repository has only docs. Architecture decisions are in `docs/ARCHITECTURE.m
 
 ## Decisions
 
-1. **Versions (checked 2026-11-16):** .NET SDK 11.0.x (`global.json`, `rollForward: latestFeature`), xUnit v3 4.0.3, `xunit.runner.visualstudio` 4.0.1, `Microsoft.NET.Test.Sdk` 18.12.0, `Microsoft.AspNetCore.Mvc.Testing` 11.0.0, TypeScript 7.0.2, OpenSpec 2.0.0. Central versions in `Directory.Packages.props`.
+1. **Versions (checked 2026-11-16):** .NET SDK 11.0.x (`global.json`, `rollForward: latestFeature`), xUnit v3 4.0.3 on Microsoft.Testing.Platform (no VSTest packages needed), `Microsoft.AspNetCore.Mvc.Testing` 11.0.0, TypeScript 7.0.2, Node 26 LTS, Caddy 2.11.9 (CI only), OpenSpec 2.0.0. Central versions in `Directory.Packages.props`.
 2. **Solution format:** `Dalan.slnx` (the new XML format, default in .NET 10+).
 3. **Empty services:** each service project has one public `XxxService` static class with `AddXxx(IServiceCollection)` and `MapXxx(IEndpointRouteBuilder)`, both empty now. The host calls them. This gives the architecture tests real assemblies and gives later milestones a fixed place to plug in. Alternative (no projects until needed) was rejected: the owner asked for the structure now, and the boundaries are cheapest to set before any code exists.
-4. **Readiness:** a small singleton flag set to "stopping" from `IHostApplicationLifetime.ApplicationStopping`. `/ready` returns 503 when set. Dependency checks join it in milestone 2.
-5. **Version:** `/health` reads `Dalan:Version` from settings. CI sets `Dalan__Version` to the git commit at publish time through the systemd unit file. Default is `dev`.
+4. **Readiness:** `/ready` returns 503 once `IHostApplicationLifetime.ApplicationStopping` is cancelled. No extra class. Dependency checks join it in milestone 2.
+5. **Version:** `/health` reads `Dalan:Version` from settings. The deploy script writes `version.env` (`Dalan__Version=<git commit>`) into the release folder and the systemd unit reads it. Default is `dev`.
 6. **Logs:** the built-in JSON console formatter. No Serilog: nothing needs it yet.
-7. **Architecture tests:** reflection on referenced assemblies (`Assembly.GetReferencedAssemblies`) and type names. No extra library.
+7. **Architecture tests:** read `ProjectReference` items from the `.csproj` files (the compiler drops unused assembly references, so assemblies would miss some), plus reflection on type names for ARC-03. No extra library.
 8. **Rule check:** `scripts/check-rules.sh` greps rule IDs from requirement headers in `openspec/specs` and active changes, then greps `tests/` for each ID.
 9. **Deploy script:** plain bash. All server commands go through one function, so the test can run them locally with a fake `systemctl` and `curl`. Layout on the server: `/opt/dalan/releases/<version>/`, `/opt/dalan/current` → link, `/etc/dalan/dalan.env` for secrets (never in the repository). Keep count default 5, ready wait default 30 seconds, both script settings.
 10. **Caddy:** `Caddyfile` takes domains from environment (`{$DALAN_SITE_DOMAIN}`, `{$DALAN_API_DOMAIN}`), answers 404 for `/health` and `/ready`, and forwards the rest to Kestrel on localhost.
