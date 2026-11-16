@@ -16,8 +16,8 @@
 - [x] 3.1 Write `scripts/check-rules.sh` and its shell test for DEL-02; verify it passes on the repo and fails on a spec with an untested ID
 - [x] 3.2 Write `deploy/deploy.sh`, `deploy/dalan.service` and shell tests for DEL-04, DEL-05, DEL-06 with fake `systemctl` and `curl`; verify the tests pass
 - [x] 3.3 Write `deploy/Caddyfile` and a shell test for OPS-06 that runs Caddy in CI with a stub upstream; verify `/health` gives 404 through Caddy
-- [ ] 3.4 Add `.github/workflows/ci.yml` (build, test, client type-check, `openspec validate --all --strict`, rule check, publish self-contained binary and smoke test for DEL-03) and a manual deploy job; verify CI is green on the pull request
-- [ ] 3.5 Add `Dockerfile` (multi-stage, runs the host); verify `docker build` and `/health` in CI
+- [x] 3.4 Add `.github/workflows/ci.yml` (build, test, client type-check, `openspec validate --all --strict`, rule check, publish self-contained binary and smoke test for DEL-03) and a manual deploy job; verify CI is green on the pull request
+- [x] 3.5 Add `Dockerfile` (multi-stage, runs the host); verify `docker build` and `/health` in CI
 
 ## 4. Client and docs
 
@@ -27,4 +27,4 @@
 ## Workflow follow-up
 
 - Owner reviews the pull request.
-- Archive the change with `openspec archive m1-skeleton` after merge, so `openspec/specs` holds operations, architecture and delivery.
+- Archived in the same pull request (owner wants auto-merge after CI), so `openspec/specs` holds operations, architecture and delivery.
