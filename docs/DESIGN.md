@@ -205,6 +205,7 @@ Every account starts with an SMS code to an Iranian mobile number, so builders a
 - A per-IP cap that is high and only a safety net. A company can have 1,000 people behind one IP, so IP cannot be the main control.
 - A global daily SMS budget with an alert to the admin.
 - The SMS provider must be inside Iran.
+- SMS sending sits behind one small interface, so the provider can be changed, or a second one added as a fallback, by writing one class.
 
 **Becoming a builder.** A user verifies an email (a work email is fine) and the admin approves. Only then can the user create bots.
 
@@ -418,7 +419,7 @@ None of these is planned work. They are recorded so the design does not block th
 
 ## 18. Assumptions and open questions
 
-**Starting values.** The owner agreed to the rules but not to exact numbers, except where marked. All are admin settings.
+**Starting values.** The owner agreed to the rules but not to exact numbers, except where marked. All are admin settings. During implementation, ask the owner in Persian to confirm each value marked "Assumed" before it is first used.
 
 | Setting | Starting value | Source |
 | --- | --- | --- |
@@ -434,17 +435,23 @@ None of these is planned work. They are recorded so the design does not block th
 | Pending site requests per user (Layer 2) | 20 | Assumed |
 | Site request timeout (Layer 2) | 30 seconds | Assumed |
 
+**Confirmed by the owner on 2026-11-16:**
+
+- Joining works the same way as in Telegram. Any user who presses Start reaches the bot, and the bot's code then decides whether to allow that user.
+- The repository is private.
+- `dalanet.ir` is bought; registration is in progress.
+- The US test server already exists.
+
 **Design assumptions to confirm:**
 
-- The Telegram adapter treats any user who presses Start as joined; the bot's code decides whether to answer.
 - Telegram-shaped calls live under a path of the API host, for example `https://api.dalanet.ir/tg/bot<token>/<method>`.
 - Passwords use Argon2id.
-- The repository starts private. The Agent, SDK, CLI and MCP server may be published later; the server stays private at least until a security review.
+- The Agent, SDK, CLI and MCP server may be published later; the server stays private at least until a security review.
 - The interface is Persian first, English second.
 
 **Open questions:**
 
-- [ ] Which domestic SMS provider?
+- [ ] Which domestic SMS provider? Suggested: start with Kavenegar and keep SMS.ir as the second choice. Prices and delivery speed were not compared. Account verification and OTP template approval can take days, so start before milestone 4.
 - [ ] Which hosting provider, after comparing traffic cost, extra disk and DNS?
 - [ ] Buy a separate sites domain before Layer 2 (candidate: `dalancloud.ir`)?
 - [ ] Buy a foreign backup domain (candidate: `dalanet.net`)?
