@@ -276,6 +276,11 @@ In Layer 2 the builder's frontend and backend stay unchanged. The page is served
 
 **First-version limits:** a size cap and a time cap per request, no WebSocket, no streaming.
 
+**Approved for Layer 2 (owner, 2026-11-16; not built yet):**
+
+- **Inspector and replay.** The builder sees each request that came to the site (for example a webhook) with its headers, body and response, and can send it again to the home machine.
+- **Basic Auth and IP allowlist.** The builder can put a password or a list of allowed IP ranges in front of a site. Private companies often allow only fixed IP ranges.
+
 **Test case: Valorians** (repository `parsakhosravani/valorians`, read on 2026-11-16).
 
 - Next.js 16 with client-rendered screens, 83 API routes, a SQLite database, and one scheduled job every minute.
