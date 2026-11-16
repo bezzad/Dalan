@@ -368,7 +368,7 @@ These facts shaped the design. Several were learned the hard way by the Valorian
 
 ## 15. Competitors and positioning
 
-Each piece of Dalan exists somewhere, but no service found combines them inside Iran. One Persian search for an Iranian ngrok alternative found none; that is not proof that none exists.
+Each piece of Dalan exists somewhere, but no service found combines them inside Iran. A later search found one Iranian tunnel, DNSLab (dynamic DNS and reverse proxy without a static IP). See `docs/BUSINESS.md` for the market, competitors and a pricing proposal.
 
 | Kind | Examples | Gap for Dalan's audience |
 | --- | --- | --- |
