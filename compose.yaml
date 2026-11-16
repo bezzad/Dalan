@@ -1,0 +1,17 @@
+# PostgreSQL for local work only: docker compose up -d
+# The password is for this local container, the same as in src/Dalan.Host/appsettings.Development.json.
+# Production in Iran runs PostgreSQL on the server, without Docker.
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: dalan
+      POSTGRES_USER: dalan
+      POSTGRES_PASSWORD: dalan
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - dalan-postgres:/var/lib/postgresql
+
+volumes:
+  dalan-postgres:

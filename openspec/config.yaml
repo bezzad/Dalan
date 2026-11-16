@@ -4,7 +4,7 @@ context: |
   Dalan is a relay platform hosted in Iran (see docs/DESIGN.md for the product, docs/ARCHITECTURE.md for decisions).
   Only Layer 1 is in scope now. No user-to-user chat, groups or channels.
   Every limit, expiry, size and domain name is admin-changeable configuration, never hard-coded.
-  Before first use of a starting value marked "Assumed" in docs/DESIGN.md section 18, ask the owner in Persian.
+  Starting values are in docs/DESIGN.md section 18; use them as defaults and list every new setting in the change's design.md.
   A bot never receives a user's phone number.
   Production runs in Iran without Docker; the running product loads nothing from a foreign host.
   The relay core never mentions Telegram; the Telegram adapter is a plugin.

@@ -23,7 +23,7 @@ Areas: `OPS` operations, `ARC` architecture, `DEL` delivery, `Q` bot queue, `REL
 | Kind | Tool | What |
 |---|---|---|
 | Unit | xUnit v3 | Pure rules: queue expiry, "latest command wins", token hashing, limits |
-| Integration | xUnit v3 + `WebApplicationFactory` + real PostgreSQL (Testcontainers) | HTTP endpoints, database, outbox. Never an in-memory database fake; `jsonb` and locking must be real |
+| Integration | xUnit v3 + `WebApplicationFactory` + real PostgreSQL (Testcontainers) | HTTP endpoints, database, outbox. Never an in-memory database fake; `jsonb` and locking must be real. Each test gets a new database (`tests/Shared`). Without Docker, set `DALAN_TEST_POSTGRES` to the connection string of a server where the tests may create databases |
 | Contract | xUnit v3 + JSON files | Telegram adapter request and response shapes, compared with saved examples from the pinned Bot API version |
 | Architecture | xUnit v3 + reflection on assemblies | Dependency rules `ARC-*` |
 | Shell | bash | Deploy script with a fake `systemctl` and fake server folder |
@@ -39,7 +39,7 @@ Areas: `OPS` operations, `ARC` architecture, `DEL` delivery, `Q` bot queue, `REL
 ## 5. Commands
 
 ```bash
-dotnet test                      # all .NET tests
+dotnet test                      # all .NET tests (needs Docker, or DALAN_TEST_POSTGRES)
 bash tests/deploy/deploy_test.sh # deploy script tests
 bash scripts/check-rules.sh      # every rule has a test
 openspec validate --all --strict # specs are well formed

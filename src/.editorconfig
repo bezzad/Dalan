@@ -1,0 +1,7 @@
+# A queue may be called a queue: IUpdateQueue is the agreed name of the seam (docs/ARCHITECTURE.md section 6).
+[*.cs]
+dotnet_diagnostic.CA1711.severity = none
+
+# EF Core writes these files; analyzers leave them alone.
+[**/Migrations/*.cs]
+generated_code = true

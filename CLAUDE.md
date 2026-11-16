@@ -12,8 +12,9 @@ Read first:
 
 ```bash
 dotnet build Dalan.slnx -c Release          # needs .NET SDK 11 (global.json)
-dotnet test -c Release                      # all .NET tests (Microsoft.Testing.Platform)
-dotnet run --project src/Dalan.Host         # run the server; GET /health
+dotnet test -c Release                      # all .NET tests; needs Docker, or DALAN_TEST_POSTGRES=<connection string>
+docker compose up -d                        # local PostgreSQL for the next line
+dotnet run --project src/Dalan.Host         # run the server; GET /health, GET /ready
 (cd client && npm ci && npm run check)      # client type check
 bash scripts/check-rules.sh                 # every spec rule ID has a test
 bash tests/deploy/deploy_test.sh            # deploy script tests
@@ -32,6 +33,7 @@ src/Plugins/Dalan.Telegram         Telegram adapter plugin (no data, no domain)
 tests/                             one project or script folder per area
 client/                            PWA, plain TypeScript, no framework
 deploy/                            deploy.sh, dalan.service (systemd), Caddyfile
+compose.yaml                       PostgreSQL for local work only
 openspec/                          specs and changes
 ```
 
@@ -40,7 +42,7 @@ openspec/                          specs and changes
 1. KISS, YAGNI, Clean Code. Smallest thing that works. Feature folders inside a service; no Repository or Mediator layers.
 2. Services reference only other services' `.Contracts`. Relay never mentions Telegram. Only the host references implementations and plugins. Architecture tests enforce this.
 3. Sync calls through contracts; async through the PostgreSQL outbox. One schema per service, no cross-schema joins.
-4. Every limit, expiry, size and domain is configuration the admin can change. Never hard-code. Starting values: `docs/DESIGN.md` section 18. Before first use of a value marked "Assumed", ask the owner **in Persian**.
+4. Every limit, expiry, size and domain is configuration the admin can change. Never hard-code. Starting values: `docs/DESIGN.md` section 18; use them as defaults without asking (owner, 2026-11-16) and list every new setting in the milestone summary.
 5. A bot never receives a user's phone number.
 6. Production: one self-contained binary under systemd, deployed by CI over SSH. No Docker on the Iran server (Docker is fine locally).
 7. The running product loads nothing from a foreign host: no CDN fonts, scripts or analytics.

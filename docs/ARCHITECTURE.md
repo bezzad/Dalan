@@ -66,17 +66,23 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 - **Sync**: call the other service's contract interface. In one process this is a normal method call.
 - **Async**: events through an **outbox table** in PostgreSQL. The event is written in the same transaction as the data, so they never disagree. A worker reads with `SELECT … FOR UPDATE SKIP LOCKED`. Survives restarts and works the same when services become separate processes.
 - Events so far: `MessageCreated` (→ SSE, Notification), `SmsRequested` (Identity → Notification), `UserSuspended` (Identity → all).
+- The outbox table is not built yet. It comes with its first reader (milestone 3).
+- Relay learns a user's name from Identity through `IUserDirectory`. That profile has no phone number.
 
 ## 5. Data
 
 - One PostgreSQL database, one schema per service, no foreign key or join across schemas. Each schema can later move to its own database.
-- EF Core 10 with the official PostgreSQL provider `Npgsql.EntityFrameworkCore.PostgreSQL` 10.x (version 11 of the provider was only a release candidate on 2026-11-16; upgrade when stable). Message content in `jsonb`.
+- EF Core 10 with the official PostgreSQL provider `Npgsql.EntityFrameworkCore.PostgreSQL` 10.x (version 11 of the provider was only a release candidate on 2026-11-16; upgrade when stable). Message content in `jsonb`. Table and column names are snake_case.
+- Each service has its own EF Core migrations and its own history table in its schema. The server applies them at start (`/ready` is 503 until then), so the Iran server needs no tool.
+- New migration: `dotnet ef migrations add <Name> --project src/Relay/Dalan.Relay --startup-project src/Dalan.Host --context RelayDb --output-dir Data/Migrations` (the same for Identity with `IdentityDb`).
 
 ## 6. Bot queue and delivery
 
-- One in-memory queue per bot (`System.Threading.Channels`), with expiry. Rules in `openspec/specs/relay` (milestone 2).
-- Every user message is saved in the database first. On start, the server reloads undelivered, unexpired messages into the queues, so a deploy or restart loses nothing.
-- A message counts as **delivered** only after the bot confirms it with the next `getUpdates` offset, like Telegram. Delivery is at least once.
+- One in-memory queue per bot behind `IUpdateQueue`: a small sorted list with a lock (not a `Channel`, because an update must stay until it is confirmed and can be removed from the middle). Rules in `openspec/specs/bot-queue`.
+- Every user message is saved in the database first. Its row id is the update id, so a bot's offset stays valid after a restart. On start, the server reloads undelivered, unexpired messages into the queues, so a deploy or restart loses nothing.
+- A message counts as **delivered** only after the bot confirms it with the next `getUpdates` offset, like Telegram. Delivery is at least once. An offset confirms only updates the bot was really given.
+- An update is offered to the bot until its expiry. After that the message is "not delivered"; a late confirm of an update the bot already got still counts.
+- Core Bot API: `GET /v1/updates` and `POST /v1/messages`, token in `Authorization: Bearer`. Rate limits per IP and per bot.
 
 ## 7. Identity and sessions
 
@@ -106,3 +112,8 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 7 | 2026-11-16 | Async events through a PostgreSQL outbox |
 | 8 | 2026-11-16 | Every spec rule has an ID; test first; CI checks coverage |
 | 9 | 2026-11-16 | Specs with OpenSpec 2.0 |
+| 10 | 2026-11-16 | Bot queue is a sorted list behind `IUpdateQueue`, not a `Channel` |
+| 11 | 2026-11-16 | Update id = id of the stored message row; an offset never confirms an update the bot did not get |
+| 12 | 2026-11-16 | Bot token secret is stored as SHA-256 (long random secret, checked on every call) |
+| 13 | 2026-11-16 | Migrations run at start in the background; `/ready` and all traffic wait for them |
+| 14 | 2026-11-16 | Section 18 starting values are used as defaults without asking; the admin panel changes them later |

@@ -1,34 +1,34 @@
 using System.Net;
+using Dalan.Testing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 namespace Dalan.Host.Tests;
 
 /// <summary>Runs the host on real Kestrel, because shutdown behavior lives in Kestrel.</summary>
-public sealed class ShutdownTests : IAsyncDisposable
+public sealed class ShutdownTests(PostgresServer postgres) : IAsyncLifetime
 {
     private readonly TaskCompletionSource _releaseSlowRequest = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource _slowRequestStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly HoldStop _holdStop = new();
-    private readonly WebApplicationFactory<Program> _factory;
+    private DalanApp _factory = null!;
 
-    public ShutdownTests()
+    public async ValueTask InitializeAsync()
     {
-        _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(web =>
-        {
-            web.UseSetting("Dalan:ShutdownTimeoutSeconds", "5");
-            web.ConfigureServices(s =>
+        _factory = new DalanApp(
+            await postgres.NewDatabaseAsync(),
+            new Dictionary<string, string> { ["Dalan:ShutdownTimeoutSeconds"] = "5" },
+            web => web.ConfigureServices(s =>
             {
                 s.AddSingleton<IStartupFilter>(new SlowEndpoint(_slowRequestStarted, _releaseSlowRequest.Task));
                 s.AddSingleton<IHostedService>(_holdStop);
-            });
-        });
+            }));
         _factory.UseKestrel(0);
         _factory.StartServer();
+        await _factory.ReadyAsync();
     }
 
     private IHost Host => _factory.Services.GetRequiredService<IHost>();

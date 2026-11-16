@@ -1,12 +1,52 @@
+using Dalan.Relay.BotApi;
+using Dalan.Relay.Bots;
+using Dalan.Relay.Chats;
+using Dalan.Relay.Data;
+using Dalan.Relay.Queue;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Dalan.Relay;
 
-/// <summary>Entry point of the Relay service. The host calls these two methods.</summary>
+/// <summary>Entry point of the Relay service. The host calls these methods.</summary>
 public static class RelayService
 {
-    public static IServiceCollection AddRelayService(this IServiceCollection services) => services;
+    public static IServiceCollection AddRelayService(this IServiceCollection services)
+    {
+        services.AddOptions<RelayOptions>().BindConfiguration("Relay");
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddPooledDbContextFactory<RelayDb>((provider, options) => options
+            .UseNpgsql(
+                provider.GetRequiredService<IConfiguration>().GetConnectionString("Dalan"),
+                npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", RelayDb.Schema))
+            .UseSnakeCaseNamingConvention());
 
-    public static IEndpointRouteBuilder MapRelayService(this IEndpointRouteBuilder endpoints) => endpoints;
+        services.AddSingleton<IUpdateQueue, InMemoryUpdateQueue>();
+        services.AddSingleton<BotRegistry>();
+        services.AddSingleton<ChatService>();
+        services.AddSingleton<QueueLoader>();
+        services.AddSingleton<BotApiLimits>();
+        services.AddSingleton<ExpirySweeper>();
+        services.AddHostedService(provider => provider.GetRequiredService<ExpirySweeper>());
+        return services;
+    }
+
+    public static IEndpointRouteBuilder MapRelayService(this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapBotApi();
+        return endpoints;
+    }
+
+    /// <summary>OPS-07 and Q-07: applies this service's migrations, then reloads the queues. The host calls it before the server is ready.</summary>
+    public static async Task StartAsync(IServiceProvider services, CancellationToken cancellationToken)
+    {
+        var dbFactory = services.GetRequiredService<IDbContextFactory<RelayDb>>();
+        await using (var db = await dbFactory.CreateDbContextAsync(cancellationToken))
+            await db.Database.MigrateAsync(cancellationToken);
+
+        await services.GetRequiredService<QueueLoader>().LoadAsync(cancellationToken);
+    }
 }
