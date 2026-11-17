@@ -2,7 +2,7 @@
 
 Dalan (دالان) — run your bot or web app from a home computer, no public IP and no server. A relay platform hosted in Iran with a Telegram-compatible Bot API, phone-verified users, and site hosting.
 
-**Status:** milestone 4 (real login) — a person can open the PWA, log in with an SMS code or a password, start a bot, tap reply buttons and see answers live. A bot reads by long polling (`GET /v1/updates`) and answers (`POST /v1/messages`).
+**Status:** milestone 5 (Telegram adapter) — a person can open the PWA, log in with an SMS code or a password, start a bot, tap reply buttons and see answers live. A bot reads by long polling (`GET /v1/updates`) and answers (`POST /v1/messages`), or uses a stock Telegram library with only the server address and token changed (`getMe`, `getUpdates`, `sendMessage` with reply buttons).
 
 ## Quick start
 

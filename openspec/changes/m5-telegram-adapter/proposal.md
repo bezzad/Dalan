@@ -6,7 +6,7 @@ Milestones 1 to 4 gave Dalan its own Bot API (`/v1`), the web client and the rea
 
 ## What Changes
 
-- **Telegram-shaped address**: `/tg/bot<token>/<method>`, GET or POST, with parameters in the query, a form or JSON, like Telegram. The token is the same one the core API uses.
+- **Telegram-shaped address**: `/bot<token>/<method>` at the root of the API address, GET or POST, with parameters in the query, a form or JSON, like Telegram. The token is the same one the core API uses.
 - **Methods that work now**: `getMe`, `getUpdates` (update type `message`), `sendMessage` (text, `ReplyKeyboardMarkup`, `ReplyKeyboardRemove`), `deleteWebhook` and `sendChatAction` (both answer `true` and do nothing).
 - **Every other method** answers a Telegram-shaped error that says "not supported by Dalan", so the bot does not crash on a strange answer.
 - **Errors and limits** have Telegram's shape (`ok`, `error_code`, `description`, `retry_after`).

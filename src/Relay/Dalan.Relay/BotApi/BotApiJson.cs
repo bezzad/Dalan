@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
-using Dalan.Relay.Chats;
-using Dalan.Relay.Queue;
+using Dalan.Relay.Contracts;
 
 namespace Dalan.Relay.BotApi;
 
@@ -8,11 +7,11 @@ internal sealed record UpdatesResponse(IEnumerable<UpdateJson> Updates);
 
 internal sealed record UpdateJson(long UpdateId, IncomingMessageJson Message)
 {
-    public static UpdateJson Of(QueuedUpdate update) => new(
+    public static UpdateJson Of(BotUpdate update) => new(
         update.Id,
         new IncomingMessageJson(
-            update.Seq,
-            new SenderJson(update.From.Id, update.From.DisplayName, update.From.Username),
+            update.MessageId,
+            new SenderJson(update.From.Id, update.From.Name, update.From.Username),
             update.Text,
             update.Date));
 }
@@ -31,6 +30,6 @@ internal sealed record SentMessageJson(
     DateTimeOffset Date,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] List<List<string>>? ReplyKeyboard)
 {
-    public static SentMessageJson Of(Message message) =>
-        new(message.Seq, message.UserId, message.Content.Text, message.CreatedAt, message.Content.ReplyKeyboard?.ToRows());
+    public static SentMessageJson Of(BotMessage message) =>
+        new(message.Id, message.UserId, message.Text, message.Date, message.ReplyKeyboard);
 }

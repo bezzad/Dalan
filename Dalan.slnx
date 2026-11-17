@@ -16,5 +16,6 @@
     <Project Path="tests/Dalan.Host.Tests/Dalan.Host.Tests.csproj" />
     <Project Path="tests/Dalan.Identity.Tests/Dalan.Identity.Tests.csproj" />
     <Project Path="tests/Dalan.Relay.Tests/Dalan.Relay.Tests.csproj" />
+    <Project Path="tests/Dalan.Telegram.Tests/Dalan.Telegram.Tests.csproj" />
   </Folder>
 </Solution>

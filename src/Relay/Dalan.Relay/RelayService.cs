@@ -2,6 +2,7 @@ using Dalan.Relay.BotApi;
 using Dalan.Relay.Bots;
 using Dalan.Relay.Chats;
 using Dalan.Relay.ClientApi;
+using Dalan.Relay.Contracts;
 using Dalan.Relay.Data;
 using Dalan.Relay.Live;
 using Dalan.Relay.Outbox;
@@ -32,6 +33,7 @@ public static class RelayService
         services.AddSingleton<ChatService>();
         services.AddSingleton<QueueLoader>();
         services.AddSingleton<RateLimits>();
+        services.AddSingleton<IBotGateway, BotGateway>();
         services.AddSingleton<IMessageNotifier, InMemoryMessageNotifier>();
         services.AddSingleton<OutboxWorker>();
         services.AddHostedService(provider => provider.GetRequiredService<OutboxWorker>());

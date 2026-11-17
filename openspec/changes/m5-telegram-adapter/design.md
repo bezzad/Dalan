@@ -20,7 +20,7 @@ Milestones 1 to 4 are merged. The core Bot API has two calls: `GET /v1/updates` 
 
 1. **Versions (checked 2026-11-17):** Telegram Bot API 10.4 (released 2026-11-09) is the snapshot. Test package `Telegram.Bot` 22.10.4 (it targets Bot API 10.4).
 2. **Contract `IBotGateway`** (in `Dalan.Relay.Contracts`): `EnterAsync(token)` (token check, then the limit per bot; returns the bot's id, username and name), `GetUpdatesAsync`, `SendMessageAsync`. Relay implements it once. The core endpoints and the adapter are both thin callers. This keeps ARC-03 and ARC-04: Relay knows nothing of Telegram, the plugin knows nothing of Relay's inside.
-3. **Address:** `/tg/bot<token>/<method>`, GET and POST, method name without regard to letter case. This is the "design assumption to confirm" of `docs/DESIGN.md` section 18; it is now used. The prefix `/tg` is a fixed part of the address, not a setting.
+3. **Address:** `/bot<token>/<method>` at the root, as Telegram has it; GET and POST; method name without regard to letter case. `docs/DESIGN.md` section 18 assumed a prefix (`/tg/bot<token>/...`). It is dropped: the most used .NET library, `Telegram.Bot` 22.10.4, keeps only the scheme and host of its base address (checked: base `https://api.dalanet.ir/tg` calls `https://api.dalanet.ir/bot<token>/getMe`). At the root every library works. No other route of Dalan starts with `/bot`, so nothing clashes.
 4. **Parameters** are read the way Telegram reads them: query string, `application/x-www-form-urlencoded`, `multipart/form-data` and JSON. A number may come as a string. `reply_markup` may be a JSON object or a string with JSON in it.
 5. **Ids:** `update_id` is the id of the stored message (decision 11 of the architecture). `message_id` is the sequence number in the chat. `chat.id` is the user's id, as in a Telegram private chat. `date` is Unix seconds.
 6. **Commands:** many libraries find commands only through `entities`. The adapter adds a `bot_command` entity for each `/name` or `/name@bot` that starts the text or follows white space. No other entity is made for user text.
@@ -40,11 +40,12 @@ No new setting. The adapter uses the Relay settings already there: `Relay:PollTi
 ## Risks / Trade-offs
 
 - [`update_id` is 64-bit and shared by all bots; some libraries keep it in 32 bits] It breaks after about 2 billion stored user messages → far away at the planned load; a per-bot counter can replace it later without a change for bots.
+- [Telegram routes sit at the root of the API host] A later core route that starts with `/bot` would clash → core routes stay under `/v1` and `/api`.
 - [The token is part of the URL] A proxy or log that keeps paths would keep tokens → Dalan logs no request path (TG-10 tests it); the Caddyfile has no access log. Keep it so.
 - [Formatting is ignored] A bot that sends HTML or Markdown shows its markup until milestone 6.
-- [ArcaneBot was not run against Dalan here] Its code is not in this repository → the real `Telegram.Bot` client test stands in; the owner points ArcaneBot at `/tg` to confirm.
+- [ArcaneBot was not run against Dalan here] Its code is not in this repository → the real `Telegram.Bot` client test stands in; the owner points ArcaneBot at `https://api.dalanet.ir` to confirm.
 - [The limit per client address answers in Dalan's shape, not Telegram's] It is a safety net in front of everything (SEC-02) → a bot under the per-bot limit never sees it.
 
 ## Migration Plan
 
-No database change and no new setting. Rollback: the old release has no `/tg` address.
+No database change and no new setting. Rollback: the old release has no `/bot<token>/...` address.

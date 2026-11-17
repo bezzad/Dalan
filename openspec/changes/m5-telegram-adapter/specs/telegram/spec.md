@@ -1,10 +1,10 @@
 ## ADDED Requirements
 
 ### Requirement: TG-01 Telegram-shaped address and token
-The server SHALL serve Telegram Bot API calls at `/tg/bot<token>/<method>` for GET and POST. The token SHALL be the bot's Dalan token (REL-03). The method name SHALL match without regard to letter case. A wrong or malformed token SHALL get HTTP 401 with `{"ok":false,"error_code":401,"description":"Unauthorized"}`, and the call SHALL do nothing.
+The server SHALL serve Telegram Bot API calls at `/bot<token>/<method>`, at the root of the address as Telegram does, for GET and POST. The token SHALL be the bot's Dalan token (REL-03). The method name SHALL match without regard to letter case. A wrong or malformed token SHALL get HTTP 401 with `{"ok":false,"error_code":401,"description":"Unauthorized"}`, and the call SHALL do nothing.
 
 #### Scenario: Valid token
-- **WHEN** a bot calls `GET /tg/bot<token>/getMe` with its token
+- **WHEN** a bot calls `GET /bot<token>/getMe` with its token
 - **THEN** the response is 200 with `"ok":true`
 
 #### Scenario: Wrong secret
@@ -12,7 +12,7 @@ The server SHALL serve Telegram Bot API calls at `/tg/bot<token>/<method>` for G
 - **THEN** the response is 401 with `ok` false, `error_code` 401 and `description` "Unauthorized"
 
 #### Scenario: Method name in another case
-- **WHEN** a bot calls `/tg/bot<token>/GETME` or `/tg/bot<token>/getme`
+- **WHEN** a bot calls `/bot<token>/GETME` or `/bot<token>/getme`
 - **THEN** the answer is the same as for `getMe`
 
 #### Scenario: POST
@@ -193,6 +193,6 @@ Adapter calls SHALL count against the same limit per bot as the core Bot API (SE
 A stock Telegram client library SHALL work against Dalan with only its base address and token changed.
 
 #### Scenario: Telegram.Bot for .NET
-- **GIVEN** the `Telegram.Bot` client with base address `<server>/tg` and the bot's Dalan token
+- **GIVEN** the `Telegram.Bot` client with base address `<server>` and the bot's Dalan token
 - **WHEN** it calls `GetMe`, reads the "/start" of a user with `GetUpdates`, and answers with `SendMessage` and a `ReplyKeyboardMarkup`
 - **THEN** every call works, the update has the user and the text, and the user's history has the answer with its keyboard
