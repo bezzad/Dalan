@@ -9,7 +9,7 @@ import { solve } from "./pow.ts";
 type Mode = "sms" | "password" | "dev";
 
 export function loginScreen(
-  language: Language, settings: AuthSettings, onLogin: (user: User) => void, onLanguage: () => void): HTMLElement {
+  language: Language, settings: AuthSettings, onLogin: (user: User) => void, onLanguage: () => void, onBack: () => void): HTMLElement {
   const t = language.t.bind(language);
   const card = h("div", {});
   const links = h("p", { class: "links" });
@@ -110,7 +110,8 @@ export function loginScreen(
       ...(mode === "sms" ? [] : [link("sms", "bySms")]),
       ...(mode === "password" ? [] : [link("password", "byPassword")]),
       ...(mode === "dev" || !settings.dev_login ? [] : [link("dev", "byDevLogin")]),
-      h("button", { type: "button", class: "link", onclick: onLanguage }, t("language")));
+      h("button", { type: "button", class: "link", onclick: onLanguage }, t("language")),
+      h("button", { type: "button", class: "link", onclick: onBack }, t("back")));
   }
 
   open("sms");

@@ -10,6 +10,8 @@ import { chatScreen } from "./chat.ts";
 import { Language } from "./i18n.ts";
 import { Live } from "./live.ts";
 import { loginScreen } from "./login.ts";
+import { pageFor } from "./pages.ts";
+import { publicScreen, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
 import { Chats } from "./messages.ts";
 
@@ -39,14 +41,48 @@ function showLogin(): void {
   authSettings().then(settings => show(loginScreen(language, settings, user => void enter(user).catch(fail), () => {
     language.toggle();
     showLogin();
-  })), () => document.body.classList.add("offline"));
+  }, () => navigate("/"))), () => document.body.classList.add("offline"));
 }
 
-/** Draws the screen of the current address: "/" is the bot list, "/@name" is a chat. */
+/** Goes to an address of the site without a page load. */
+function navigate(path: string): void {
+  panel = null;
+  history.pushState(null, "", path);
+  render();
+}
+
+function render(): void {
+  if (app) route();
+  else guest();
+}
+
+/** CLI-26: a visitor gets the public pages; a bot address asks for login first and opens that chat after it. */
+function guest(): void {
+  const page = pageFor(location.pathname, false);
+  if (page === "login") return showLogin();
+  show(publicPage(page as PublicPage, false));
+}
+
+function publicPage(page: PublicPage, loggedIn: boolean): HTMLElement {
+  return publicScreen(page, {
+    language,
+    loggedIn,
+    go: navigate,
+    enter: loggedIn ? () => navigate("/") : showLogin,
+    onLanguage() {
+      language.toggle();
+      render();
+    },
+  });
+}
+
+/** Draws the screen of the current address: "/" is the bot list, "/@name" is a chat, and the public pages. */
 function route(): void {
   if (!app) return;
+  const page = pageFor(location.pathname, true);
   const username = /^\/@([^/]+)$/.exec(decodeURIComponent(location.pathname))?.[1];
-  screen = username ? chatScreen(app, username)
+  screen = page === "privacy" || page === "faq" || page === "showcase" ? { element: publicPage(page, true) }
+    : username ? chatScreen(app, username)
     : panel === "account" ? accountScreen(app)
     : panel === "builder" ? builderScreen(app)
     : panel === "admin" ? adminScreen(app)
@@ -67,11 +103,7 @@ async function enter(user: User): Promise<void> {
     maxTextLength: settings.max_text_length,
     maxFileSizeMb: settings.max_file_size_mb,
     statusRefreshSeconds: settings.status_refresh_seconds,
-    go(path) {
-      panel = null;
-      history.pushState(null, "", path);
-      route();
-    },
+    go: navigate,
     showPanel(next) {
       panel = next;
       route();
@@ -105,11 +137,14 @@ async function enter(user: User): Promise<void> {
 
 /** A call failed: the session has ended, or the server cannot be reached. */
 function fail(error: unknown): void {
-  if (error instanceof ApiError && error.status === 401) showLogin();
+  if (error instanceof ApiError && error.status === 401) {
+    if (app) showLogin();
+    else guest();
+  }
   else document.body.classList.add("offline");
 }
 
-window.addEventListener("popstate", route);
+window.addEventListener("popstate", render);
 // Back on the network before the app could start: start again.
 window.addEventListener("online", () => { if (!app) location.reload(); });
 

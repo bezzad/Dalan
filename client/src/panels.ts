@@ -1,5 +1,7 @@
 // Pure logic of the account, builder and admin screens (CLI-23 to CLI-25), kept apart so tests run without a browser.
 
+import type { ShowcaseEntry } from "./pages.ts";
+
 export type BuilderState = "none" | "requested" | "approved";
 
 /** CLI-23: what the account screen shows about building bots. */
@@ -15,6 +17,8 @@ export interface BuilderBot {
   created_at: string;
   last_seen: string | null;
   suspended: boolean;
+  /** REL-40: null when the bot is not in the showcase. */
+  showcase: ShowcaseEntry | null;
 }
 
 export type NewToken = { id: number; username: string; name: string; token: string };
@@ -26,7 +30,7 @@ export class BuilderList {
 
   /** A bot was created: it joins the list without its token, and the token is shown. */
   created(bot: NewToken, now: Date): void {
-    this.bots = [...this.bots, { id: bot.id, username: bot.username, name: bot.name, created_at: now.toISOString(), last_seen: null, suspended: false }];
+    this.bots = [...this.bots, { id: bot.id, username: bot.username, name: bot.name, created_at: now.toISOString(), last_seen: null, suspended: false, showcase: null }];
     this.shownToken = bot;
   }
 
