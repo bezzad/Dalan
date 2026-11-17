@@ -38,6 +38,69 @@ export const landing: Record<Lang, { title: string; text: string }[]> = {
   ],
 };
 
+/** CLI-26: the hero at the top of the landing page. */
+export const hero: Record<Lang, { badge: string; title: string; text: string; how: string }> = {
+  fa: {
+    badge: "سازگار با Bot API تلگرام",
+    title: "بات روی کامپیوتر شما، کاربران از دالان به آن می‌رسند.",
+    text: "کامپیوتر شما فقط به دالان وصل می‌شود. نه سرور لازم است، نه IP عمومی، نه پورت باز.",
+    how: "چطور کار می‌کند؟",
+  },
+  en: {
+    badge: "Works with the Telegram Bot API",
+    title: "Your bot runs on your computer. Users reach it through Dalan.",
+    text: "Your computer only connects out to Dalan. No server, no public IP, no open port.",
+    how: "How does it work?",
+  },
+};
+
+/** CLI-26: the three parts of the picture, in order, and the two links between them. */
+export const diagram: Record<Lang, { parts: { title: string; note: string }[]; both: string; outgoing: string; caption: string }> = {
+  fa: {
+    parts: [
+      { title: "کاربر", note: "موبایل یا مرورگر" },
+      { title: "دالان", note: "سرور در ایران" },
+      { title: "کامپیوتر شما", note: "بدون IP عمومی" },
+    ],
+    both: "پیام‌ها می‌روند و می‌آیند",
+    outgoing: "فقط اتصال خروجی",
+    caption: "کامپیوتر شما خودش به دالان زنگ می‌زند و پیام‌های تازه را می‌گیرد. هیچ‌کس از بیرون به کامپیوتر شما وصل نمی‌شود.",
+  },
+  en: {
+    parts: [
+      { title: "User", note: "Phone or browser" },
+      { title: "Dalan", note: "Server in Iran" },
+      { title: "Your computer", note: "No public IP" },
+    ],
+    both: "Messages go both ways",
+    outgoing: "Only an outgoing call",
+    caption: "Your computer calls Dalan by itself and picks up new messages. Nobody from outside connects to your computer.",
+  },
+};
+
+export interface Step { title: string; text: string; code?: string }
+
+/** CLI-26: three steps. The addresses come from the public settings (rule 4), never from this file. */
+export function steps(lang: Lang, numbers: PublicNumbers): Step[] {
+  const api = `${numbers.bot_api_url}/bot<token>/getUpdates`;
+  const link = `${numbers.site_url}/@your_bot`;
+  return lang === "fa" ? [
+    { title: "توکن بگیرید", text: "وارد شوید، در بخش حساب درخواست سازنده شدن بدهید، بات بسازید و توکنش را بردارید." },
+    { title: "یک خط را عوض کنید", text: "در کد بات، به جای api.telegram.org آدرس دالان را بگذارید. بقیه‌ی کد همان است.", code: api },
+    { title: "روی کامپیوتر خودتان اجرا کنید", text: "بات را روشن کنید. کاربران با این لینک به آن می‌رسند:", code: link },
+  ] : [
+    { title: "Get a token", text: "Log in, ask to become a builder in your account screen, create a bot and copy its token." },
+    { title: "Change one line", text: "In your bot code, put Dalan's address in place of api.telegram.org. The rest of the code stays the same.", code: api },
+    { title: "Run it on your own computer", text: "Start the bot. Users reach it with this link:", code: link },
+  ];
+}
+
+/** CLI-26: the closing call of the landing page. */
+export const closing: Record<Lang, { title: string; text: string }> = {
+  fa: { title: "آماده‌اید؟", text: "وارد شوید و اولین بات‌تان را بسازید، یا بات‌های ویترین را ببینید." },
+  en: { title: "Ready?", text: "Log in and make your first bot, or look at the bots in the showcase." },
+};
+
 /** CLI-27: the six points of DESIGN section 13. `n` writes a number in the page's digits. */
 export function privacyPoints(lang: Lang, numbers: PublicNumbers, n: (value: number) => string): string[] {
   const m = n(numbers.history_messages), d = n(numbers.history_days), f = n(numbers.file_days), a = n(numbers.access_log_days);
