@@ -23,21 +23,34 @@ export function botsScreen(app: App, onLanguage: () => void): Screen {
     },
   }, username, h("button", { type: "submit", class: "primary" }, t("open")));
 
-  api.bots().then(bots => {
-    if (bots.length === 0) list.append(h("li", { class: "note" }, t("noBots")));
-    for (const bot of bots) {
-      list.append(h("li", {},
-        h("a", {
-          href: `/@${bot.username}`,
-          onclick: event => {
-            event.preventDefault();
-            app.go(`/@${bot.username}`);
+  // CLI-18: each bot with its unread count.
+  function load(): void {
+    api.bots().then(bots => {
+      list.replaceChildren(...(bots.length === 0 ? [h("li", { class: "note" }, t("noBots"))] : []), ...bots.map(bot =>
+        h("li", {},
+          h("a", {
+            href: `/@${bot.username}`,
+            onclick: event => {
+              event.preventDefault();
+              app.go(`/@${bot.username}`);
+            },
           },
-        }, h("strong", { dir: "auto" }, bot.name), h("span", { dir: "ltr" }, `@${bot.username}`))));
-    }
-  }).catch(failure => {
-    error.textContent = t(errorText(failure));
-  });
+          h("strong", { dir: "auto" }, bot.name),
+          h("span", { dir: "ltr" }, `@${bot.username}`),
+          ...(bot.unread > 0
+            ? [h("span", { class: "badge", title: t("unread").replace("{n}", app.language.number(bot.unread)) }, app.language.number(bot.unread))]
+            : [])))));
+    }).catch(failure => {
+      error.textContent = t(errorText(failure));
+    });
+  }
+  load();
+
+  // CLI-18: a new message or a read on another device loads the list again, at most once a second.
+  let timer = 0;
+  const reload = () => {
+    if (timer === 0) timer = window.setTimeout(() => { timer = 0; load(); }, 1000);
+  };
 
   const element = h("main", {},
     h("header", {},
@@ -51,5 +64,5 @@ export function botsScreen(app: App, onLanguage: () => void): Screen {
     error,
     list);
 
-  return { element };
+  return { element, onMessage: reload, onRead: reload };
 }

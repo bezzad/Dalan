@@ -63,6 +63,20 @@ export const texts = {
     uploadLimit: "امروز فایل زیادی فرستاده‌اید. فردا دوباره امتحان کنید.",
     buttonGone: "این دکمه دیگر کار نمی‌کند.",
     failed: "انجام نشد. اتصال را بررسی کنید و دوباره امتحان کنید.",
+    notDelivered: "⚠ به بات نرسید",
+    online: "آنلاین",
+    seenNow: "آخرین بازدید همین الان",
+    seenMinutes: "آخرین بازدید {n} دقیقه پیش",
+    seenHours: "آخرین بازدید {n} ساعت پیش",
+    seenDate: "آخرین بازدید {n}",
+    unread: "{n} پیام تازه",
+    notifications: "اعلان‌ها",
+    notificationsNote: "وقتی برنامه بسته است، پیام تازه بات‌ها را روی همین دستگاه خبر می‌دهیم.",
+    notificationsOn: "روشن کردن اعلان‌ها",
+    notificationsOff: "خاموش کردن اعلان‌ها",
+    notificationsAreOn: "اعلان‌ها روی این دستگاه روشن است.",
+    pushUnsupported: "این مرورگر اعلان نمی‌گیرد. در آیفون، اول دالان را با «افزودن به صفحه اصلی» نصب کنید.",
+    pushBlocked: "اعلان‌ها در تنظیمات مرورگر بسته شده است. از تنظیمات مرورگر اجازه دهید.",
   },
   en: {
     appName: "Dalan",
@@ -126,6 +140,20 @@ export const texts = {
     uploadLimit: "You sent too many files today. Try again tomorrow.",
     buttonGone: "This button does not work any more.",
     failed: "That did not work. Check your connection and try again.",
+    notDelivered: "⚠ not delivered",
+    online: "online",
+    seenNow: "last seen just now",
+    seenMinutes: "last seen {n} minutes ago",
+    seenHours: "last seen {n} hours ago",
+    seenDate: "last seen {n}",
+    unread: "{n} new messages",
+    notifications: "Notifications",
+    notificationsNote: "When the app is closed, we tell you on this device when a bot writes.",
+    notificationsOn: "Turn on notifications",
+    notificationsOff: "Turn off notifications",
+    notificationsAreOn: "Notifications are on for this device.",
+    pushUnsupported: "This browser cannot get notifications. On an iPhone, first add Dalan to the Home Screen.",
+    pushBlocked: "Notifications are blocked in the browser settings. Allow them there.",
   },
 } as const;
 
@@ -173,6 +201,25 @@ export class Language {
   time(date: string): string {
     return new Intl.DateTimeFormat(this.current === "fa" ? "fa-IR" : "en-GB", { hour: "2-digit", minute: "2-digit" })
       .format(new Date(date));
+  }
+
+  /** A whole number in the user's language (Persian digits in Persian). */
+  number(value: number): string {
+    return new Intl.NumberFormat(this.current === "fa" ? "fa-IR" : "en-GB").format(value);
+  }
+
+  /** CLI-19: "online", "last seen ...", or nothing for a bot never seen. */
+  seen(status: { online: boolean; last_seen: string | null }, now: Date): string {
+    if (status.online) return this.t("online");
+    if (!status.last_seen) return "";
+
+    const at = new Date(status.last_seen);
+    const minutes = Math.floor((now.getTime() - at.getTime()) / 60000);
+    if (minutes < 1) return this.t("seenNow");
+    if (minutes < 60) return this.t("seenMinutes").replace("{n}", this.number(minutes));
+    if (minutes < 24 * 60) return this.t("seenHours").replace("{n}", this.number(Math.floor(minutes / 60)));
+    const date = new Intl.DateTimeFormat(this.current === "fa" ? "fa-IR" : "en-GB", { dateStyle: "medium" }).format(at);
+    return this.t("seenDate").replace("{n}", date);
   }
 
   private apply(): void {

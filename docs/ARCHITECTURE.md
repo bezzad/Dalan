@@ -27,7 +27,7 @@ Identity    Relay      Notification     Admin
 |---|---|---|
 | **Identity** | users, phone numbers, password hashes, TOTP, refresh tokens, builder approval | **sync** calls (a token is needed now) |
 | **Relay** (core) | bots, memberships, messages, the in-memory queue of each bot | sync in; **async** out to bots (queue + long polling) |
-| **Notification** | push subscriptions, send log | **async**, except the login SMS, which is a sync call (`ISmsSender`). It gets "send this to this receiver by this channel" and knows no business. Channels are strategies: Web Push, SMS, later Email |
+| **Notification** | push subscriptions | **async**, except the login SMS (`ISmsSender`) and the subscription calls (`IWebPush`), which are sync. It gets "send this to this receiver by this channel" and knows no business. Channels: Web Push and SMS, later Email |
 | **Admin** | settings and limits, audit log, access log | sync. Other services read settings from it and write the access log through `IAccessLog` |
 
 Relay has two thin HTTP doors, both inside Relay:
@@ -65,10 +65,11 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 
 - **Sync**: call the other service's contract interface. In one process this is a normal method call.
 - **Async**: events through an **outbox table** in PostgreSQL. The event is written in the same transaction as the data, so they never disagree. A worker reads with `SELECT … FOR UPDATE SKIP LOCKED`. Survives restarts and works the same when services become separate processes.
-- Planned events: `MessageCreated` (→ SSE, Notification), `UserSuspended` (Identity → all).
+- Events: `MessageChanged` (→ SSE, and Web Push for a new bot message); planned: `UserSuspended` (Identity → all).
 - The login SMS is **not** an event: Identity calls `ISmsSender` (in `Dalan.Notification.Contracts`) and waits. A code lives 2 minutes, so a late retry is useless and the person must know at once when the SMS failed.
 - Built so far: `relay.outbox` with `MessageCreated`. One worker in Relay takes the oldest rows, passes them to `IMessageNotifier`, and deletes them, all in one transaction (at least once). The writer wakes the worker in memory after its commit; a poll is the safety net.
 - Relay learns a user's name from Identity through `IUserDirectory`. That profile has no phone number.
+- Push: `MessageChanged` has a `new` flag. For each new bot message the outbox worker calls `IWebPush.Send` (Notification.Contracts), which only puts the push in an in-memory queue; a few workers in Notification send it. A push lost in a restart is not sent again; the message arrives by sync.
 
 ## 5. Data
 
@@ -83,6 +84,8 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 - Every user message is saved in the database first. Its row id is the update id, so a bot's offset stays valid after a restart. On start, the server reloads undelivered, unexpired messages into the queues, so a deploy or restart loses nothing.
 - A message counts as **delivered** only after the bot confirms it with the next `getUpdates` offset, like Telegram. Delivery is at least once. An offset confirms only updates the bot was really given.
 - An update is offered to the bot until its expiry. After that the message is "not delivered"; a late confirm of an update the bot already got still counts.
+- "Not delivered" takes the next version of the chat and an event, so the user sees the mark live and after a sync. "Delivered" is a quiet update (`DeliveryMarks`).
+- Bot status: every get-updates call, through any door, passes `BotPresence` (in memory: calls running, last call). `relay.bots.last_seen_at` is written at most once per `Relay:BotOnlineSeconds`. With more than one server it becomes shared, like the queue.
 - Core Bot API, token in `Authorization: Bearer`: `GET /v1/updates`; `POST /v1/messages` (text, keyboards, a file); `PATCH` and `DELETE /v1/messages/{user}/{id}`; `PUT` and `DELETE /v1/chats/{user}/pin`; `POST /v1/callbacks/{id}/answer`; `PUT` and `GET /v1/commands`; `GET /v1/files/{id}`.
 - A button press is an update like a message, but it is not stored: a press waiting during a restart is lost, and the user presses again.
 - Files live on the local disk in `Relay:FileFolder` (production: `/var/lib/dalan/files`), with a row in `relay.files`, and are deleted after `Relay:FileRetentionDays`. To grow past one server, this folder moves to shared storage.
@@ -116,7 +119,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 
 ## 9. Live messages and the client
 
-- Client API paths are under `/api`: Identity owns `/api/me`, `/api/logout`, `/api/auth/...` (no session needed), `/api/account/...` and the development login; Relay owns `/api/bots...`, `/api/events`, `/api/settings`. Rules in `openspec/specs/relay` and `openspec/specs/live-updates`.
+- Client API paths are under `/api`: Identity owns `/api/me`, `/api/logout`, `/api/auth/...` (no session needed), `/api/account/...` and the development login; Relay owns `/api/bots...`, `/api/events`, `/api/settings` and `/api/push...` (the door; the subscriptions live in Notification). Rules in `openspec/specs/relay` and `openspec/specs/live-updates`.
 - `GET /api/events` is one SSE stream per user for all of that user's chats, behind `IMessageNotifier` (the second seam; in memory now). A stream ends at session expiry, at server stop, when it is too slow, or when the user opens too many; the client then reconnects.
 - The client never trusts the stream alone: every time it opens, the client asks for the changes after the highest `version` it has. Every new message and every edit, delete or pin takes the next version of its chat, so a sync sees changes too.
 - The PWA (`client/`) is plain TypeScript compiled to ES modules, no bundler. `client/dist` is embedded in `Dalan.Host`, so the release is still one file. Only `/` and `/@<bot>` return the page.
@@ -160,6 +163,13 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 32 | 2026-11-17 | Button presses are not stored; their answers go straight to the live stream, not through the outbox |
 | 33 | 2026-11-17 | Files on the local disk with expiry; a user upload is the raw body with an `X-File-Name` header (SEC-05 holds) |
 | 34 | 2026-11-17 | Downloaded files never run as a page: `CSP: sandbox`, `nosniff`, `attachment` unless a safe image, audio or video |
+| 35 | 2026-11-17 | Every new bot message is pushed; the service worker hides it when the chat is in front (a locked phone keeps its connection open) |
+| 36 | 2026-11-17 | Push door in Relay's Client API, subscriptions and sender in Notification behind `IWebPush`; pushes wait in memory |
+| 37 | 2026-11-17 | Push only to hosts in `Notification:Push:AllowedHosts` (no request to an address a user chose) |
+| 38 | 2026-11-17 | Web Push through `Lib.Net.Http.WebPush` (built-in .NET crypto), not our own RFC 8291 code |
+| 39 | 2026-11-17 | Unread = bot messages after `memberships.last_read_seq`; the read position only moves forward |
+| 40 | 2026-11-17 | Bot status in memory, asked by the client every few seconds; no live status event (it would go to every user of a bot) |
+| 41 | 2026-11-17 | "Not delivered" makes a new version and an event; "delivered" stays quiet |
 
 ## 11. Client address and access log
 

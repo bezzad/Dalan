@@ -22,6 +22,9 @@ Environment=Relay__FileFolder=/var/lib/dalan/files
 #   Notification__SmsProvider=kavenegar
 #   Notification__Kavenegar__ApiKey=<key>
 #   (the OTP template in the Kavenegar panel is named by Notification:Kavenegar:Template, start "dalan-login")
+# Push notifications (off without them). Make the pair once with: node scripts/vapid-keys.mjs
+#   Notification__Push__PublicKey=<key>
+#   Notification__Push__PrivateKey=<key>
 # If a proxy or load balancer other than Caddy on this machine is in front, it must hold (else every client is recorded with
 # the proxy's address): Dalan__TrustedProxies=127.0.0.1,::1,<address or CIDR range>
 EnvironmentFile=/etc/dalan/dalan.env

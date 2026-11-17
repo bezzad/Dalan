@@ -1,15 +1,18 @@
 // The chat with one bot: history, live messages, reply buttons (CLI-07), inline buttons (CLI-13),
-// the pinned bar (CLI-14), the command menu (CLI-15), files (CLI-16) and the input.
+// the pinned bar (CLI-14), the command menu (CLI-15), files (CLI-16), the read position (CLI-18),
+// the bot's status (CLI-19), the "not delivered" mark (CLI-20) and the input.
 import { api, type Bot } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { h } from "./dom.ts";
 import {
-  buttonAction, commandMessage, currentKeyboard, fileView, fitsSize, stamp, type FileInfo, type InlineButton, type Message,
+  buttonAction, commandMessage, currentKeyboard, fileView, fitsSize, ReadPosition, stamp, type FileInfo, type InlineButton, type Message,
 } from "./messages.ts";
 
 export function chatScreen(app: App, username: string): Screen {
   const t = app.language.t.bind(app.language);
   const title = h("h1", { dir: "auto" }, `@${username}`);
+  const status = h("p", { class: "note status", dir: "auto", role: "status" });
+  const read = new ReadPosition();
   const pinBar = h("p", { class: "pinned", dir: "auto", hidden: true });
   const older = h("button", { type: "button", class: "link", hidden: true }, t("older"));
   const list = h("ol", { class: "messages" });
@@ -50,7 +53,7 @@ export function chatScreen(app: App, username: string): Screen {
   }
 
   function bubble(message: Message): HTMLElement {
-    const time = stamp(message, app.language.time(message.date), t("edited"));
+    const time = stamp(message, app.language.time(message.date), { edited: t("edited"), notDelivered: t("notDelivered") });
     return h("li", { class: message.from },
       ...(message.file ? [fileElement(message.file)] : []),
       ...(message.text ? [h("p", { dir: "auto" }, message.text)] : []),
@@ -79,7 +82,37 @@ export function chatScreen(app: App, username: string): Screen {
     // Older messages were added on top: stay at the same message. Otherwise follow the newest one.
     if (keepPlace) scroller.scrollTop += scroller.scrollHeight - heightBefore;
     else if (following) toEnd();
+    markRead();
   }
+
+  /** CLI-18: tells the server how far the user has read, while the page is visible. */
+  function markRead(): void {
+    const newest = bot ? app.chats.of(bot.id).messages.at(-1)?.id : undefined;
+    if (newest === undefined) return;
+    const id = read.next(newest, document.visibilityState === "visible");
+    if (id !== null) void api.read(bot!.id, id).catch(() => {});
+  }
+
+  /** CLI-19: "online" or "last seen ...". A failed call leaves the line as it was. */
+  async function refreshStatus(): Promise<void> {
+    if (!bot) return;
+    try {
+      status.textContent = app.language.seen(await api.status(bot.id), new Date());
+    } catch {
+      // The next round tries again.
+    }
+  }
+
+  // Both stop once this screen is gone.
+  const statusTimer = window.setInterval(() => {
+    if (element.isConnected) void refreshStatus();
+    else window.clearInterval(statusTimer);
+  }, app.statusRefreshSeconds * 1000);
+  const onVisible = () => {
+    if (element.isConnected) markRead();
+    else document.removeEventListener("visibilitychange", onVisible);
+  };
+  document.addEventListener("visibilitychange", onVisible);
 
   /** Runs a call to the server, shows its error, and draws the answer. */
   async function run(work: () => Promise<Message | void>): Promise<void> {
@@ -145,6 +178,7 @@ export function chatScreen(app: App, username: string): Screen {
     try {
       bot = await api.findBot(username);
       title.textContent = bot.name;
+      void refreshStatus();
       await app.chats.open(bot.id);
       draw();
       // CLI-15: the menu shows only when the bot has commands.
@@ -164,6 +198,7 @@ export function chatScreen(app: App, username: string): Screen {
       h("button", { type: "button", class: "link", onclick: () => app.go("/") }, t("back")),
       title,
       h("span", { class: "note", dir: "ltr" }, `@${username}`)),
+    status,
     pinBar,
     scroller,
     error,

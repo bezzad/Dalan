@@ -32,6 +32,8 @@ export interface Message {
   edited?: string;
   pinned?: boolean;
   deleted?: boolean;
+  /** REL-31: a user message the bot never got. */
+  not_delivered?: boolean;
 }
 
 /** One answer of the messages call: a page and the pinned message of the chat. */
@@ -85,9 +87,21 @@ export function commandMessage(command: string): string {
   return `/${command}`;
 }
 
-/** CLI-17: the time under a message, with the "edited" mark when it was edited. */
-export function stamp(message: Message, time: string, editedWord: string): string {
-  return message.edited ? `${time} · ${editedWord}` : time;
+/** CLI-17 and CLI-20: the time under a message, with the "edited" and the "not delivered" marks. */
+export function stamp(message: Message, time: string, words: { edited: string; notDelivered: string }): string {
+  return [time, ...(message.edited ? [words.edited] : []), ...(message.not_delivered ? [words.notDelivered] : [])].join(" · ");
+}
+
+/** CLI-18: decides when the client tells the server how far the user has read. */
+export class ReadPosition {
+  private sent = 0;
+
+  /** The id to send now, or null: only while the page is visible, and only when it is above the last one sent. */
+  next(newestId: number, visible: boolean): number | null {
+    if (!visible || newestId <= this.sent) return null;
+    this.sent = newestId;
+    return newestId;
+  }
 }
 
 /** Loads one page of a chat. `after`: changes after this version. `before`: messages older than this id. Neither: the newest page. */

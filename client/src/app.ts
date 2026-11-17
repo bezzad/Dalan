@@ -10,6 +10,8 @@ export interface App {
   chats: Chats;
   maxTextLength: number;
   maxFileSizeMb: number;
+  /** CLI-19: how often an open chat asks for the bot's status. */
+  statusRefreshSeconds: number;
   /** Goes to "/" or "/@name" without a page load. */
   go(path: string): void;
   /** Shows the account screen (username, password), or goes back from it. */
@@ -24,6 +26,8 @@ export interface Screen {
   onMessage?(botId: number): void;
   /** CLI-13: the bot answered a press with a text. */
   onAnswer?(botId: number, text: string, showAlert: boolean): void;
+  /** LIVE-10: the user read a chat on some device. */
+  onRead?(botId: number): void;
 }
 
 /** The text to show for a failed call. */

@@ -24,6 +24,15 @@ export interface Bot {
   name: string;
 }
 
+/** REL-33: is the bot's home computer on? */
+export interface BotStatus {
+  online: boolean;
+  last_seen: string | null;
+}
+
+/** REL-14: a bot in the list, with its unread count and status. */
+export type ListedBot = Bot & BotStatus & { unread: number };
+
 /** REL-18: values the client must not hard-code. */
 export interface Settings {
   max_text_length: number;
@@ -32,6 +41,7 @@ export interface Settings {
   sync_page_size: number;
   reconnect_min_seconds: number;
   reconnect_max_seconds: number;
+  status_refresh_seconds: number;
 }
 
 export interface Command {
@@ -55,7 +65,7 @@ export const api = {
   setUsername: (username: string) => call<User>("POST", "/api/account/username", { username }),
   logout: () => call<null>("POST", "/api/logout"),
   settings: () => call<Settings>("GET", "/api/settings"),
-  bots: async () => (await call<{ bots: Bot[] }>("GET", "/api/bots")).bots,
+  bots: async () => (await call<{ bots: ListedBot[] }>("GET", "/api/bots")).bots,
   findBot: (username: string) =>
     call<Bot & { started: boolean }>("GET", `/api/bots/by-username/${encodeURIComponent(username)}`),
   send: (botId: number, text: string) => call<Message>("POST", `/api/bots/${botId}/messages`, { text }),
@@ -70,6 +80,13 @@ export const api = {
   fileUrl: (botId: number, fileId: string) => `/api/bots/${botId}/files/${encodeURIComponent(fileId)}`,
   press: (botId: number, messageId: number, data: string) =>
     call<{ id: string }>("POST", `/api/bots/${botId}/callbacks`, { message_id: messageId, data }),
+  /** REL-32: the user read the chat up to this message. */
+  read: (botId: number, messageId: number) => call<{ unread: number }>("POST", `/api/bots/${botId}/read`, { message_id: messageId }),
+  status: (botId: number) => call<BotStatus>("GET", `/api/bots/${botId}/status`),
+  /** REL-35: the server's push key, or null when push is off. */
+  pushKey: async () => (await call<{ key: string | null }>("GET", "/api/push")).key,
+  subscribe: (subscription: PushSubscriptionJSON) => call<null>("POST", "/api/push/subscribe", subscription),
+  unsubscribe: (endpoint: string) => call<null>("POST", "/api/push/unsubscribe", { endpoint }),
   commands: async (botId: number) =>
     (await call<{ commands: Command[] }>("GET", `/api/bots/${botId}/commands`)).commands,
 };

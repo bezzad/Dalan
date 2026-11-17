@@ -9,6 +9,8 @@ export interface LiveHandlers {
   onMessage(botId: number, message: Message): void;
   /** LIVE-09: the bot answered a press of this user. */
   onAnswer(botId: number, answer: { text?: string; show_alert: boolean }): void;
+  /** LIVE-10: the user read a chat on some device. */
+  onRead(botId: number, unread: number): void;
   /** The stream is down and the client is waiting to try again. */
   onDown(): void;
   /** The session has ended. */
@@ -40,6 +42,10 @@ export class Live {
     source.addEventListener("answer", event => {
       const data = JSON.parse(event.data) as { bot_id: number; text?: string; show_alert: boolean };
       this.handlers.onAnswer(data.bot_id, data);
+    });
+    source.addEventListener("read", event => {
+      const data = JSON.parse(event.data) as { bot_id: number; unread: number };
+      this.handlers.onRead(data.bot_id, data.unread);
     });
     source.onerror = () => {
       // The browser's own retry does not cover every case (for example a 401 or a 503), so we do it ourselves.

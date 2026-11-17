@@ -1,7 +1,8 @@
-// The account screen: set the username (AUTH-15) and the password (AUTH-13).
+// The account screen: set the username (AUTH-15), the password (AUTH-13) and notifications (CLI-21).
 import { api } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { h } from "./dom.ts";
+import { currentPushState, turnOff, turnOn, type PushState } from "./push.ts";
 
 export function accountScreen(app: App): Screen {
   const t = app.language.t.bind(app.language);
@@ -58,12 +59,51 @@ export function accountScreen(app: App): Screen {
   }
   showCurrent();
 
+  // CLI-21: hidden until the server says it has a push key.
+  const pushNote = h("p", { class: "note" });
+  const pushError = h("p", { class: "error", role: "alert" });
+  const pushButton = h("button", { type: "button", class: "primary", hidden: true });
+  const pushCard = h("section", { class: "card", hidden: true },
+    h("h2", {}, t("notifications")), pushNote, pushError, pushButton);
+  let pushKey: string | null = null;
+  let pushNow: PushState = "hidden";
+
+  function showPush(state: PushState): void {
+    pushNow = state;
+    pushCard.hidden = state === "hidden";
+    pushButton.hidden = state === "unsupported" || state === "blocked";
+    pushButton.textContent = t(state === "on" ? "notificationsOff" : "notificationsOn");
+    pushNote.textContent = t(state === "on" ? "notificationsAreOn" : state === "unsupported" ? "pushUnsupported"
+      : state === "blocked" ? "pushBlocked" : "notificationsNote");
+  }
+
+  pushButton.addEventListener("click", async () => {
+    pushButton.disabled = true;
+    pushError.textContent = "";
+    try {
+      if (pushNow === "on") {
+        await turnOff();
+        showPush("off");
+      } else {
+        showPush(await turnOn(pushKey!));
+      }
+    } catch (failure) {
+      pushError.textContent = t(errorText(failure));
+    }
+    pushButton.disabled = false;
+  });
+
+  api.pushKey().then(async key => {
+    pushKey = key;
+    showPush(await currentPushState(key));
+  }).catch(() => {});
+
   const element = h("main", {},
     h("header", {},
       h("button", { type: "button", class: "link", onclick: () => app.showAccount(false) }, t("back")),
       h("h1", {}, t("account"))),
     h("p", { class: "note", dir: "auto" }, app.user.name),
-    h("div", { class: "scroller" }, usernameForm, passwordForm));
+    h("div", { class: "scroller" }, pushCard, usernameForm, passwordForm));
 
   return { element };
 }

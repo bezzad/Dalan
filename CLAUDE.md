@@ -21,6 +21,7 @@ bash scripts/check-rules.sh                 # every spec rule ID has a test
 bash tests/deploy/deploy_test.sh            # deploy script tests
 bash tests/proxy/caddy_test.sh              # needs caddy on PATH
 bash scripts/publish.sh out                 # builds the client, then the self-contained linux-x64 release
+node scripts/vapid-keys.mjs                 # a key pair for Web Push (server environment)
 openspec validate --all --strict            # OpenSpec CLI 2.0.0
 ```
 
