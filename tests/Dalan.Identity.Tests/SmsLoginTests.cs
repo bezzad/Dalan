@@ -23,13 +23,13 @@ public class SmsLoginTests(PostgresServer postgres)
     [Trait("Rule", "SEC-06")]
     public async Task SEC06_challenge_has_the_difficulty_of_the_settings()
     {
-        await using var app = await StartAsync(postgres, ("Identity:PowDifficultyBits", "16"));
+        await using var app = await StartAsync(postgres, ("Identity:PowDifficultyBits", "14"));
 
         var response = await app.Browser().PostAsJsonAsync("/api/auth/challenge", new { phone = Phone }, Cancel);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await JsonAsync(response);
-        Assert.Equal(16, json.GetProperty("difficulty").GetInt32());
+        Assert.Equal(14, json.GetProperty("difficulty").GetInt32());
         Assert.False(string.IsNullOrEmpty(json.GetProperty("challenge").GetString()));
     }
 

@@ -1,11 +1,11 @@
 ## ADDED Requirements
 
 ### Requirement: SEC-06 Proof of work before each SMS
-`POST /api/auth/challenge` with `phone` SHALL return a `challenge` and a `difficulty` (`Identity:PowDifficultyBits`, start 16). An SMS SHALL be sent only with that challenge and a `nonce` such that the SHA-256 hash of the text `<challenge>.<nonce>` starts with at least `difficulty` zero bits. A challenge SHALL work only for its phone and for `Identity:PowChallengeSeconds` (start 120). Any other case SHALL get 400 `bad_proof` and send no SMS.
+`POST /api/auth/challenge` with `phone` SHALL return a `challenge` and a `difficulty` (`Identity:PowDifficultyBits`, start 14). An SMS SHALL be sent only with that challenge and a `nonce` such that the SHA-256 hash of the text `<challenge>.<nonce>` starts with at least `difficulty` zero bits. A challenge SHALL work only for its phone and for `Identity:PowChallengeSeconds` (start 120). Any other case SHALL get 400 `bad_proof` and send no SMS.
 
 #### Scenario: Get a challenge
 - **WHEN** a client posts a mobile number to `POST /api/auth/challenge`
-- **THEN** the response is 200 with a `challenge` and `difficulty` 16
+- **THEN** the response is 200 with a `challenge` and `difficulty` 14
 
 #### Scenario: Known hash
 - **WHEN** the challenge `abc` and the nonce `0` are checked (SHA-256 of `abc.0` starts with the byte `20`, which is 2 zero bits)

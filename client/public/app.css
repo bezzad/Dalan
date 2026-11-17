@@ -128,6 +128,9 @@ button.link { min-height: 0; padding: 4px 6px; border: 0; background: none; colo
 }
 .card h1 { font-size: 28px; color: var(--brand); }
 .card button { margin-block-start: 8px; }
+.card button.link { align-self: flex-start; margin: 0; }
+.links { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; }
+.scroller > .card { max-width: none; flex: none; }
 
 /* Bot list */
 .bots { margin: 0; padding: 0; list-style: none; overflow-y: auto; }

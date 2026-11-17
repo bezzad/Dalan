@@ -1,5 +1,6 @@
 // PWA entry point: who is logged in, which screen is open, and the live stream.
-import { ApiError, api, type User } from "./api.ts";
+import { accountScreen } from "./account.ts";
+import { ApiError, api, type AuthSettings, type User } from "./api.ts";
 import type { App, Screen } from "./app.ts";
 import { Backoff } from "./backoff.ts";
 import { botsScreen } from "./bots.ts";
@@ -13,6 +14,13 @@ const language = new Language(document.documentElement, localStorage);
 let app: App | null = null;
 let live: Live | null = null;
 let screen: Screen | null = null;
+let accountOpen = false;
+let auth: AuthSettings | null = null;
+
+/** AUTH-16: read once; the login and account screens need it. */
+async function authSettings(): Promise<AuthSettings> {
+  return auth ??= await api.authSettings();
+}
 
 function show(element: HTMLElement): void {
   document.title = language.t("appName");
@@ -24,17 +32,18 @@ function show(element: HTMLElement): void {
 function showLogin(): void {
   live?.stop();
   app = live = screen = null;
-  show(loginScreen(language, user => void enter(user).catch(fail), () => {
+  accountOpen = false;
+  authSettings().then(settings => show(loginScreen(language, settings, user => void enter(user).catch(fail), () => {
     language.toggle();
     showLogin();
-  }));
+  })), () => document.body.classList.add("offline"));
 }
 
 /** Draws the screen of the current address: "/" is the bot list, "/@name" is a chat. */
 function route(): void {
   if (!app) return;
   const username = /^\/@([^/]+)$/.exec(decodeURIComponent(location.pathname))?.[1];
-  screen = username ? chatScreen(app, username) : botsScreen(app, () => {
+  screen = username ? chatScreen(app, username) : accountOpen ? accountScreen(app) : botsScreen(app, () => {
     language.toggle();
     route();
   });
@@ -46,10 +55,16 @@ async function enter(user: User): Promise<void> {
   app = {
     language,
     user,
+    auth: await authSettings(),
     chats: new Chats(api.messages, settings.sync_page_size),
     maxTextLength: settings.max_text_length,
     go(path) {
+      accountOpen = false;
       history.pushState(null, "", path);
+      route();
+    },
+    showAccount(open) {
+      accountOpen = open;
       route();
     },
     logout() {

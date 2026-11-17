@@ -43,7 +43,7 @@ Milestones 1 to 3 are merged. The session is already the real one (ES256 JWT in 
 |---|---|---|
 | `Identity:RefreshTokenDays` | 30 | New, assumed |
 | `Identity:RefreshReuseGraceSeconds` | 10 | New, assumed |
-| `Identity:PowDifficultyBits` | 16 | New, assumed (about 1 second in a browser) |
+| `Identity:PowDifficultyBits` | 14 | New, assumed (about 16,000 hashes: near 1 second in a browser) |
 | `Identity:PowChallengeSeconds` | 120 | New, assumed |
 | `Identity:SmsCodeDigits` | 6 | New, assumed |
 | `Identity:SmsCodeSeconds` | 120 | New, assumed |
