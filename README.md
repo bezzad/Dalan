@@ -2,7 +2,7 @@
 
 Dalan (دالان) — run your bot or web app from a home computer, no public IP and no server. A relay platform hosted in Iran with a Telegram-compatible Bot API, phone-verified users, and site hosting.
 
-**Status:** milestone 3 (client) — a person can open the PWA, log in with the development login, start a bot, tap reply buttons and see answers live. A bot reads by long polling (`GET /v1/updates`) and answers (`POST /v1/messages`). Real login by SMS is milestone 4.
+**Status:** milestone 4 (real login) — a person can open the PWA, log in with an SMS code or a password, start a bot, tap reply buttons and see answers live. A bot reads by long polling (`GET /v1/updates`) and answers (`POST /v1/messages`).
 
 ## Quick start
 
@@ -22,7 +22,7 @@ docker compose exec postgres psql -U dalan -c "INSERT INTO relay.bots (username,
 node scripts/demo-bot.mjs 1
 ```
 
-Then open <http://localhost:5000/@demo> in Chrome or Firefox, log in with any Iranian mobile number, and press Start.
+Then open <http://localhost:5000/@demo> in Chrome or Firefox, log in with any Iranian mobile number, and press Start. On your machine no SMS is sent: the login code is written to the server log (`Notification:SmsProvider` is `log`), or use the development login link under the form.
 
 ## Docs
 

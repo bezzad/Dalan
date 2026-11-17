@@ -15,6 +15,10 @@ Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
 # Must hold the database: ConnectionStrings__Dalan=Host=localhost;Database=dalan;Username=dalan;Password=...
 # Must hold the key that signs sessions (without it every restart logs all users out): Identity__SigningKey=<key>
 #   Make one with: openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -outform DER | base64 -w0
+# Must hold the SMS provider, or nobody can log in by SMS:
+#   Notification__SmsProvider=kavenegar
+#   Notification__Kavenegar__ApiKey=<key>
+#   (the OTP template in the Kavenegar panel is named by Notification:Kavenegar:Template, start "dalan-login")
 EnvironmentFile=/etc/dalan/dalan.env
 # Written by deploy.sh: Dalan__Version=<git commit>
 EnvironmentFile=-/opt/dalan/current/version.env

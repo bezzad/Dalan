@@ -29,7 +29,7 @@ public class SessionTests(PostgresServer postgres)
         var client = app.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
         var response = await client.PostAsJsonAsync("/api/dev/login", new { phone, name = "Sara" }, Cancel);
         response.EnsureSuccessStatusCode();
-        var setCookie = Assert.Single(response.Headers.GetValues("Set-Cookie"));
+        var setCookie = Assert.Single(response.Headers.GetValues("Set-Cookie"), cookie => cookie.StartsWith($"{Cookie}=", StringComparison.Ordinal));
         return (setCookie, setCookie.Split(';')[0][(Cookie.Length + 1)..]);
     }
 

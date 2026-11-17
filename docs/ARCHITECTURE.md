@@ -27,7 +27,7 @@ Identity    Relay      Notification     Admin
 |---|---|---|
 | **Identity** | users, phone numbers, password hashes, TOTP, refresh tokens, builder approval | **sync** calls (a token is needed now) |
 | **Relay** (core) | bots, memberships, messages, the in-memory queue of each bot | sync in; **async** out to bots (queue + long polling) |
-| **Notification** | push subscriptions, send log | **async** only. It gets "send this to this receiver by this channel" and knows no business. Channels are strategies: Web Push, SMS, later Email |
+| **Notification** | push subscriptions, send log | **async**, except the login SMS, which is a sync call (`ISmsSender`). It gets "send this to this receiver by this channel" and knows no business. Channels are strategies: Web Push, SMS, later Email |
 | **Admin** | settings and limits, audit log | sync. Other services read settings from it |
 
 Relay has two thin HTTP doors, both inside Relay:
@@ -65,7 +65,8 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 
 - **Sync**: call the other service's contract interface. In one process this is a normal method call.
 - **Async**: events through an **outbox table** in PostgreSQL. The event is written in the same transaction as the data, so they never disagree. A worker reads with `SELECT … FOR UPDATE SKIP LOCKED`. Survives restarts and works the same when services become separate processes.
-- Planned events: `MessageCreated` (→ SSE, Notification), `SmsRequested` (Identity → Notification), `UserSuspended` (Identity → all).
+- Planned events: `MessageCreated` (→ SSE, Notification), `UserSuspended` (Identity → all).
+- The login SMS is **not** an event: Identity calls `ISmsSender` (in `Dalan.Notification.Contracts`) and waits. A code lives 2 minutes, so a late retry is useless and the person must know at once when the SMS failed.
 - Built so far: `relay.outbox` with `MessageCreated`. One worker in Relay takes the oldest rows, passes them to `IMessageNotifier`, and deletes them, all in one transaction (at least once). The writer wakes the worker in memory after its commit; a poll is the safety net.
 - Relay learns a user's name from Identity through `IUserDirectory`. That profile has no phone number.
 
@@ -87,11 +88,17 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 
 ## 7. Identity and sessions
 
-- JWT access token + refresh token. No server session state. (Built: the access token. The refresh token comes in milestone 4.)
+- JWT access token + refresh token. The only server state is one row per logged-in device (`identity.sessions`).
 - The access token is kept in the cookie `__Host-dalan_session`: `HttpOnly`, `Secure`, `SameSite=Strict` (only a storage place; JavaScript cannot read it). Signed with ES256; the key is the secret setting `Identity:SigningKey`.
 - Identity registers the standard JWT bearer handler. Other services only ask ASP.NET Core who the user is (`sub` claim) and need no Identity code.
 - Development login (`Identity:DevLogin`) works only in the Development environment; with the setting on anywhere else the server refuses to start.
-- Refresh token: random, stored hashed, replaced on every use. Reuse of an old one revokes that device's tokens.
+- Refresh token: random, in the cookie `__Host-dalan_refresh`, stored as SHA-256, replaced on every use (`POST /api/auth/refresh`). The row keeps the hash of the current token and of the one before it. An older token that comes back after a short grace time deletes the row (that device is logged out); inside the grace it only gets 401, because two tabs can refresh at the same moment.
+- Ways to log in: SMS code, password, development login. All end in the same place: one session row and two cookies. The access token says how the session started (`amr`).
+- SMS login: `POST /api/auth/challenge` → the browser solves a small proof of work → `POST /api/auth/sms` → `POST /api/auth/sms/verify`. The challenge needs no server state (a MAC ties it to the phone and an expiry). The rows of `identity.sms_codes` of the last 24 hours are the counters of the SMS limits (per number, per address, whole server), so they survive a restart.
+- Passwords: Argon2id in PHC text form; only a few hashes run at once. Password tries are limited per login name and per client address, in memory.
+- Keys for the MACs (proof of work, SMS codes) are derived from `Identity:SigningKey`, so there is no second secret.
+- SMS providers live in Notification behind `ISmsSender`; setting `Notification:SmsProvider` (`kavenegar`, `log` for Development only, or empty).
+- Security events (login, failed login, SMS sent or refused, refresh reuse, password change) are log lines until the audit table comes with Admin.
 - **Blocking is by user id.** Refresh checks the user's status. `UserSuspended(userId)` puts the id in a small in-memory deny list in every service until the last token expires; SSE for that user closes at once.
 - Access token lifetime is an admin setting.
 
@@ -104,7 +111,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 
 ## 9. Live messages and the client
 
-- Client API paths are under `/api`: Identity owns `/api/me`, `/api/logout` and the development login; Relay owns `/api/bots...`, `/api/events`, `/api/settings`. Rules in `openspec/specs/relay` and `openspec/specs/live-updates`.
+- Client API paths are under `/api`: Identity owns `/api/me`, `/api/logout`, `/api/auth/...` (no session needed), `/api/account/...` and the development login; Relay owns `/api/bots...`, `/api/events`, `/api/settings`. Rules in `openspec/specs/relay` and `openspec/specs/live-updates`.
 - `GET /api/events` is one SSE stream per user for all of that user's chats, behind `IMessageNotifier` (the second seam; in memory now). A stream ends at session expiry, at server stop, when it is too slow, or when the user opens too many; the client then reconnects.
 - The client never trusts the stream alone: every time it opens, the client asks for the messages after the newest sequence number it has.
 - The PWA (`client/`) is plain TypeScript compiled to ES modules, no bundler. `client/dist` is embedded in `Dalan.Host`, so the release is still one file. Only `/` and `/@<bot>` return the page.
@@ -133,3 +140,8 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 17 | 2026-11-16 | One SSE stream per user; over the stream limit the newest wins |
 | 18 | 2026-11-16 | Client is embedded in the host binary; no bundler, no framework |
 | 19 | 2026-11-16 | Reply keyboard lives in the message content; the client takes it from the newest bot message that has one |
+| 20 | 2026-11-17 | Login SMS is a sync call through `ISmsSender`, not an outbox event |
+| 21 | 2026-11-17 | One session row per device with the current and the previous refresh token hash; reuse after a grace time ends that session |
+| 22 | 2026-11-17 | Proof of work is stateless (MAC over phone and expiry); SMS limits are counts over `identity.sms_codes` |
+| 23 | 2026-11-17 | Argon2id through the package `Konscious.Security.Cryptography.Argon2`; hash stored as PHC text |
+| 24 | 2026-11-17 | First SMS provider is Kavenegar; TOTP is left out of milestone 4 and comes as its own change |

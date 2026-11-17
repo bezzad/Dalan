@@ -4,10 +4,12 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Konscious.Security.Cryptography.Argon2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Dalan.Identity.Contracts/Dalan.Identity.Contracts.csproj" />
+    <ProjectReference Include="../../Notification/Dalan.Notification.Contracts/Dalan.Notification.Contracts.csproj" />
   </ItemGroup>
 </Project>

@@ -211,7 +211,9 @@ Every account starts with an SMS code to an Iranian mobile number, so builders a
 
 **What a bot learns about a user:** the stable numeric id, display name and username. It never gets the phone number unless the user chooses to share it. This protects users, and it stops anyone from building a bot only to collect phone numbers.
 
-**Storage.** Passwords use a slow salted hash. Login uses a JWT access token and a refresh token, kept in `HttpOnly`, `Secure`, `SameSite` cookies on `dalanet.ir` (`docs/ARCHITECTURE.md` section 7). Until milestone 4 there is only a development login, which works only in the Development environment.
+**Storage.** Passwords use a slow salted hash. Login uses a JWT access token and a refresh token, kept in `HttpOnly`, `Secure`, `SameSite` cookies on `dalanet.ir` (`docs/ARCHITECTURE.md` section 7). The development login stays for local work and works only in the Development environment.
+
+**Built in milestone 4:** steps 1 and 2 and the SMS protection. Steps 3 and 4 (email, two-step login with TOTP or SMS) are not built yet.
 
 **Layer 2: "Login with Dalan".** An app on its own domain cannot read Dalan's cookie. It sends the user to Dalan's login page and gets a token back. This is OAuth 2 with PKCE (OpenID Connect).
 
@@ -431,6 +433,13 @@ None of these is planned work. They are recorded so the design does not block th
 | Update expiry | 60 seconds | Owner |
 | SMS per phone number | 1 per minute | Owner |
 | SMS per phone number per day | 5 | Assumed |
+| SMS per client address per day | 200 | Assumed (high: a safety net only) |
+| SMS for the whole server per day | 1,000 | Assumed |
+| SMS code | 6 digits, 2 minutes, 5 tries | Assumed |
+| Proof of work | 14 zero bits (about 1 second in a browser) | Assumed |
+| Session (access token) / refresh token | 15 minutes / 30 days from the last use | Assumed |
+| Password length | 8 to 128 characters | Assumed |
+| Password tries per login name / per client address | 5 / 100 in 15 minutes | Assumed |
 | Long-polling timeout | 30 seconds default, 50 maximum | Assumed (Telegram-like) |
 | Bot shown as online | Last poll under 60 seconds ago | Assumed |
 | Message text length | 4,096 characters | Assumed (Telegram parity) |
@@ -456,7 +465,7 @@ None of these is planned work. They are recorded so the design does not block th
 
 **Open questions:**
 
-- [ ] Which domestic SMS provider? Suggested: start with Kavenegar and keep SMS.ir as the second choice. Prices and delivery speed were not compared. Account verification and OTP template approval can take days, so start before milestone 4.
+- [ ] SMS provider: the Kavenegar sender is built (milestone 4), SMS.ir stays the second choice. Still to do by the owner: a Kavenegar account, an approved OTP template named `dalan-login` with one token, and the API key on the server. Prices and delivery speed were not compared.
 - [ ] Which hosting provider, after comparing traffic cost, extra disk and DNS?
 - [ ] Buy a separate sites domain before Layer 2 (candidate: `dalancloud.ir`)?
 - [ ] Buy a foreign backup domain (candidate: `dalanet.net`)?
@@ -470,7 +479,7 @@ Version 1 is done when ArcaneBot runs on Dalan with only its server address and 
 1. **Skeleton.** Repository, solution layout, CI, the no-Docker deploy script, a health endpoint.
 2. **Core relay.** Database schema for users, bots and memberships; bot tokens; the in-memory queue with expiry; core `getUpdates` by long polling and `sendMessage`.
 3. **Client.** PWA with a development login, bot list, chat, reply buttons, SSE and sync.
-4. **Auth.** SMS OTP with proof of work and rate limits, password login, TOTP.
+4. **Auth.** SMS OTP with proof of work and rate limits, password login, refresh token. (TOTP is left for its own small change.)
 5. **Telegram adapter.** The Layer 1 method list. Test by pointing ArcaneBot at Dalan.
 6. **Rich messages.** Edit, delete, pin, inline buttons and callbacks, commands, files.
 7. **Presence and push.** Web Push, unread counts, bot status, "not delivered".
