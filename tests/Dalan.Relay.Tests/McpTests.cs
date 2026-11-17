@@ -78,8 +78,8 @@ public class McpTests(PostgresServer postgres)
         await using var client = await ConnectAsync(app, key);
 
         var result = await CallAsync(client, "create_bot", new { username = "weather_bot", name = "Weather" });
-        var bot = JsonDocument.Parse(Text(result)).RootElement;
-        var list = JsonDocument.Parse(Text(await CallAsync(client, "list_bots"))).RootElement;
+        var bot = JsonElement.Parse(Text(result));
+        var list = JsonElement.Parse(Text(await CallAsync(client, "list_bots")));
 
         Assert.NotEqual(true, result.IsError);
         Assert.Equal("weather_bot", bot.GetProperty("username").GetString());
@@ -96,12 +96,12 @@ public class McpTests(PostgresServer postgres)
         await using var app = await StartAsync();
         var (key, _) = await KeyAsync(app);
         await using var client = await ConnectAsync(app, key);
-        var bot = JsonDocument.Parse(Text(await CallAsync(client, "create_bot", new { username = "weather_bot", name = "Weather" }))).RootElement;
+        var bot = JsonElement.Parse(Text(await CallAsync(client, "create_bot", new { username = "weather_bot", name = "Weather" })));
         var id = bot.GetProperty("id").GetInt64();
         Assert.Empty(await app.BotClient(bot.GetProperty("token").GetString()).UpdatesAsync());
 
-        var status = JsonDocument.Parse(Text(await CallAsync(client, "bot_status", new { bot_id = id }))).RootElement;
-        var rotated = JsonDocument.Parse(Text(await CallAsync(client, "rotate_token", new { bot_id = id }))).RootElement;
+        var status = JsonElement.Parse(Text(await CallAsync(client, "bot_status", new { bot_id = id })));
+        var rotated = JsonElement.Parse(Text(await CallAsync(client, "rotate_token", new { bot_id = id })));
 
         Assert.True(status.GetProperty("online").GetBoolean());
         Assert.Equal(HttpStatusCode.Unauthorized,
