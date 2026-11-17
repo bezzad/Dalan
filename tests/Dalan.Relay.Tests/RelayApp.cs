@@ -92,6 +92,26 @@ internal static class RelayApp
     public static Task<HttpResponseMessage> SendAsync(this HttpClient bot, long userId, string text) =>
         bot.PostAsJsonAsync("/v1/messages", new { user_id = userId, text }, TestContext.Current.CancellationToken);
 
+    public static Task<HttpResponseMessage> SendAsync(this HttpClient bot, long userId, string text, string[][] replyKeyboard) =>
+        bot.PostAsJsonAsync("/v1/messages", new { user_id = userId, text, reply_keyboard = replyKeyboard }, TestContext.Current.CancellationToken);
+
+    /// <summary>A person writes to a bot through the Client API.</summary>
+    public static Task<HttpResponseMessage> SayAsync(this HttpClient browser, long botId, string text) =>
+        browser.PostAsJsonAsync($"/api/bots/{botId}/messages", new { text }, TestContext.Current.CancellationToken);
+
+    public static async Task<JsonElement> JsonAsync(this HttpClient client, string path)
+    {
+        var response = await client.GetAsync(path, TestContext.Current.CancellationToken);
+        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        return await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>The "messages" array of a chat, as the Client API returns it.</summary>
+    public static async Task<JsonElement[]> HistoryAsync(this HttpClient browser, long botId, string query = "") =>
+        [.. (await browser.JsonAsync($"/api/bots/{botId}/messages?{query}")).GetProperty("messages").EnumerateArray()];
+
+    public static long[] Ids(this IEnumerable<JsonElement> messages) => [.. messages.Select(m => m.GetProperty("id").GetInt64())];
+
     public static long Id(this JsonElement update) => update.GetProperty("update_id").GetInt64();
 
     public static string? Text(this JsonElement update) => update.GetProperty("message").GetProperty("text").GetString();

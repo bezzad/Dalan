@@ -430,3 +430,4 @@ FodyWeavers.xsd
 # Dalan
 client/node_modules/
 out/
+client/dist/

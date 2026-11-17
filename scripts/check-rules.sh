@@ -11,7 +11,8 @@ ids=$(find "$root/openspec/specs" "$root/openspec/changes" -path '*/archive' -pr
 
 missing=0
 for id in $ids; do
-  if ! grep -rqw -- "$id" "$root/tests"; then
+  # Server tests are under tests/, client tests under client/tests/.
+  if ! grep -rqw --exclude-dir=node_modules -- "$id" "$root/tests" "$root/client/tests" 2>/dev/null; then
     echo "No test for rule $id"
     missing=1
   fi

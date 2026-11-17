@@ -211,7 +211,7 @@ Every account starts with an SMS code to an Iranian mobile number, so builders a
 
 **What a bot learns about a user:** the stable numeric id, display name and username. It never gets the phone number unless the user chooses to share it. This protects users, and it stops anyone from building a bot only to collect phone numbers.
 
-**Storage.** Passwords use a slow salted hash. Login uses a JWT access token and a refresh token, kept in `HttpOnly`, `Secure`, `SameSite` cookies on `dalanet.ir` (`docs/ARCHITECTURE.md` section 7).
+**Storage.** Passwords use a slow salted hash. Login uses a JWT access token and a refresh token, kept in `HttpOnly`, `Secure`, `SameSite` cookies on `dalanet.ir` (`docs/ARCHITECTURE.md` section 7). Until milestone 4 there is only a development login, which works only in the Development environment.
 
 **Layer 2: "Login with Dalan".** An app on its own domain cannot read Dalan's cookie. It sends the user to Dalan's login page and gets a token back. This is OAuth 2 with PKCE (OpenID Connect).
 

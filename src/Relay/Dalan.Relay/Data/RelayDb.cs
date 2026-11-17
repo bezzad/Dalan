@@ -1,5 +1,6 @@
 using Dalan.Relay.Bots;
 using Dalan.Relay.Chats;
+using Dalan.Relay.Outbox;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dalan.Relay.Data;
@@ -11,6 +12,7 @@ public sealed class RelayDb(DbContextOptions<RelayDb> options) : DbContext(optio
     public DbSet<Bot> Bots => Set<Bot>();
     public DbSet<Membership> Memberships => Set<Membership>();
     public DbSet<Message> Messages => Set<Message>();
+    public DbSet<OutboxEvent> Outbox => Set<OutboxEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,11 +28,21 @@ public sealed class RelayDb(DbContextOptions<RelayDb> options) : DbContext(optio
 
         modelBuilder.Entity<Message>(message =>
         {
-            message.OwnsOne(m => m.Content, content => content.ToJson());
+            message.OwnsOne(m => m.Content, content =>
+            {
+                content.ToJson();
+                content.OwnsOne(c => c.ReplyKeyboard, keyboard => keyboard.OwnsMany(k => k.Rows));
+            });
             message.HasOne<Membership>().WithMany().HasForeignKey(m => new { m.BotId, m.UserId });
             message.HasIndex(m => new { m.BotId, m.UserId, m.Seq }).IsUnique();
             // Small index for the reload on start (Q-07): only messages that still wait for a bot.
             message.HasIndex(m => m.Id).HasFilter("delivery = 0").HasDatabaseName("ix_messages_pending");
+        });
+
+        modelBuilder.Entity<OutboxEvent>(outbox =>
+        {
+            outbox.ToTable("outbox");
+            outbox.Property(e => e.Payload).HasColumnType("jsonb");
         });
     }
 

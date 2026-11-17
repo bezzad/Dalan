@@ -31,8 +31,27 @@ public sealed class Message
     public DeliveryState? Delivery { get; set; }
 }
 
-/// <summary>Stored as jsonb, so later milestones can add buttons and files without a schema change.</summary>
+/// <summary>Stored as jsonb, so later milestones can add inline buttons and files without a schema change.</summary>
 public sealed class MessageContent
 {
     public required string Text { get; set; }
+
+    /// <summary>REL-17: null = this message does not change the keyboard; no rows = remove it.</summary>
+    public ReplyKeyboard? ReplyKeyboard { get; set; }
+}
+
+/// <summary>Buttons under the user's input. A tap sends the button's text as a message.</summary>
+public sealed class ReplyKeyboard
+{
+    public List<KeyboardRow> Rows { get; set; } = [];
+
+    public static ReplyKeyboard? Of(List<List<string>>? rows) =>
+        rows is null ? null : new ReplyKeyboard { Rows = rows.ConvertAll(row => new KeyboardRow { Buttons = row }) };
+
+    public List<List<string>> ToRows() => Rows.ConvertAll(row => row.Buttons);
+}
+
+public sealed class KeyboardRow
+{
+    public List<string> Buttons { get; set; } = [];
 }

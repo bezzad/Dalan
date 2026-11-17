@@ -22,6 +22,7 @@ builder.Services.Configure<HostOptions>(o =>
 
 // SEC-02: the real client address comes from the front proxy on this machine (the default trusts only loopback).
 builder.Services.Configure<ForwardedHeadersOptions>(o => o.ForwardedHeaders = ForwardedHeaders.XForwardedFor);
+builder.Services.AddIpRateLimit(builder.Configuration);
 
 builder.Services
     .AddIdentityService()
@@ -35,8 +36,15 @@ builder.Services.AddHostedService(provider => provider.GetRequiredService<Startu
 var app = builder.Build();
 
 app.UseForwardedHeaders();
+app.UseSecurityHeaders();
 app.UseReadyGate();
+app.UseClientFiles();
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapProbes();
+app.MapClientPage();
 
 app.MapIdentityService();
 app.MapRelayService();

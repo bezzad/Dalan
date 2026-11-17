@@ -19,4 +19,10 @@ if bash "$script" "$tmp" >/dev/null; then echo "FAIL: OPS-990 counted as OPS-99"
 echo '[Trait("Rule", "OPS-99")]' > "$tmp/tests/demo.cs"
 bash "$script" "$tmp" >/dev/null || { echo "FAIL: check failed with a test"; exit 1; }
 
+# A client test counts too.
+rm "$tmp/tests/demo.cs"
+mkdir -p "$tmp/client/tests"
+echo '// Rule: OPS-99' > "$tmp/client/tests/demo.test.ts"
+bash "$script" "$tmp" >/dev/null || { echo "FAIL: check failed with a client test"; exit 1; }
+
 echo "PASS check_rules_test"

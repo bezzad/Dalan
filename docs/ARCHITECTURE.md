@@ -65,8 +65,8 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 
 - **Sync**: call the other service's contract interface. In one process this is a normal method call.
 - **Async**: events through an **outbox table** in PostgreSQL. The event is written in the same transaction as the data, so they never disagree. A worker reads with `SELECT … FOR UPDATE SKIP LOCKED`. Survives restarts and works the same when services become separate processes.
-- Events so far: `MessageCreated` (→ SSE, Notification), `SmsRequested` (Identity → Notification), `UserSuspended` (Identity → all).
-- The outbox table is not built yet. It comes with its first reader (milestone 3).
+- Planned events: `MessageCreated` (→ SSE, Notification), `SmsRequested` (Identity → Notification), `UserSuspended` (Identity → all).
+- Built so far: `relay.outbox` with `MessageCreated`. One worker in Relay takes the oldest rows, passes them to `IMessageNotifier`, and deletes them, all in one transaction (at least once). The writer wakes the worker in memory after its commit; a poll is the safety net.
 - Relay learns a user's name from Identity through `IUserDirectory`. That profile has no phone number.
 
 ## 5. Data
@@ -82,12 +82,15 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 - Every user message is saved in the database first. Its row id is the update id, so a bot's offset stays valid after a restart. On start, the server reloads undelivered, unexpired messages into the queues, so a deploy or restart loses nothing.
 - A message counts as **delivered** only after the bot confirms it with the next `getUpdates` offset, like Telegram. Delivery is at least once. An offset confirms only updates the bot was really given.
 - An update is offered to the bot until its expiry. After that the message is "not delivered"; a late confirm of an update the bot already got still counts.
-- Core Bot API: `GET /v1/updates` and `POST /v1/messages`, token in `Authorization: Bearer`. Rate limits per IP and per bot.
+- Core Bot API: `GET /v1/updates` and `POST /v1/messages` (text and an optional reply keyboard), token in `Authorization: Bearer`.
+- Rate limits: per client address in the host, in front of every service; per bot and per user in Relay.
 
 ## 7. Identity and sessions
 
-- JWT access token + refresh token. No server session state.
-- The access token is kept in an `HttpOnly`, `Secure`, `SameSite` cookie (only a storage place; JavaScript cannot read it). Signed with ES256, so services hold only the public key.
+- JWT access token + refresh token. No server session state. (Built: the access token. The refresh token comes in milestone 4.)
+- The access token is kept in the cookie `__Host-dalan_session`: `HttpOnly`, `Secure`, `SameSite=Strict` (only a storage place; JavaScript cannot read it). Signed with ES256; the key is the secret setting `Identity:SigningKey`.
+- Identity registers the standard JWT bearer handler. Other services only ask ASP.NET Core who the user is (`sub` claim) and need no Identity code.
+- Development login (`Identity:DevLogin`) works only in the Development environment; with the setting on anywhere else the server refuses to start.
 - Refresh token: random, stored hashed, replaced on every use. Reuse of an old one revokes that device's tokens.
 - **Blocking is by user id.** Refresh checks the user's status. `UserSuspended(userId)` puts the id in a small in-memory deny list in every service until the last token expires; SSE for that user closes at once.
 - Access token lifetime is an admin setting.
@@ -99,7 +102,15 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 - To grow past one process: give a service its own host, and swap the in-memory bot queue and the SSE notifier for shared ones (PostgreSQL `LISTEN/NOTIFY`, or Redis if ever needed). The outbox already works across processes.
 - Container-ready from day one: settings from environment, logs on stdout, `/health` and `/ready`, graceful shutdown, a `Dockerfile`. Production in Iran still runs one binary under systemd (Docker Hub refuses Iranian IP addresses).
 
-## 9. Decisions log
+## 9. Live messages and the client
+
+- Client API paths are under `/api`: Identity owns `/api/me`, `/api/logout` and the development login; Relay owns `/api/bots...`, `/api/events`, `/api/settings`. Rules in `openspec/specs/relay` and `openspec/specs/live-updates`.
+- `GET /api/events` is one SSE stream per user for all of that user's chats, behind `IMessageNotifier` (the second seam; in memory now). A stream ends at session expiry, at server stop, when it is too slow, or when the user opens too many; the client then reconnects.
+- The client never trusts the stream alone: every time it opens, the client asks for the messages after the newest sequence number it has.
+- The PWA (`client/`) is plain TypeScript compiled to ES modules, no bundler. `client/dist` is embedded in `Dalan.Host`, so the release is still one file. Only `/` and `/@<bot>` return the page.
+- Every response carries a Content-Security-Policy that allows only our own origin.
+
+## 10. Decisions log
 
 | # | Date | Decision |
 |---|---|---|
@@ -117,3 +128,8 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 12 | 2026-11-16 | Bot token secret is stored as SHA-256 (long random secret, checked on every call) |
 | 13 | 2026-11-16 | Migrations run at start in the background; `/ready` and all traffic wait for them |
 | 14 | 2026-11-16 | Section 18 starting values are used as defaults without asking; the admin panel changes them later |
+| 15 | 2026-11-16 | Session checked by the standard JWT bearer handler, token in a `__Host-` cookie; development login needs the setting and the Development environment |
+| 16 | 2026-11-16 | Per-address rate limit lives in the host and covers every endpoint |
+| 17 | 2026-11-16 | One SSE stream per user; over the stream limit the newest wins |
+| 18 | 2026-11-16 | Client is embedded in the host binary; no bundler, no framework |
+| 19 | 2026-11-16 | Reply keyboard lives in the message content; the client takes it from the newest bot message that has one |

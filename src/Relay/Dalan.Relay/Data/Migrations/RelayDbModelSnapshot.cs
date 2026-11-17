@@ -136,6 +136,31 @@ namespace Dalan.Relay.Data.Migrations
                     b.ToTable("messages", "relay");
                 });
 
+            modelBuilder.Entity("Dalan.Relay.Outbox.OutboxEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_outbox");
+
+                    b.ToTable("outbox", "relay");
+                });
+
             modelBuilder.Entity("Dalan.Relay.Chats.Membership", b =>
                 {
                     b.HasOne("Dalan.Relay.Bots.Bot", null)
@@ -173,6 +198,44 @@ namespace Dalan.Relay.Data.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("MessageId")
                                 .HasConstraintName("fk_messages_messages_id");
+
+                            b1.OwnsOne("Dalan.Relay.Chats.ReplyKeyboard", "ReplyKeyboard", b2 =>
+                                {
+                                    b2.Property<long>("MessageContentMessageId");
+
+                                    b2.HasKey("MessageContentMessageId")
+                                        .HasName("pk_messages");
+
+                                    b2.ToTable("messages", "relay");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("MessageContentMessageId")
+                                        .HasConstraintName("fk_messages_messages_message_content_message_id");
+
+                                    b2.OwnsMany("Dalan.Relay.Chats.KeyboardRow", "Rows", b3 =>
+                                        {
+                                            b3.Property<long>("ReplyKeyboardMessageContentMessageId");
+
+                                            b3.Property<int>("__synthesizedOrdinal")
+                                                .ValueGeneratedOnAdd();
+
+                                            b3.PrimitiveCollection<string>("Buttons")
+                                                .IsRequired();
+
+                                            b3.HasKey("ReplyKeyboardMessageContentMessageId", "__synthesizedOrdinal")
+                                                .HasName("pk_messages");
+
+                                            b3.ToTable("messages", "relay");
+
+                                            b3.WithOwner()
+                                                .HasForeignKey("ReplyKeyboardMessageContentMessageId")
+                                                .HasConstraintName("fk_messages_messages_reply_keyboard_message_content_message_id");
+                                        });
+
+                                    b2.Navigation("Rows");
+                                });
+
+                            b1.Navigation("ReplyKeyboard");
                         });
 
                     b.Navigation("Content")

@@ -1,10 +1,14 @@
 using Dalan.Identity.Contracts;
 using Dalan.Identity.Data;
+using Dalan.Identity.DevLogin;
+using Dalan.Identity.Sessions;
 using Dalan.Identity.Users;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Dalan.Identity;
 
@@ -19,10 +23,26 @@ public static class IdentityService
                 npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", IdentityDb.Schema))
             .UseSnakeCaseNamingConvention());
         services.AddSingleton<IUserDirectory, UserDirectory>();
+
+        services.AddOptions<IdentityOptions>().BindConfiguration("Identity");
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<SessionKey>();
+        services.AddSingleton<SessionTokens>();
+
+        // The session is checked by the standard JWT handler. Other services only ask ASP.NET Core who the user is.
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+        services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+            .Configure<SessionTokens>((jwt, sessions) => sessions.Configure(jwt));
+        services.AddAuthorization();
         return services;
     }
 
-    public static IEndpointRouteBuilder MapIdentityService(this IEndpointRouteBuilder endpoints) => endpoints;
+    public static IEndpointRouteBuilder MapIdentityService(this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapSessions();
+        endpoints.MapDevLogin();
+        return endpoints;
+    }
 
     /// <summary>OPS-07: applies this service's migrations. The host calls it before the server is ready.</summary>
     public static async Task StartAsync(IServiceProvider services, CancellationToken cancellationToken)
