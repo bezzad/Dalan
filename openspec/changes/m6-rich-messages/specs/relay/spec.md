@@ -73,7 +73,7 @@ Relay SHALL offer what a bot may do as the contract `IBotGateway` in `Dalan.Rela
 ## ADDED Requirements
 
 ### Requirement: REL-20 Inline keyboard
-`POST /v1/messages` SHALL accept an optional `inline_keyboard`: rows of buttons, each with `text` and exactly one of `callback_data` (1 to `Relay:MaxCallbackDataBytes` UTF-8 bytes, start 64) or `url` (`http` or `https`, at most `Relay:MaxButtonUrlLength` characters, start 2048). Button count and text follow the reply keyboard limits (REL-17). It SHALL be stored with the message and returned in history and in the event stream. A keyboard that breaks a rule SHALL get 400 `bad_keyboard` and nothing is stored.
+`POST /v1/messages` SHALL accept an optional `inline_keyboard`: rows of buttons, each with `text` and exactly one of `callback_data` (1 to `Relay:MaxCallbackDataBytes` UTF-8 bytes, start 64) or `url` (`http` or `https`, at most `Relay:MaxButtonUrlLength`, start 2048). Count and text follow REL-17. It SHALL be stored and returned in history and in the event stream. A keyboard that breaks a rule SHALL get 400 `bad_keyboard`, and nothing is stored.
 
 #### Scenario: Bot sends inline buttons
 - **WHEN** the bot posts a message with `"inline_keyboard":[[{"text":"Yes","callback_data":"y"},{"text":"Site","url":"https://dalanet.ir"}]]`
@@ -84,7 +84,7 @@ Relay SHALL offer what a bot may do as the contract `IBotGateway` in `Dalan.Rela
 - **THEN** the response is 400 `bad_keyboard` and nothing is stored
 
 ### Requirement: REL-21 A user presses an inline button
-`POST /api/bots/{bot id}/callbacks` with `{"message_id":N,"data":"..."}` SHALL put a `callback` update in the bot's queue when message N of the user's chat is a bot message, not deleted, with a button whose `callback_data` is exactly that data, and SHALL return `{"id":"..."}`. Otherwise the answer SHALL be 404 `button_not_found` and nothing is queued. The update has `update_id` and `callback` with `id` (text), `from`, `message` (the bot message with its buttons) and `data`. A press SHALL NOT be stored in the chat history. It follows the queue rules (Q-02 to Q-06, Q-08), but is not kept over a restart.
+`POST /api/bots/{bot id}/callbacks` with `{"message_id":N,"data":"..."}` SHALL queue a `callback` update and return `{"id":"..."}` when message N of the chat is a bot message, not deleted, with a button of exactly that `callback_data`. Otherwise: 404 `button_not_found`, nothing queued. The update has `callback` with `id`, `from`, `message` and `data`. A press SHALL NOT be stored in history, and follows the queue rules (Q-02 to Q-06, Q-08) except restarts.
 
 #### Scenario: Press reaches the bot
 - **GIVEN** bot message 2 has a button with data "y"
@@ -112,7 +112,7 @@ Relay SHALL offer what a bot may do as the contract `IBotGateway` in `Dalan.Rela
 - **THEN** the response is 400 `callback_not_found`
 
 ### Requirement: REL-23 Edit a message
-`PATCH /v1/messages/{user id}/{message id}` with optional `text` and optional `inline_keyboard` SHALL change a bot message of that chat: the text when given, and the inline keyboard always (missing = removed). The message gets the next version of the chat and `edited`, is returned like REL-08, and reaches the user's streams (LIVE-02). Errors: 404 `message_not_found` (no such message, or deleted), 400 `not_editable` (a user's message), 400 `no_text` (text for a file message), 400 `not_modified` (same text and same buttons), and the text and keyboard errors of REL-09 and REL-20.
+`PATCH /v1/messages/{user id}/{message id}` with optional `text` and optional `inline_keyboard` SHALL change a bot message of that chat: the text when given, and the inline keyboard always (missing = removed). It gets the next version and `edited`, is returned like REL-08, and reaches the streams (LIVE-02). Errors: 404 `message_not_found` (none, or deleted), 400 `not_editable` (user message), `no_text` (file message), `not_modified` (nothing changed), and those of REL-09 and REL-20.
 
 #### Scenario: New text
 - **GIVEN** bot message 2 says "wait"
@@ -167,7 +167,7 @@ Relay SHALL offer what a bot may do as the contract `IBotGateway` in `Dalan.Rela
 - **THEN** the response is 400 `bad_commands`
 
 ### Requirement: REL-27 A bot sends a file
-`POST /v1/messages` as `multipart/form-data` with the part `file`, `user_id`, optional `kind` (`photo`, `document`, `audio`, `voice` or `video`, start `document`), `text` (the caption, may be empty, at most `Relay:MaxCaptionLength`, start 1024) and the keyboards as JSON text SHALL save the file and send a message that carries it. Instead of the part, `file_id` SHALL send again a file this bot already has (sent or received in any of its chats). The message has `file` with `id`, `kind`, `name`, `type` (content type) and `size`. A file over `Relay:MaxFileSizeMb` (start 20) SHALL get 413 `file_too_big`; an unknown `file_id` 400 `file_not_found`; nothing is stored then.
+`POST /v1/messages` as `multipart/form-data` with the part `file`, `user_id`, optional `kind` (start `document`), `text` (caption, at most `Relay:MaxCaptionLength`, start 1024) and keyboards as JSON SHALL send a message that carries the file. `file_id` instead of the part SHALL send again a file this bot has. The message has `file` with `id`, `kind`, `name`, `type` and `size`. Over `Relay:MaxFileSizeMb` (start 20): 413 `file_too_big`; unknown `file_id`: 400 `file_not_found`.
 
 #### Scenario: Send a photo
 - **WHEN** the bot uploads `cat.jpg` as kind `photo` with caption "cat"
@@ -183,7 +183,7 @@ Relay SHALL offer what a bot may do as the contract `IBotGateway` in `Dalan.Rela
 - **THEN** the response is 413 `file_too_big` and nothing is stored
 
 ### Requirement: REL-28 A user sends a file
-`POST /api/bots/{bot id}/files` with the file as the body, its type as `Content-Type`, the header `X-File-Name` and optional `X-Caption` (both percent-encoded UTF-8) SHALL save the file and send a user message that carries it, like REL-15. The kind comes from the type: `image/jpeg`, `image/png`, `image/gif`, `image/webp` photo; `audio/*` audio; `video/*` video; anything else document. The bot gets the message with its `file` (REL-07). Limits: `Relay:MaxFileSizeMb` per file (413 `file_too_big`) and `Relay:UserUploadMbPerDay` (start 200) per user in 24 hours (429 `upload_limit`).
+`POST /api/bots/{bot id}/files` with the file as the body, its type as `Content-Type`, the header `X-File-Name` and optional `X-Caption` (both percent-encoded) SHALL send a user message that carries the file, like REL-15. Kind: `image/jpeg|png|gif|webp` photo, `audio/*` audio, `video/*` video, else document. The bot gets it with its `file` (REL-07). Limits: `Relay:MaxFileSizeMb` (413 `file_too_big`) and `Relay:UserUploadMbPerDay` (start 200) in 24 hours (429 `upload_limit`).
 
 #### Scenario: Send a photo
 - **WHEN** the user uploads a PNG named "شکل.png"

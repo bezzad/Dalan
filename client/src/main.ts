@@ -58,6 +58,7 @@ async function enter(user: User): Promise<void> {
     auth: await authSettings(),
     chats: new Chats(api.messages, settings.sync_page_size),
     maxTextLength: settings.max_text_length,
+    maxFileSizeMb: settings.max_file_size_mb,
     go(path) {
       accountOpen = false;
       history.pushState(null, "", path);
@@ -81,6 +82,9 @@ async function enter(user: User): Promise<void> {
     onMessage(botId, message) {
       app?.chats.receive(botId, message);
       screen?.onMessage?.(botId);
+    },
+    onAnswer(botId, answer) {
+      if (answer.text) screen?.onAnswer?.(botId, answer.text, answer.show_alert);
     },
     onDown: () => document.body.classList.add("offline"),
     onLoggedOut: showLogin,

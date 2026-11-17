@@ -113,7 +113,7 @@ An `InlineKeyboardMarkup` (`inline_keyboard`: rows of buttons with `text` and `c
 - **THEN** the result is `true` and the stored list did not change
 
 ### Requirement: TG-20 Send files
-`sendPhoto`, `sendDocument`, `sendAudio`, `sendVoice` and `sendVideo` SHALL send a file of that kind (REL-27) with an optional `caption` and `reply_markup`. The file field (`photo`, `document`, `audio`, `voice`, `video`) SHALL be an uploaded part of a `multipart/form-data` body or a `file_id`; a URL SHALL get 400. The returned `Message` SHALL carry the file in Telegram's shape: `photo` as a list with one `PhotoSize`, the others as one object, with `file_id`, `file_unique_id`, `file_size` and, where Telegram has them, `file_name`, `mime_type`, `width`, `height` and `duration` (Dalan sends 0 for the last three). Errors: "Bad Request: wrong file identifier/HTTP URL specified", "Request Entity Too Large" (413).
+`sendPhoto`, `sendDocument`, `sendAudio`, `sendVoice` and `sendVideo` SHALL send a file of that kind (REL-27) with optional `caption` and `reply_markup`. The file field SHALL be an uploaded part or a `file_id`; a URL SHALL get 400. The returned `Message` SHALL carry the file in Telegram's shape: `photo` as a list with one `PhotoSize`, the others as one object, with `file_id`, `file_unique_id`, `file_size` and Telegram's other fields (`width`, `height`, `duration` are 0).
 
 #### Scenario: Upload a photo
 - **WHEN** the bot calls `sendPhoto` with a JPEG part and caption "cat"
@@ -122,6 +122,10 @@ An `InlineKeyboardMarkup` (`inline_keyboard`: rows of buttons with `text` and `c
 #### Scenario: URL
 - **WHEN** the bot calls `sendDocument` with `document` "https://example.com/a.pdf"
 - **THEN** the response is 400 and nothing is stored
+
+#### Scenario: Bad file
+- **WHEN** the file is an unknown `file_id`, or bigger than the limit
+- **THEN** the response is 400 "Bad Request: wrong file identifier/HTTP URL specified", or 413 "Request Entity Too Large"
 
 ### Requirement: TG-21 Files from users and downloads
 A user's file message SHALL reach `getUpdates` with the file in Telegram's shape (TG-20) and the caption in `caption`. `getFile` (`file_id`) SHALL return a `File` with `file_id`, `file_unique_id`, `file_size` and `file_path`. `GET /file/bot<token>/<file_path>` SHALL return the bytes (REL-29). An unknown file SHALL get 400 "Bad Request: invalid file_id" from `getFile` and 404 from the download.

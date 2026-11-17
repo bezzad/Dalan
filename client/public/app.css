@@ -171,3 +171,30 @@ button.link { min-height: 0; padding: 4px 6px; border: 0; background: none; colo
 .keyboard:empty { display: none; }
 .keyboard .row > button { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .start { align-self: stretch; }
+
+/* Rich messages (CLI-13 to CLI-17) */
+.note:empty { display: none; }
+.pinned {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.messages li { display: flex; flex-direction: column; gap: 6px; }
+.messages img, .messages video { max-width: 100%; max-height: 50dvh; border-radius: 10px; }
+.messages audio { max-width: 100%; }
+.messages a { color: var(--brand); overflow-wrap: anywhere; }
+.row.inline > button, .row.inline > a.button { flex: 1; min-width: 0; min-height: 36px; padding: 4px 8px; overflow-wrap: anywhere; }
+a.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  text-decoration: none;
+}
+form.row > button:not(.primary) { padding: 8px 10px; }

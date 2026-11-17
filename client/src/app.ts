@@ -9,6 +9,7 @@ export interface App {
   auth: AuthSettings;
   chats: Chats;
   maxTextLength: number;
+  maxFileSizeMb: number;
   /** Goes to "/" or "/@name" without a page load. */
   go(path: string): void;
   /** Shows the account screen (username, password), or goes back from it. */
@@ -16,10 +17,13 @@ export interface App {
   logout(): void;
 }
 
-/** A redraw the open screen asks for when a live message arrives or the stream goes up or down. */
+/** What the open screen does with live events. */
 export interface Screen {
   element: HTMLElement;
+  /** A redraw when a message of this chat arrived or changed. */
   onMessage?(botId: number): void;
+  /** CLI-13: the bot answered a press with a text. */
+  onAnswer?(botId: number, text: string, showAlert: boolean): void;
 }
 
 /** The text to show for a failed call. */
@@ -28,6 +32,9 @@ export function errorText(error: unknown): TextKey {
   switch (error.code) {
     case "bot_not_found": return "botNotFound";
     case "text_too_long": return "textTooLong";
+    case "file_too_big": return "fileTooBig";
+    case "upload_limit": return "uploadLimit";
+    case "button_not_found": return "buttonGone";
     case "rate_limited": return "tooFast";
     case "bad_request": return "badPhone";
     case "bad_phone": return "badPhone";

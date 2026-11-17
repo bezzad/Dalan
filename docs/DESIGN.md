@@ -158,6 +158,8 @@ Dalan has its own core API with its own names, plus a thin Telegram adapter so e
 
 **Built in milestone 5:** `getMe`, `getUpdates` (type `message`, commands marked as `bot_command` entities), `sendMessage` with text and `ReplyKeyboardMarkup` / `ReplyKeyboardRemove`, `deleteWebhook` and `sendChatAction` (both answer `true`). `parse_mode` is accepted and ignored for now: the text is shown as sent. The rest of the table comes with milestone 6 (rich messages, in the core first) and a later webhook change.
 
+**Built in milestone 6:** update type `callback_query`, `sendPhoto`, `sendDocument`, `sendAudio`, `sendVoice`, `sendVideo` (upload or `file_id`), `editMessageText`, `editMessageReplyMarkup`, `deleteMessage`, `pinChatMessage`, `unpinChatMessage` (one pin per chat), `InlineKeyboardMarkup` with `callback_data` and `url` buttons, `answerCallbackQuery`, `setMyCommands`, `getMyCommands`, `getFile` and the file download. Files are kept on the server disk for 30 days (setting). Still left: webhooks and formatting (`parse_mode`, entities).
+
 Any other method returns a Telegram-shaped error (`ok: false` with a clear description such as "not supported by Dalan"), so the bot does not crash.
 
 **Joining a bot.** The user opens the bot and presses Start. The bot receives a `/start` message with the user's Dalan id and name. The bot's own code decides what to do: a public bot welcomes everyone, a private bot answers only its owner. Dalan only says who the user is.
@@ -455,6 +457,8 @@ None of these is planned work. They are recorded so the design does not block th
 | Bot shown as online | Last poll under 60 seconds ago | Assumed |
 | Message text length | 4,096 characters | Assumed (Telegram parity) |
 | File size per message | 20 MB | Assumed |
+| Files kept on the server | 30 days | Assumed (milestone 6) |
+| Files a user may upload | 200 MB in 24 hours | Assumed (milestone 6) |
 | History kept per chat | Last 200 messages, 30 days | Assumed |
 | Access log: one row per caller and address | Every 60 minutes | Assumed |
 | Access log kept | 180 days | Assumed (our reading of the six months in the Computer Crimes Law; for the lawyer) |
