@@ -118,6 +118,42 @@ public sealed class DalanApp(
         };
     }
 
+    /// <summary>
+    /// On stop, Kestrel lets running calls finish before the services are disposed (OPS-03). The in-process test server
+    /// does not wait, so a call that ends because the server stops (Q-09) could find its services gone.
+    /// This makes the test server wait like Kestrel.
+    /// </summary>
+    private sealed class RequestDrain : IStartupFilter, Microsoft.Extensions.Hosting.IHostedService
+    {
+        private int _running;
+
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use(async (http, nextMiddleware) =>
+            {
+                Interlocked.Increment(ref _running);
+                try
+                {
+                    await nextMiddleware(http);
+                }
+                finally
+                {
+                    Interlocked.Decrement(ref _running);
+                }
+            });
+            next(app);
+        };
+
+        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public async Task StopAsync(CancellationToken cancellationToken)
+        {
+            using var limit = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            while (Volatile.Read(ref _running) > 0 && !limit.IsCancellationRequested)
+                await Task.Delay(10, CancellationToken.None);
+        }
+    }
+
     /// <summary>Does the proof of work and asks for an SMS code, like the login screen (SEC-06, AUTH-11).</summary>
     public static async Task<HttpResponseMessage> AskCodeAsync(HttpClient browser, string phone)
     {
@@ -171,6 +207,9 @@ public sealed class DalanApp(
         {
             services.AddSingleton<TimeProvider>(Time);
             services.AddSingleton<IStartupFilter, SocketFilter>();
+            services.AddSingleton<RequestDrain>();
+            services.AddSingleton<IStartupFilter>(provider => provider.GetRequiredService<RequestDrain>());
+            services.AddHostedService(provider => provider.GetRequiredService<RequestDrain>());
             services.AddSingleton<ILoggerProvider>(Logs);
             if (!RealSms) services.AddSingleton<ISmsSender>(Sms);
         });
