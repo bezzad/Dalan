@@ -122,6 +122,7 @@ The parts in the picture:
 | Push subscription | PostgreSQL | User, endpoint, keys |
 | Limits | PostgreSQL | Global defaults, with overrides per user and per bot |
 | Audit log | PostgreSQL | Who did what, when (admin and security events) |
+| Access log | PostgreSQL | Who (user or bot), real client IP address, source port, UTC time. Kept to answer legal complaints (section 10) |
 
 **Rules that follow from the model:**
 
@@ -244,6 +245,13 @@ Every limit is a setting the admin can change from the dashboard, globally, per 
 - Showcase entries are reviewed before they are listed.
 - Security and admin actions are written to an audit log.
 
+**Access log (legal duty).** When the cyber police (FATA) bring a complaint, the owner must be able to say from which IP address a user or a bot's owner worked, and when. So:
+
+- Every Bot API and Client API call records who called, the real client address, the source port and the UTC time; at most one row per caller and address per hour. Mobile carriers put many people behind one address (CGNAT), so the port and exact time are needed to find the person.
+- The address must be the real client's, also behind a proxy or load balancer, and a client must not be able to fake it. Rules `SEC-10`, `SEC-11`, `ADM-01` to `ADM-04`; how it works: `docs/ARCHITECTURE.md` section 11.
+- The admin dashboard shows, for a user or a bot, the list of addresses with port and time, and can search by address (milestone 8).
+- Every login code sent by SMS records the phone number with the address and port of the caller who asked for it, because the person who gets the SMS may not be the one who asked.
+
 ## 11. Layer 2 design: sites
 
 In Layer 2 the builder's frontend and backend stay unchanged. The page is served from a Dalan address, and a ready-made Agent at home passes web requests to the local backend.
@@ -329,6 +337,7 @@ Do not advertise "free tunnel". Cloudflare does that better for anyone with open
 3. Messages pass through Dalan's server without end-to-end encryption. Dalan can technically read them.
 4. How many messages per chat are kept, and for how long.
 5. The home machine belongs to the builder. Dalan only carries messages between the two sides and is not responsible for the builder's uptime.
+6. Dalan keeps the IP address, port and time of users and bots for a limited time, to answer legal complaints.
 
 **Legal check.** Before opening to the public, ask a lawyer about responsibility for hosted content and for storing phone numbers. The owner's rule that Dalan has no user-to-user chat, groups or channels stays in place.
 
@@ -445,6 +454,8 @@ None of these is planned work. They are recorded so the design does not block th
 | Message text length | 4,096 characters | Assumed (Telegram parity) |
 | File size per message | 20 MB | Assumed |
 | History kept per chat | Last 200 messages, 30 days | Assumed |
+| Access log: one row per caller and address | Every 60 minutes | Assumed |
+| Access log kept | 180 days | Assumed (our reading of the six months in the Computer Crimes Law; for the lawyer) |
 | Site storage per bot (Layer 2) | 200 MB | Agreed in discussion |
 | Pending site requests per user (Layer 2) | 20 | Assumed |
 | Site request timeout (Layer 2) | 30 seconds | Assumed |
@@ -469,7 +480,7 @@ None of these is planned work. They are recorded so the design does not block th
 - [ ] Which hosting provider, after comparing traffic cost, extra disk and DNS?
 - [ ] Buy a separate sites domain before Layer 2 (candidate: `dalancloud.ir`)?
 - [ ] Buy a foreign backup domain (candidate: `dalanet.net`)?
-- [ ] Lawyer review of content responsibility and phone-number storage.
+- [ ] Lawyer review of content responsibility, phone-number storage, and how long the access log must be kept.
 - [ ] Which exact Telegram Bot API version is the snapshot? Check the official page on the day the adapter is built.
 
 ## 19. Version 1 milestones

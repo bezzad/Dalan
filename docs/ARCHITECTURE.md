@@ -28,7 +28,7 @@ Identity    Relay      Notification     Admin
 | **Identity** | users, phone numbers, password hashes, TOTP, refresh tokens, builder approval | **sync** calls (a token is needed now) |
 | **Relay** (core) | bots, memberships, messages, the in-memory queue of each bot | sync in; **async** out to bots (queue + long polling) |
 | **Notification** | push subscriptions, send log | **async**, except the login SMS, which is a sync call (`ISmsSender`). It gets "send this to this receiver by this channel" and knows no business. Channels are strategies: Web Push, SMS, later Email |
-| **Admin** | settings and limits, audit log | sync. Other services read settings from it |
+| **Admin** | settings and limits, audit log, access log | sync. Other services read settings from it and write the access log through `IAccessLog` |
 
 Relay has two thin HTTP doors, both inside Relay:
 
@@ -75,7 +75,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 - One PostgreSQL database, one schema per service, no foreign key or join across schemas. Each schema can later move to its own database.
 - EF Core 10 with the official PostgreSQL provider `Npgsql.EntityFrameworkCore.PostgreSQL` 10.x (version 11 of the provider was only a release candidate on 2026-11-16; upgrade when stable). Message content in `jsonb`. Table and column names are snake_case.
 - Each service has its own EF Core migrations and its own history table in its schema. The server applies them at start (`/ready` is 503 until then), so the Iran server needs no tool.
-- New migration: `dotnet ef migrations add <Name> --project src/Relay/Dalan.Relay --startup-project src/Dalan.Host --context RelayDb --output-dir Data/Migrations` (the same for Identity with `IdentityDb`).
+- New migration: `dotnet ef migrations add <Name> --project src/Relay/Dalan.Relay --startup-project src/Dalan.Host --context RelayDb --output-dir Data/Migrations` (the same for Identity with `IdentityDb` and Admin with `AdminDb`).
 
 ## 6. Bot queue and delivery
 
@@ -107,6 +107,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 - Design and load-test target for version 1: **100 bots, 100,000 users, about 10,000 online at once, about 500 messages per second**, on one 2-core server.
 - First-year real load is far lower (about 10 users, 1,000 to 10,000 requests a day).
 - To grow past one process: give a service its own host, and swap the in-memory bot queue and the SSE notifier for shared ones (PostgreSQL `LISTEN/NOTIFY`, or Redis if ever needed). The outbox already works across processes.
+- A load balancer in front (for example Envoy) must be listed in `Dalan:TrustedProxies`, or every client gets its address: section 11.
 - Container-ready from day one: settings from environment, logs on stdout, `/health` and `/ready`, graceful shutdown, a `Dockerfile`. Production in Iran still runs one binary under systemd (Docker Hub refuses Iranian IP addresses).
 
 ## 9. Live messages and the client
@@ -145,3 +146,18 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 22 | 2026-11-17 | Proof of work is stateless (MAC over phone and expiry); SMS limits are counts over `identity.sms_codes` |
 | 23 | 2026-11-17 | Argon2id through the package `Konscious.Security.Cryptography.Argon2`; hash stored as PHC text |
 | 24 | 2026-11-17 | First SMS provider is Kavenegar; TOTP is left out of milestone 4 and comes as its own change |
+| 25 | 2026-11-17 | Client address from `X-Forwarded-For` only behind the proxies in `Dalan:TrustedProxies`; no PROXY protocol |
+| 26 | 2026-11-17 | Access log in Admin: address, port and time per user and bot, one row per address per interval, kept 180 days |
+
+## 11. Client address and access log
+
+The owner must be able to tell the cyber police from which address a user or a bot worked (`docs/DESIGN.md` section 10). Two things can silently break that: a proxy that hides the client, and a client that fakes its address. Rules `SEC-10`, `SEC-11`, `ADM-01` to `ADM-04`.
+
+- **One source of the address.** The host makes `HttpContext.Connection.RemoteIpAddress` and `RemotePort` the real client's (`ClientAddress.cs`, the framework's forwarded-headers middleware). All other code reads the connection and never the `X-Forwarded-For` header.
+- **The header is believed only from `Dalan:TrustedProxies`** (addresses or CIDR ranges, comma separated; read at start). The header is read from the right until the first address that is not trusted, so one proxy or several work the same, and what a client wrote is never believed.
+- **Caddy replaces the header** with the client's `address:port` (`header_up X-Forwarded-For {remote}`).
+- **Adding a load balancer or a second proxy:** (1) add its address or range to `Dalan:TrustedProxies` on every instance; (2) make the first hop from the internet write the client's `address:port` and drop the client's own header (Envoy: set `X-Forwarded-For` to `%DOWNSTREAM_REMOTE_ADDRESS%`); (3) a proxy behind it must keep that header (Caddy: list the balancer in `trusted_proxies` and remove the `header_up` line). If step 1 is forgotten the server logs a warning that names the proxy (SEC-11).
+- **Access log:** table `admin.access_log` (actor `User`, `Bot` or `Phone`, actor id, phone, address, port, time). Relay's two door filters call `IAccessLog` for every accepted call, so a new endpoint in those groups is covered with no extra code. A new door that knows its caller must call `IAccessLog` too. A row is written for a new address at once and for a known one after `Admin:AccessLogIntervalMinutes`; "last written" is in memory per instance. A call whose row cannot be written fails.
+- **SMS codes:** Identity calls `IAccessLog.RecordSmsAsync` for every login code that was sent: actor `Phone`, the number, and the address of the caller who asked.
+- **Retention:** a sweep deletes rows older than `Admin:AccessLogRetentionDays`.
+- Until the admin screen exists (milestone 8): `SELECT address, port, at FROM admin.access_log WHERE actor = 'Bot' AND actor_id = 5 ORDER BY at`.

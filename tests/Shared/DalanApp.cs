@@ -1,11 +1,14 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Dalan.Host;
 using Dalan.Identity.Data;
 using Dalan.Identity.SmsLogin;
 using Dalan.Identity.Users;
+using Microsoft.AspNetCore.Builder;
 using Dalan.Notification.Contracts;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,6 +38,17 @@ public sealed class DalanApp(
     public LogCollector Logs { get; } = new();
 
     /// <summary>Waits until the start-up work (migrations, queue reload) is done.</summary>
+    /// <summary>The access log rows as "actor id-or-phone address port", oldest first. Port is empty when unknown.</summary>
+    public async Task<string[]> AccessLogAsync()
+    {
+        var rows = await PostgresServer.ScalarAsync<string[]>(connectionString,
+            """
+            SELECT coalesce(array_agg(actor || ' ' || coalesce(phone, actor_id::text) || ' ' || host(address) || ' ' || coalesce(port::text, '') ORDER BY id), '{}')
+            FROM admin.access_log
+            """);
+        return [.. rows.Select(row => row.TrimEnd())];
+    }
+
     public Task ReadyAsync() =>
         Services.GetRequiredService<Startup>().Done.WaitAsync(TimeSpan.FromSeconds(60), TestContext.Current.CancellationToken);
 
@@ -71,6 +85,37 @@ public sealed class DalanApp(
         response.EnsureSuccessStatusCode();
         var user = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         return (browser, user.GetProperty("id").GetInt64());
+    }
+
+    /// <summary>
+    /// Makes the server see this client's calls as a connection from <paramref name="endPoint"/> ("address:port").
+    /// The in-process test server has no real connection, so a test names the one it wants.
+    /// </summary>
+    public static HttpClient From(HttpClient client, string endPoint)
+    {
+        client.DefaultRequestHeaders.Add(SocketHeader, endPoint);
+        return client;
+    }
+
+    private const string SocketHeader = "Test-Socket";
+
+    private sealed class SocketFilter : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use((http, nextMiddleware) =>
+            {
+                if (http.Request.Headers.Remove(SocketHeader, out var value))
+                {
+                    var endPoint = IPEndPoint.Parse(value.ToString());
+                    http.Connection.RemoteIpAddress = endPoint.Address;
+                    http.Connection.RemotePort = endPoint.Port;
+                }
+
+                return nextMiddleware(http);
+            });
+            next(app);
+        };
     }
 
     /// <summary>Does the proof of work and asks for an SMS code, like the login screen (SEC-06, AUTH-11).</summary>
@@ -125,6 +170,7 @@ public sealed class DalanApp(
         builder.ConfigureServices(services =>
         {
             services.AddSingleton<TimeProvider>(Time);
+            services.AddSingleton<IStartupFilter, SocketFilter>();
             services.AddSingleton<ILoggerProvider>(Logs);
             if (!RealSms) services.AddSingleton<ISmsSender>(Sms);
         });

@@ -9,6 +9,7 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../Admin/Dalan.Admin.Contracts/Dalan.Admin.Contracts.csproj" />
     <ProjectReference Include="../Dalan.Identity.Contracts/Dalan.Identity.Contracts.csproj" />
     <ProjectReference Include="../../Notification/Dalan.Notification.Contracts/Dalan.Notification.Contracts.csproj" />
   </ItemGroup>

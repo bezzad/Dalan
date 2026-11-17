@@ -1,3 +1,4 @@
+using Dalan.Admin.Contracts;
 using Dalan.Identity.Data;
 using Dalan.Identity.Sessions;
 using Dalan.Identity.Users;
@@ -41,7 +42,8 @@ internal static class SmsLoginEndpoints
     }
 
     private static async Task<IResult> SendAsync(
-        HttpContext http, ProofOfWork proofOfWork, SmsCodes codes, ISmsSender sender, IOptionsMonitor<IdentityOptions> options)
+        HttpContext http, ProofOfWork proofOfWork, SmsCodes codes, ISmsSender sender, IAccessLog accessLog,
+        IOptionsMonitor<IdentityOptions> options)
     {
         var request = await AuthJson.ReadAsync<SmsRequest>(http);
         if (PhoneNumber.Normalize(request?.Phone) is not { } phone) return BadPhone();
@@ -54,6 +56,11 @@ internal static class SmsLoginEndpoints
 
         var ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         var (outcome, wait) = await codes.SendAsync(phone, ip, sender, http.RequestAborted);
+
+        // ADM-04: the person who gets the SMS may not be the one who asked for it.
+        if (outcome == SmsOutcome.Sent)
+            await accessLog.RecordSmsAsync(phone, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
+
         var settings = options.CurrentValue;
         return outcome switch
         {

@@ -464,4 +464,50 @@ public class SmsLoginTests(PostgresServer postgres)
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    // ---- ADM-04 who asked for the SMS ----
+
+    [Fact]
+    [Trait("Rule", "ADM-04")]
+    public async Task ADM04_sent_sms_is_recorded_with_phone_address_port_and_time()
+    {
+        await using var app = await StartAsync(postgres);
+
+        var response = await DalanApp.AskCodeAsync(ThroughProxy(app, "203.0.113.7:51000"), Phone);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(["Phone +989121234567 203.0.113.7 51000"], await app.AccessLogAsync());
+        Assert.Equal(app.Time.GetUtcNow(), await PostgresServer.ScalarAsync<DateTime>(app.ConnectionString, "SELECT at FROM admin.access_log"));
+    }
+
+    [Fact]
+    [Trait("Rule", "ADM-04")]
+    public async Task ADM04_every_sent_sms_has_its_own_row()
+    {
+        await using var app = await StartAsync(postgres, ("Identity:SmsWaitSeconds", "60"));
+        var browser = ThroughProxy(app, "203.0.113.7:51000");
+
+        await DalanApp.AskCodeAsync(browser, Phone);
+        app.Time.Advance(TimeSpan.FromSeconds(60));
+        await DalanApp.AskCodeAsync(browser, Phone);
+
+        Assert.Equal(2, (await app.AccessLogAsync()).Length);
+    }
+
+    [Fact]
+    [Trait("Rule", "ADM-04")]
+    public async Task ADM04_refused_sms_writes_no_row()
+    {
+        await using var app = await StartAsync(postgres, ("Identity:SmsWaitSeconds", "60"));
+        var browser = ThroughProxy(app, "203.0.113.7:51000");
+
+        await DalanApp.AskCodeAsync(browser, Phone);
+        var tooSoon = await DalanApp.AskCodeAsync(browser, Phone);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, tooSoon.StatusCode);
+        Assert.Single(await app.AccessLogAsync());
+    }
+
+    /// <summary>A browser whose calls reach the server through the front proxy, which reports this client address.</summary>
+    private static HttpClient ThroughProxy(DalanApp app, string client) => DalanApp.From(app.Browser(client), "127.0.0.1:40000");
 }
