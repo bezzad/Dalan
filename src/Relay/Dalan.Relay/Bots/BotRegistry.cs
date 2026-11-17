@@ -33,7 +33,7 @@ public sealed partial class BotRegistry(IDbContextFactory<RelayDb> dbFactory, IO
     }
 
     /// <summary>Returns the bot when the token is valid, otherwise null.</summary>
-    public async Task<BotInfo?> AuthenticateAsync(string? token, CancellationToken cancellationToken)
+    public async Task<(BotInfo Bot, bool Suspended)?> AuthenticateAsync(string? token, CancellationToken cancellationToken)
     {
         if (!BotToken.TryParse(token, out var botId, out var secret)) return null;
 
@@ -41,8 +41,19 @@ public sealed partial class BotRegistry(IDbContextFactory<RelayDb> dbFactory, IO
         var bot = await db.Bots.AsNoTracking().FirstOrDefaultAsync(b => b.Id == botId, cancellationToken);
 
         return bot is not null && CryptographicOperations.FixedTimeEquals(bot.TokenHash, BotToken.Hash(secret))
-            ? new BotInfo(bot.Id, bot.Username, bot.Name)
+            ? (new BotInfo(bot.Id, bot.Username, bot.Name), bot.SuspendedAt is not null)
             : null;
+    }
+
+    /// <summary>REL-37: a new token for the bot; the old one stops at once. Null when the bot does not exist.</summary>
+    public async Task<string?> RotateTokenAsync(long botId, CancellationToken cancellationToken)
+    {
+        var secret = BotToken.NewSecret();
+        var hash = BotToken.Hash(secret);
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var changed = await db.Bots.Where(b => b.Id == botId)
+            .ExecuteUpdateAsync(set => set.SetProperty(b => b.TokenHash, hash), cancellationToken);
+        return changed == 0 ? null : BotToken.Format(botId, secret);
     }
 
     /// <summary>REL-26: replaces the command list. False when a command breaks a rule (nothing changes then).</summary>

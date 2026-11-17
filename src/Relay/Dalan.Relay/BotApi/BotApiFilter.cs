@@ -20,6 +20,7 @@ internal sealed class BotApiFilter(IBotGateway gateway) : IEndpointFilter
         var access = await gateway.EnterAsync(
             token, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
         if (access.RetryAfter is { } wait) return ApiJson.TooManyRequests(http, wait);
+        if (access.Suspended) return ApiJson.BotSuspended();
         if (access.Bot is null)
         {
             return ApiJson.Error(StatusCodes.Status401Unauthorized, "unauthorized",

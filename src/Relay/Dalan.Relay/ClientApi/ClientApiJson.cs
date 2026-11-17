@@ -3,11 +3,11 @@ using System.Text.Json.Serialization;
 namespace Dalan.Relay.ClientApi;
 
 /// <summary>REL-14: a bot in the user's list, with the unread count (REL-32) and the status (REL-33).</summary>
-internal sealed record BotJson(long Id, string Username, string Name, int Unread, bool Online, DateTimeOffset? LastSeen);
+internal sealed record BotJson(long Id, string Username, string Name, int Unread, bool Online, DateTimeOffset? LastSeen, bool Suspended);
 
 internal sealed record BotsResponse(IEnumerable<BotJson> Bots);
 
-internal sealed record FoundBotJson(long Id, string Username, string Name, bool Started);
+internal sealed record FoundBotJson(long Id, string Username, string Name, bool Started, bool Suspended);
 
 internal sealed record UserMessageRequest(string? Text);
 

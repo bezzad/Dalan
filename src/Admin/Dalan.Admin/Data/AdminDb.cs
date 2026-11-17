@@ -1,4 +1,6 @@
 using Dalan.Admin.AccessLog;
+using Dalan.Admin.Audit;
+using Dalan.Admin.Settings;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dalan.Admin.Data;
@@ -8,6 +10,8 @@ public sealed class AdminDb(DbContextOptions<AdminDb> options) : DbContext(optio
     public const string Schema = "admin";
 
     public DbSet<AccessLogEntry> AccessLog => Set<AccessLogEntry>();
+    public DbSet<SettingRow> Settings => Set<SettingRow>();
+    public DbSet<AuditEntry> Audit => Set<AuditEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -24,6 +28,16 @@ public sealed class AdminDb(DbContextOptions<AdminDb> options) : DbContext(optio
             entry.HasIndex(e => e.Phone).HasFilter("phone IS NOT NULL");
             // For the retention delete (ADM-03).
             entry.HasIndex(e => e.At);
+            // ADM-10: "who else used this address".
+            entry.HasIndex(e => e.Address);
         });
+
+        modelBuilder.Entity<SettingRow>(setting =>
+        {
+            setting.ToTable("settings");
+            setting.HasKey(s => s.Key);
+        });
+
+        modelBuilder.Entity<AuditEntry>(entry => entry.ToTable("audit_log"));
     }
 }

@@ -26,6 +26,9 @@ public static class IdentityService
                 npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", IdentityDb.Schema))
             .UseSnakeCaseNamingConvention());
         services.AddSingleton<IUserDirectory, UserDirectory>();
+        services.AddSingleton<SuspendedUsers>();
+        services.AddSingleton<UserAdmin>();
+        services.AddSingleton<IUserAdmin>(provider => provider.GetRequiredService<UserAdmin>());
 
         services.AddOptions<IdentityOptions>().BindConfiguration("Identity");
         services.TryAddSingleton(TimeProvider.System);
@@ -61,5 +64,6 @@ public static class IdentityService
         var dbFactory = services.GetRequiredService<IDbContextFactory<IdentityDb>>();
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         await db.Database.MigrateAsync(cancellationToken);
+        await services.GetRequiredService<SuspendedUsers>().LoadAsync(cancellationToken);
     }
 }

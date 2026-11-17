@@ -30,10 +30,11 @@ internal sealed class BotGateway(
 
     public async Task<BotAccess> EnterAsync(string? token, IPAddress? address, int port, CancellationToken cancellationToken)
     {
-        if (await bots.AuthenticateAsync(token, cancellationToken) is not { } bot) return new BotAccess(null, null);
+        if (await bots.AuthenticateAsync(token, cancellationToken) is not var (bot, suspended)) return new BotAccess(null, null);
 
-        // ADM-01: every door for bots ends here, so every bot call is in the access log.
+        // ADM-01: every door for bots ends here, so every bot call is in the access log, also of a suspended bot.
         await accessLog.RecordAsync(AccessActor.Bot, bot.Id, address, port, cancellationToken);
+        if (suspended) return new BotAccess(null, null, Suspended: true);
 
         // After the token check, so a wrong token cannot use up a real bot's limit.
         return limits.CheckBot(bot.Id) is { } wait ? new BotAccess(null, wait) : new BotAccess(bot, null);

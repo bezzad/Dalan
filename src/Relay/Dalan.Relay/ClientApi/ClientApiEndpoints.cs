@@ -1,6 +1,7 @@
 using Dalan.Relay.BotApi;
 using Dalan.Relay.Bots;
 using Dalan.Relay.Buttons;
+using Dalan.Relay.Builder;
 using Dalan.Relay.Chats;
 using Dalan.Relay.Data;
 using Dalan.Relay.Files;
@@ -33,6 +34,7 @@ internal static class ClientApiEndpoints
         api.MapGet("/bots/{botId:long}/status", StatusAsync);
         api.MapGet("/events", EventStream.RunAsync);
         api.MapPush();
+        api.MapBuilder();
     }
 
     private static IResult Settings(IOptionsMonitor<RelayOptions> options)
@@ -57,6 +59,7 @@ internal static class ClientApiEndpoints
                 bot.Username,
                 bot.Name,
                 bot.LastSeenAt,
+                Suspended = bot.SuspendedAt != null,
                 // REL-32: the same count as in ChatService.ReadAsync.
                 Unread = db.Messages.Count(m => m.BotId == chat.BotId && m.UserId == chat.UserId
                     && m.Direction == Direction.FromBot && !m.Deleted && m.Seq > chat.LastReadSeq),
@@ -66,7 +69,7 @@ internal static class ClientApiEndpoints
         return ApiJson.Ok(new BotsResponse(bots.Select(bot =>
         {
             var status = presence.Of(bot.Id, bot.LastSeenAt);
-            return new BotJson(bot.Id, bot.Username, bot.Name, bot.Unread, status.Online, status.LastSeen);
+            return new BotJson(bot.Id, bot.Username, bot.Name, bot.Unread, status.Online, status.LastSeen, bot.Suspended);
         })));
     }
 
@@ -82,7 +85,7 @@ internal static class ClientApiEndpoints
         if (bot is null) return BotNotFound();
 
         var started = await db.Memberships.AnyAsync(m => m.BotId == bot.Id && m.UserId == userId, http.RequestAborted);
-        return ApiJson.Ok(new FoundBotJson(bot.Id, bot.Username, bot.Name, started));
+        return ApiJson.Ok(new FoundBotJson(bot.Id, bot.Username, bot.Name, started, bot.SuspendedAt is not null));
     }
 
     /// <summary>REL-15: a person writes to a bot. The first message starts the chat.</summary>
@@ -134,8 +137,9 @@ internal static class ClientApiEndpoints
     }
 
     /// <summary>REL-21: a press on an inline button.</summary>
-    private static async Task<IResult> PressAsync(long botId, HttpContext http, ButtonPresses presses)
+    private static async Task<IResult> PressAsync(long botId, HttpContext http, ButtonPresses presses, SuspendedBots suspendedBots)
     {
+        if (suspendedBots.Contains(botId)) return ApiJson.BotSuspended();
         if (await ApiJson.ReadAsync<PressRequest>(http) is not { MessageId: { } messageId, Data: { } data })
             return ApiJson.BadRequest("""Send JSON like {"message_id": 2, "data": "yes"} with Content-Type application/json.""");
 
@@ -185,6 +189,7 @@ internal static class ClientApiEndpoints
         ChatError.UploadLimit => ApiJson.Error(StatusCodes.Status429TooManyRequests, "upload_limit",
             $"You sent {options.CurrentValue.UserUploadMbPerDay} MB of files in the last 24 hours. Try again later."),
         ChatError.UnknownBot => BotNotFound(),
+        ChatError.BotSuspended => ApiJson.BotSuspended(),
         _ => ApiJson.Error(StatusCodes.Status401Unauthorized, "unauthorized",
             "This account does not exist any more. Log in again."),
     };

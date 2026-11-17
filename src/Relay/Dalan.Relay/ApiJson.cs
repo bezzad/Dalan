@@ -23,6 +23,10 @@ internal static class ApiJson
     public static IResult Error(int status, string code, string message) =>
         Results.Json(new ErrorJson(code, message), Options, statusCode: status);
 
+    /// <summary>REL-38.</summary>
+    public static IResult BotSuspended() => Error(StatusCodes.Status403Forbidden, "bot_suspended",
+        "This bot is suspended by the admin of Dalan.");
+
     public static IResult BadRequest(string message) => Error(StatusCodes.Status400BadRequest, "bad_request", message);
 
     public static IResult TooManyRequests(HttpContext http, TimeSpan wait)

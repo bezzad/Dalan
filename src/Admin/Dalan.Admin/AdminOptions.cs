@@ -6,4 +6,6 @@ public sealed class AdminOptions
     public int AccessLogIntervalMinutes { get; set; }
     public int AccessLogRetentionDays { get; set; }
     public int AccessLogSweepMinutes { get; set; }
+    public int PageSize { get; set; }
+    public int MaxSettingLength { get; set; }
 }

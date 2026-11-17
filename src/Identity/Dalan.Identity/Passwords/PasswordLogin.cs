@@ -66,6 +66,7 @@ internal static class PasswordLogin
         PasswordTries tries,
         SessionTokens sessions,
         SecurityLog log,
+        UserAdmin users,
         IOptionsMonitor<IdentityOptions> options)
     {
         var request = await AuthJson.ReadAsync<Request>(http);
@@ -94,7 +95,7 @@ internal static class PasswordLogin
 #pragma warning disable CA1304, CA1311, CA1862 // This runs in PostgreSQL as lower(username), which the unique index covers.
             .Where(u => phone != null ? u.Phone == phone : u.Username != null && u.Username.ToLower() == name)
 #pragma warning restore CA1304, CA1311, CA1862
-            .Select(u => new { u.Id, u.PasswordHash })
+            .Select(u => new { u.Id, u.PasswordHash, Suspended = u.SuspendedAt != null })
             .FirstOrDefaultAsync(http.RequestAborted);
 
         if (!await IsRightAsync(hasher, user?.PasswordHash, password, options.CurrentValue.PasswordMaxLength))
@@ -105,8 +106,15 @@ internal static class PasswordLogin
                 "The login or the password is wrong. You can also log in with an SMS code.");
         }
 
-        await sessions.SignInAsync(http, user!.Id, SessionTokens.ByPassword);
-        return AuthJson.Ok(await SessionEndpoints.ProfileAsync(dbFactory, user.Id, http.RequestAborted));
+        // AUTH-20: told only after the right password, so it says nothing about other people's accounts.
+        if (user!.Suspended)
+        {
+            log.LoginFailed(SessionTokens.ByPassword, "suspended");
+            return AuthJson.Suspended();
+        }
+
+        await sessions.SignInAsync(http, user.Id, SessionTokens.ByPassword);
+        return AuthJson.Ok(await users.ProfileAsync(user.Id, http.RequestAborted));
     }
 
     private static async Task<bool> IsRightAsync(PasswordHasher hasher, string? stored, string password, int maxLength)

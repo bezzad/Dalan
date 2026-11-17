@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Http;
 namespace Dalan.Identity;
 
 /// <summary>What a person may see of an account. Never the phone number or the password hash (AUTH-04).</summary>
-internal sealed record ProfileJson(long Id, string Name, string? Username, bool HasPassword);
+internal sealed record ProfileJson(long Id, string Name, string? Username, bool HasPassword, bool Admin, string Builder);
 
 internal sealed record ErrorJson(string Error, string Message);
 
@@ -29,6 +29,10 @@ internal static class AuthJson
 
     public static IResult Unauthorized() => Error(StatusCodes.Status401Unauthorized, "unauthorized",
         "You are not logged in, or the session has ended. Log in again.");
+
+    /// <summary>AUTH-20.</summary>
+    public static IResult Suspended() => Error(StatusCodes.Status403Forbidden, "suspended",
+        "This account is suspended by the admin of Dalan.");
 
     public static IResult TooManyRequests(HttpContext http, string code, TimeSpan wait, string message)
     {

@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Dalan.Identity.Users;
 
-internal sealed class UserDirectory(IDbContextFactory<IdentityDb> dbFactory) : IUserDirectory
+internal sealed class UserDirectory(IDbContextFactory<IdentityDb> dbFactory, UserAdmin users) : IUserDirectory
 {
     public async Task<UserProfile?> FindAsync(long userId, CancellationToken cancellationToken)
     {
@@ -14,4 +14,7 @@ internal sealed class UserDirectory(IDbContextFactory<IdentityDb> dbFactory) : I
             .Select(u => new UserProfile(u.Id, u.DisplayName, u.Username))
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public Task<UserAccess> GetAccessAsync(long userId, CancellationToken cancellationToken) =>
+        users.GetAccessAsync(userId, cancellationToken);
 }

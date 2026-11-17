@@ -25,10 +25,11 @@ public sealed partial class Startup(
         {
             try
             {
+                // Admin first: its stored settings (ADM-07) must hold before the others start.
+                await AdminService.StartAsync(services, stoppingToken);
                 await IdentityService.StartAsync(services, stoppingToken);
                 await NotificationService.StartAsync(services, stoppingToken);
                 await RelayService.StartAsync(services, stoppingToken);
-                await AdminService.StartAsync(services, stoppingToken);
                 _done.SetResult();
                 return;
             }

@@ -1,4 +1,7 @@
 using Dalan.Admin.AccessLog;
+using Dalan.Admin.AdminApi;
+using Dalan.Admin.Audit;
+using Dalan.Admin.Settings;
 using Dalan.Admin.Contracts;
 using Dalan.Admin.Data;
 using Microsoft.AspNetCore.Routing;
@@ -25,10 +28,17 @@ public static class AdminService
         services.AddSingleton<AccessLogService>();
         services.AddSingleton<IAccessLog>(provider => provider.GetRequiredService<AccessLogService>());
         services.AddHostedService<AccessLogSweeper>();
+        services.AddSingleton<IAuditLog, AuditLogService>();
+        services.AddSingleton<SettingsCatalog>();
+        services.AddSingleton<SettingsService>();
         return services;
     }
 
-    public static IEndpointRouteBuilder MapAdminService(this IEndpointRouteBuilder endpoints) => endpoints;
+    public static IEndpointRouteBuilder MapAdminService(this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapAdminApi();
+        return endpoints;
+    }
 
     /// <summary>OPS-07: applies this service's migrations. The host calls it before the server is ready.</summary>
     public static async Task StartAsync(IServiceProvider services, CancellationToken cancellationToken)
@@ -36,5 +46,8 @@ public static class AdminService
         var dbFactory = services.GetRequiredService<IDbContextFactory<AdminDb>>();
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         await db.Database.MigrateAsync(cancellationToken);
+
+        // ADM-07: the admin's values hold before the other services start and before the first call.
+        await services.GetRequiredService<SettingsService>().LoadAsync(cancellationToken);
     }
 }

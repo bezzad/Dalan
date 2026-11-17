@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using Dalan.Identity.Data;
+using Dalan.Identity.Users;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,7 @@ internal sealed class SessionTokens(
     IOptionsMonitor<IdentityOptions> options,
     TimeProvider time,
     IDbContextFactory<IdentityDb> dbFactory,
+    SuspendedUsers suspendedUsers,
     SecurityLog log)
 {
     /// <summary>The "__Host-" prefix makes the browser refuse the cookie without Secure or with a Domain.</summary>
@@ -152,6 +154,12 @@ internal sealed class SessionTokens(
             OnMessageReceived = context =>
             {
                 context.Token = context.Request.Cookies[CookieName];
+                return Task.CompletedTask;
+            },
+            // AUTH-20: a suspended user's token stops at once, before it expires.
+            OnTokenValidated = context =>
+            {
+                if (context.Principal is { } principal && suspendedUsers.Contains(UserId(principal))) context.Fail("suspended");
                 return Task.CompletedTask;
             },
             OnChallenge = context =>

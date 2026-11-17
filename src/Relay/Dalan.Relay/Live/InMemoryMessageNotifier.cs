@@ -46,6 +46,15 @@ public sealed class InMemoryMessageNotifier(IOptionsMonitor<RelayOptions> option
         return subscription;
     }
 
+    public void EndStreams(long userId)
+    {
+        lock (_lock)
+        {
+            if (!_streams.TryGetValue(userId, out var streams)) return;
+            foreach (var stream in streams.ToList()) Close(userId, streams, stream);
+        }
+    }
+
     private void Remove(long userId, Subscription subscription)
     {
         lock (_lock)

@@ -1,5 +1,6 @@
 using Dalan.Relay.BotApi;
 using Dalan.Relay.Bots;
+using Dalan.Relay.Builder;
 using Dalan.Relay.Buttons;
 using Dalan.Relay.Chats;
 using Dalan.Relay.ClientApi;
@@ -32,6 +33,8 @@ public static class RelayService
 
         services.AddSingleton<IUpdateQueue, InMemoryUpdateQueue>();
         services.AddSingleton<BotRegistry>();
+        services.AddSingleton<SuspendedBots>();
+        services.AddSingleton<IBotAdmin, BotAdmin>();
         services.AddSingleton<ChatService>();
         services.AddSingleton<DeliveryMarks>();
         services.AddSingleton<BotPresence>();
@@ -64,6 +67,7 @@ public static class RelayService
         await using (var db = await dbFactory.CreateDbContextAsync(cancellationToken))
             await db.Database.MigrateAsync(cancellationToken);
 
+        await services.GetRequiredService<SuspendedBots>().LoadAsync(cancellationToken);
         await services.GetRequiredService<QueueLoader>().LoadAsync(cancellationToken);
 
         // LIVE-04: events that an earlier run saved but did not pass on.

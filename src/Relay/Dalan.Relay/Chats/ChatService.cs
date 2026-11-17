@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Dalan.Identity.Contracts;
+using Dalan.Relay.Bots;
 using Dalan.Relay.ClientApi;
 using Dalan.Relay.Contracts;
 using Dalan.Relay.Data;
@@ -30,6 +31,7 @@ public enum ChatError
     FileTooBig,
     FileNotFound,
     UploadLimit,
+    BotSuspended,
 }
 
 /// <summary>A file a user sends from the client (REL-28).</summary>
@@ -44,6 +46,7 @@ public sealed class ChatService(
     DeliveryMarks marks,
     IMessageNotifier notifier,
     FileStore files,
+    SuspendedBots suspendedBots,
     IOptionsMonitor<RelayOptions> options,
     TimeProvider time)
 {
@@ -51,6 +54,7 @@ public sealed class ChatService(
     public async Task<(ChatError Error, Message? Message)> ReceiveFromUserAsync(
         long botId, long userId, string text, UserUpload? upload, CancellationToken cancellationToken)
     {
+        if (suspendedBots.Contains(botId)) return (ChatError.BotSuspended, null);
         if (CheckText(text, upload is not null) is var error and not ChatError.None) return (error, null);
 
         var sender = await users.FindAsync(userId, cancellationToken);

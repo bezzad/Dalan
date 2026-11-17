@@ -1,3 +1,5 @@
+using Dalan.Identity.Contracts;
+
 namespace Dalan.Identity.Users;
 
 public sealed class User
@@ -11,4 +13,12 @@ public sealed class User
     public string? PasswordHash { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>AUTH-19.</summary>
+    public BuilderState Builder { get; set; }
+
+    public DateTimeOffset? BuilderRequestedAt { get; set; }
+
+    /// <summary>AUTH-20: set while an admin has suspended the user.</summary>
+    public DateTimeOffset? SuspendedAt { get; set; }
 }

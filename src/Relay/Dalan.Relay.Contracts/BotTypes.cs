@@ -4,9 +4,10 @@ public sealed record BotInfo(long Id, string Username, string Name);
 
 /// <summary>
 /// The answer to "may this call go on?". <see cref="Bot"/> is set when it may.
-/// Otherwise <see cref="RetryAfter"/> is set when the bot is over its limit, and both are null when the token is wrong.
+/// Otherwise <see cref="Suspended"/> is true when an admin suspended the bot (REL-38), <see cref="RetryAfter"/>
+/// is set when the bot is over its limit, and all are empty when the token is wrong.
 /// </summary>
-public sealed record BotAccess(BotInfo? Bot, TimeSpan? RetryAfter);
+public sealed record BotAccess(BotInfo? Bot, TimeSpan? RetryAfter, bool Suspended = false);
 
 /// <summary>What a bot learns about a user. No phone number (REL-10).</summary>
 public sealed record BotUser(long Id, string Name, string? Username);

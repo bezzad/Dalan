@@ -94,6 +94,10 @@ public class LiveTests(PostgresServer postgres)
         public void Publish(LiveEvent liveEvent) => throw new InvalidOperationException("the notifier is down");
 
         public IMessageSubscription Subscribe(long userId) => throw new NotSupportedException();
+
+        public void EndStreams(long userId)
+        {
+        }
     }
 
     [Fact]

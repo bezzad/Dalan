@@ -18,6 +18,9 @@ public sealed class IdentityOptions
     /// <summary>Login without SMS. Works only in the Development environment (AUTH-06).</summary>
     public bool DevLogin { get; set; }
 
+    /// <summary>AUTH-18: phone numbers of the admins, comma separated. Only in the file or environment, never in the panel.</summary>
+    public string? AdminPhones { get; set; }
+
     public int MaxNameLength { get; set; }
 
     /// <summary>Zero bits the proof of work must have (SEC-06).</summary>
