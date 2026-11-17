@@ -1,3 +1,4 @@
+using Dalan.Admin;
 using Dalan.Identity;
 using Dalan.Relay;
 
@@ -25,6 +26,7 @@ public sealed partial class Startup(
             {
                 await IdentityService.StartAsync(services, stoppingToken);
                 await RelayService.StartAsync(services, stoppingToken);
+                await AdminService.StartAsync(services, stoppingToken);
                 _done.SetResult();
                 return;
             }

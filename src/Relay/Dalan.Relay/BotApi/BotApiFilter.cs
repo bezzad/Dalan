@@ -1,10 +1,11 @@
+using Dalan.Admin.Contracts;
 using Dalan.Relay.Bots;
 using Microsoft.AspNetCore.Http;
 
 namespace Dalan.Relay.BotApi;
 
-/// <summary>Runs before every Bot API call: token check (REL-04), then the limit per bot (SEC-01).</summary>
-internal sealed class BotApiFilter(BotRegistry bots, RateLimits limits) : IEndpointFilter
+/// <summary>Runs before every Bot API call: token check (REL-04), the access log (ADM-01), then the limit per bot (SEC-01).</summary>
+internal sealed class BotApiFilter(BotRegistry bots, RateLimits limits, IAccessLog accessLog) : IEndpointFilter
 {
     private const string Scheme = "Bearer ";
     private static readonly object BotIdKey = new();
@@ -22,6 +23,9 @@ internal sealed class BotApiFilter(BotRegistry bots, RateLimits limits) : IEndpo
             return ApiJson.Error(StatusCodes.Status401Unauthorized, "unauthorized",
                 "The bot token is missing or wrong. Send it as 'Authorization: Bearer <token>'.");
         }
+
+        await accessLog.RecordAsync(
+            AccessActor.Bot, botId, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
 
         // After the token check, so a wrong token cannot use up a real bot's limit.
         if (limits.CheckBot(botId) is { } wait) return ApiJson.TooManyRequests(http, wait);
