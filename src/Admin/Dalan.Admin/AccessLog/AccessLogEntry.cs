@@ -8,6 +8,7 @@ public sealed class AccessLogEntry
 {
     public long Id { get; set; }
     public AccessActor Actor { get; set; }
+
     /// <summary>The user or bot id; 0 for a phone number.</summary>
     public long ActorId { get; set; }
 
