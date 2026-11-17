@@ -1,7 +1,7 @@
 // Rules: CLI-26, CLI-27, CLI-28, CLI-29, CLI-30
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { categoryName, faqItems, initial, landing, pageFor, privacyPoints, readyPrompt, showcaseStateName, type PublicNumbers } from "../src/pages.ts";
+import { categoryName, diagram, faqItems, initial, landing, steps, pageFor, privacyPoints, readyPrompt, showcaseStateName, type PublicNumbers } from "../src/pages.ts";
 
 const numbers: PublicNumbers = { history_messages: 200, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60,
   site_url: "https://dalanet.ir", bot_api_url: "https://api.dalanet.ir" };
@@ -15,6 +15,24 @@ test("CLI-26 the landing page has the three messages in order and never says tun
   assert.equal(landing.fa.length, 3);
   for (const message of [...landing.fa, ...landing.en]) {
     assert.doesNotMatch(message.title + message.text, /tunnel|تونل/i);
+  }
+});
+
+test("CLI-26 the diagram has the user, Dalan and your computer, and the computer only calls out", () => {
+  assert.deepEqual(diagram.en.parts.map(part => part.title), ["User", "Dalan", "Your computer"]);
+  assert.equal(diagram.fa.parts.length, 3);
+  assert.match(diagram.en.outgoing, /outgoing/);
+  assert.match(diagram.fa.outgoing, /خروجی/);
+});
+
+test("CLI-26 the steps use the addresses from the public settings", () => {
+  const values = { ...numbers, site_url: "https://example.ir", bot_api_url: "https://api.example.ir" };
+  for (const lang of ["fa", "en"] as const) {
+    const list = steps(lang, values);
+    assert.equal(list.length, 3);
+    assert.ok(list[1]!.code!.includes("https://api.example.ir/bot<token>/getUpdates"));
+    assert.ok(list[2]!.code!.includes("https://example.ir/@"));
+    for (const step of list) assert.doesNotMatch(step.title + step.text + (step.code ?? ""), /tunnel|تونل|dalanet/i);
   }
 });
 
