@@ -69,7 +69,9 @@ echo "PASS OPS-09 deploy user may only restart dalan"
 
 # Rule: OPS-10 first run makes the secrets
 [ "$(stat -c %a "$env_file")" = 640 ] || fail "dalan.env mode is $(stat -c %a "$env_file")"
-grep -qE '^ConnectionStrings__Dalan=Host=localhost;Database=dalan;Username=dalan;Password=[0-9a-f]{48}$' "$env_file" || fail "no connection string"
+connection=$(sed -nE 's/^ConnectionStrings__Dalan=(.*)/\1/p' "$env_file")
+[[ "$connection" == "Host=localhost;Database=dalan;Username=dalan;"* ]] || fail "no connection string"
+[[ "$connection" =~ \;Password=[0-9a-f]{48}$ ]] || fail "no random database password"
 password=$(sed -nE 's/.*Password=(.*)/\1/p' "$env_file")
 grep -qF "CREATE ROLE dalan LOGIN PASSWORD '$password'" "$state/commands.log" || fail "role password differs from dalan.env"
 signing=$(sed -nE 's/^Identity__SigningKey=(.*)/\1/p' "$env_file")
