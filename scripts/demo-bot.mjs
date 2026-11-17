@@ -2,13 +2,16 @@
 // A tiny bot to try Dalan on your own machine: it answers every message and file, and shows reply and inline buttons.
 // It only calls out (long polling), like a real bot at home.
 //
-// 1. Make the bot in the local database (there is no "create bot" screen before milestone 8):
+// 1. Make the bot: start the server with Identity__AdminPhones set to your phone, log in with that phone,
+//    then Account > Builder bots > Create bot. Copy the token that is shown once.
+//    Or, without the screen, in the local database:
 //      docker compose exec postgres psql -U dalan -c "INSERT INTO relay.bots (username, name, owner_user_id, token_hash, created_at) VALUES ('demo', 'Demo bot', 0, sha256('local-demo-secret-not-for-production'), now()) RETURNING id"
-// 2. Run it with the id that came back (1 on a new database):
-//      node scripts/demo-bot.mjs 1
+// 2. Run it with the token, or with the id that came back from SQL (1 on a new database):
+//      node scripts/demo-bot.mjs <token or id>
 // 3. Open http://localhost:5000/@demo and press Start.
 const api = process.env.DALAN_API ?? "http://localhost:5000";
-const token = `${process.argv[2] ?? 1}:local-demo-secret-not-for-production`;
+const argument = process.argv[2] ?? "1";
+const token = argument.includes(":") ? argument : `${argument}:local-demo-secret-not-for-production`;
 const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
 const call = (method, path, body) =>

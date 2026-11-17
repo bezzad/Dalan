@@ -43,7 +43,7 @@ internal static class SmsLoginEndpoints
 
     private static async Task<IResult> SendAsync(
         HttpContext http, ProofOfWork proofOfWork, SmsCodes codes, ISmsSender sender, IAccessLog accessLog,
-        IOptionsMonitor<IdentityOptions> options)
+        IDbContextFactory<IdentityDb> dbFactory, IOptionsMonitor<IdentityOptions> options)
     {
         var request = await AuthJson.ReadAsync<SmsRequest>(http);
         if (PhoneNumber.Normalize(request?.Phone) is not { } phone) return BadPhone();
@@ -52,6 +52,13 @@ internal static class SmsLoginEndpoints
         {
             return AuthJson.BadRequest("bad_proof",
                 "The proof of work is missing, wrong or too old. Get a new challenge from POST /api/auth/challenge and solve it.");
+        }
+
+        // AUTH-20: no SMS for a suspended user; it would cost money and lead nowhere.
+        await using (var db = await dbFactory.CreateDbContextAsync(http.RequestAborted))
+        {
+            if (await db.Users.AnyAsync(u => u.Phone == phone && u.SuspendedAt != null, http.RequestAborted))
+                return AuthJson.Suspended();
         }
 
         var ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -86,6 +93,7 @@ internal static class SmsLoginEndpoints
         SecurityLog log,
         IDbContextFactory<IdentityDb> dbFactory,
         IOptionsMonitor<IdentityOptions> options,
+        UserAdmin users,
         TimeProvider time)
     {
         var request = await AuthJson.ReadAsync<VerifyRequest>(http);
@@ -119,7 +127,9 @@ internal static class SmsLoginEndpoints
             RETURNING id AS "Value"
             """).ToListAsync(http.RequestAborted);
 
+        if ((await users.GetAccessAsync(ids[0], http.RequestAborted)).IsSuspended) return AuthJson.Suspended();
+
         await sessions.SignInAsync(http, ids[0], SessionTokens.BySms);
-        return AuthJson.Ok(await SessionEndpoints.ProfileAsync(dbFactory, ids[0], http.RequestAborted));
+        return AuthJson.Ok(await users.ProfileAsync(ids[0], http.RequestAborted));
     }
 }

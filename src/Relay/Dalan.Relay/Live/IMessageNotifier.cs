@@ -35,4 +35,7 @@ public interface IMessageNotifier
     void Publish(LiveEvent liveEvent);
 
     IMessageSubscription Subscribe(long userId);
+
+    /// <summary>AUTH-20: ends every open stream of the user.</summary>
+    void EndStreams(long userId);
 }

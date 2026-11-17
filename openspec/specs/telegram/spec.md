@@ -303,3 +303,11 @@ A user's file message SHALL reach `getUpdates` with the file in Telegram's shape
 - **GIVEN** a user sent a photo
 - **WHEN** the bot calls `getFile` with its `file_id` and downloads `file_path`
 - **THEN** it gets the same bytes
+
+### Requirement: TG-22 Suspended bot
+A Telegram adapter call of a suspended bot (REL-38) SHALL get HTTP 403 with `{"ok":false,"error_code":403,"description":"Forbidden: bot was suspended"}` and SHALL do nothing.
+
+#### Scenario: getMe
+- **GIVEN** a suspended bot
+- **WHEN** it calls `getMe`
+- **THEN** the answer is 403 with that description

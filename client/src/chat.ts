@@ -176,8 +176,11 @@ export function chatScreen(app: App, username: string): Screen {
 
   (async () => {
     try {
-      bot = await api.findBot(username);
+      const found = await api.findBot(username);
+      bot = found;
       title.textContent = bot.name;
+      // CLI-25: say it at once, before the user writes.
+      if (found.suspended) error.textContent = t("botSuspended");
       void refreshStatus();
       await app.chats.open(bot.id);
       draw();

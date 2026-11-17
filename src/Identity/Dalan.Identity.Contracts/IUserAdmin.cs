@@ -1,0 +1,45 @@
+namespace Dalan.Identity.Contracts;
+
+/// <summary>AUTH-19: may a user create bots?</summary>
+public enum BuilderState
+{
+    None = 0,
+    Requested = 1,
+    Approved = 2,
+}
+
+/// <summary>What a user may do now. A user that does not exist has every flag false.</summary>
+public sealed record UserAccess(bool IsAdmin, bool IsBuilder, bool IsSuspended);
+
+/// <summary>A user as the admin sees it: with the phone number, for legal complaints (ADM-11).</summary>
+public sealed record AdminUser(
+    long Id,
+    string Phone,
+    string Name,
+    string? Username,
+    DateTimeOffset CreatedAt,
+    BuilderState Builder,
+    DateTimeOffset? BuilderRequestedAt,
+    bool Suspended);
+
+/// <summary>
+/// What the admin door asks of Identity (ADM-11, AUTH-19, AUTH-20). It carries phone numbers,
+/// so only the Admin service may use it (AUTH-02).
+/// </summary>
+public interface IUserAdmin
+{
+    /// <summary>Exact id, phone (any Iranian form) or username, or the start of the name.</summary>
+    Task<IReadOnlyList<AdminUser>> SearchAsync(string query, int limit, CancellationToken cancellationToken);
+
+    /// <summary>Open builder requests, oldest first.</summary>
+    Task<IReadOnlyList<AdminUser>> BuilderRequestsAsync(int limit, CancellationToken cancellationToken);
+
+    /// <summary>Approves (Approved) or refuses (None) the user. Null when the user does not exist.</summary>
+    Task<AdminUser?> SetBuilderAsync(long userId, bool approve, CancellationToken cancellationToken);
+
+    /// <summary>AUTH-20: a suspended user is logged out everywhere at once. Null when the user does not exist.</summary>
+    Task<AdminUser?> SetSuspendedAsync(long userId, bool suspended, CancellationToken cancellationToken);
+
+    /// <summary>An Iranian mobile number in any form as +989121234567, or null.</summary>
+    string? NormalizePhone(string? input);
+}

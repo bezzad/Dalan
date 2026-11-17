@@ -49,6 +49,10 @@ namespace Dalan.Relay.Data.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("owner_user_id");
 
+                    b.Property<DateTimeOffset?>("SuspendedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("suspended_at");
+
                     b.Property<byte[]>("TokenHash")
                         .IsRequired()
                         .HasColumnType("bytea")

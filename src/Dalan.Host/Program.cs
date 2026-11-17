@@ -1,4 +1,5 @@
 using Dalan.Admin;
+using Dalan.Admin.Settings;
 using Dalan.Host;
 using Dalan.Identity;
 using Dalan.Notification;
@@ -6,6 +7,9 @@ using Dalan.Relay;
 using Dalan.Telegram;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ADM-07: the values the admin set win over the file and the environment, so this source comes last.
+builder.Configuration.AddAdminSettings();
 
 // OPS-04: one JSON object per line on stdout.
 builder.Logging.ClearProviders();

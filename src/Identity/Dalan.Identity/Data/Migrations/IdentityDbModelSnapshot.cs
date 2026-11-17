@@ -135,6 +135,14 @@ namespace Dalan.Identity.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<int>("Builder")
+                        .HasColumnType("integer")
+                        .HasColumnName("builder");
+
+                    b.Property<DateTimeOffset?>("BuilderRequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("builder_requested_at");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -152,6 +160,10 @@ namespace Dalan.Identity.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("phone");
+
+                    b.Property<DateTimeOffset?>("SuspendedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("suspended_at");
 
                     b.Property<string>("Username")
                         .HasColumnType("text")

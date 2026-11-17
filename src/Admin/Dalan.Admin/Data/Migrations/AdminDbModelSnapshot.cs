@@ -62,6 +62,9 @@ namespace Dalan.Admin.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_access_log");
 
+                    b.HasIndex("Address")
+                        .HasDatabaseName("ix_access_log_address");
+
                     b.HasIndex("At")
                         .HasDatabaseName("ix_access_log_at");
 
@@ -73,6 +76,68 @@ namespace Dalan.Admin.Data.Migrations
                         .HasDatabaseName("ix_access_log_actor_actor_id_at");
 
                     b.ToTable("access_log", "admin");
+                });
+
+            modelBuilder.Entity("Dalan.Admin.Audit.AuditEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("action");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<string>("Detail")
+                        .HasColumnType("text")
+                        .HasColumnName("detail");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("target");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_log");
+
+                    b.ToTable("audit_log", "admin");
+                });
+
+            modelBuilder.Entity("Dalan.Admin.Settings.SettingRow", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasColumnType("text")
+                        .HasColumnName("key");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long>("UpdatedBy")
+                        .HasColumnType("bigint")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("value");
+
+                    b.HasKey("Key")
+                        .HasName("pk_settings");
+
+                    b.ToTable("settings", "admin");
                 });
 #pragma warning restore 612, 618
         }

@@ -29,6 +29,8 @@ public static class TelegramAdapter
         var access = await gateway.EnterAsync(
             token, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
         if (access.RetryAfter is { } wait) return TelegramJson.TooManyRequests(http, wait);
+        // TG-22.
+        if (access.Suspended) return TelegramJson.Error(StatusCodes.Status403Forbidden, "Forbidden: bot was suspended");
         if (access.Bot is not { } bot) return TelegramJson.Error(StatusCodes.Status401Unauthorized, "Unauthorized");
 
         var name = method.ToUpperInvariant();
@@ -75,6 +77,8 @@ public static class TelegramAdapter
         var access = await gateway.EnterAsync(
             token, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
         if (access.RetryAfter is { } wait) return TelegramJson.TooManyRequests(http, wait);
+        // TG-22.
+        if (access.Suspended) return TelegramJson.Error(StatusCodes.Status403Forbidden, "Forbidden: bot was suspended");
         if (access.Bot is not { } bot) return TelegramJson.Error(StatusCodes.Status401Unauthorized, "Unauthorized");
 
         if (await gateway.GetFileAsync(bot.Id, path, http.RequestAborted) is not { } file

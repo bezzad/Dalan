@@ -42,6 +42,8 @@ public sealed class RelayOptions
     public int UserUploadMbPerDay { get; set; }
     public int BotOnlineSeconds { get; set; }
     public int ClientStatusRefreshSeconds { get; set; }
+    public int MaxBotsPerBuilder { get; set; }
+    public int MaxBotNameLength { get; set; }
 
     public TimeSpan UpdateExpiry => TimeSpan.FromSeconds(UpdateExpirySeconds);
 }

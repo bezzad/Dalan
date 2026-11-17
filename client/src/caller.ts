@@ -20,7 +20,7 @@ export class ApiError extends Error {
 export type Send = (path: string, init: { method: string; headers: Record<string, string>; body: string | Blob | null }) =>
   Promise<{ status: number; ok: boolean; headers: { get(name: string): string | null }; json(): Promise<unknown> }>;
 
-export type Method = "GET" | "POST";
+export type Method = "GET" | "POST" | "PUT" | "DELETE";
 
 const RefreshPath = "/api/auth/refresh";
 /** A 401 from these says "wrong code or password" or "no session at all", not "the token ended". */

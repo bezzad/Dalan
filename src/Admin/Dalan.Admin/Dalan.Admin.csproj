@@ -8,5 +8,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Dalan.Admin.Contracts/Dalan.Admin.Contracts.csproj" />
+    <ProjectReference Include="../../Identity/Dalan.Identity.Contracts/Dalan.Identity.Contracts.csproj" />
+    <ProjectReference Include="../../Relay/Dalan.Relay.Contracts/Dalan.Relay.Contracts.csproj" />
   </ItemGroup>
 </Project>

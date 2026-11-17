@@ -68,8 +68,27 @@ public class UserTests(PostgresServer postgres)
     [Trait("Rule", "AUTH-02")]
     public void AUTH02_contract_has_no_phone_member()
     {
-        var members = typeof(IUserDirectory).Assembly.GetTypes().SelectMany(type => type.GetMembers());
+        // IUserAdmin and AdminUser carry the phone on purpose: only the Admin service uses them (ADM-11).
+        var members = typeof(IUserDirectory).Assembly.GetTypes()
+            .Where(type => type != typeof(IUserAdmin) && type != typeof(AdminUser))
+            .SelectMany(type => type.GetMembers());
 
         Assert.DoesNotContain(members, member => member.Name.Contains("phone", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    [Trait("Rule", "AUTH-02")]
+    public void AUTH02_only_the_admin_service_uses_the_contract_with_phones()
+    {
+        const System.Reflection.BindingFlags All = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic
+            | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.DeclaredOnly;
+        var others = new[] { typeof(Dalan.Relay.RelayOptions).Assembly, typeof(Dalan.Notification.NotificationOptions).Assembly };
+
+        var users = others.SelectMany(a => a.GetTypes())
+            .SelectMany(type => type.GetConstructors(All).Cast<System.Reflection.MethodBase>().Concat(type.GetMethods(All)))
+            .Where(method => method.GetParameters().Any(p => p.ParameterType == typeof(IUserAdmin)))
+            .Select(method => $"{method.DeclaringType}.{method.Name}");
+
+        Assert.Empty(users);
     }
 }

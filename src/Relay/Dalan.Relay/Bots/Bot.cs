@@ -17,6 +17,9 @@ public sealed class Bot
 
     /// <summary>REL-33: the last get-updates call, saved at most once per Relay:BotOnlineSeconds.</summary>
     public DateTimeOffset? LastSeenAt { get; set; }
+
+    /// <summary>REL-38: set while an admin has suspended the bot.</summary>
+    public DateTimeOffset? SuspendedAt { get; set; }
 }
 
 public sealed class CommandEntry

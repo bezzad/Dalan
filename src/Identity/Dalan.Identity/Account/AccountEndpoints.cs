@@ -1,8 +1,10 @@
 using System.Security.Claims;
 using System.Text.RegularExpressions;
+using Dalan.Identity.Contracts;
 using Dalan.Identity.Data;
 using Dalan.Identity.Passwords;
 using Dalan.Identity.Sessions;
+using Dalan.Identity.Users;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -23,6 +25,7 @@ internal static partial class AccountEndpoints
     {
         endpoints.MapPost("/api/account/password", SetPasswordAsync).RequireAuthorization();
         endpoints.MapPost("/api/account/username", SetUsernameAsync).RequireAuthorization();
+        endpoints.MapPost("/api/account/builder", AskBuilderAsync).RequireAuthorization();
     }
 
     private static async Task<IResult> SetPasswordAsync(
@@ -66,7 +69,7 @@ internal static partial class AccountEndpoints
         return Results.NoContent();
     }
 
-    private static async Task<IResult> SetUsernameAsync(HttpContext http, IDbContextFactory<IdentityDb> dbFactory)
+    private static async Task<IResult> SetUsernameAsync(HttpContext http, IDbContextFactory<IdentityDb> dbFactory, UserAdmin users)
     {
         var username = (await AuthJson.ReadAsync<UsernameRequest>(http))?.Username?.Trim() ?? "";
         if (!UsernameShape().IsMatch(username))
@@ -87,7 +90,24 @@ internal static partial class AccountEndpoints
             return AuthJson.Error(StatusCodes.Status409Conflict, "username_taken", "Another user has this username. Choose another one.");
         }
 
-        var profile = await SessionEndpoints.ProfileAsync(dbFactory, userId, http.RequestAborted);
+        var profile = await users.ProfileAsync(userId, http.RequestAborted);
+        return profile is null ? AuthJson.Unauthorized() : AuthJson.Ok(profile);
+    }
+
+    /// <summary>AUTH-19: asks the admin for the right to create bots. An approved user stays approved.</summary>
+    private static async Task<IResult> AskBuilderAsync(
+        HttpContext http, IDbContextFactory<IdentityDb> dbFactory, UserAdmin users, TimeProvider time)
+    {
+        var userId = SessionTokens.UserId(http.User);
+        await using (var db = await dbFactory.CreateDbContextAsync(http.RequestAborted))
+        {
+            await db.Users.Where(u => u.Id == userId && u.Builder == BuilderState.None)
+                .ExecuteUpdateAsync(set => set
+                    .SetProperty(u => u.Builder, BuilderState.Requested)
+                    .SetProperty(u => u.BuilderRequestedAt, time.GetUtcNow()), http.RequestAborted);
+        }
+
+        var profile = await users.ProfileAsync(userId, http.RequestAborted);
         return profile is null ? AuthJson.Unauthorized() : AuthJson.Ok(profile);
     }
 

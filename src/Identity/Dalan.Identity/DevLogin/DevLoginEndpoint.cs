@@ -38,6 +38,7 @@ internal static class DevLoginEndpoint
         IDbContextFactory<IdentityDb> dbFactory,
         SessionTokens sessions,
         IOptionsMonitor<IdentityOptions> options,
+        UserAdmin users,
         TimeProvider time)
     {
         var request = await AuthJson.ReadAsync<Request>(http);
@@ -58,7 +59,9 @@ internal static class DevLoginEndpoint
             RETURNING id AS "Value"
             """).ToListAsync(http.RequestAborted);
 
+        if ((await users.GetAccessAsync(ids[0], http.RequestAborted)).IsSuspended) return AuthJson.Suspended();
+
         await sessions.SignInAsync(http, ids[0], SessionTokens.ByDevLogin);
-        return AuthJson.Ok(await SessionEndpoints.ProfileAsync(dbFactory, ids[0], http.RequestAborted));
+        return AuthJson.Ok(await users.ProfileAsync(ids[0], http.RequestAborted));
     }
 }

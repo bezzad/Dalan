@@ -217,13 +217,15 @@ Every account starts with an SMS code to an Iranian mobile number, so builders a
 - The SMS provider must be inside Iran.
 - SMS sending sits behind one small interface, so the provider can be changed, or a second one added as a fallback, by writing one class.
 
-**Becoming a builder.** A user verifies an email (a work email is fine) and the admin approves. Only then can the user create bots.
+**Becoming a builder.** A user verifies an email (a work email is fine) and the admin approves. Only then can the user create bots. Until email exists, admin approval alone is enough (milestone 8).
 
 **What a bot learns about a user:** the stable numeric id, display name and username. It never gets the phone number unless the user chooses to share it. This protects users, and it stops anyone from building a bot only to collect phone numbers.
 
 **Storage.** Passwords use a slow salted hash. Login uses a JWT access token and a refresh token, kept in `HttpOnly`, `Secure`, `SameSite` cookies on `dalanet.ir` (`docs/ARCHITECTURE.md` section 7). The development login stays for local work and works only in the Development environment.
 
 **Built in milestone 4:** steps 1 and 2 and the SMS protection. Steps 3 and 4 (email, two-step login with TOTP or SMS) are not built yet.
+
+**Built in milestone 8:** builder request and admin approval (no email yet), admins by phone number (`Identity:AdminPhones`), suspend for users and bots.
 
 **Layer 2: "Login with Dalan".** An app on its own domain cannot read Dalan's cookie. It sends the user to Dalan's login page and gets a token back. This is OAuth 2 with PKCE (OpenID Connect).
 
@@ -258,7 +260,7 @@ Every limit is a setting the admin can change from the dashboard, globally, per 
 
 - Every Bot API and Client API call records who called, the real client address, the source port and the UTC time; at most one row per caller and address per hour. Mobile carriers put many people behind one address (CGNAT), so the port and exact time are needed to find the person.
 - The address must be the real client's, also behind a proxy or load balancer, and a client must not be able to fake it. Rules `SEC-10`, `SEC-11`, `ADM-01` to `ADM-04`; how it works: `docs/ARCHITECTURE.md` section 11.
-- The admin dashboard shows, for a user or a bot, the list of addresses with port and time, and can search by address (milestone 8).
+- The admin dashboard shows, for a user, a bot or a phone number, the list of addresses with port and time, and can search by address (built in milestone 8).
 - Every login code sent by SMS records the phone number with the address and port of the caller who asked for it, because the person who gets the SMS may not be the one who asked.
 
 ## 11. Layer 2 design: sites
@@ -470,7 +472,11 @@ None of these is planned work. They are recorded so the design does not block th
 | Files a user may upload | 200 MB in 24 hours | Assumed (milestone 6) |
 | History kept per chat | Last 200 messages, 30 days | Assumed |
 | Access log: one row per caller and address | Every 60 minutes | Assumed |
-| Access log kept | 180 days | Assumed (our reading of the six months in the Computer Crimes Law; for the lawyer) |
+| Access log kept | 180 days | Owner (2026-11-17: enough for now; the admin can change it) |
+| Bots per builder | 20 | Assumed (milestone 8) |
+| Bot name length | 64 characters | Assumed (milestone 8) |
+| Rows per page in the admin screens | 100 | Assumed (milestone 8) |
+| Text setting length | 1,000 characters | Assumed (milestone 8) |
 | Site storage per bot (Layer 2) | 200 MB | Agreed in discussion |
 | Pending site requests per user (Layer 2) | 20 | Assumed |
 | Site request timeout (Layer 2) | 30 seconds | Assumed |

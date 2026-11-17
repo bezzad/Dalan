@@ -55,7 +55,7 @@ export function botsScreen(app: App, onLanguage: () => void): Screen {
   const element = h("main", {},
     h("header", {},
       h("h1", {}, t("myBots")),
-      h("button", { type: "button", class: "link", onclick: () => app.showAccount(true) }, t("account")),
+      h("button", { type: "button", class: "link", onclick: () => app.showPanel("account") }, t("account")),
       h("button", { type: "button", class: "link", onclick: onLanguage }, t("language")),
       h("button", { type: "button", class: "link", onclick: () => app.logout() }, t("logout"))),
     h("p", { class: "note", dir: "auto" }, app.user.name),
