@@ -15,7 +15,7 @@ Read first:
 dotnet build Dalan.slnx -c Release          # needs .NET SDK 11 (global.json)
 dotnet test -c Release                      # all .NET tests; needs Docker, or DALAN_TEST_POSTGRES=<connection string>
 docker compose up -d                        # local PostgreSQL for the next line
-dotnet run --project src/Dalan.Host         # run the server; open http://localhost:5000 (development login is on)
+dotnet run --project src/Dalan.Host         # run the server; open http://localhost:5000 (development login is on; SMS codes go to the log)
 node scripts/demo-bot.mjs 1                 # a small bot to chat with; see the top of the file
 bash scripts/check-rules.sh                 # every spec rule ID has a test
 bash tests/deploy/deploy_test.sh            # deploy script tests
@@ -52,7 +52,7 @@ openspec/                          specs and changes
 10. Always use the latest stable version of every tool and package; check the real version, do not trust memory.
 11. After CI passes on a PR, do a final code review of the whole diff. If all is OK, merge it yourself; if not, fix and repeat. Never merge with red or missing CI.
 12. Keep docs short and current.
-13. Legal duty: the real IP address, port and time of every user and bot are recorded (`admin.access_log`) to answer cyber police (FATA) complaints. Never read `X-Forwarded-For` yourself: use `HttpContext.Connection` (the host makes it real, only from `Dalan:TrustedProxies`). Every door that knows its caller calls `IAccessLog`. A new proxy or load balancer goes into `Dalan:TrustedProxies`. Rules `SEC-06`, `SEC-07`, `ADM-01` to `ADM-03`; `docs/ARCHITECTURE.md` section 11.
+13. Legal duty: the real IP address, port and time of every user and bot are recorded (`admin.access_log`) to answer cyber police (FATA) complaints. Never read `X-Forwarded-For` yourself: use `HttpContext.Connection` (the host makes it real, only from `Dalan:TrustedProxies`). Every door that knows its caller calls `IAccessLog`; every sent SMS code is recorded with its phone number. A new proxy or load balancer goes into `Dalan:TrustedProxies`. Rules `SEC-10`, `SEC-11`, `ADM-01` to `ADM-04`; `docs/ARCHITECTURE.md` section 11.
 
 ## Working with the owner
 

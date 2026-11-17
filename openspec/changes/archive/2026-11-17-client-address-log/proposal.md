@@ -10,9 +10,10 @@ The owner must be able to answer a legal complaint (cyber police, FATA): from wh
 - **Warning for a forgotten proxy** (host): a call with `X-Forwarded-For` from a private address that is not in the list is logged as a warning.
 - **Front proxy** (Caddy) sends the client's address and port and drops what the client wrote in the header.
 - **Access log** (Admin, new schema `admin`): who (user or bot), address, port, exact UTC time. Written for every accepted Bot API and Client API call, at most one row per caller and address in a time span.
+- **SMS code requests** (Identity): every login code sent by SMS records the phone number with the address and port of the caller who asked for it.
 - **Retention**: rows older than a set number of days are deleted.
 
-Out of scope: the admin screen that shows the log (milestone 8); addresses of calls with no known caller, for example an SMS code request (milestone 4 adds it on top of `IAccessLog`); the PROXY protocol.
+Out of scope: the admin screen that shows the log (milestone 8); other calls with no known caller (a wrong token, a failed password try: these are in the security log lines of milestone 4); the PROXY protocol.
 
 ## Capabilities
 
@@ -29,5 +30,5 @@ Out of scope: the admin screen that shows the log (milestone 8); addresses of ca
 
 - New settings: `Dalan:TrustedProxies` (`127.0.0.1,::1`), `Admin:AccessLogIntervalMinutes` (60), `Admin:AccessLogRetentionDays` (180), `Admin:AccessLogSweepMinutes` (60).
 - New database schema `admin` with table `access_log` (first Admin migration).
-- New contract `Dalan.Admin.Contracts.IAccessLog`; Relay references `Dalan.Admin.Contracts`.
+- New contract `Dalan.Admin.Contracts.IAccessLog`; Relay and Identity reference `Dalan.Admin.Contracts`.
 - `deploy/Caddyfile` changes; a load balancer added later must be listed in `Dalan:TrustedProxies`.

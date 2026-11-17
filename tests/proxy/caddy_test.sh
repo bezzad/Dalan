@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Rule: OPS-06
-# Rule: SEC-06
+# Rule: SEC-10
 # Runs deploy/Caddyfile with a stub upstream. Needs the caddy binary on PATH.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -45,4 +45,4 @@ echo "PASS OPS-06 probes are private"
 # The client fakes the header; the upstream must get only the client's real address and port.
 got=$(curl -s -H 'X-Forwarded-For: 9.9.9.9' -w ' %{local_port}' http://127.0.0.1:18080/)
 [ "${got% *}" = "127.0.0.1:${got#* }" ] || fail "upstream got X-Forwarded-For '${got% *}', want '127.0.0.1:${got#* }'"
-echo "PASS SEC-06 front proxy sends the real address and port"
+echo "PASS SEC-10 front proxy sends the real address and port"

@@ -212,7 +212,9 @@ Every account starts with an SMS code to an Iranian mobile number, so builders a
 
 **What a bot learns about a user:** the stable numeric id, display name and username. It never gets the phone number unless the user chooses to share it. This protects users, and it stops anyone from building a bot only to collect phone numbers.
 
-**Storage.** Passwords use a slow salted hash. Login uses a JWT access token and a refresh token, kept in `HttpOnly`, `Secure`, `SameSite` cookies on `dalanet.ir` (`docs/ARCHITECTURE.md` section 7). Until milestone 4 there is only a development login, which works only in the Development environment.
+**Storage.** Passwords use a slow salted hash. Login uses a JWT access token and a refresh token, kept in `HttpOnly`, `Secure`, `SameSite` cookies on `dalanet.ir` (`docs/ARCHITECTURE.md` section 7). The development login stays for local work and works only in the Development environment.
+
+**Built in milestone 4:** steps 1 and 2 and the SMS protection. Steps 3 and 4 (email, two-step login with TOTP or SMS) are not built yet.
 
 **Layer 2: "Login with Dalan".** An app on its own domain cannot read Dalan's cookie. It sends the user to Dalan's login page and gets a token back. This is OAuth 2 with PKCE (OpenID Connect).
 
@@ -246,9 +248,9 @@ Every limit is a setting the admin can change from the dashboard, globally, per 
 **Access log (legal duty).** When the cyber police (FATA) bring a complaint, the owner must be able to say from which IP address a user or a bot's owner worked, and when. So:
 
 - Every Bot API and Client API call records who called, the real client address, the source port and the UTC time; at most one row per caller and address per hour. Mobile carriers put many people behind one address (CGNAT), so the port and exact time are needed to find the person.
-- The address must be the real client's, also behind a proxy or load balancer, and a client must not be able to fake it. Rules `SEC-06`, `SEC-07`, `ADM-01` to `ADM-03`; how it works: `docs/ARCHITECTURE.md` section 11.
+- The address must be the real client's, also behind a proxy or load balancer, and a client must not be able to fake it. Rules `SEC-10`, `SEC-11`, `ADM-01` to `ADM-04`; how it works: `docs/ARCHITECTURE.md` section 11.
 - The admin dashboard shows, for a user or a bot, the list of addresses with port and time, and can search by address (milestone 8).
-- Calls with no known caller are not recorded yet. Milestone 4 must record each SMS code request (phone number, address, port) with the same contract.
+- Every login code sent by SMS records the phone number with the address and port of the caller who asked for it, because the person who gets the SMS may not be the one who asked.
 
 ## 11. Layer 2 design: sites
 
@@ -440,6 +442,13 @@ None of these is planned work. They are recorded so the design does not block th
 | Update expiry | 60 seconds | Owner |
 | SMS per phone number | 1 per minute | Owner |
 | SMS per phone number per day | 5 | Assumed |
+| SMS per client address per day | 200 | Assumed (high: a safety net only) |
+| SMS for the whole server per day | 1,000 | Assumed |
+| SMS code | 6 digits, 2 minutes, 5 tries | Assumed |
+| Proof of work | 14 zero bits (about 1 second in a browser) | Assumed |
+| Session (access token) / refresh token | 15 minutes / 30 days from the last use | Assumed |
+| Password length | 8 to 128 characters | Assumed |
+| Password tries per login name / per client address | 5 / 100 in 15 minutes | Assumed |
 | Long-polling timeout | 30 seconds default, 50 maximum | Assumed (Telegram-like) |
 | Bot shown as online | Last poll under 60 seconds ago | Assumed |
 | Message text length | 4,096 characters | Assumed (Telegram parity) |
@@ -467,7 +476,7 @@ None of these is planned work. They are recorded so the design does not block th
 
 **Open questions:**
 
-- [ ] Which domestic SMS provider? Suggested: start with Kavenegar and keep SMS.ir as the second choice. Prices and delivery speed were not compared. Account verification and OTP template approval can take days, so start before milestone 4.
+- [ ] SMS provider: the Kavenegar sender is built (milestone 4), SMS.ir stays the second choice. Still to do by the owner: a Kavenegar account, an approved OTP template named `dalan-login` with one token, and the API key on the server. Prices and delivery speed were not compared.
 - [ ] Which hosting provider, after comparing traffic cost, extra disk and DNS?
 - [ ] Buy a separate sites domain before Layer 2 (candidate: `dalancloud.ir`)?
 - [ ] Buy a foreign backup domain (candidate: `dalanet.net`)?
@@ -481,7 +490,7 @@ Version 1 is done when ArcaneBot runs on Dalan with only its server address and 
 1. **Skeleton.** Repository, solution layout, CI, the no-Docker deploy script, a health endpoint.
 2. **Core relay.** Database schema for users, bots and memberships; bot tokens; the in-memory queue with expiry; core `getUpdates` by long polling and `sendMessage`.
 3. **Client.** PWA with a development login, bot list, chat, reply buttons, SSE and sync.
-4. **Auth.** SMS OTP with proof of work and rate limits, password login, TOTP.
+4. **Auth.** SMS OTP with proof of work and rate limits, password login, refresh token. (TOTP is left for its own small change.)
 5. **Telegram adapter.** The Layer 1 method list. Test by pointing ArcaneBot at Dalan.
 6. **Rich messages.** Edit, delete, pin, inline buttons and callbacks, commands, files.
 7. **Presence and push.** Web Push, unread counts, bot status, "not delivered".

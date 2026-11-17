@@ -1,0 +1,96 @@
+using System.Security.Claims;
+using System.Text.RegularExpressions;
+using Dalan.Identity.Data;
+using Dalan.Identity.Passwords;
+using Dalan.Identity.Sessions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Npgsql;
+
+namespace Dalan.Identity.Account;
+
+/// <summary>What a logged-in user changes on the account: the password (AUTH-13) and the username (AUTH-15).</summary>
+internal static partial class AccountEndpoints
+{
+    private sealed record PasswordRequest(string? Password, string? CurrentPassword);
+
+    private sealed record UsernameRequest(string? Username);
+
+    public static void MapAccount(this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapPost("/api/account/password", SetPasswordAsync).RequireAuthorization();
+        endpoints.MapPost("/api/account/username", SetUsernameAsync).RequireAuthorization();
+    }
+
+    private static async Task<IResult> SetPasswordAsync(
+        HttpContext http,
+        IDbContextFactory<IdentityDb> dbFactory,
+        PasswordHasher hasher,
+        SessionTokens sessions,
+        SecurityLog log,
+        IOptionsMonitor<IdentityOptions> options)
+    {
+        var settings = options.CurrentValue;
+        var request = await AuthJson.ReadAsync<PasswordRequest>(http);
+        var password = request?.Password ?? "";
+        if (password.Length < settings.PasswordMinLength || password.Length > settings.PasswordMaxLength)
+        {
+            return AuthJson.BadRequest("weak_password",
+                $"""Send JSON with "password": {settings.PasswordMinLength} to {settings.PasswordMaxLength} characters.""");
+        }
+
+        var userId = SessionTokens.UserId(http.User);
+        await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, http.RequestAborted);
+        if (user is null) return AuthJson.Unauthorized();
+
+        // A session that started with an SMS code has proved the phone: that is the "forgot my password" path.
+        var provedPhone = http.User.FindFirstValue(SessionTokens.MethodClaim) == SessionTokens.BySms;
+        if (user.PasswordHash is { } stored && !provedPhone)
+        {
+            var current = request?.CurrentPassword ?? "";
+            if (current.Length == 0 || current.Length > settings.PasswordMaxLength || !await hasher.VerifyAsync(stored, current))
+            {
+                return AuthJson.Error(StatusCodes.Status403Forbidden, "wrong_password",
+                    """Send the right "current_password" too. If you forgot it, log in with an SMS code and set a new one.""");
+            }
+        }
+
+        user.PasswordHash = await hasher.HashAsync(password);
+        await db.SaveChangesAsync(http.RequestAborted);
+        await sessions.SignOutOtherDevicesAsync(http, userId);
+        log.PasswordSet(userId);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> SetUsernameAsync(HttpContext http, IDbContextFactory<IdentityDb> dbFactory)
+    {
+        var username = (await AuthJson.ReadAsync<UsernameRequest>(http))?.Username?.Trim() ?? "";
+        if (!UsernameShape().IsMatch(username))
+        {
+            return AuthJson.BadRequest("bad_username",
+                """Send JSON with "username": 5 to 32 characters of a-z, 0-9 and _, starting with a letter.""");
+        }
+
+        var userId = SessionTokens.UserId(http.User);
+        try
+        {
+            await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
+            await db.Users.Where(u => u.Id == userId)
+                .ExecuteUpdateAsync(set => set.SetProperty(u => u.Username, username), http.RequestAborted);
+        }
+        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            return AuthJson.Error(StatusCodes.Status409Conflict, "username_taken", "Another user has this username. Choose another one.");
+        }
+
+        var profile = await SessionEndpoints.ProfileAsync(dbFactory, userId, http.RequestAborted);
+        return profile is null ? AuthJson.Unauthorized() : AuthJson.Ok(profile);
+    }
+
+    [GeneratedRegex("^[A-Za-z][A-Za-z0-9_]{4,31}$")]
+    private static partial Regex UsernameShape();
+}

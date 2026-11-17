@@ -1,9 +1,5 @@
-using System.Collections.Concurrent;
 using System.Net;
 using Dalan.Testing;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace Dalan.Host.Tests;
 
@@ -16,8 +12,8 @@ public class ClientAddressTests(PostgresServer postgres)
     private const string Proxy = "127.0.0.1:40000";
 
     [Fact]
-    [Trait("Rule", "SEC-06")]
-    public async Task SEC06_trusted_proxy_reports_address_and_port()
+    [Trait("Rule", "SEC-10")]
+    public async Task SEC10_trusted_proxy_reports_address_and_port()
     {
         await using var app = await StartAsync();
 
@@ -25,8 +21,8 @@ public class ClientAddressTests(PostgresServer postgres)
     }
 
     [Fact]
-    [Trait("Rule", "SEC-06")]
-    public async Task SEC06_header_from_a_caller_that_is_not_a_proxy_is_ignored()
+    [Trait("Rule", "SEC-10")]
+    public async Task SEC10_header_from_a_caller_that_is_not_a_proxy_is_ignored()
     {
         await using var app = await StartAsync();
 
@@ -34,8 +30,8 @@ public class ClientAddressTests(PostgresServer postgres)
     }
 
     [Fact]
-    [Trait("Rule", "SEC-06")]
-    public async Task SEC06_without_a_header_the_address_is_the_connection()
+    [Trait("Rule", "SEC-10")]
+    public async Task SEC10_without_a_header_the_address_is_the_connection()
     {
         await using var app = await StartAsync();
 
@@ -43,8 +39,8 @@ public class ClientAddressTests(PostgresServer postgres)
     }
 
     [Fact]
-    [Trait("Rule", "SEC-06")]
-    public async Task SEC06_behind_a_load_balancer_what_the_client_wrote_is_not_believed()
+    [Trait("Rule", "SEC-10")]
+    public async Task SEC10_behind_a_load_balancer_what_the_client_wrote_is_not_believed()
     {
         await using var app = await StartAsync(("Dalan:TrustedProxies", "127.0.0.1,10.0.0.5"));
 
@@ -52,8 +48,8 @@ public class ClientAddressTests(PostgresServer postgres)
     }
 
     [Fact]
-    [Trait("Rule", "SEC-06")]
-    public async Task SEC06_two_trusted_proxies_in_a_row_give_the_client()
+    [Trait("Rule", "SEC-10")]
+    public async Task SEC10_two_trusted_proxies_in_a_row_give_the_client()
     {
         await using var app = await StartAsync(("Dalan:TrustedProxies", "10.0.0.0/24"));
 
@@ -61,8 +57,8 @@ public class ClientAddressTests(PostgresServer postgres)
     }
 
     [Fact]
-    [Trait("Rule", "SEC-06")]
-    public async Task SEC06_a_wrong_entry_in_the_setting_stops_the_start()
+    [Trait("Rule", "SEC-10")]
+    public async Task SEC10_a_wrong_entry_in_the_setting_stops_the_start()
     {
         await using var app = new DalanApp(await postgres.NewDatabaseAsync(), new Dictionary<string, string> { ["Dalan:TrustedProxies"] = "not-an-address" });
 
@@ -88,47 +84,41 @@ public class ClientAddressTests(PostgresServer postgres)
     }
 
     [Fact]
-    [Trait("Rule", "SEC-07")]
-    public async Task SEC07_a_proxy_that_is_not_listed_is_warned_about_once()
+    [Trait("Rule", "SEC-11")]
+    public async Task SEC11_a_proxy_that_is_not_listed_is_warned_about_once()
     {
-        var warnings = new Warnings();
-        await using var app = await StartAsync(warnings);
+        await using var app = await StartAsync();
 
         await SeenAsAsync(app, socket: "10.0.0.5:4000", forwardedFor: "203.0.113.7");
         await SeenAsAsync(app, socket: "10.0.0.5:4001", forwardedFor: "203.0.113.8");
 
-        var warning = Assert.Single(warnings.Messages, m => m.Contains("X-Forwarded-For", StringComparison.Ordinal));
+        var warning = Assert.Single(ProxyWarnings(app));
         Assert.Contains("10.0.0.5", warning, StringComparison.Ordinal);
         Assert.Contains("Dalan:TrustedProxies", warning, StringComparison.Ordinal);
     }
 
     [Fact]
-    [Trait("Rule", "SEC-07")]
-    public async Task SEC07_no_warning_for_a_public_caller_or_a_listed_proxy()
+    [Trait("Rule", "SEC-11")]
+    public async Task SEC11_no_warning_for_a_public_caller_or_a_listed_proxy()
     {
-        var warnings = new Warnings();
-        await using var app = await StartAsync(warnings);
+        await using var app = await StartAsync();
 
         await SeenAsAsync(app, socket: "198.51.100.9:4000", forwardedFor: "203.0.113.7");
         await SeenAsAsync(app, socket: Proxy, forwardedFor: "203.0.113.8");
 
-        Assert.DoesNotContain(warnings.Messages, m => m.Contains("X-Forwarded-For", StringComparison.Ordinal));
+        Assert.Empty(ProxyWarnings(app));
     }
 
-    private async Task<DalanApp> StartAsync(params (string Key, string Value)[] settings) => await StartAsync(null, settings);
-
-    private async Task<DalanApp> StartAsync(Warnings? warnings, params (string Key, string Value)[] settings)
+    private async Task<DalanApp> StartAsync(params (string Key, string Value)[] settings)
     {
-        var app = new DalanApp(
-            await postgres.NewDatabaseAsync(),
-            settings.ToDictionary(s => s.Key, s => s.Value),
-            web => web.ConfigureServices(services =>
-            {
-                if (warnings is not null) services.AddSingleton<ILoggerProvider>(warnings);
-            }));
+        var app = new DalanApp(await postgres.NewDatabaseAsync(), settings.ToDictionary(s => s.Key, s => s.Value));
         await app.ReadyAsync();
         return app;
     }
+
+    /// <summary>What the server logged about a proxy that is not listed.</summary>
+    private static IEnumerable<string> ProxyWarnings(DalanApp app) =>
+        app.Logs.Lines.Select(line => line.Text).Where(text => text.Contains("X-Forwarded-For", StringComparison.Ordinal));
 
     /// <summary>A new user makes one Client API call over this connection. Returns "address port" from the user's access log row.</summary>
     private static async Task<string> SeenAsAsync(DalanApp app, string socket, string? forwardedFor)
@@ -142,26 +132,5 @@ public class ClientAddressTests(PostgresServer postgres)
 
         var prefix = $"User {userId} ";
         return Assert.Single(await app.AccessLogAsync(), row => row.StartsWith(prefix, StringComparison.Ordinal))[prefix.Length..];
-    }
-
-    /// <summary>Collects the warnings the server logs.</summary>
-    private sealed class Warnings : ILoggerProvider, ILogger
-    {
-        public ConcurrentQueue<string> Messages { get; } = new();
-
-        public ILogger CreateLogger(string categoryName) => this;
-
-        public bool IsEnabled(LogLevel logLevel) => logLevel == LogLevel.Warning;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-        {
-            if (IsEnabled(logLevel)) Messages.Enqueue(formatter(state, exception));
-        }
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public void Dispose()
-        {
-        }
     }
 }

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Dalan.Identity.Data;
 using Dalan.Identity.Sessions;
 using Dalan.Identity.Users;
@@ -13,7 +12,7 @@ using Microsoft.Extensions.Options;
 namespace Dalan.Identity.DevLogin;
 
 /// <summary>
-/// AUTH-06: login by phone number with no SMS, for development only. Real login is milestone 4.
+/// AUTH-06: login by phone number with no SMS, for development only.
 /// It needs two switches: the setting Identity:DevLogin and the Development environment.
 /// </summary>
 internal static class DevLoginEndpoint
@@ -41,27 +40,13 @@ internal static class DevLoginEndpoint
         IOptionsMonitor<IdentityOptions> options,
         TimeProvider time)
     {
-        Request? request;
-        try
-        {
-            request = await http.Request.ReadFromJsonAsync<Request>(http.RequestAborted);
-        }
-        catch (Exception exception) when (exception is JsonException or InvalidOperationException)
-        {
-            request = null;
-        }
-
+        var request = await AuthJson.ReadAsync<Request>(http);
         var phone = PhoneNumber.Normalize(request?.Phone);
         var name = request?.Name?.Trim() ?? "";
         if (phone is null || name.Length == 0 || name.Length > options.CurrentValue.MaxNameLength)
         {
-            return Results.Json(
-                new
-                {
-                    error = "bad_request",
-                    message = """Send JSON like {"phone": "09121234567", "name": "Sara"}: an Iranian mobile number and a short name.""",
-                },
-                statusCode: StatusCodes.Status400BadRequest);
+            return AuthJson.BadRequest("bad_request",
+                """Send JSON like {"phone": "09121234567", "name": "Sara"}: an Iranian mobile number and a short name.""");
         }
 
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
@@ -73,7 +58,7 @@ internal static class DevLoginEndpoint
             RETURNING id AS "Value"
             """).ToListAsync(http.RequestAborted);
 
-        sessions.SignIn(http, ids[0]);
-        return Results.Json(new ProfileJson(ids[0], name, Username: null));
+        await sessions.SignInAsync(http, ids[0], SessionTokens.ByDevLogin);
+        return AuthJson.Ok(await SessionEndpoints.ProfileAsync(dbFactory, ids[0], http.RequestAborted));
     }
 }

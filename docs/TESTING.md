@@ -23,6 +23,7 @@ Areas: `OPS` operations, `ARC` architecture, `DEL` delivery, `Q` bot queue, `REL
 | Kind | Tool | What |
 |---|---|---|
 | Unit | xUnit v3 | Pure rules: queue expiry, "latest command wins", token hashing, limits |
+| Fakes | `tests/Shared/Fakes.cs` | The SMS provider is a fake that keeps what was "sent"; the log is collected so a test can read it. The Kavenegar sender is tested against a fake HTTP handler (in `Dalan.Host.Tests`) |
 | Integration | xUnit v3 + `WebApplicationFactory` + real PostgreSQL (Testcontainers) | HTTP endpoints, database, outbox. Never an in-memory database fake; `jsonb` and locking must be real. Each test gets a new database (`tests/Shared`). Without Docker, set `DALAN_TEST_POSTGRES` to the connection string of a server where the tests may create databases |
 | Contract | xUnit v3 + JSON files | Telegram adapter request and response shapes, compared with saved examples from the pinned Bot API version |
 | Architecture | xUnit v3 + reflection on assemblies | Dependency rules `ARC-*` |

@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: SEC-02 Rate limit per IP
-The server SHALL serve each client IP address at most `Dalan:IpRequestLimit` calls in each window of `Dalan:IpLimitWindowSeconds` (start: 100 calls per 1 second) on every endpoint of every service, counted before any token or session is checked. Static files of the client and the probes do not count. A call over the limit SHALL get HTTP 429 with error code `rate_limited` and a `Retry-After` header. The client address SHALL be the real client address of SEC-06.
+The server SHALL serve each client IP address at most `Dalan:IpRequestLimit` calls in each window of `Dalan:IpLimitWindowSeconds` (start: 100 calls per 1 second) on every endpoint of every service, counted before any token or session is checked. Static files of the client and the probes do not count. A call over the limit SHALL get HTTP 429 with error code `rate_limited` and a `Retry-After` header. The client address SHALL be the real client address of SEC-10.
 
 #### Scenario: Over the limit
 - **GIVEN** the limit is 2 calls per window
@@ -25,7 +25,7 @@ The server SHALL serve each client IP address at most `Dalan:IpRequestLimit` cal
 
 ## ADDED Requirements
 
-### Requirement: SEC-06 Real client address
+### Requirement: SEC-10 Real client address
 The server SHALL take the client's address and source port from `X-Forwarded-For` only when the connection comes from an address in `Dalan:TrustedProxies` (addresses or CIDR ranges, comma separated; start: `127.0.0.1,::1`). It SHALL read the header from the right and stop at the first address that is not trusted; that is the client. Otherwise the client is the address of the connection itself. The rate limit and the access log SHALL use this one address.
 
 #### Scenario: Through the trusted proxy
@@ -52,7 +52,7 @@ The server SHALL take the client's address and source port from `X-Forwarded-For
 - **WHEN** a client sends `X-Forwarded-For: 9.9.9.9` to the front proxy
 - **THEN** the server gets `X-Forwarded-For` with only the client's real `address:port`
 
-### Requirement: SEC-07 Warning for a proxy that is not listed
+### Requirement: SEC-11 Warning for a proxy that is not listed
 When a call that carries `X-Forwarded-For` comes from a private or loopback address that is not in `Dalan:TrustedProxies`, the server SHALL log a warning that names the address and the setting, once for each such address. This is the sign of a proxy or load balancer that was added without the setting, which would make every client look like the proxy.
 
 #### Scenario: Forgotten load balancer

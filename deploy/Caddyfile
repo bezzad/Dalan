@@ -11,7 +11,7 @@
 	@probes path /health /ready
 	respond @probes 404
 
-	# SEC-06: the server gets the client's real address and port, never what the client wrote in the header.
+	# SEC-10: the server gets the client's real address and port, never what the client wrote in the header.
 	# The server believes this header only from the proxies in Dalan:TrustedProxies.
 	# A load balancer in front of this proxy changes both places: docs/ARCHITECTURE.md section 11.
 	reverse_proxy {$DALAN_UPSTREAM:127.0.0.1:5000} {

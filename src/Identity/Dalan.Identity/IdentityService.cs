@@ -1,7 +1,10 @@
 using Dalan.Identity.Contracts;
 using Dalan.Identity.Data;
+using Dalan.Identity.Account;
 using Dalan.Identity.DevLogin;
+using Dalan.Identity.Passwords;
 using Dalan.Identity.Sessions;
+using Dalan.Identity.SmsLogin;
 using Dalan.Identity.Users;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Routing;
@@ -28,6 +31,11 @@ public static class IdentityService
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<SessionKey>();
         services.AddSingleton<SessionTokens>();
+        services.AddSingleton<SecurityLog>();
+        services.AddSingleton<ProofOfWork>();
+        services.AddSingleton<SmsCodes>();
+        services.AddSingleton<PasswordHasher>();
+        services.AddSingleton<PasswordTries>();
 
         // The session is checked by the standard JWT handler. Other services only ask ASP.NET Core who the user is.
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
@@ -40,6 +48,9 @@ public static class IdentityService
     public static IEndpointRouteBuilder MapIdentityService(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapSessions();
+        endpoints.MapSmsLogin();
+        endpoints.MapPasswordLogin();
+        endpoints.MapAccount();
         endpoints.MapDevLogin();
         return endpoints;
     }

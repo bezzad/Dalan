@@ -42,9 +42,11 @@ export function botsScreen(app: App, onLanguage: () => void): Screen {
   const element = h("main", {},
     h("header", {},
       h("h1", {}, t("myBots")),
+      h("button", { type: "button", class: "link", onclick: () => app.showAccount(true) }, t("account")),
       h("button", { type: "button", class: "link", onclick: onLanguage }, t("language")),
       h("button", { type: "button", class: "link", onclick: () => app.logout() }, t("logout"))),
     h("p", { class: "note", dir: "auto" }, app.user.name),
+    ...(app.user.has_password ? [] : [h("p", { class: "note" }, t("noPasswordYet"))]),
     open,
     error,
     list);

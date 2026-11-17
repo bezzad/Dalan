@@ -7,7 +7,7 @@ using IPNetwork = System.Net.IPNetwork;
 namespace Dalan.Host;
 
 /// <summary>
-/// SEC-06: makes <c>HttpContext.Connection.RemoteIpAddress</c> and <c>RemotePort</c> the real client's.
+/// SEC-10: makes <c>HttpContext.Connection.RemoteIpAddress</c> and <c>RemotePort</c> the real client's.
 /// <c>X-Forwarded-For</c> is believed only from the proxies in <c>Dalan:TrustedProxies</c>, because anyone can write that header.
 /// Everything else (rate limit, access log) reads the connection and never the header.
 /// </summary>
@@ -15,7 +15,7 @@ public static partial class ClientAddress
 {
     private const string Header = "X-Forwarded-For";
 
-    /// <summary>Addresses that are never a real client on the internet, so a header from them means "a proxy" (SEC-07).</summary>
+    /// <summary>Addresses that are never a real client on the internet, so a header from them means "a proxy" (SEC-11).</summary>
     private static readonly IPNetwork[] PrivateNetworks =
     [
         .. new[] { "127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "169.254.0.0/16", "::1/128", "fc00::/7", "fe80::/10" }
@@ -42,7 +42,7 @@ public static partial class ClientAddress
         var warned = new ConcurrentDictionary<IPAddress, bool>();
         var logger = app.Logger;
 
-        // SEC-07: a proxy nobody listed would make every client look like the proxy. Say so, once per proxy.
+        // SEC-11: a proxy nobody listed would make every client look like the proxy. Say so, once per proxy.
         app.Use((http, next) =>
         {
             if (http.Connection.RemoteIpAddress is { } caller && http.Request.Headers.ContainsKey(Header))

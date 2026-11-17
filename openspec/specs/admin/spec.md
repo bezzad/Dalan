@@ -6,7 +6,7 @@ What the platform records for its owner: the access log that answers legal compl
 ## Requirements
 
 ### Requirement: ADM-01 Access log
-The server SHALL record who called from where, so the owner can answer a legal complaint. For every Bot API call with a valid token and every Client API call with a valid session it SHALL keep the caller (bot or user, with its id), the real client address (SEC-06), the source port when the proxy reported it, and the UTC time. A call SHALL NOT be served when its row cannot be written. A call without a known caller writes no row.
+The server SHALL record who called from where, so the owner can answer a legal complaint. For every Bot API call with a valid token and every Client API call with a valid session it SHALL keep the caller (bot or user, with its id), the real client address (SEC-10), the source port when the proxy reported it, and the UTC time. A call SHALL NOT be served when its row cannot be written. A call without a known caller writes no row.
 
 #### Scenario: Bot call
 - **WHEN** a bot calls the Bot API from `203.0.113.7` port `51000`
@@ -58,3 +58,18 @@ The server SHALL delete access log rows older than `Admin:AccessLogRetentionDays
 - **GIVEN** one row of 181 days ago and one of 179 days ago
 - **WHEN** the sweep runs
 - **THEN** only the younger row is left
+
+### Requirement: ADM-04 SMS code requests are recorded
+For every login code that is sent by SMS the server SHALL keep an access log row with the phone number, the real client address (SEC-10) of the caller who asked for it, the source port when known, and the UTC time. Every sent SMS gets its own row. A request that sends no SMS writes no row. ADM-03 applies to these rows too.
+
+#### Scenario: Code sent
+- **WHEN** a caller at `203.0.113.7` port `51000` asks a login code for a number and the SMS is sent
+- **THEN** one row holds that number, `203.0.113.7`, `51000` and the time of the call
+
+#### Scenario: Two codes
+- **WHEN** two codes are sent to the same number from the same address
+- **THEN** there are two rows
+
+#### Scenario: Refused request
+- **WHEN** a caller asks a code too soon and gets 429 `sms_wait`
+- **THEN** no new row is written
