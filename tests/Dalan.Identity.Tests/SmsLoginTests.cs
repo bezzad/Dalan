@@ -96,6 +96,7 @@ public class SmsLoginTests(PostgresServer postgres)
     [Trait("Rule", "SEC-06")]
     [InlineData("4102444800.c2FsdA.bm90LW91ci1tYWM")] // right shape, far-away expiry, a MAC we did not make
     [InlineData("nonsense")]
+    [InlineData("4102444800.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.bWFj")] // too long
     [InlineData(null)]
     public async Task SEC06_made_up_challenge_is_refused(string? challenge)
     {

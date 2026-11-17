@@ -95,7 +95,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 - Refresh token: random, in the cookie `__Host-dalan_refresh`, stored as SHA-256, replaced on every use (`POST /api/auth/refresh`). The row keeps the hash of the current token and of the one before it. An older token that comes back after a short grace time deletes the row (that device is logged out); inside the grace it only gets 401, because two tabs can refresh at the same moment.
 - Ways to log in: SMS code, password, development login. All end in the same place: one session row and two cookies. The access token says how the session started (`amr`).
 - SMS login: `POST /api/auth/challenge` → the browser solves a small proof of work → `POST /api/auth/sms` → `POST /api/auth/sms/verify`. The challenge needs no server state (a MAC ties it to the phone and an expiry). The rows of `identity.sms_codes` of the last 24 hours are the counters of the SMS limits (per number, per address, whole server), so they survive a restart.
-- Passwords: Argon2id in PHC text form; only a few hashes run at once. Password tries are limited per login name, in memory.
+- Passwords: Argon2id in PHC text form; only a few hashes run at once. Password tries are limited per login name and per client address, in memory.
 - Keys for the MACs (proof of work, SMS codes) are derived from `Identity:SigningKey`, so there is no second secret.
 - SMS providers live in Notification behind `ISmsSender`; setting `Notification:SmsProvider` (`kavenegar`, `log` for Development only, or empty).
 - Security events (login, failed login, SMS sent or refused, refresh reuse, password change) are log lines until the audit table comes with Admin.

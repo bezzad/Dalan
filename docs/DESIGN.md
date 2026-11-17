@@ -439,7 +439,7 @@ None of these is planned work. They are recorded so the design does not block th
 | Proof of work | 14 zero bits (about 1 second in a browser) | Assumed |
 | Session (access token) / refresh token | 15 minutes / 30 days from the last use | Assumed |
 | Password length | 8 to 128 characters | Assumed |
-| Password tries per login name | 5 in 15 minutes | Assumed |
+| Password tries per login name / per client address | 5 / 100 in 15 minutes | Assumed |
 | Long-polling timeout | 30 seconds default, 50 maximum | Assumed (Telegram-like) |
 | Bot shown as online | Last poll under 60 seconds ago | Assumed |
 | Message text length | 4,096 characters | Assumed (Telegram parity) |

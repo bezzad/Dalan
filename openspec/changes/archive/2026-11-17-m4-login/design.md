@@ -31,7 +31,7 @@ Milestones 1 to 3 are merged. The session is already the real one (ES256 JWT in 
 10. **All logins start a session the same way** (SMS, password, development): one session row, two cookies. The access token carries how the session started (`amr`: `sms`, `pwd`, `dev`).
 11. **Password:** Argon2id, stored as the standard PHC text (`$argon2id$v=19$m=…,t=…,p=…$salt$hash`), so the cost can change later without breaking old hashes. At most `Identity:PasswordHashConcurrency` hashes run at once, because each one takes memory.
 12. **Changing a password** needs the current one, except when there is none yet or the session started with an SMS code (that is the "forgot password" path). It ends every other session of the user.
-13. **Password tries** are limited per login name in memory (`Identity:PasswordTries` per `Identity:PasswordTriesWindowMinutes`). An unknown name and a wrong password get the same answer and take the same time.
+13. **Password tries** are limited per login name and per client address in memory (`Identity:PasswordTries` and `Identity:PasswordTriesPerIp` per `Identity:PasswordTriesWindowMinutes`). An unknown name and a wrong password get the same answer and take the same time.
 14. **Username:** 5 to 32 of `a-z`, `0-9`, `_`, starting with a letter; unique without regard to case (AUTH-01).
 15. **JSON:** Identity answers in snake_case like Relay. Identity paths: `/api/auth/...` (no session needed) and `/api/account/...` (session needed).
 16. **Client:** any call that gets 401 asks for a refresh once and tries again; calls that wait at the same moment share one refresh. The proof of work uses the browser's own SHA-256 (`crypto.subtle`), no package.
@@ -56,6 +56,7 @@ Milestones 1 to 3 are merged. The session is already the real one (ES256 JWT in 
 | `Identity:PasswordMemoryKb` / `PasswordIterations` | 19456 / 2 | New (OWASP minimum for Argon2id) |
 | `Identity:PasswordHashConcurrency` | 2 | New, assumed (2-core server) |
 | `Identity:PasswordTries` / `PasswordTriesWindowMinutes` | 5 / 15 | New, assumed |
+| `Identity:PasswordTriesPerIp` | 100 | New, assumed (high: a safety net) |
 | `Notification:SmsProvider` | empty (`log` in `appsettings.Development.json`) | New |
 | `Notification:Kavenegar:BaseUrl` | `https://api.kavenegar.com` | New |
 | `Notification:Kavenegar:ApiKey` | empty (secret, set on the server) | New |

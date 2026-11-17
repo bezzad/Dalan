@@ -74,7 +74,7 @@ The server SHALL send at most `Identity:SmsPerIpPerDay` (start 200) SMS for call
 - **THEN** the response is 503 `sms_unavailable`, no SMS is sent, and an error is logged
 
 ### Requirement: SEC-09 Password tries are limited
-`POST /api/auth/password` SHALL serve at most `Identity:PasswordTries` (start 5) tries for one login name in each window of `Identity:PasswordTriesWindowMinutes` (start 15), without regard to letter case. A try over the limit SHALL get 429 `rate_limited` with a `Retry-After` header, even with the right password. One login name's tries SHALL NOT use up another's.
+`POST /api/auth/password` SHALL serve at most `Identity:PasswordTries` (start 5) tries for one login name, without regard to letter case, and at most `Identity:PasswordTriesPerIp` (start 100) tries from one client address, in each window of `Identity:PasswordTriesWindowMinutes` (start 15). A try over a limit SHALL get 429 `rate_limited` with a `Retry-After` header, even with the right password. One login name's tries SHALL NOT use up another's.
 
 #### Scenario: Over the limit
 - **GIVEN** the limit is 2 tries
@@ -85,3 +85,8 @@ The server SHALL send at most `Identity:SmsPerIpPerDay` (start 200) SMS for call
 - **GIVEN** one login is over its limit
 - **WHEN** another user logs in with the right password
 - **THEN** the response is 200
+
+#### Scenario: One address, many logins
+- **GIVEN** the limit per address is 2
+- **WHEN** one address tries 3 different login names
+- **THEN** the third answer is 429 `rate_limited`, and a try from another address is served

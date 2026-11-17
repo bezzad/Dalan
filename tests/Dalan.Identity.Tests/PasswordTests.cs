@@ -253,6 +253,34 @@ public class PasswordTests(PostgresServer postgres)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Fact]
+    [Trait("Rule", "SEC-09")]
+    public async Task SEC09_one_address_cannot_try_many_logins()
+    {
+        await using var app = await StartAsync(postgres, ("Identity:PasswordTriesPerIp", "2"));
+        var attacker = app.Browser("203.0.113.1");
+        await attacker.PostAsJsonAsync("/api/auth/password", new { login = "nobody_1", password = Good }, Cancel);
+        await attacker.PostAsJsonAsync("/api/auth/password", new { login = "nobody_2", password = Good }, Cancel);
+
+        var third = await attacker.PostAsJsonAsync("/api/auth/password", new { login = "nobody_3", password = Good }, Cancel);
+        var otherAddress = await app.Browser("203.0.113.2").PostAsJsonAsync("/api/auth/password", new { login = "nobody_3", password = Good }, Cancel);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, third.StatusCode);
+        Assert.Equal("rate_limited", await ErrorCodeAsync(third));
+        Assert.Equal(HttpStatusCode.Unauthorized, otherAddress.StatusCode);
+    }
+
+    [Fact]
+    [Trait("Rule", "AUTH-14")]
+    public async Task AUTH14_a_login_longer_than_any_real_one_is_400()
+    {
+        await using var app = await StartAsync(postgres);
+
+        var response = await app.Browser().PostAsJsonAsync("/api/auth/password", new { login = new string('a', 65), password = Good }, Cancel);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     // ---- AUTH-15 username ----
 
     [Fact]

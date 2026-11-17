@@ -259,7 +259,7 @@ When a refresh token that was already replaced is sent again later than `Identit
 - **THEN** the response is 200 with `dev_login`, `password_min_length` 8 and `name_max_length` 64
 
 ### Requirement: AUTH-17 Security events are logged
-The server SHALL write a log line for each login, failed login, sent SMS, refused SMS, reuse of an old refresh token and password change, with the event name and the user id when it is known. No log line SHALL hold an SMS code, a password, a token or a whole phone number.
+The server SHALL write a log line for each login, failed login, sent SMS, refused SMS, reuse of an old refresh token and password change, with the event name and the user id when it is known. No log line SHALL hold an SMS code, a password, a token or a whole phone number. The only exception is the `log` SMS sender (NTF-01), which exists only in Development.
 
 #### Scenario: Login is logged
 - **WHEN** a user logs in by SMS code

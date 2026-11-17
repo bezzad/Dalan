@@ -59,5 +59,8 @@ public sealed class IdentityOptions
     /// <summary>Password tries for one login name in each window (SEC-09).</summary>
     public int PasswordTries { get; set; }
 
+    /// <summary>Password tries from one client address in each window. High: many people can share one address (SEC-09).</summary>
+    public int PasswordTriesPerIp { get; set; }
+
     public int PasswordTriesWindowMinutes { get; set; }
 }

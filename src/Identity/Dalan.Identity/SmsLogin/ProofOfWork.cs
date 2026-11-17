@@ -13,8 +13,9 @@ namespace Dalan.Identity.SmsLogin;
 /// </summary>
 internal sealed class ProofOfWork(SessionKey key, IOptionsMonitor<IdentityOptions> options, TimeProvider time)
 {
-    /// <summary>Longer than any honest nonce; stops a huge input from costing us hashing time.</summary>
+    /// <summary>Longer than any honest nonce or challenge; stops a huge input from costing us hashing time.</summary>
     private const int MaxNonceLength = 32;
+    private const int MaxChallengeLength = 128;
 
     private readonly byte[] _key = key.Derive("pow");
 
@@ -31,7 +32,7 @@ internal sealed class ProofOfWork(SessionKey key, IOptionsMonitor<IdentityOption
     /// <summary>True when we made this challenge for this phone, it has not expired, and the work was done.</summary>
     public bool Check(string phone, string? challenge, string? nonce)
     {
-        if (challenge is null || nonce is null || nonce.Length > MaxNonceLength) return false;
+        if (challenge is null || nonce is null || nonce.Length > MaxNonceLength || challenge.Length > MaxChallengeLength) return false;
         if (challenge.Split('.') is not [var expires, var salt, var mac]) return false;
         if (!long.TryParse(expires, NumberStyles.None, CultureInfo.InvariantCulture, out var seconds)) return false;
         if (time.GetUtcNow().ToUnixTimeSeconds() >= seconds) return false;
