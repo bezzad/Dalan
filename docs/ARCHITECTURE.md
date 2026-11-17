@@ -35,7 +35,7 @@ Relay has two thin HTTP doors, both inside Relay:
 - **Client API** (`dalanet.ir`): the door for **people** (PWA). Send a message or button press (POST), live messages (SSE), history sync, file upload. It never runs bot logic; the bot at home does.
 - **Bot API** (`api.dalanet.ir`): the door for **bots**. Token auth, `getUpdates` long polling, `sendMessage` and the rest.
 
-**Telegram adapter** is a plugin, not a service: no data, no domain. The host mounts it on the Bot API at `/tg/bot<token>/<method>`. It turns Telegram-shaped calls into Relay contract calls and back.
+**Telegram adapter** is a plugin, not a service: no data, no domain. The host mounts it at `/bot<token>/<method>`, at the root like Telegram (the `Telegram.Bot` library keeps only the host of its base address). It turns Telegram-shaped calls into calls of `IBotGateway` (in `Dalan.Relay.Contracts`) and back. Rules in `openspec/specs/telegram`; it follows Telegram Bot API 10.4 and serves only what the core can do.
 
 ## 3. Projects
 
@@ -84,6 +84,8 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 - A message counts as **delivered** only after the bot confirms it with the next `getUpdates` offset, like Telegram. Delivery is at least once. An offset confirms only updates the bot was really given.
 - An update is offered to the bot until its expiry. After that the message is "not delivered"; a late confirm of an update the bot already got still counts.
 - Core Bot API: `GET /v1/updates` and `POST /v1/messages` (text and an optional reply keyboard), token in `Authorization: Bearer`.
+- Every bot door (core and Telegram) is a thin HTTP layer over `IBotGateway`: token check, limit per bot, long poll, send. So both doors share one queue and one set of rules.
+- The bot token is part of the Telegram path, so no request path may be written to the log (`TG-10`).
 - Rate limits: per client address in the host, in front of every service; per bot and per user in Relay.
 
 ## 7. Identity and sessions
@@ -148,6 +150,9 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 24 | 2026-11-17 | First SMS provider is Kavenegar; TOTP is left out of milestone 4 and comes as its own change |
 | 25 | 2026-11-17 | Client address from `X-Forwarded-For` only behind the proxies in `Dalan:TrustedProxies`; no PROXY protocol |
 | 26 | 2026-11-17 | Access log in Admin: address, port and time per user and bot, one row per address per interval, kept 180 days |
+| 27 | 2026-11-17 | Every bot door calls one contract, `IBotGateway`; the Telegram adapter is a plugin on top of it |
+| 28 | 2026-11-17 | Telegram calls at the root (`/bot<token>/<method>`), not under `/tg`; snapshot Telegram Bot API 10.4 |
+| 29 | 2026-11-17 | Adapter serves only what the core has; formatting (`parse_mode`) is ignored until the core stores entities |
 
 ## 11. Client address and access log
 

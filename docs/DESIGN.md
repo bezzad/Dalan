@@ -137,10 +137,10 @@ Dalan has its own core API with its own names, plus a thin Telegram adapter so e
 
 **Core API.** Base address `https://api.dalanet.ir`, separate from the address users open. The token travels in the `Authorization` header. Operations: get updates (long polling), set or delete webhook, send, edit, delete and pin a message, send and get a file, set commands, answer a button action, get bot info.
 
-**Telegram adapter.** A separate module that accepts Telegram-shaped calls (`/bot<token>/<method>`) and translates them to the core. Most Telegram libraries let the developer change the API base address, so bot code stays untouched.
+**Telegram adapter.** A separate module that accepts Telegram-shaped calls (`https://api.dalanet.ir/bot<token>/<method>`, at the root, as Telegram has it) and translates them to the core. Most Telegram libraries let the developer change the API base address, so bot code stays untouched.
 
 - Token format matches Telegram's (`<bot id>:<secret>`) so libraries accept it.
-- JSON shapes follow the newest Telegram Bot API version at the time of building. Record that version number in the repository. Older versions are not supported.
+- JSON shapes follow the newest Telegram Bot API version at the time of building: **10.4** (2026-11-09), recorded in `openspec/specs/telegram`. Older versions are not supported.
 - The two products may drift apart later. Only the adapter changes then.
 
 **Adapter coverage in Layer 1:**
@@ -155,6 +155,8 @@ Dalan has its own core API with its own names, plus a thin Telegram adapter so e
 | Commands | `setMyCommands`, `getMyCommands` |
 | Files | `getFile` and file download |
 | Text | `parse_mode` HTML and MarkdownV2, message entities |
+
+**Built in milestone 5:** `getMe`, `getUpdates` (type `message`, commands marked as `bot_command` entities), `sendMessage` with text and `ReplyKeyboardMarkup` / `ReplyKeyboardRemove`, `deleteWebhook` and `sendChatAction` (both answer `true`). `parse_mode` is accepted and ignored for now: the text is shown as sent. The rest of the table comes with milestone 6 (rich messages, in the core first) and a later webhook change.
 
 Any other method returns a Telegram-shaped error (`ok: false` with a clear description such as "not supported by Dalan"), so the bot does not crash.
 
@@ -469,7 +471,6 @@ None of these is planned work. They are recorded so the design does not block th
 
 **Design assumptions to confirm:**
 
-- Telegram-shaped calls live under a path of the API host, for example `https://api.dalanet.ir/tg/bot<token>/<method>`.
 - Passwords use Argon2id.
 - The Agent, SDK, CLI and MCP server may be published later; the server stays private at least until a security review.
 - The interface is Persian first, English second.
@@ -481,7 +482,7 @@ None of these is planned work. They are recorded so the design does not block th
 - [ ] Buy a separate sites domain before Layer 2 (candidate: `dalancloud.ir`)?
 - [ ] Buy a foreign backup domain (candidate: `dalanet.net`)?
 - [ ] Lawyer review of content responsibility, phone-number storage, and how long the access log must be kept.
-- [ ] Which exact Telegram Bot API version is the snapshot? Check the official page on the day the adapter is built.
+- [x] Telegram Bot API snapshot: 10.4 (2026-11-09), chosen on 2026-11-17 in milestone 5.
 
 ## 19. Version 1 milestones
 

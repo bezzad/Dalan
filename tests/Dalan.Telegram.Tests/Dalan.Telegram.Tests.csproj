@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <Compile Include="../Shared/*.cs" LinkBase="Shared" />
+    <!-- The helpers that make bots and user messages are the ones of the Relay tests. -->
+    <Compile Include="../Dalan.Relay.Tests/RelayApp.cs" LinkBase="Shared" />
+    <Content Include="Examples/*.json" CopyToOutputDirectory="PreserveNewest" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Telegram.Bot" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Dalan.Host/Dalan.Host.csproj" />
+  </ItemGroup>
+</Project>

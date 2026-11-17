@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Dalan.Relay.Contracts;
 using Dalan.Relay.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,19 +27,16 @@ public sealed class BotRegistry(IDbContextFactory<RelayDb> dbFactory, TimeProvid
         return (bot, BotToken.Format(bot.Id, secret));
     }
 
-    /// <summary>Returns the bot id when the token is valid, otherwise null.</summary>
-    public async Task<long?> AuthenticateAsync(string? token, CancellationToken cancellationToken)
+    /// <summary>Returns the bot when the token is valid, otherwise null.</summary>
+    public async Task<BotInfo?> AuthenticateAsync(string? token, CancellationToken cancellationToken)
     {
         if (!BotToken.TryParse(token, out var botId, out var secret)) return null;
 
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var storedHash = await db.Bots
-            .Where(b => b.Id == botId)
-            .Select(b => b.TokenHash)
-            .FirstOrDefaultAsync(cancellationToken);
+        var bot = await db.Bots.AsNoTracking().FirstOrDefaultAsync(b => b.Id == botId, cancellationToken);
 
-        return storedHash is not null && CryptographicOperations.FixedTimeEquals(storedHash, BotToken.Hash(secret))
-            ? botId
+        return bot is not null && CryptographicOperations.FixedTimeEquals(bot.TokenHash, BotToken.Hash(secret))
+            ? new BotInfo(bot.Id, bot.Username, bot.Name)
             : null;
     }
 }
