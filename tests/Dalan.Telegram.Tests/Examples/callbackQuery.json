@@ -1,0 +1,19 @@
+[
+  {
+    "update_id": 3,
+    "callback_query": {
+      "id": "3",
+      "from": { "id": 1, "is_bot": false, "first_name": "Sara", "username": "sara" },
+      "message": {
+        "message_id": 2,
+        "from": { "id": 1, "is_bot": true, "first_name": "Test bot", "username": "testbot" },
+        "chat": { "id": 1, "type": "private" },
+        "date": 1794830400,
+        "text": "pick",
+        "reply_markup": { "inline_keyboard": [[{ "text": "Yes", "callback_data": "y" }]] }
+      },
+      "chat_instance": "1",
+      "data": "y"
+    }
+  }
+]

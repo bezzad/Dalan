@@ -52,7 +52,7 @@ internal static class RelayApp
     public static async Task<Message> UserSaysAsync(this DalanApp app, long botId, long userId, string text)
     {
         var (error, message) = await app.Services.GetRequiredService<ChatService>()
-            .ReceiveFromUserAsync(botId, userId, text, TestContext.Current.CancellationToken);
+            .ReceiveFromUserAsync(botId, userId, text, null, TestContext.Current.CancellationToken);
         Assert.Equal(ChatError.None, error);
         return message!;
     }

@@ -75,6 +75,10 @@ namespace Dalan.Relay.Data.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("last_seq");
 
+                    b.Property<long>("LastVersion")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_version");
+
                     b.Property<DateTimeOffset>("StartedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("started_at");
@@ -106,6 +110,10 @@ namespace Dalan.Relay.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<bool>("Deleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("deleted");
+
                     b.Property<int?>("Delivery")
                         .HasColumnType("integer")
                         .HasColumnName("delivery");
@@ -114,6 +122,14 @@ namespace Dalan.Relay.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("direction");
 
+                    b.Property<DateTimeOffset?>("EditedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("edited_at");
+
+                    b.Property<bool>("Pinned")
+                        .HasColumnType("boolean")
+                        .HasColumnName("pinned");
+
                     b.Property<long>("Seq")
                         .HasColumnType("bigint")
                         .HasColumnName("seq");
@@ -121,6 +137,10 @@ namespace Dalan.Relay.Data.Migrations
                     b.Property<long>("UserId")
                         .HasColumnType("bigint")
                         .HasColumnName("user_id");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
 
                     b.HasKey("Id")
                         .HasName("pk_messages");
@@ -133,7 +153,67 @@ namespace Dalan.Relay.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_messages_bot_id_user_id_seq");
 
+                    b.HasIndex("BotId", "UserId", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_messages_bot_id_user_id_version");
+
                     b.ToTable("messages", "relay");
+                });
+
+            modelBuilder.Entity("Dalan.Relay.Files.StoredFile", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<long>("BotId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("bot_id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("FromBot")
+                        .HasColumnType("boolean")
+                        .HasColumnName("from_bot");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_files");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_files_expires_at");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("ix_files_user_id_created_at");
+
+                    b.ToTable("files", "relay");
                 });
 
             modelBuilder.Entity("Dalan.Relay.Outbox.OutboxEvent", b =>
@@ -159,6 +239,37 @@ namespace Dalan.Relay.Data.Migrations
                         .HasName("pk_outbox");
 
                     b.ToTable("outbox", "relay");
+                });
+
+            modelBuilder.Entity("Dalan.Relay.Bots.Bot", b =>
+                {
+                    b.OwnsMany("Dalan.Relay.Bots.CommandEntry", "Commands", b1 =>
+                        {
+                            b1.Property<long>("BotId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.Property<string>("Command")
+                                .IsRequired();
+
+                            b1.Property<string>("Description")
+                                .IsRequired();
+
+                            b1.HasKey("BotId", "__synthesizedOrdinal");
+
+                            b1.ToTable("bots", "relay");
+
+                            b1
+                                .ToJson("commands")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BotId")
+                                .HasConstraintName("fk_bots_bots_bot_id");
+                        });
+
+                    b.Navigation("Commands");
                 });
 
             modelBuilder.Entity("Dalan.Relay.Chats.Membership", b =>
@@ -199,6 +310,92 @@ namespace Dalan.Relay.Data.Migrations
                                 .HasForeignKey("MessageId")
                                 .HasConstraintName("fk_messages_messages_id");
 
+                            b1.OwnsOne("Dalan.Relay.Chats.InlineKeyboard", "InlineKeyboard", b2 =>
+                                {
+                                    b2.Property<long>("MessageContentMessageId");
+
+                                    b2.HasKey("MessageContentMessageId")
+                                        .HasName("pk_messages");
+
+                                    b2.ToTable("messages", "relay");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("MessageContentMessageId")
+                                        .HasConstraintName("fk_messages_messages_message_content_message_id");
+
+                                    b2.OwnsMany("Dalan.Relay.Chats.InlineRow", "Rows", b3 =>
+                                        {
+                                            b3.Property<long>("InlineKeyboardMessageContentMessageId");
+
+                                            b3.Property<int>("__synthesizedOrdinal")
+                                                .ValueGeneratedOnAdd();
+
+                                            b3.HasKey("InlineKeyboardMessageContentMessageId", "__synthesizedOrdinal")
+                                                .HasName("pk_messages");
+
+                                            b3.ToTable("messages", "relay");
+
+                                            b3.WithOwner()
+                                                .HasForeignKey("InlineKeyboardMessageContentMessageId")
+                                                .HasConstraintName("fk_messages_messages_inline_keyboard_message_content_message_id");
+
+                                            b3.OwnsMany("Dalan.Relay.Chats.InlineKeyboardButton", "Buttons", b4 =>
+                                                {
+                                                    b4.Property<long>("InlineRowInlineKeyboardMessageContentMessageId");
+
+                                                    b4.Property<int>("InlineRow__synthesizedOrdinal");
+
+                                                    b4.Property<int>("__synthesizedOrdinal")
+                                                        .ValueGeneratedOnAdd();
+
+                                                    b4.Property<string>("Data");
+
+                                                    b4.Property<string>("Text")
+                                                        .IsRequired();
+
+                                                    b4.Property<string>("Url");
+
+                                                    b4.HasKey("InlineRowInlineKeyboardMessageContentMessageId", "InlineRow__synthesizedOrdinal", "__synthesizedOrdinal");
+
+                                                    b4.ToTable("messages", "relay");
+
+                                                    b4.WithOwner()
+                                                        .HasForeignKey("InlineRowInlineKeyboardMessageContentMessageId", "InlineRow__synthesizedOrdinal")
+                                                        .HasConstraintName("fk_messages_messages_inline_row_inline_keyboard_message_content_mess");
+                                                });
+
+                                            b3.Navigation("Buttons");
+                                        });
+
+                                    b2.Navigation("Rows");
+                                });
+
+                            b1.OwnsOne("Dalan.Relay.Chats.MessageFile", "File", b2 =>
+                                {
+                                    b2.Property<long>("MessageContentMessageId");
+
+                                    b2.Property<string>("ContentType")
+                                        .IsRequired();
+
+                                    b2.Property<string>("Id");
+
+                                    b2.Property<int>("Kind");
+
+                                    b2.Property<string>("Name")
+                                        .IsRequired();
+
+                                    b2.Property<long>("Size");
+
+                                    b2.HasKey("MessageContentMessageId")
+                                        .HasName("pk_messages");
+
+                                    b2.ToTable("messages", "relay");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("MessageContentMessageId")
+                                        .HasConstraintName("fk_messages_messages_message_content_message_id");
+                                });
+
                             b1.OwnsOne("Dalan.Relay.Chats.ReplyKeyboard", "ReplyKeyboard", b2 =>
                                 {
                                     b2.Property<long>("MessageContentMessageId");
@@ -234,6 +431,10 @@ namespace Dalan.Relay.Data.Migrations
 
                                     b2.Navigation("Rows");
                                 });
+
+                            b1.Navigation("File");
+
+                            b1.Navigation("InlineKeyboard");
 
                             b1.Navigation("ReplyKeyboard");
                         });

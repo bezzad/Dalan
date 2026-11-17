@@ -1,6 +1,6 @@
 // Calls to the server. Same origin only; the session is a cookie the browser sends by itself.
 import { createCaller } from "./caller.ts";
-import type { Message } from "./messages.ts";
+import type { Message, Page } from "./messages.ts";
 
 export { ApiError } from "./caller.ts";
 
@@ -27,9 +27,16 @@ export interface Bot {
 /** REL-18: values the client must not hard-code. */
 export interface Settings {
   max_text_length: number;
+  max_caption_length: number;
+  max_file_size_mb: number;
   sync_page_size: number;
   reconnect_min_seconds: number;
   reconnect_max_seconds: number;
+}
+
+export interface Command {
+  command: string;
+  description: string;
 }
 
 const call = createCaller((path, init) => fetch(path, init));
@@ -52,8 +59,17 @@ export const api = {
   findBot: (username: string) =>
     call<Bot & { started: boolean }>("GET", `/api/bots/by-username/${encodeURIComponent(username)}`),
   send: (botId: number, text: string) => call<Message>("POST", `/api/bots/${botId}/messages`, { text }),
-  messages: async (botId: number, range: { after?: number; before?: number }) => {
+  messages: (botId: number, range: { after?: number; before?: number }) => {
     const query = new URLSearchParams(Object.entries(range).map(([name, value]) => [name, String(value)]));
-    return (await call<{ messages: Message[] }>("GET", `/api/bots/${botId}/messages?${query}`)).messages;
+    return call<Page>("GET", `/api/bots/${botId}/messages?${query}`);
   },
+  /** REL-28: the file is the body; its name and the caption go percent-encoded in headers. */
+  sendFile: (botId: number, file: File, caption: string) => call<Message>("POST", `/api/bots/${botId}/files`, file,
+    { "X-File-Name": encodeURIComponent(file.name), "X-Caption": encodeURIComponent(caption) }),
+  /** REL-29: where the browser loads a file of the chat. */
+  fileUrl: (botId: number, fileId: string) => `/api/bots/${botId}/files/${encodeURIComponent(fileId)}`,
+  press: (botId: number, messageId: number, data: string) =>
+    call<{ id: string }>("POST", `/api/bots/${botId}/callbacks`, { message_id: messageId, data }),
+  commands: async (botId: number) =>
+    (await call<{ commands: Command[] }>("GET", `/api/bots/${botId}/commands`)).commands,
 };

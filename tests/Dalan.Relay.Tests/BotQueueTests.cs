@@ -1,4 +1,5 @@
 using Dalan.Identity.Contracts;
+using Dalan.Relay.Contracts;
 using Dalan.Relay.Queue;
 
 namespace Dalan.Relay.Tests;
@@ -14,7 +15,7 @@ public class BotQueueTests
     private readonly BotQueue _queue = new();
 
     private static QueuedUpdate Update(long id, long userId = 1) =>
-        new(id, new UserProfile(userId, "Sara", null), Seq: id, Text: $"text {id}", Date: Start);
+        new(id, new UserProfile(userId, "Sara", null), Start, new BotMessage(id, userId, FromBot: false, $"text {id}", Start));
 
     private IReadOnlyList<long> Add(long id, long userId = 1, bool latestCommandWins = false) =>
         _queue.Enqueue(Update(id, userId), latestCommandWins);

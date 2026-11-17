@@ -1,5 +1,9 @@
+using Dalan.Relay.BotApi;
+using Dalan.Relay.Bots;
+using Dalan.Relay.Buttons;
 using Dalan.Relay.Chats;
 using Dalan.Relay.Data;
+using Dalan.Relay.Files;
 using Dalan.Relay.Live;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -20,6 +24,10 @@ internal static class ClientApiEndpoints
         api.MapGet("/bots/by-username/{username}", FindBotAsync);
         api.MapPost("/bots/{botId:long}/messages", SendMessageAsync);
         api.MapGet("/bots/{botId:long}/messages", GetMessagesAsync);
+        api.MapPost("/bots/{botId:long}/files", SendFileAsync);
+        api.MapGet("/bots/{botId:long}/files/{fileId}", GetFileAsync);
+        api.MapPost("/bots/{botId:long}/callbacks", PressAsync);
+        api.MapGet("/bots/{botId:long}/commands", GetCommandsAsync);
         api.MapGet("/events", EventStream.RunAsync);
     }
 
@@ -27,7 +35,8 @@ internal static class ClientApiEndpoints
     {
         var relay = options.CurrentValue;
         return ApiJson.Ok(new ClientSettingsJson(
-            relay.MaxTextLength, relay.MaxMessagesPerSync, relay.ClientReconnectMinSeconds, relay.ClientReconnectMaxSeconds));
+            relay.MaxTextLength, relay.MaxCaptionLength, relay.MaxFileSizeMb, relay.MaxMessagesPerSync,
+            relay.ClientReconnectMinSeconds, relay.ClientReconnectMaxSeconds));
     }
 
     /// <summary>REL-14: the bots this user has a chat with, newest chat first.</summary>
@@ -67,21 +76,94 @@ internal static class ClientApiEndpoints
         if (await ApiJson.ReadAsync<UserMessageRequest>(http) is not { Text: { } text })
             return ApiJson.BadRequest("""Send JSON like {"text": "hello"} with Content-Type application/json.""");
 
-        var (error, message) = await chats.ReceiveFromUserAsync(botId, ClientApiFilter.UserId(http), text, http.RequestAborted);
-        return error switch
-        {
-            ChatError.None => ApiJson.Ok(ChatMessageJson.Of(message!)),
-            ChatError.TextEmpty => ApiJson.Error(StatusCodes.Status400BadRequest, "text_empty",
-                "'text' is empty. Send at least one character."),
-            ChatError.TextTooLong => ApiJson.Error(StatusCodes.Status400BadRequest, "text_too_long",
-                $"'text' is longer than {options.CurrentValue.MaxTextLength} characters. Send it as several messages."),
-            ChatError.UnknownBot => BotNotFound(),
-            _ => ApiJson.Error(StatusCodes.Status401Unauthorized, "unauthorized",
-                "This account does not exist any more. Log in again."),
-        };
+        return Sent(await chats.ReceiveFromUserAsync(botId, ClientApiFilter.UserId(http), text, null, http.RequestAborted), options);
     }
 
-    /// <summary>REL-16: one page of a chat. "after" is the sync after a reconnect; "before" loads older messages.</summary>
+    /// <summary>
+    /// REL-28: the raw file is the body. The name and caption come in headers, percent-encoded.
+    /// SEC-05: the custom header X-File-Name is something a form of another site cannot send.
+    /// </summary>
+    private static async Task<IResult> SendFileAsync(
+        long botId, HttpContext http, ChatService chats, FileStore files, IOptionsMonitor<RelayOptions> options)
+    {
+        var headers = http.Request.Headers;
+        var name = Decode(headers["X-File-Name"]);
+        var caption = Decode(headers["X-Caption"]) ?? "";
+        if (string.IsNullOrWhiteSpace(name) || http.Request.HasFormContentType)
+        {
+            return ApiJson.BadRequest(
+                "Send the file itself as the body, its type as Content-Type, and its name in the header X-File-Name (percent-encoded).");
+        }
+
+        BotApiEndpoints.AllowFileUpload(http, files);
+        var upload = new UserUpload(http.Request.Body, name, http.Request.ContentType);
+        return Sent(await chats.ReceiveFromUserAsync(botId, ClientApiFilter.UserId(http), caption, upload, http.RequestAborted), options);
+    }
+
+    /// <summary>REL-29: only a file that a message of this user's chat carries.</summary>
+    private static async Task<IResult> GetFileAsync(
+        long botId, string fileId, HttpContext http, IDbContextFactory<RelayDb> dbFactory, ChatService chats, FileStore files)
+    {
+        var userId = ClientApiFilter.UserId(http);
+        await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
+        var inChat = await db.Messages.AnyAsync(
+            m => m.BotId == botId && m.UserId == userId && !m.Deleted && m.Content.File != null && m.Content.File.Id == fileId,
+            http.RequestAborted);
+
+        if (inChat && await chats.FindFileAsync(botId, fileId, http.RequestAborted) is { } file && files.Open(file.Id) is { } content)
+            return FileResponse.Of(http, file, content);
+
+        return ApiJson.Error(StatusCodes.Status404NotFound, "file_not_found",
+            "This file is not in your chat, or it expired. A file is kept for a limited time.");
+    }
+
+    /// <summary>REL-21: a press on an inline button.</summary>
+    private static async Task<IResult> PressAsync(long botId, HttpContext http, ButtonPresses presses)
+    {
+        if (await ApiJson.ReadAsync<PressRequest>(http) is not { MessageId: { } messageId, Data: { } data })
+            return ApiJson.BadRequest("""Send JSON like {"message_id": 2, "data": "yes"} with Content-Type application/json.""");
+
+        return await presses.PressAsync(botId, ClientApiFilter.UserId(http), messageId, data, http.RequestAborted) is { } id
+            ? ApiJson.Ok(new PressJson(id))
+            : ApiJson.Error(StatusCodes.Status404NotFound, "button_not_found",
+                "This message has no such button any more. Load the chat again.");
+    }
+
+    /// <summary>REL-26: the bot's command menu.</summary>
+    private static async Task<IResult> GetCommandsAsync(long botId, HttpContext http, BotRegistry bots) =>
+        ApiJson.Ok(new CommandsJson((await bots.GetCommandsAsync(botId, http.RequestAborted))
+            .Select(c => new CommandJson(c.Command, c.Description))));
+
+    private static IResult Sent((ChatError Error, Message? Message) result, IOptionsMonitor<RelayOptions> options) => result.Error switch
+    {
+        ChatError.None => ApiJson.Ok(ChatMessageJson.Of(result.Message!)),
+        ChatError.TextEmpty => ApiJson.Error(StatusCodes.Status400BadRequest, "text_empty",
+            "'text' is empty. Send at least one character."),
+        ChatError.TextTooLong => ApiJson.Error(StatusCodes.Status400BadRequest, "text_too_long",
+            $"The text is too long: at most {options.CurrentValue.MaxTextLength} characters, or " +
+            $"{options.CurrentValue.MaxCaptionLength} for a file caption. Send it as several messages."),
+        ChatError.FileTooBig => ApiJson.Error(StatusCodes.Status413PayloadTooLarge, "file_too_big",
+            $"The file is bigger than {options.CurrentValue.MaxFileSizeMb} MB."),
+        ChatError.UploadLimit => ApiJson.Error(StatusCodes.Status429TooManyRequests, "upload_limit",
+            $"You sent {options.CurrentValue.UserUploadMbPerDay} MB of files in the last 24 hours. Try again later."),
+        ChatError.UnknownBot => BotNotFound(),
+        _ => ApiJson.Error(StatusCodes.Status401Unauthorized, "unauthorized",
+            "This account does not exist any more. Log in again."),
+    };
+
+    private static string? Decode(string? value)
+    {
+        try
+        {
+            return string.IsNullOrEmpty(value) ? null : Uri.UnescapeDataString(value);
+        }
+        catch (UriFormatException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>REL-16: one page of a chat. "after" (a version) is the sync after a reconnect; "before" (an id) loads older messages.</summary>
     private static async Task<IResult> GetMessagesAsync(
         long botId, HttpContext http, IDbContextFactory<RelayDb> dbFactory, IOptionsMonitor<RelayOptions> options)
     {
@@ -106,8 +188,8 @@ internal static class ClientApiEndpoints
         List<Message> page;
         if (after is not null)
         {
-            // Sync: the oldest messages after the one the client has, so it can ask again for the rest.
-            page = await chat.Where(m => m.Seq > after).OrderBy(m => m.Seq).Take(take).ToListAsync(http.RequestAborted);
+            // Sync: the oldest changes after the version the client has, so it can ask again for the rest.
+            page = await chat.Where(m => m.Version > after).OrderBy(m => m.Version).Take(take).ToListAsync(http.RequestAborted);
         }
         else
         {
@@ -115,7 +197,10 @@ internal static class ClientApiEndpoints
             page.Reverse();
         }
 
-        return ApiJson.Ok(new MessagesResponse(page.Select(ChatMessageJson.Of)));
+        // The pinned message may be older than the page, so it comes on its own.
+        var pinned = await db.Messages.AsNoTracking()
+            .FirstOrDefaultAsync(m => m.BotId == botId && m.UserId == userId && m.Pinned, http.RequestAborted);
+        return ApiJson.Ok(new MessagesResponse(page.Select(ChatMessageJson.Of), pinned is null ? null : ChatMessageJson.Of(pinned)));
     }
 
     private static IResult BotNotFound() => ApiJson.Error(StatusCodes.Status404NotFound, "bot_not_found",

@@ -11,7 +11,7 @@ public class ChatTests(PostgresServer postgres)
 {
     private static Task<(ChatError Error, Message? Message)> ReceiveAsync(DalanApp app, long botId, long userId, string text) =>
         app.Services.GetRequiredService<ChatService>()
-            .ReceiveFromUserAsync(botId, userId, text, TestContext.Current.CancellationToken);
+            .ReceiveFromUserAsync(botId, userId, text, null, TestContext.Current.CancellationToken);
 
     [Fact]
     [Trait("Rule", "Q-01")]

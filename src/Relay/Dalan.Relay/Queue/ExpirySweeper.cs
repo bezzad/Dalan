@@ -7,15 +7,20 @@ using Microsoft.Extensions.Options;
 
 namespace Dalan.Relay.Queue;
 
-/// <summary>Q-02: marks unread, expired updates "not delivered" while a bot is away.</summary>
+/// <summary>Q-02: marks unread, expired updates "not delivered" while a bot is away. Also forgets old button presses (REL-22).</summary>
 public sealed partial class ExpirySweeper(
     IUpdateQueue queue,
+    Buttons.ButtonPresses presses,
     IDbContextFactory<RelayDb> dbFactory,
     IOptionsMonitor<RelayOptions> options,
     TimeProvider time,
     ILogger<ExpirySweeper> logger) : BackgroundService
 {
-    public Task SweepOnceAsync() => RelayDb.MarkAsync(dbFactory, queue.RemoveExpired(), DeliveryState.NotDelivered);
+    public Task SweepOnceAsync()
+    {
+        presses.RemoveOld();
+        return RelayDb.MarkAsync(dbFactory, queue.RemoveExpired(), DeliveryState.NotDelivered);
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {

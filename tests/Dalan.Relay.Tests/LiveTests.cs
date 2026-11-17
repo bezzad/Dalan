@@ -1,5 +1,6 @@
 using System.Net;
 using Dalan.Relay.Chats;
+using Dalan.Relay.ClientApi;
 using Dalan.Relay.Live;
 using Dalan.Testing;
 using Microsoft.AspNetCore.Hosting;
@@ -90,7 +91,7 @@ public class LiveTests(PostgresServer postgres)
     /// <summary>A notifier that cannot pass anything on, so the worker never finishes an event.</summary>
     private sealed class BrokenNotifier : IMessageNotifier
     {
-        public void Publish(MessageCreated message) => throw new InvalidOperationException("the notifier is down");
+        public void Publish(LiveEvent liveEvent) => throw new InvalidOperationException("the notifier is down");
 
         public IMessageSubscription Subscribe(long userId) => throw new NotSupportedException();
     }
@@ -108,7 +109,7 @@ public class LiveTests(PostgresServer postgres)
         await browser.SayAsync(botId, "/start");
 
         Assert.Equal(1L, await PostgresServer.ScalarAsync<long>(app.ConnectionString,
-            "SELECT count(*) FROM relay.outbox WHERE type = 'MessageCreated' AND payload->>'Text' = '/start'"));
+            "SELECT count(*) FROM relay.outbox WHERE type = 'MessageChanged' AND payload->'Message'->>'Text' = '/start'"));
     }
 
     [Fact]
@@ -143,9 +144,9 @@ public class LiveTests(PostgresServer postgres)
         using var stream = await EventStreamReader.OpenAsync(browser);
 
         // An event that nobody announced to the worker, as after a crash between commit and wake.
-        await PostgresServer.ExecuteAsync(app.ConnectionString, $$"""
-            INSERT INTO relay.outbox (type, payload) VALUES ('MessageCreated',
-                '{"BotId":1,"UserId":{{userId}},"Seq":9,"Direction":1,"Text":"late","ReplyKeyboard":null,"Date":"2026-11-16T12:00:00+00:00"}')
+        await PostgresServer.ExecuteAsync(app.ConnectionString, $$$"""
+            INSERT INTO relay.outbox (type, payload) VALUES ('MessageChanged',
+                '{"BotId":1,"UserId":{{{userId}}},"Message":{"Id":9,"Version":9,"From":"bot","Text":"late","Date":"2026-11-16T12:00:00+00:00"}}')
             """);
 
         string? block;
@@ -231,8 +232,10 @@ public class LiveTests(PostgresServer postgres)
         Assert.Null(await stream.NextAsync());
     }
 
-    private static MessageCreated Event(long userId, long seq) =>
-        new(BotId: 1, userId, seq, Direction.FromBot, $"text {seq}", ReplyKeyboard: null, DateTimeOffset.UnixEpoch);
+    private static long Seq(LiveEvent liveEvent) => ((MessageChanged)liveEvent).Message.Id;
+
+    private static MessageChanged Event(long userId, long seq) =>
+        new(BotId: 1, userId, new ChatMessageJson(seq, seq, "bot", $"text {seq}", DateTimeOffset.UnixEpoch));
 
     [Fact]
     [Trait("Rule", "LIVE-08")]
@@ -247,8 +250,8 @@ public class LiveTests(PostgresServer postgres)
         notifier.Publish(Event(userId: 8, seq: 1));
 
         // What fitted in the buffer can still be read; then the stream is over.
-        Assert.True(slow.Events.TryRead(out var first) && first.Seq == 1);
-        Assert.True(slow.Events.TryRead(out var second) && second.Seq == 2);
+        Assert.True(slow.Events.TryRead(out var first) && Seq(first) == 1);
+        Assert.True(slow.Events.TryRead(out var second) && Seq(second) == 2);
         Assert.False(await slow.Events.WaitToReadAsync(Cancel));
         Assert.True(other.Events.TryRead(out _));
         Assert.False(other.Events.Completion.IsCompleted);
@@ -268,6 +271,6 @@ public class LiveTests(PostgresServer postgres)
         notifier.Publish(Event(userId: 7, seq: 2));
 
         Assert.False(gone.Events.TryRead(out _));
-        Assert.True(again.Events.TryRead(out var message) && message.Seq == 2);
+        Assert.True(again.Events.TryRead(out var message) && Seq(message) == 2);
     }
 }

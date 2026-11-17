@@ -29,12 +29,16 @@ internal sealed record Answer(HttpResponseMessage Http, JsonElement Body)
         Assert.True(Body.GetProperty("ok").GetBoolean());
     }
 
-    /// <summary>Compares the result with a saved example of the pinned Bot API version, field by field.</summary>
-    public void ResultEquals(string exampleFile)
+    /// <summary>
+    /// Compares the result with a saved example of the pinned Bot API version, field by field.
+    /// A random <paramref name="fileId"/> in the result is "ID" in the example.
+    /// </summary>
+    public void ResultEquals(string exampleFile, string? fileId = null)
     {
         IsOk();
         var expected = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Examples", exampleFile)));
-        var actual = JsonNode.Parse(Result.GetRawText());
+        var raw = Result.GetRawText();
+        var actual = JsonNode.Parse(fileId is null ? raw : raw.Replace(fileId, "ID", StringComparison.Ordinal));
         Assert.True(JsonNode.DeepEquals(expected, actual), $"Expected {expected}\nActual {actual}");
     }
 }

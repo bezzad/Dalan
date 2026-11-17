@@ -83,7 +83,9 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 - Every user message is saved in the database first. Its row id is the update id, so a bot's offset stays valid after a restart. On start, the server reloads undelivered, unexpired messages into the queues, so a deploy or restart loses nothing.
 - A message counts as **delivered** only after the bot confirms it with the next `getUpdates` offset, like Telegram. Delivery is at least once. An offset confirms only updates the bot was really given.
 - An update is offered to the bot until its expiry. After that the message is "not delivered"; a late confirm of an update the bot already got still counts.
-- Core Bot API: `GET /v1/updates` and `POST /v1/messages` (text and an optional reply keyboard), token in `Authorization: Bearer`.
+- Core Bot API, token in `Authorization: Bearer`: `GET /v1/updates`; `POST /v1/messages` (text, keyboards, a file); `PATCH` and `DELETE /v1/messages/{user}/{id}`; `PUT` and `DELETE /v1/chats/{user}/pin`; `POST /v1/callbacks/{id}/answer`; `PUT` and `GET /v1/commands`; `GET /v1/files/{id}`.
+- A button press is an update like a message, but it is not stored: a press waiting during a restart is lost, and the user presses again.
+- Files live on the local disk in `Relay:FileFolder` (production: `/var/lib/dalan/files`), with a row in `relay.files`, and are deleted after `Relay:FileRetentionDays`. To grow past one server, this folder moves to shared storage.
 - Every bot door (core and Telegram) is a thin HTTP layer over `IBotGateway`: token check, limit per bot, long poll, send. So both doors share one queue and one set of rules.
 - The bot token is part of the Telegram path, so no request path may be written to the log (`TG-10`).
 - Rate limits: per client address in the host, in front of every service; per bot and per user in Relay.
@@ -116,7 +118,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 
 - Client API paths are under `/api`: Identity owns `/api/me`, `/api/logout`, `/api/auth/...` (no session needed), `/api/account/...` and the development login; Relay owns `/api/bots...`, `/api/events`, `/api/settings`. Rules in `openspec/specs/relay` and `openspec/specs/live-updates`.
 - `GET /api/events` is one SSE stream per user for all of that user's chats, behind `IMessageNotifier` (the second seam; in memory now). A stream ends at session expiry, at server stop, when it is too slow, or when the user opens too many; the client then reconnects.
-- The client never trusts the stream alone: every time it opens, the client asks for the messages after the newest sequence number it has.
+- The client never trusts the stream alone: every time it opens, the client asks for the changes after the highest `version` it has. Every new message and every edit, delete or pin takes the next version of its chat, so a sync sees changes too.
 - The PWA (`client/`) is plain TypeScript compiled to ES modules, no bundler. `client/dist` is embedded in `Dalan.Host`, so the release is still one file. Only `/` and `/@<bot>` return the page.
 - Every response carries a Content-Security-Policy that allows only our own origin.
 
@@ -153,6 +155,11 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 27 | 2026-11-17 | Every bot door calls one contract, `IBotGateway`; the Telegram adapter is a plugin on top of it |
 | 28 | 2026-11-17 | Telegram calls at the root (`/bot<token>/<method>`), not under `/tg`; snapshot Telegram Bot API 10.4 |
 | 29 | 2026-11-17 | Adapter serves only what the core has; formatting (`parse_mode`) is ignored until the core stores entities |
+| 30 | 2026-11-17 | Sync by a per-chat `version`, not the sequence number, so edits, deletes and pins reach a syncing client; a delete keeps a stub |
+| 31 | 2026-11-17 | One pinned message per chat (Telegram allows several) |
+| 32 | 2026-11-17 | Button presses are not stored; their answers go straight to the live stream, not through the outbox |
+| 33 | 2026-11-17 | Files on the local disk with expiry; a user upload is the raw body with an `X-File-Name` header (SEC-05 holds) |
+| 34 | 2026-11-17 | Downloaded files never run as a page: `CSP: sandbox`, `nosniff`, `attachment` unless a safe image, audio or video |
 
 ## 11. Client address and access log
 

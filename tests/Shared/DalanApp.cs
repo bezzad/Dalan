@@ -37,6 +37,9 @@ public sealed class DalanApp(
 
     public LogCollector Logs { get; } = new();
 
+    /// <summary>The folder of this server's files (Relay:FileFolder): a new temporary one, so tests never share files.</summary>
+    public string FileFolder { get; } = Path.Combine(Path.GetTempPath(), "dalan-tests", Guid.NewGuid().ToString("N"));
+
     /// <summary>Waits until the start-up work (migrations, queue reload) is done.</summary>
     /// <summary>The access log rows as "actor id-or-phone address port", oldest first. Port is empty when unknown.</summary>
     public async Task<string[]> AccessLogAsync()
@@ -187,6 +190,13 @@ public sealed class DalanApp(
         return browser;
     }
 
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync();
+        if (Directory.Exists(FileFolder)) Directory.Delete(FileFolder, recursive: true);
+        GC.SuppressFinalize(this);
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("ConnectionStrings:Dalan", connectionString);
@@ -200,6 +210,8 @@ public sealed class DalanApp(
         builder.UseSetting("Notification:SmsProvider", "");
         // Tests run the expiry sweep themselves, so it never runs in the background at a moment they do not choose.
         builder.UseSetting("Relay:ExpirySweepSeconds", "86400");
+        builder.UseSetting("Relay:FileSweepMinutes", "1440");
+        builder.UseSetting("Relay:FileFolder", FileFolder);
         foreach (var (key, value) in settings ?? new Dictionary<string, string>())
             builder.UseSetting(key, value);
 
