@@ -66,14 +66,23 @@ internal sealed class TelegramParameters
 
     public bool Has(string name) => _values.ContainsKey(name);
 
-    /// <summary>A file part of a multipart body (TG-20).</summary>
-    public IFormFile? File(string name) => _files?.GetFile(name);
+    /// <summary>
+    /// A file part of a multipart body (TG-20): the part with this name, or the part that "attach://&lt;part name&gt;" names,
+    /// as some libraries send it.
+    /// </summary>
+    public IFormFile? File(string name)
+    {
+        const string Attach = "attach://";
+        return Text(name) is { } text && text.StartsWith(Attach, StringComparison.Ordinal)
+            ? _files?.GetFile(text[Attach.Length..])
+            : _files?.GetFile(name);
+    }
 
     /// <summary>A JSON list, sent as a list or as a string of JSON. False when the parameter is there but is not a list.</summary>
     public bool TryArray(string name, out JsonElement? value)
     {
         value = null;
-        if (!_values.TryGetValue(name, out var raw)) return true;
+        if (!_values.TryGetValue(name, out var raw) || raw.ValueKind == JsonValueKind.Null) return true;
         if (!TryParse(ref raw)) return false;
 
         value = raw;
@@ -87,8 +96,8 @@ internal sealed class TelegramParameters
     public bool TryObject(string name, out JsonElement? value)
     {
         value = null;
-        if (!_values.TryGetValue(name, out var raw)) return true;
-
+        // JSON null is the same as no value.
+        if (!_values.TryGetValue(name, out var raw) || raw.ValueKind == JsonValueKind.Null) return true;
         if (!TryParse(ref raw)) return false;
 
         value = raw;

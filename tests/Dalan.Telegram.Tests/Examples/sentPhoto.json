@@ -1,0 +1,8 @@
+{
+  "message_id": 2,
+  "from": { "id": 1, "is_bot": true, "first_name": "Test bot", "username": "testbot" },
+  "chat": { "id": 1, "type": "private" },
+  "date": 1794830400,
+  "photo": [{ "file_id": "ID", "file_unique_id": "ID", "file_size": 3, "width": 0, "height": 0 }],
+  "caption": "cat"
+}

@@ -132,7 +132,8 @@ public static class TelegramAdapter
             {
                 var field = FileFields[fileKind];
                 if (parameters.File(field) is { } part) file = new NewFile(fileKind, content, part.FileName, part.ContentType);
-                else if (parameters.Text(field) is not { Length: > 0 } fileId) return TelegramJson.BadRequest($"there is no {field} in the request");
+                else if (parameters.Text(field) is not { Length: > 0 } fileId || fileId.StartsWith("attach://", StringComparison.Ordinal))
+                    return TelegramJson.BadRequest($"there is no {field} in the request");
                 else if (fileId.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || fileId.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                     return TelegramJson.BadRequest("sending a file by URL is not supported by Dalan; upload it or send a file_id");
                 else file = new NewFile(fileKind, FileId: fileId);
