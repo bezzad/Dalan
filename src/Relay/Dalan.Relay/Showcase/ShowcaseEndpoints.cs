@@ -1,5 +1,4 @@
 using Dalan.Admin.Contracts;
-using Dalan.Identity.Contracts;
 using Dalan.Relay.Bots;
 using Dalan.Relay.Builder;
 using Dalan.Relay.ClientApi;
@@ -51,7 +50,7 @@ internal static class ShowcaseEndpoints
     }
 
     private static async Task<IResult> AskAsync(
-        long botId, HttpContext http, IDbContextFactory<RelayDb> dbFactory, IUserDirectory users, IAuditLog audit,
+        long botId, HttpContext http, IDbContextFactory<RelayDb> dbFactory, BuilderBots builderBots, IAuditLog audit,
         IOptionsMonitor<RelayOptions> options, TimeProvider time)
     {
         var limits = options.CurrentValue;
@@ -65,7 +64,7 @@ internal static class ShowcaseEndpoints
         }
 
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
-        if (!await BuilderEndpoints.MayChangeAsync(db, users, http, botId)) return BuilderEndpoints.BotNotFound();
+        if (!await BuilderEndpoints.MayChangeAsync(db, builderBots, http, botId)) return BuilderEndpoints.BotNotFound();
 
         var entry = await db.Showcase.FirstOrDefaultAsync(e => e.BotId == botId, http.RequestAborted);
         if (entry is null)
@@ -85,10 +84,10 @@ internal static class ShowcaseEndpoints
     }
 
     private static async Task<IResult> LeaveAsync(
-        long botId, HttpContext http, IDbContextFactory<RelayDb> dbFactory, IUserDirectory users, IAuditLog audit)
+        long botId, HttpContext http, IDbContextFactory<RelayDb> dbFactory, BuilderBots builderBots, IAuditLog audit)
     {
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
-        if (!await BuilderEndpoints.MayChangeAsync(db, users, http, botId)) return BuilderEndpoints.BotNotFound();
+        if (!await BuilderEndpoints.MayChangeAsync(db, builderBots, http, botId)) return BuilderEndpoints.BotNotFound();
 
         if (await db.Showcase.Where(e => e.BotId == botId).ExecuteDeleteAsync(http.RequestAborted) > 0)
         {
@@ -100,12 +99,12 @@ internal static class ShowcaseEndpoints
     }
 
     private static async Task<IResult> SetIconAsync(
-        long botId, HttpContext http, IDbContextFactory<RelayDb> dbFactory, IUserDirectory users,
+        long botId, HttpContext http, IDbContextFactory<RelayDb> dbFactory, BuilderBots builderBots,
         IOptionsMonitor<RelayOptions> options, TimeProvider time)
     {
         var maxBytes = options.CurrentValue.MaxBotIconKb * 1024L;
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
-        if (!await BuilderEndpoints.MayChangeAsync(db, users, http, botId)) return BuilderEndpoints.BotNotFound();
+        if (!await BuilderEndpoints.MayChangeAsync(db, builderBots, http, botId)) return BuilderEndpoints.BotNotFound();
         if (await db.Showcase.FirstOrDefaultAsync(e => e.BotId == botId, http.RequestAborted) is not { } entry)
             return NoEntry();
 
@@ -126,10 +125,10 @@ internal static class ShowcaseEndpoints
 
     /// <summary>REL-41: the owner, or an admin who reviews it (ADM-13), sees the icon before it is listed.</summary>
     private static async Task<IResult> GetOwnIconAsync(
-        long botId, HttpContext http, IDbContextFactory<RelayDb> dbFactory, IUserDirectory users)
+        long botId, HttpContext http, IDbContextFactory<RelayDb> dbFactory, BuilderBots builderBots)
     {
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
-        if (!await BuilderEndpoints.MayChangeAsync(db, users, http, botId)) return BuilderEndpoints.BotNotFound();
+        if (!await BuilderEndpoints.MayChangeAsync(db, builderBots, http, botId)) return BuilderEndpoints.BotNotFound();
         var icon = await db.Showcase.AsNoTracking().Where(e => e.BotId == botId && e.Icon != null)
             .Select(e => new { e.Icon, e.IconType }).FirstOrDefaultAsync(http.RequestAborted);
         return icon is null ? NoEntry() : Image(http, icon.Icon!, icon.IconType!);

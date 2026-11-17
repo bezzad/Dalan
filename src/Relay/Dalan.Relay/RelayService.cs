@@ -8,6 +8,7 @@ using Dalan.Relay.Contracts;
 using Dalan.Relay.Data;
 using Dalan.Relay.Files;
 using Dalan.Relay.Live;
+using Dalan.Relay.Mcp;
 using Dalan.Relay.Outbox;
 using Dalan.Relay.Queue;
 using Dalan.Relay.Showcase;
@@ -34,6 +35,8 @@ public static class RelayService
 
         services.AddSingleton<IUpdateQueue, InMemoryUpdateQueue>();
         services.AddSingleton<BotRegistry>();
+        services.AddSingleton<BuilderBots>();
+        services.AddMcpDoor();
         services.AddSingleton<SuspendedBots>();
         services.AddSingleton<IBotAdmin, BotAdmin>();
         services.AddSingleton<ChatService>();

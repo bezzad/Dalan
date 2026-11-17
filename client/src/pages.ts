@@ -10,6 +10,9 @@ export interface PublicNumbers {
   access_log_days: number;
   file_days: number;
   update_expiry_seconds: number;
+  /** ADM-15: the addresses, for the ready prompt. */
+  site_url: string;
+  bot_api_url: string;
 }
 
 /** CLI-26: which screen an address shows. Unknown addresses never reach the page: the server answers 404. */
@@ -122,4 +125,22 @@ export function showcaseStateName(lang: Lang, entry: ShowcaseEntry | null): stri
 /** CLI-28: the first letter of the name, for a bot with no icon. */
 export function initial(name: string): string {
   return [...name.trim()][0]?.toUpperCase() ?? "?";
+}
+
+/**
+ * CLI-30: text a builder pastes into an AI agent. It names the addresses from the server (ADM-15) and never a key:
+ * the builder gives the key to the agent's settings, not to the chat.
+ */
+export function readyPrompt(lang: Lang, site: string, botApi: string): string {
+  return lang === "fa" ? `پروژهٔ من را به دالان وصل کن. دالان بات یا وب‌اپ را از کامپیوتر خانه، بدون IP عمومی، اجرا می‌کند.
+اول این صفحه را بخوان: ${site}/llms.txt
+- اگر بات تلگرامی است، فقط نشانی سرور را ${botApi} بگذار و توکن را توکن دالان کن.
+- برای ساختن بات و توکن، از سرور MCP دالان استفاده کن: ${site}/api/mcp (کلید دسترسی در متغیر DALAN_KEY است).
+- یا از ابزار خط فرمان: ${site}/dalan.mjs
+کلید یا توکن را هرگز در مخزن کد نگذار.` : `Connect my project to Dalan. Dalan runs a bot or web app from a home computer with no public IP.
+First read: ${site}/llms.txt
+- For a Telegram bot, change only the server address to ${botApi} and use the Dalan token.
+- To create the bot and its token, use Dalan's MCP server: ${site}/api/mcp (the access key is in DALAN_KEY).
+- Or the command line tool: ${site}/dalan.mjs
+Never put the key or a token in the repository.`;
 }

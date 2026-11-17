@@ -125,4 +125,42 @@ public class ShowcaseReviewTests(PostgresServer postgres)
 
         Assert.Equal(60, (await app.CreateClient().JsonAsync("/api/public/settings")).GetProperty("history_days").GetInt32());
     }
+
+    [Fact]
+    [Trait("Rule", "ADM-15")]
+    public async Task ADM15_visitor_reads_llms_txt()
+    {
+        await using var app = await AdminApp.StartAsync(postgres);
+
+        var response = await app.CreateClient().GetAsync("/llms.txt", TestContext.Current.CancellationToken);
+        var text = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var numbers = await app.CreateClient().JsonAsync("/api/public/settings");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/plain; charset=utf-8", response.Content.Headers.ContentType?.ToString());
+        Assert.StartsWith("# Dalan", text, StringComparison.Ordinal);
+        Assert.Contains("https://api.dalanet.ir/bot<token>/<method>", text, StringComparison.Ordinal);
+        Assert.Contains("https://dalanet.ir/api/mcp", text, StringComparison.Ordinal);
+        Assert.Contains("https://dalanet.ir/dalan.mjs", text, StringComparison.Ordinal);
+        Assert.Contains("access key", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("{site}", text, StringComparison.Ordinal);
+        Assert.Equal("https://dalanet.ir", numbers.GetProperty("site_url").GetString());
+        Assert.Equal("https://api.dalanet.ir", numbers.GetProperty("bot_api_url").GetString());
+    }
+
+    [Fact]
+    [Trait("Rule", "ADM-15")]
+    public async Task ADM15_a_panel_change_of_an_address_shows_at_once()
+    {
+        await using var app = await AdminApp.StartAsync(postgres);
+        var (admin, _) = await app.AdminAsync();
+
+        (await admin.SetAsync("Admin:BotApiUrl", "https://bots.example.ir")).EnsureSuccessStatusCode();
+
+        var text = await app.CreateClient().GetStringAsync("/llms.txt", TestContext.Current.CancellationToken);
+        Assert.Contains("https://bots.example.ir/bot<token>/<method>", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("api.dalanet.ir", text, StringComparison.Ordinal);
+        Assert.Equal("https://bots.example.ir",
+            (await app.CreateClient().JsonAsync("/api/public/settings")).GetProperty("bot_api_url").GetString());
+    }
 }

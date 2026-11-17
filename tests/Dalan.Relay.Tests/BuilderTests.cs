@@ -194,4 +194,56 @@ public class BuilderTests(PostgresServer postgres)
         Assert.Equal("bot_not_found", await response.ErrorCodeAsync());
         Assert.Empty(await Bot(app, created.GetProperty("token").GetString()!).UpdatesAsync());
     }
+
+    [Fact]
+    [Trait("Rule", "REL-45")]
+    public async Task REL45_status_of_a_bot_that_polled()
+    {
+        await using var app = await StartAsync();
+        var (browser, _) = await BuilderAsync(app);
+        var created = await JsonOf(await CreateAsync(browser, "weather_bot"));
+        var id = created.GetProperty("id").GetInt64();
+        Assert.Empty(await Bot(app, created.GetProperty("token").GetString()!).UpdatesAsync());
+
+        var response = await browser.GetAsync($"/api/builder/bots/{id}", Cancel);
+        var bot = await JsonOf(response);
+        var listed = Assert.Single((await JsonOf(await browser.GetAsync("/api/builder/bots", Cancel))).GetProperty("bots").EnumerateArray());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("weather_bot", bot.GetProperty("username").GetString());
+        Assert.True(bot.GetProperty("online").GetBoolean());
+        Assert.Equal(app.Time.GetUtcNow(), bot.GetProperty("last_seen").GetDateTimeOffset());
+        Assert.False(bot.GetProperty("suspended").GetBoolean());
+        Assert.True(listed.GetProperty("online").GetBoolean());
+    }
+
+    [Fact]
+    [Trait("Rule", "REL-45")]
+    public async Task REL45_new_bot_is_offline()
+    {
+        await using var app = await StartAsync();
+        var (browser, _) = await BuilderAsync(app);
+        var id = (await JsonOf(await CreateAsync(browser, "weather_bot"))).GetProperty("id").GetInt64();
+
+        var bot = await JsonOf(await browser.GetAsync($"/api/builder/bots/{id}", Cancel));
+
+        Assert.False(bot.GetProperty("online").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, bot.GetProperty("last_seen").ValueKind);
+    }
+
+    [Fact]
+    [Trait("Rule", "REL-45")]
+    public async Task REL45_another_owners_bot_gets_404()
+    {
+        await using var app = await StartAsync();
+        var (alice, _) = await BuilderAsync(app, "Alice");
+        var (bob, _) = await BuilderAsync(app, "Bob");
+        var id = (await JsonOf(await CreateAsync(alice, "alice_bot"))).GetProperty("id").GetInt64();
+
+        var response = await bob.GetAsync($"/api/builder/bots/{id}", Cancel);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("bot_not_found", await response.ErrorCodeAsync());
+        Assert.Equal(HttpStatusCode.NotFound, (await alice.GetAsync("/api/builder/bots/999999", Cancel)).StatusCode);
+    }
 }

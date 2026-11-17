@@ -8,4 +8,10 @@ public sealed class AdminOptions
     public int AccessLogSweepMinutes { get; set; }
     public int PageSize { get; set; }
     public int MaxSettingLength { get; set; }
+
+    /// <summary>ADM-15: the address of the site, for llms.txt and the ready prompt.</summary>
+    public string SiteUrl { get; set; } = "";
+
+    /// <summary>ADM-15: the address bots call.</summary>
+    public string BotApiUrl { get; set; } = "";
 }

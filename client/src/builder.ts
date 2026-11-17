@@ -1,4 +1,5 @@
-// "My bots" for builders (CLI-24): the list, a form to create a bot, and the token shown once.
+// "My bots" for builders (CLI-24): the list, a form to create a bot, the token shown once, and AI agents (CLI-30).
+import { agentsPart } from "./agents.ts";
 import { ApiError, api } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { h } from "./dom.ts";
@@ -24,7 +25,7 @@ export function builderScreen(app: App): Screen {
           h("span", { dir: "ltr" }, `@${bot.username}`),
           ...(bot.suspended ? [h("span", { class: "badge danger" }, t("suspended"))] : []),
           h("button", { type: "button", class: "link", onclick: () => void rotate(bot.id) }, t("newToken"))),
-        h("span", { class: "note" }, app.language.seen({ online: false, last_seen: bot.last_seen }, new Date())),
+        h("span", { class: "note" }, app.language.seen(bot, new Date())),
         showcasePart(bot))));
     drawToken(state.shownToken);
   }
@@ -142,7 +143,7 @@ export function builderScreen(app: App): Screen {
     h("header", {},
       h("button", { type: "button", class: "link", onclick: () => app.showPanel("account") }, t("back")),
       h("h1", {}, t("builderBots"))),
-    h("div", { class: "scroller" }, tokenCard, error, list, create));
+    h("div", { class: "scroller" }, tokenCard, error, list, create, agentsPart(app)));
 
   return { element };
 }

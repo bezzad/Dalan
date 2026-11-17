@@ -33,6 +33,7 @@ Identity    Relay      Notification     Admin
 Relay has two thin HTTP doors, both inside Relay:
 
 - **Client API** (`dalanet.ir`): the door for **people** (PWA). Send a message or button press (POST), live messages (SSE), history sync, file upload. It never runs bot logic; the bot at home does.
+- **MCP door** (`/api/mcp`, inside the Client API group): an MCP server for builders' AI agents, stateless, with the official C# SDK. Its tools and the builder REST calls both call `BuilderBots`, so they share one set of rules.
 - **Bot API** (`api.dalanet.ir`): the door for **bots**. Token auth, `getUpdates` long polling, `sendMessage` and the rest.
 
 **Telegram adapter** is a plugin, not a service: no data, no domain. The host mounts it at `/bot<token>/<method>`, at the root like Telegram (the `Telegram.Bot` library keeps only the host of its base address). It turns Telegram-shaped calls into calls of `IBotGateway` (in `Dalan.Relay.Contracts`) and back. Rules in `openspec/specs/telegram`; it follows Telegram Bot API 10.4 and serves only what the core can do.
@@ -109,6 +110,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 - Security events (login, failed login, SMS sent or refused, refresh reuse, password change) are log lines until the audit table comes with Admin.
 - **Admins** are the users whose phone is in `Identity:AdminPhones` (file or environment only, never the panel).
 - **Builders**: `identity.users.builder` is `none`, `requested` or `approved`; the admin approves. Email is not asked for yet.
+- **Access keys** (for terminals and AI agents): `identity.access_keys`, one row per key with its SHA-256. The `AccessKey` scheme reads `Authorization: Bearer dalan_...`. Only the policy `SessionOrKey` (name in `Dalan.Identity.Contracts`) accepts it: the builder calls and the MCP door. Every other call takes only the session cookie; the session handler never reads the `Authorization` header. Keys are made and deleted only with a session.
 - **Blocking is by user id.** A suspend deletes the user's sessions and puts the id in an in-memory deny list (`SuspendedUsers`, loaded at start) that the JWT handler checks, so an unexpired token stops at once; Admin then asks Relay to end the user's live streams. With more than one server this becomes a `UserSuspended` event.
 - Access token lifetime is an admin setting.
 
@@ -191,6 +193,9 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 50 | 2026-11-17 | Showcase entries in `relay.showcase`; every builder change goes back to review; icons (PNG, JPEG, WebP, no SVG) kept in the row |
 | 51 | 2026-11-17 | Anonymous public endpoints write no access log row (they know no caller); the per-address limit holds |
 | 52 | 2026-11-17 | History kept per chat by a sweeper (`Relay:HistoryMessages`, `Relay:HistoryDays`); sequence numbers keep counting |
+| 53 | 2026-11-17 | Terminals and AI agents use an access key (`dalan_...`, SHA-256 stored, expires), a second auth scheme in Identity that only the builder doors accept |
+| 54 | 2026-11-17 | MCP door `/api/mcp` with the official C# SDK (`ModelContextProtocol.AspNetCore`), stateless; tools call the same `BuilderBots` class as REST |
+| 55 | 2026-11-17 | CLI is one Node file with no packages, served by Dalan at `/dalan.mjs`; `/llms.txt` served by Admin with the addresses from settings |
 
 ## 11. Client address and access log
 
@@ -200,7 +205,7 @@ The owner must be able to tell the cyber police from which address a user or a b
 - **The header is believed only from `Dalan:TrustedProxies`** (addresses or CIDR ranges, comma separated; read at start). The header is read from the right until the first address that is not trusted, so one proxy or several work the same, and what a client wrote is never believed.
 - **Caddy replaces the header** with the client's `address:port` (`header_up X-Forwarded-For {remote}`).
 - **Adding a load balancer or a second proxy:** (1) add its address or range to `Dalan:TrustedProxies` on every instance; (2) make the first hop from the internet write the client's `address:port` and drop the client's own header (Envoy: set `X-Forwarded-For` to `%DOWNSTREAM_REMOTE_ADDRESS%`); (3) a proxy behind it must keep that header (Caddy: list the balancer in `trusted_proxies` and remove the `header_up` line). If step 1 is forgotten the server logs a warning that names the proxy (SEC-11).
-- **Access log:** table `admin.access_log` (actor `User`, `Bot` or `Phone`, actor id, phone, address, port, time). Relay's two door filters call `IAccessLog` for every accepted call, so a new endpoint in those groups is covered with no extra code. A new door that knows its caller must call `IAccessLog` too. The anonymous public endpoints (`/api/public/settings`, `/api/showcase`) know no caller and write no row. A row is written for a new address at once and for a known one after `Admin:AccessLogIntervalMinutes`; "last written" is in memory per instance. A call whose row cannot be written fails.
+- **Access log:** table `admin.access_log` (actor `User`, `Bot` or `Phone`, actor id, phone, address, port, time). Relay's two door filters call `IAccessLog` for every accepted call, so a new endpoint in those groups (also the MCP door `/api/mcp`) is covered with no extra code. The access key calls of Identity write a row too. A new door that knows its caller must call `IAccessLog` too. The anonymous public endpoints (`/api/public/settings`, `/api/showcase`, `/llms.txt`) know no caller and write no row. A row is written for a new address at once and for a known one after `Admin:AccessLogIntervalMinutes`; "last written" is in memory per instance. A call whose row cannot be written fails.
 - **SMS codes:** Identity calls `IAccessLog.RecordSmsAsync` for every login code that was sent: actor `Phone`, the number, and the address of the caller who asked.
 - **Retention:** a sweep deletes rows older than `Admin:AccessLogRetentionDays`.
 - **Admin screen:** the access log tab searches by user, bot, phone or address (`GET /api/admin/access-log`, ADM-10), with times in UTC. Plain SQL still works: `SELECT address, port, at FROM admin.access_log WHERE actor = 'Bot' AND actor_id = 5 ORDER BY at`.

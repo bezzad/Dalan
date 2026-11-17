@@ -93,6 +93,17 @@ export const texts = {
     copy: "کپی",
     copied: "کپی شد.",
     close: "بستن",
+    aiAgents: "دستیارهای هوش مصنوعی",
+    aiAgentsNote: "یک دستیار هوش مصنوعی (مثل Claude یا Codex) با کلید دسترسی می‌تواند برایتان بات بسازد، توکن بگیرد و وضعیت بات را ببیند. کلید به گفتگوها دسترسی ندارد.",
+    noKeys: "هنوز کلیدی نساخته‌اید.",
+    keyName: "نام کلید",
+    makeKey: "ساخت کلید",
+    keyOnce: "این کلید فقط همین یک بار نشان داده می‌شود. آن را در تنظیمات دستیار (DALAN_KEY) بگذارید، نه در گفتگو یا مخزن کد.",
+    keyExpires: "تا {n}",
+    deleteKey: "حذف",
+    deleteKeyConfirm: "این کلید همین الان از کار می‌افتد. حذف شود؟",
+    keyLimit: "به بیشترین تعداد کلید رسیده‌اید. یکی را حذف کنید.",
+    readyPrompt: "متن آماده برای دستیار",
     botSuspended: "این بات را ادمین دالان معلق کرده است.",
     accountSuspended: "این حساب را ادمین دالان معلق کرده است.",
     notBuilder: "فقط سازنده تأییدشده می‌تواند این کار را بکند.",
@@ -238,6 +249,17 @@ export const texts = {
     copy: "Copy",
     copied: "Copied.",
     close: "Close",
+    aiAgents: "AI agents",
+    aiAgentsNote: "With an access key, an AI agent (like Claude or Codex) can create bots, get tokens and read a bot's status for you. A key cannot read chats.",
+    noKeys: "You have no access key yet.",
+    keyName: "Key name",
+    makeKey: "Make key",
+    keyOnce: "This key is shown only this one time. Put it in the agent's settings (DALAN_KEY), not in a chat or a repository.",
+    keyExpires: "until {n}",
+    deleteKey: "Delete",
+    deleteKeyConfirm: "This key stops working at once. Delete it?",
+    keyLimit: "You have the most keys allowed. Delete one first.",
+    readyPrompt: "Ready prompt for an agent",
     botSuspended: "This bot is suspended by the admin of Dalan.",
     accountSuspended: "This account is suspended by the admin of Dalan.",
     notBuilder: "Only an approved builder can do this.",
@@ -345,6 +367,11 @@ export class Language {
   }
 
   /** CLI-19: "online", "last seen ...", or nothing for a bot never seen. */
+  /** CLI-30: a day, like "17 Nov 2026". */
+  day(date: string): string {
+    return new Intl.DateTimeFormat(this.current === "fa" ? "fa-IR" : "en-GB", { dateStyle: "medium" }).format(new Date(date));
+  }
+
   seen(status: { online: boolean; last_seen: string | null }, now: Date): string {
     if (status.online) return this.t("online");
     if (!status.last_seen) return "";

@@ -151,9 +151,11 @@ internal sealed class SessionTokens(
         };
         jwt.Events = new JwtBearerEvents
         {
+            // AUTH-22: only the cookie holds a session, never the Authorization header (that is for access keys).
             OnMessageReceived = context =>
             {
                 context.Token = context.Request.Cookies[CookieName];
+                if (string.IsNullOrEmpty(context.Token)) context.NoResult();
                 return Task.CompletedTask;
             },
             // AUTH-20: a suspended user's token stops at once, before it expires.

@@ -1,0 +1,64 @@
+# Dalan
+
+> Dalan runs a bot or a web app from a home computer with no public IP and no server. The home program makes only outbound long-polling calls to Dalan; people use Dalan's web app ({site}) with a verified mobile number; Dalan passes messages between them. Hosted in Iran, so it keeps working when international internet is cut.
+
+## Connect a Telegram bot (no code change)
+
+Dalan speaks the Telegram Bot API (snapshot 10.4). Change only two things in an existing bot:
+
+- Server address: {api} (calls go to {api}/bot<token>/<method>, like Telegram)
+- Token: the Dalan token of the bot (create it below)
+
+Served: getMe, getUpdates (long polling; webhooks are not served), sendMessage with reply and inline keyboards, editMessageText, editMessageReplyMarkup, deleteMessage, pinChatMessage, unpinChatMessage, unpinAllChatMessages, answerCallbackQuery, setMyCommands, getMyCommands, deleteMyCommands, sendPhoto, sendDocument, sendAudio, sendVideo, sendVoice, getFile, sendChatAction, deleteWebhook. Any other method answers ok=false with a clear description. parse_mode is ignored (plain text).
+
+A bot never gets a user's phone number, only id, name and username.
+
+## Core API (without Telegram)
+
+Header on every call: `Authorization: Bearer <bot token>`. Base: {api}
+
+- `GET /v1/updates?offset=<last update_id + 1>&timeout=30` long polls (timeout at most 50 seconds). An update is confirmed by the next call's offset. Each update has `update_id` and a `message` (`id`, `from` {`id`, `name`, `username`}, `text`, `date`) or a `callback`.
+- `POST /v1/messages` with JSON `{"user_id": 5, "text": "Hi"}` sends a message.
+- Errors are JSON `{"error": "<code>", "message": "<what went wrong and how to fix it>"}`.
+
+A user message waits for the bot for a short time only (about a minute); after that it is marked "not delivered". Keep the bot polling.
+
+## Get an access key (for agents and the CLI)
+
+A person who is an approved builder logs in at {site}, opens "My bots", and makes an access key in the "AI agents" part. The key starts with `dalan_`, is shown once, and expires. It can only create bots, rotate tokens and read bot status. It cannot read chats. Never put a key or a bot token in a repository.
+
+## MCP server
+
+URL: {site}/api/mcp (Streamable HTTP, stateless). Header: `Authorization: Bearer <access key>`.
+
+Tools: `list_bots`, `create_bot` (username, name), `rotate_token` (bot_id), `bot_status` (bot_id).
+
+Claude Code:
+
+    claude mcp add --transport http dalan {site}/api/mcp --header "Authorization: Bearer $DALAN_KEY"
+
+Other agents: add an HTTP MCP server with the same URL and header.
+
+## CLI
+
+One Node file (Node 18 or newer, no packages), served by Dalan itself:
+
+    curl -O {site}/dalan.mjs
+    export DALAN_URL={site} DALAN_KEY=dalan_...
+    node dalan.mjs bots
+    node dalan.mjs create weather_bot "Weather"
+    node dalan.mjs token <bot id>
+    node dalan.mjs status <bot id>
+
+Output is JSON on stdout (exit 0). An error is JSON on stderr (exit 1). A wrong command prints the usage (exit 2).
+
+## REST for builders
+
+Base {site}, header `Authorization: Bearer <access key>`:
+
+- `GET /api/builder/bots`: your bots
+- `POST /api/builder/bots` with `{"username": "weather_bot", "name": "Weather"}`: a new bot and its token (shown once)
+- `POST /api/builder/bots/<id>/token`: a new token; the old one stops at once
+- `GET /api/builder/bots/<id>`: one bot with `online` and `last_seen`
+
+A bot username is 5 to 32 characters of a-z, 0-9 and _, starting with a letter.

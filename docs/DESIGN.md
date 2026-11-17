@@ -323,7 +323,7 @@ Most builders will not connect their project by hand; an AI coding agent will do
 | OpenAPI description | A machine-readable description of the core API |
 | Error messages | Each error says what went wrong and how to fix it |
 
-Version 1 ships a small MCP server and CLI (create bot, token, status). They grow with Layer 2.
+Version 1 ships a small MCP server and CLI (create bot, token, status). They grow with Layer 2. Built in milestone 10: an access key per builder (made in "My bots"), the MCP server at `/api/mcp`, the CLI `dalan.mjs` served by Dalan, `/llms.txt`, and the ready prompt. Not built yet: OpenAPI, profile and commands from MCP.
 
 ## 13. Showcase, landing page and privacy
 
@@ -483,6 +483,8 @@ None of these is planned work. They are recorded so the design does not block th
 | Showcase icon | 100 KB, PNG, JPEG or WebP | Assumed (milestone 9) |
 | Showcase categories | games, tools, education, news, shopping, other | Assumed (milestone 9) |
 | Bots per showcase page | 50 | Assumed (milestone 9) |
+| Access key lifetime | 90 days | Assumed (milestone 10) |
+| Access keys per user | 10 | Assumed (milestone 10) |
 | Site storage per bot (Layer 2) | 200 MB | Agreed in discussion |
 | Pending site requests per user (Layer 2) | 20 | Assumed |
 | Site request timeout (Layer 2) | 30 seconds | Assumed |

@@ -1,129 +1,48 @@
 using System.Globalization;
-using System.Text.RegularExpressions;
-using Dalan.Admin.Contracts;
 using Dalan.Identity.Contracts;
-using Dalan.Relay.Bots;
 using Dalan.Relay.ClientApi;
 using Dalan.Relay.Data;
 using Dalan.Relay.Showcase;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace Dalan.Relay.Builder;
 
-internal sealed record CreateBotRequest(string? Username, string? Name);
-
-internal sealed record BuilderBotJson(
-    long Id, string Username, string Name, DateTimeOffset CreatedAt, DateTimeOffset? LastSeen, bool Suspended, ShowcaseJson? Showcase);
-
-internal sealed record BuilderBotsResponse(IEnumerable<BuilderBotJson> Bots);
-
-internal sealed record NewTokenJson(long Id, string Username, string Name, string Token);
-
 /// <summary>
-/// REL-36, REL-37, REL-39: a builder's own bots. In the Client API group, so the session check (REL-12),
-/// the access log (ADM-01) and the per-user limit (SEC-03) hold.
+/// REL-36, REL-37, REL-39, REL-45: a builder's own bots over REST. In the Client API group, so the access log (ADM-01)
+/// and the per-user limit (SEC-03) hold. A session or an access key (AUTH-22) may call.
 /// </summary>
-internal static partial class BuilderEndpoints
+internal static class BuilderEndpoints
 {
     public static void MapBuilder(this RouteGroupBuilder api)
     {
-        var builder = api.MapGroup("/builder").AddEndpointFilter<BuilderFilter>();
-        builder.MapGet("/bots", ListAsync);
-        builder.MapPost("/bots", CreateAsync);
-        builder.MapPost("/bots/{botId:long}/token", RotateAsync);
+        var builder = api.MapGroup("/builder").RequireAuthorization(AccessKeys.SessionOrKeyPolicy).AddEndpointFilter<BuilderFilter>();
+        builder.MapGet("/bots", (HttpContext http, BuilderBots bots) =>
+            Answer(bots.ListAsync(ClientApiFilter.UserId(http), http.RequestAborted)));
+        builder.MapGet("/bots/{botId:long}", (long botId, HttpContext http, BuilderBots bots) =>
+            Answer(bots.GetAsync(ClientApiFilter.UserId(http), botId, http.RequestAborted)));
+        builder.MapPost("/bots", async (HttpContext http, BuilderBots bots) =>
+            await Answer(bots.CreateAsync(ClientApiFilter.UserId(http), await ApiJson.ReadAsync<CreateBotRequest>(http), http.RequestAborted)));
+        builder.MapPost("/bots/{botId:long}/token", (long botId, HttpContext http, BuilderBots bots) =>
+            Answer(bots.RotateAsync(ClientApiFilter.UserId(http), botId, http.RequestAborted)));
         builder.MapShowcaseForBuilder();
     }
 
-    private static async Task<IResult> ListAsync(HttpContext http, IDbContextFactory<RelayDb> dbFactory, BotPresence presence)
+    private static async Task<IResult> Answer(Task<BuilderAnswer> call)
     {
-        var userId = ClientApiFilter.UserId(http);
-        await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
-        var bots = await db.Bots.AsNoTracking()
-            .Where(b => b.OwnerUserId == userId)
-            .OrderBy(b => b.Id)
-            .Select(b => new { b.Id, b.Username, b.Name, b.CreatedAt, b.LastSeenAt, Suspended = b.SuspendedAt != null })
-            .ToListAsync(http.RequestAborted);
-        var ids = bots.ConvertAll(b => b.Id);
-        // REL-40: the entry without the icon bytes; "icon" only says whether there is one.
-        var entries = await db.Showcase.AsNoTracking().Where(e => ids.Contains(e.BotId))
-            .Select(e => new { e.BotId, e.State, e.Description, e.Category, Icon = e.Icon != null })
-            .ToDictionaryAsync(e => e.BotId, e => ShowcaseJson.Of(e.State, e.Description, e.Category, e.Icon), http.RequestAborted);
-        return ApiJson.Ok(new BuilderBotsResponse(bots.Select(b => new BuilderBotJson(
-            b.Id, b.Username, b.Name, b.CreatedAt, presence.Of(b.Id, b.LastSeenAt).LastSeen, b.Suspended,
-            entries.GetValueOrDefault(b.Id)))));
-    }
-
-    private static async Task<IResult> CreateAsync(
-        HttpContext http, IDbContextFactory<RelayDb> dbFactory, BotRegistry bots, IAuditLog audit,
-        IOptionsMonitor<RelayOptions> options)
-    {
-        var limits = options.CurrentValue;
-        var request = await ApiJson.ReadAsync<CreateBotRequest>(http);
-#pragma warning disable CA1308 // Bot usernames are stored in lower case.
-        var username = request?.Username?.Trim().TrimStart('@').ToLowerInvariant() ?? "";
-#pragma warning restore CA1308
-        var name = request?.Name?.Trim() ?? "";
-        if (!UsernameShape().IsMatch(username) || name.Length == 0 || name.Length > limits.MaxBotNameLength)
-        {
-            return ApiJson.BadRequest(
-                $$"""Send JSON like {"username": "weather_bot", "name": "Weather"}: a username of 5 to 32 characters of a-z, 0-9 and _ that starts with a letter, and a name of 1 to {{limits.MaxBotNameLength}} characters.""");
-        }
-
-        var userId = ClientApiFilter.UserId(http);
-        await using (var db = await dbFactory.CreateDbContextAsync(http.RequestAborted))
-        {
-            if (await db.Bots.CountAsync(b => b.OwnerUserId == userId, http.RequestAborted) >= limits.MaxBotsPerBuilder)
-            {
-                return ApiJson.Error(StatusCodes.Status409Conflict, "bot_limit",
-                    $"You already have {limits.MaxBotsPerBuilder} bots, the most one builder may have.");
-            }
-        }
-
-        try
-        {
-            var (bot, token) = await bots.CreateAsync(userId, username, name, http.RequestAborted);
-            await audit.RecordAsync(userId, "bot.create", BotTarget(bot.Id), bot.Username, http.RequestAborted);
-            return Results.Json(new NewTokenJson(bot.Id, bot.Username, bot.Name, token), ApiJson.Options,
-                statusCode: StatusCodes.Status201Created);
-        }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
-        {
-            return ApiJson.Error(StatusCodes.Status409Conflict, "username_taken", "Another bot has this username. Choose another one.");
-        }
-    }
-
-    private static async Task<IResult> RotateAsync(
-        long botId, HttpContext http, IDbContextFactory<RelayDb> dbFactory, BotRegistry bots, IAuditLog audit, IUserDirectory users)
-    {
-        await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
-        var bot = await db.Bots.AsNoTracking().FirstOrDefaultAsync(b => b.Id == botId, http.RequestAborted);
-        if (!await MayChangeAsync(db, users, http, botId) || await bots.RotateTokenAsync(botId, http.RequestAborted) is not { } token)
-            return BotNotFound();
-
-        await audit.RecordAsync(ClientApiFilter.UserId(http), "bot.token", BotTarget(botId), null, http.RequestAborted);
-        return ApiJson.Ok(new NewTokenJson(bot!.Id, bot.Username, bot.Name, token));
+        var answer = await call;
+        return Results.Json(answer.Body, ApiJson.Options, statusCode: answer.Status);
     }
 
     /// <summary>REL-37 and REL-40: only the owner of the bot, or an admin.</summary>
-    internal static async Task<bool> MayChangeAsync(RelayDb db, IUserDirectory users, HttpContext http, long botId)
-    {
-        var userId = ClientApiFilter.UserId(http);
-        var ownerId = await db.Bots.Where(b => b.Id == botId).Select(b => (long?)b.OwnerUserId).FirstOrDefaultAsync(http.RequestAborted);
-        return ownerId is not null && (ownerId == userId || (await users.GetAccessAsync(userId, http.RequestAborted)).IsAdmin);
-    }
+    internal static Task<bool> MayChangeAsync(RelayDb db, BuilderBots bots, HttpContext http, long botId) =>
+        bots.MayChangeAsync(db, ClientApiFilter.UserId(http), botId, http.RequestAborted);
 
     internal static IResult BotNotFound() =>
         ApiJson.Error(StatusCodes.Status404NotFound, "bot_not_found", "You have no bot with this id.");
 
     internal static string BotTarget(long botId) => string.Create(CultureInfo.InvariantCulture, $"bot {botId}");
-
-    [GeneratedRegex("^[a-z][a-z0-9_]{4,31}$", RegexOptions.CultureInvariant)]
-    private static partial Regex UsernameShape();
 }
 
 /// <summary>REL-36: only an approved builder or an admin. Asked on every call, so an approval works at once.</summary>

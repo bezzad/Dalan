@@ -17,6 +17,7 @@ dotnet test -c Release                      # all .NET tests; needs Docker, or D
 docker compose up -d                        # local PostgreSQL for the next line
 dotnet run --project src/Dalan.Host         # run the server; open http://localhost:5000 (development login is on; SMS codes go to the log)
 node scripts/demo-bot.mjs 1                 # a small bot to chat with; see the top of the file
+node client/public/dalan.mjs                # the builder CLI (needs DALAN_URL and DALAN_KEY); /llms.txt explains it
 bash scripts/check-rules.sh                 # every spec rule ID has a test
 bash tests/deploy/deploy_test.sh            # deploy script tests
 bash tests/proxy/caddy_test.sh              # needs caddy on PATH

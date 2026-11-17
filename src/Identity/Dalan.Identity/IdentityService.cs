@@ -1,3 +1,4 @@
+using Dalan.Identity.Keys;
 using Dalan.Identity.Contracts;
 using Dalan.Identity.Data;
 using Dalan.Identity.Account;
@@ -6,6 +7,7 @@ using Dalan.Identity.Passwords;
 using Dalan.Identity.Sessions;
 using Dalan.Identity.SmsLogin;
 using Dalan.Identity.Users;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
@@ -41,10 +43,15 @@ public static class IdentityService
         services.AddSingleton<PasswordTries>();
 
         // The session is checked by the standard JWT handler. Other services only ask ASP.NET Core who the user is.
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+        // AUTH-22: access keys are a second scheme that only the builder doors ask for.
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer()
+            .AddScheme<AuthenticationSchemeOptions, AccessKeyHandler>(AccessKeys.Scheme, configureOptions: null);
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
             .Configure<SessionTokens>((jwt, sessions) => sessions.Configure(jwt));
-        services.AddAuthorization();
+        services.AddAuthorization(authorization => authorization.AddPolicy(AccessKeys.SessionOrKeyPolicy, policy => policy
+            .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme, AccessKeys.Scheme)
+            .RequireAuthenticatedUser()));
         return services;
     }
 
@@ -54,6 +61,7 @@ public static class IdentityService
         endpoints.MapSmsLogin();
         endpoints.MapPasswordLogin();
         endpoints.MapAccount();
+        endpoints.MapAccessKeys();
         endpoints.MapDevLogin();
         return endpoints;
     }
