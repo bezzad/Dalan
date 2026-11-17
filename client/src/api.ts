@@ -107,6 +107,14 @@ export interface Settings {
   status_refresh_seconds: number;
 }
 
+/** AUTH-21: an access key; the key itself comes only once, from makeKey. */
+export interface AccessKey {
+  id: number;
+  name: string;
+  created_at: string;
+  expires_at: string;
+}
+
 export interface Command {
   command: string;
   description: string;
@@ -153,6 +161,9 @@ export const api = {
   askBuilder: () => call<User>("POST", "/api/account/builder"),
   builderBots: async () => (await call<{ bots: BuilderBot[] }>("GET", "/api/builder/bots")).bots,
   createBot: (username: string, name: string) => call<NewToken>("POST", "/api/builder/bots", { username, name }),
+  accessKeys: async () => (await call<{ keys: AccessKey[] }>("GET", "/api/account/keys")).keys,
+  makeKey: (name: string) => call<AccessKey & { key: string }>("POST", "/api/account/keys", { name }),
+  deleteKey: (keyId: number) => call<null>("DELETE", `/api/account/keys/${keyId}`),
   rotateToken: (botId: number) => call<NewToken>("POST", `/api/builder/bots/${botId}/token`),
   adminSettings: async () => (await call<{ settings: Setting[] }>("GET", "/api/admin/settings")).settings,
   setSetting: (key: string, value: string) => call<Setting>("PUT", `/api/admin/settings/${encodeURIComponent(key)}`, { value }),

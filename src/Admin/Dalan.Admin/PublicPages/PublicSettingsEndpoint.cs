@@ -6,10 +6,11 @@ using Microsoft.Extensions.Configuration;
 
 namespace Dalan.Admin.PublicPages;
 
-internal sealed record PublicSettingsJson(int HistoryMessages, int HistoryDays, int AccessLogDays, int FileDays, int UpdateExpirySeconds);
+internal sealed record PublicSettingsJson(
+    int HistoryMessages, int HistoryDays, int AccessLogDays, int FileDays, int UpdateExpirySeconds, string SiteUrl, string BotApiUrl);
 
 /// <summary>
-/// ADM-14: the numbers the privacy page and the FAQ print (CLI-27). Admin knows every setting, so it answers for all
+/// ADM-14 and ADM-15: the numbers and addresses the privacy page and the FAQ print (CLI-27). Admin knows every setting, so it answers for all
 /// services. Read from the configuration on each call, so a panel change shows at once. No session, no access log row
 /// (it knows no caller); the per-address limit (SEC-02) holds.
 /// </summary>
@@ -21,5 +22,7 @@ internal static class PublicSettingsEndpoint
             configuration.GetValue<int>("Relay:HistoryDays"),
             configuration.GetValue<int>("Admin:AccessLogRetentionDays"),
             configuration.GetValue<int>("Relay:FileRetentionDays"),
-            configuration.GetValue<int>("Relay:UpdateExpirySeconds"))));
+            configuration.GetValue<int>("Relay:UpdateExpirySeconds"),
+            configuration["Admin:SiteUrl"] ?? "",
+            configuration["Admin:BotApiUrl"] ?? "")));
 }

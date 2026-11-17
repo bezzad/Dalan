@@ -68,6 +68,21 @@ public class ClientAppTests(PostgresServer postgres)
     }
 
     [Fact]
+    [Trait("Rule", "CLI-32")]
+    public async Task CLI32_the_site_serves_the_cli()
+    {
+        await using var app = await StartAsync();
+
+        var response = await app.CreateClient().GetAsync("/dalan.mjs", Cancel);
+        var text = await response.Content.ReadAsStringAsync(Cancel);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/javascript", response.Content.Headers.ContentType?.MediaType);
+        Assert.StartsWith("#!/usr/bin/env node", text, StringComparison.Ordinal);
+        Assert.Contains("DALAN_KEY", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     [Trait("Rule", "CLI-09")]
     public async Task CLI09_manifest_makes_the_app_installable()
     {

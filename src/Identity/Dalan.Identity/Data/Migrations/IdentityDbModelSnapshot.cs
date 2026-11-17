@@ -23,6 +23,50 @@ namespace Dalan.Identity.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Dalan.Identity.Keys.AccessKey", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<byte[]>("KeyHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("key_hash");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_access_keys");
+
+                    b.HasIndex("KeyHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_access_keys_key_hash");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_access_keys_user_id");
+
+                    b.ToTable("access_keys", "identity");
+                });
+
             modelBuilder.Entity("Dalan.Identity.Sessions.Session", b =>
                 {
                     b.Property<long>("Id")
@@ -177,6 +221,16 @@ namespace Dalan.Identity.Data.Migrations
                         .HasDatabaseName("ix_users_phone");
 
                     b.ToTable("users", "identity");
+                });
+
+            modelBuilder.Entity("Dalan.Identity.Keys.AccessKey", b =>
+                {
+                    b.HasOne("Dalan.Identity.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_access_keys_users_user_id");
                 });
 
             modelBuilder.Entity("Dalan.Identity.Sessions.Session", b =>

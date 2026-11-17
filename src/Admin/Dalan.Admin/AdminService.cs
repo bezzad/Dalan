@@ -39,6 +39,7 @@ public static class AdminService
     {
         endpoints.MapAdminApi();
         endpoints.MapPublicSettings();
+        endpoints.MapLlmsTxt();
         return endpoints;
     }
 

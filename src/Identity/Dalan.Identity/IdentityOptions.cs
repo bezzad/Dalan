@@ -66,4 +66,10 @@ public sealed class IdentityOptions
     public int PasswordTriesPerIp { get; set; }
 
     public int PasswordTriesWindowMinutes { get; set; }
+
+    /// <summary>AUTH-21: lifetime of an access key.</summary>
+    public int AccessKeyDays { get; set; }
+
+    /// <summary>AUTH-21: access keys one user may have.</summary>
+    public int MaxAccessKeys { get; set; }
 }

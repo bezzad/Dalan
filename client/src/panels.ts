@@ -15,6 +15,7 @@ export interface BuilderBot {
   username: string;
   name: string;
   created_at: string;
+  online: boolean;
   last_seen: string | null;
   suspended: boolean;
   /** REL-40: null when the bot is not in the showcase. */
@@ -30,7 +31,7 @@ export class BuilderList {
 
   /** A bot was created: it joins the list without its token, and the token is shown. */
   created(bot: NewToken, now: Date): void {
-    this.bots = [...this.bots, { id: bot.id, username: bot.username, name: bot.name, created_at: now.toISOString(), last_seen: null, suspended: false, showcase: null }];
+    this.bots = [...this.bots, { id: bot.id, username: bot.username, name: bot.name, created_at: now.toISOString(), online: false, last_seen: null, suspended: false, showcase: null }];
     this.shownToken = bot;
   }
 

@@ -6,6 +6,7 @@ using Dalan.Relay.Chats;
 using Dalan.Relay.Data;
 using Dalan.Relay.Files;
 using Dalan.Relay.Live;
+using Dalan.Relay.Mcp;
 using Dalan.Relay.Push;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -35,6 +36,7 @@ internal static class ClientApiEndpoints
         api.MapGet("/events", EventStream.RunAsync);
         api.MapPush();
         api.MapBuilder();
+        api.MapMcpDoor();
     }
 
     private static IResult Settings(IOptionsMonitor<RelayOptions> options)

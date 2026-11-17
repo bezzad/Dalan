@@ -1,9 +1,10 @@
-// Rules: CLI-26, CLI-27, CLI-28, CLI-29
+// Rules: CLI-26, CLI-27, CLI-28, CLI-29, CLI-30
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { categoryName, faqItems, initial, landing, pageFor, privacyPoints, showcaseStateName, type PublicNumbers } from "../src/pages.ts";
+import { categoryName, faqItems, initial, landing, pageFor, privacyPoints, readyPrompt, showcaseStateName, type PublicNumbers } from "../src/pages.ts";
 
-const numbers: PublicNumbers = { history_messages: 200, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60 };
+const numbers: PublicNumbers = { history_messages: 200, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60,
+  site_url: "https://dalanet.ir", bot_api_url: "https://api.dalanet.ir" };
 const persian = (value: number) => new Intl.NumberFormat("fa-IR").format(value);
 const english = (value: number) => String(value);
 
@@ -58,3 +59,15 @@ test("CLI-29 the state of each entry has a name", () => {
     ["Not listed", "Waiting for review", "Listed", "Refused"]);
   assert.equal(showcaseStateName("fa", null), "در ویترین نیست");
 });
+
+test("CLI-30 the ready prompt names the addresses from the server and no key", () => {
+  for (const lang of ["fa", "en"] as const) {
+    const text = readyPrompt(lang, numbers.site_url, numbers.bot_api_url);
+    for (const address of ["https://dalanet.ir/llms.txt", "https://dalanet.ir/api/mcp", "https://dalanet.ir/dalan.mjs", "https://api.dalanet.ir"]) {
+      assert.ok(text.includes(address), `${lang} has ${address}`);
+    }
+    assert.doesNotMatch(text, /dalan_[A-Za-z0-9]/);
+  }
+  assert.match(readyPrompt("en", "https://other.ir", "https://bots.other.ir"), /https:\/\/bots\.other\.ir/);
+});
+
