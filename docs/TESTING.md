@@ -28,7 +28,7 @@ Areas: `OPS` operations, `ARC` architecture, `DEL` delivery, `Q` bot queue, `REL
 | Contract | xUnit v3 + JSON files + the `Telegram.Bot` package | Telegram adapter answers compared with saved examples of the pinned Bot API version (`tests/Dalan.Telegram.Tests/Examples`); one test drives the real `Telegram.Bot` client against the test server |
 | Architecture | xUnit v3 + reflection on assemblies | Dependency rules `ARC-*` |
 | Client | Node test runner (`node --test`), TypeScript run directly, no test package | Pure client logic: message list, sync, reply buttons, reconnect wait, languages; a scan of the built files for foreign hosts. No browser test in CI yet: the screens are checked by hand in a real browser |
-| Shell | bash | Deploy script with a fake `systemctl` and fake server folder |
+| Shell | bash | Deploy, server setup, backup and drill scripts with fake system commands and a fake server folder |
 | Load | chosen when the first load test is written | Target in `docs/ARCHITECTURE.md` section 8; run before each release to the Iran server, not on every push |
 
 ## 4. Rules for writing tests
@@ -43,7 +43,7 @@ Areas: `OPS` operations, `ARC` architecture, `DEL` delivery, `Q` bot queue, `REL
 ```bash
 (cd client && npm ci && npm run build && npm test)  # client; the server build needs client/dist
 dotnet test                      # all .NET tests (needs Docker, or DALAN_TEST_POSTGRES)
-bash tests/deploy/deploy_test.sh # deploy script tests
+bash tests/deploy/deploy_test.sh # deploy script tests; also setup_test, backup_test, drill_test
 bash scripts/check-rules.sh      # every rule has a test
 openspec validate --all --strict # specs are well formed
 ```

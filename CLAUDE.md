@@ -6,6 +6,7 @@ Read first:
 - `docs/DESIGN.md`: what we build and why (product). Source of truth for scope.
 - `docs/ARCHITECTURE.md`: services, communication, data, scale, decisions log.
 - `docs/TESTING.md`: rule IDs, test-first workflow, test kinds.
+- `docs/SERVER.md`: Iran server setup, deploy, backup, shutdown drill.
 - `openspec/specs/`: current rules. `openspec/changes/`: work in progress, one change per milestone.
 
 ## Commands
@@ -19,7 +20,7 @@ dotnet run --project src/Dalan.Host         # run the server; open http://localh
 node scripts/demo-bot.mjs 1                 # a small bot to chat with; see the top of the file
 node client/public/dalan.mjs                # the builder CLI (needs DALAN_URL and DALAN_KEY); /llms.txt explains it
 bash scripts/check-rules.sh                 # every spec rule ID has a test
-bash tests/deploy/deploy_test.sh            # deploy script tests
+bash tests/deploy/deploy_test.sh            # deploy script tests (also setup_test, backup_test, drill_test)
 bash tests/proxy/caddy_test.sh              # needs caddy on PATH
 bash scripts/publish.sh out                 # builds the client, then the self-contained linux-x64 release
 node scripts/vapid-keys.mjs                 # a key pair for Web Push (server environment)
@@ -35,7 +36,7 @@ src/<Service>/Dalan.<Service>.Contracts   the only thing other services may refe
 src/Plugins/Dalan.Telegram         Telegram adapter plugin (no data, no domain)
 tests/                             one project or script folder per area
 client/                            PWA, plain TypeScript, no framework, no bundler; src, public, tests; built into dist
-deploy/                            deploy.sh, dalan.service (systemd), Caddyfile
+deploy/                            deploy.sh, server setup (install.sh, setup.sh), units, Caddyfile, backup, shutdown drill; docs/SERVER.md
 compose.yaml                       PostgreSQL for local work only
 openspec/                          specs and changes
 ```

@@ -378,6 +378,7 @@ These facts shaped the design. Several were learned the hard way by the Valorian
 - Keep the last few releases, check a health endpoint after each deploy, and roll back if it fails.
 - GitHub may not open from the server, so the server never pulls; CI pushes.
 - Back up PostgreSQL daily.
+- Built in milestone 11: one-command server setup, daily backup and a shutdown drill script (`docs/SERVER.md`).
 
 **Filtered or foreign services to avoid at runtime**
 

@@ -50,7 +50,7 @@ src/
   Plugins/Dalan.Telegram
 tests/                                one test project per area
 client/                               PWA, plain TypeScript
-deploy/                               deploy.sh, systemd unit, Caddyfile
+deploy/                               deploy.sh, server setup, systemd units, Caddyfile, backup, drill (docs/SERVER.md)
 ```
 
 Inside a service, code is grouped by **feature folder** (endpoint + logic + data access side by side). No Repository, Mediator or extra layers.
