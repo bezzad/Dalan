@@ -1,9 +1,11 @@
 using System.Net;
 using Dalan.Admin.Contracts;
 using Dalan.Relay.Bots;
+using Dalan.Relay.Buttons;
 using Dalan.Relay.Chats;
 using Dalan.Relay.Contracts;
 using Dalan.Relay.Data;
+using Dalan.Relay.Files;
 using Dalan.Relay.Queue;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -18,11 +20,15 @@ internal sealed class BotGateway(
     RateLimits limits,
     IUpdateQueue queue,
     ChatService chats,
+    ButtonPresses presses,
+    FileStore files,
     IDbContextFactory<RelayDb> dbFactory,
     IOptionsMonitor<RelayOptions> options,
     TimeProvider time,
     IHostApplicationLifetime lifetime) : IBotGateway
 {
+    public long MaxUploadBytes => files.MaxBytes;
+
     public async Task<BotAccess> EnterAsync(string? token, IPAddress? address, int port, CancellationToken cancellationToken)
     {
         if (await bots.AuthenticateAsync(token, cancellationToken) is not { } bot) return new BotAccess(null, null);
@@ -48,7 +54,7 @@ internal sealed class BotGateway(
             var batch = queue.Take(botId, poll.Offset, poll.Limit);
             await RelayDb.MarkAsync(dbFactory, batch.Delivered, DeliveryState.Delivered);
             await RelayDb.MarkAsync(dbFactory, batch.NotDelivered, DeliveryState.NotDelivered);
-            if (batch.Updates.Count > 0) return batch.Updates.Select(ToUpdate).ToList();
+            if (batch.Updates.Count > 0) return batch.Updates.Select(u => u.ToBot()).ToList();
 
             try
             {
@@ -68,25 +74,58 @@ internal sealed class BotGateway(
         return null;
     }
 
-    public async Task<SendResult> SendMessageAsync(
-        long botId, long userId, string text, List<List<string>>? replyKeyboard, CancellationToken cancellationToken)
-    {
-        var (error, message) = await chats.SendFromBotAsync(botId, userId, text, replyKeyboard, cancellationToken);
-        return error switch
-        {
-            ChatError.None => new SendResult(SendError.None, new BotMessage(
-                message!.Seq, message.UserId, message.Content.Text, message.CreatedAt, message.Content.ReplyKeyboard?.ToRows())),
-            ChatError.TextEmpty => new SendResult(SendError.TextEmpty, null),
-            ChatError.TextTooLong => new SendResult(SendError.TextTooLong, null),
-            ChatError.BadKeyboard => new SendResult(SendError.BadKeyboard, null),
-            _ => new SendResult(SendError.ChatNotActive, null),
-        };
-    }
+    public async Task<BotResult<BotMessage>> SendAsync(
+        long botId, long userId, OutgoingMessage message, CancellationToken cancellationToken) =>
+        Result(await chats.SendFromBotAsync(botId, userId, message, cancellationToken));
 
-    private static BotUpdate ToUpdate(QueuedUpdate update) => new(
-        update.Id,
-        update.Seq,
-        new BotUser(update.From.Id, update.From.DisplayName, update.From.Username),
-        update.Text,
-        update.Date);
+    public async Task<BotResult<BotMessage>> EditAsync(
+        long botId, long userId, long messageId, string? text, List<List<InlineButton>>? inlineKeyboard,
+        CancellationToken cancellationToken) =>
+        Result(await chats.EditAsync(botId, userId, messageId, text, inlineKeyboard, cancellationToken));
+
+    public async Task<BotError> DeleteAsync(long botId, long userId, long messageId, CancellationToken cancellationToken) =>
+        ToBot(await chats.DeleteAsync(botId, userId, messageId, cancellationToken));
+
+    public async Task<BotError> PinAsync(long botId, long userId, long messageId, CancellationToken cancellationToken) =>
+        ToBot(await chats.PinAsync(botId, userId, messageId, cancellationToken));
+
+    public async Task<BotError> UnpinAsync(long botId, long userId, CancellationToken cancellationToken) =>
+        ToBot(await chats.UnpinAsync(botId, userId, cancellationToken));
+
+    public Task<BotError> AnswerCallbackAsync(
+        long botId, string callbackId, string? text, bool showAlert, CancellationToken cancellationToken) =>
+        Task.FromResult(
+            text?.Length > options.CurrentValue.MaxCallbackAnswerLength ? BotError.TextTooLong
+            : presses.Answer(botId, callbackId, string.IsNullOrEmpty(text) ? null : text, showAlert) ? BotError.None
+            : BotError.CallbackNotFound);
+
+    public async Task<BotError> SetCommandsAsync(long botId, IReadOnlyList<BotCommand> commands, CancellationToken cancellationToken) =>
+        await bots.SetCommandsAsync(botId, commands, cancellationToken) ? BotError.None : BotError.BadCommands;
+
+    public Task<IReadOnlyList<BotCommand>> GetCommandsAsync(long botId, CancellationToken cancellationToken) =>
+        bots.GetCommandsAsync(botId, cancellationToken);
+
+    public Task<BotFile?> GetFileAsync(long botId, string fileId, CancellationToken cancellationToken) =>
+        chats.FindFileAsync(botId, fileId, cancellationToken);
+
+    public async Task<Stream?> OpenFileAsync(long botId, string fileId, CancellationToken cancellationToken) =>
+        await chats.FindFileAsync(botId, fileId, cancellationToken) is { } file ? files.Open(file.Id) : null;
+
+    private static BotResult<BotMessage> Result((ChatError Error, Message? Message) result) =>
+        new(ToBot(result.Error), result.Message?.ToBot());
+
+    private static BotError ToBot(ChatError error) => error switch
+    {
+        ChatError.None => BotError.None,
+        ChatError.TextEmpty => BotError.TextEmpty,
+        ChatError.TextTooLong => BotError.TextTooLong,
+        ChatError.BadKeyboard => BotError.BadKeyboard,
+        ChatError.MessageNotFound => BotError.MessageNotFound,
+        ChatError.NotEditable => BotError.NotEditable,
+        ChatError.NoText => BotError.NoText,
+        ChatError.NotModified => BotError.NotModified,
+        ChatError.FileTooBig => BotError.FileTooBig,
+        ChatError.FileNotFound => BotError.FileNotFound,
+        _ => BotError.ChatNotActive,
+    };
 }

@@ -13,9 +13,9 @@ public sealed class OutboxEvent
     public required string Type { get; set; }
     public required string Payload { get; set; }
 
-    public static OutboxEvent Of(MessageCreated message) =>
-        new() { Type = nameof(MessageCreated), Payload = JsonSerializer.Serialize(message) };
+    public static OutboxEvent Of(MessageChanged message) =>
+        new() { Type = nameof(MessageChanged), Payload = JsonSerializer.Serialize(message) };
 
-    public MessageCreated? AsMessageCreated() =>
-        Type == nameof(MessageCreated) ? JsonSerializer.Deserialize<MessageCreated>(Payload) : null;
+    public MessageChanged? AsMessageChanged() =>
+        Type == nameof(MessageChanged) ? JsonSerializer.Deserialize<MessageChanged>(Payload) : null;
 }

@@ -35,17 +35,24 @@ internal static class EventStream
             await WriteAsync(http, ": connected\n\n", end.Token);
             while (await NextAsync(http, subscription, options.CurrentValue, time, end.Token))
             {
-                while (subscription.Events.TryRead(out var message))
-                {
-                    var json = JsonSerializer.Serialize(new MessageEventJson(message.BotId, ChatMessageJson.Of(message)), ApiJson.Options);
-                    await WriteAsync(http, $"event: message\ndata: {json}\n\n", end.Token);
-                }
+                while (subscription.Events.TryRead(out var liveEvent))
+                    await WriteAsync(http, Format(liveEvent), end.Token);
             }
         }
         catch (OperationCanceledException)
         {
         }
     }
+
+    /// <summary>LIVE-02 and LIVE-09: one Server-Sent Event.</summary>
+    private static string Format(LiveEvent liveEvent) => liveEvent switch
+    {
+        MessageChanged changed =>
+            $"event: message\ndata: {JsonSerializer.Serialize(new MessageEventJson(changed.BotId, changed.Message), ApiJson.Options)}\n\n",
+        CallbackAnswered answer =>
+            $"event: answer\ndata: {JsonSerializer.Serialize(new AnswerEventJson(answer.BotId, answer.CallbackId, answer.Text, answer.ShowAlert), ApiJson.Options)}\n\n",
+        _ => throw new ArgumentOutOfRangeException(nameof(liveEvent)),
+    };
 
     /// <summary>Waits for the next event and sends a heartbeat while there is none (LIVE-05). False when the stream must end.</summary>
     private static async Task<bool> NextAsync(

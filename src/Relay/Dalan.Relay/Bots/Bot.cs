@@ -11,4 +11,13 @@ public sealed class Bot
     public required byte[] TokenHash { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>REL-26: the command menu, stored as jsonb.</summary>
+    public List<CommandEntry> Commands { get; set; } = [];
+}
+
+public sealed class CommandEntry
+{
+    public string Command { get; set; } = "";
+    public string Description { get; set; } = "";
 }

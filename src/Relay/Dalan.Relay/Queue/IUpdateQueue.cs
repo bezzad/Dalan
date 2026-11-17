@@ -1,13 +1,25 @@
+using System.Globalization;
 using Dalan.Identity.Contracts;
 using Dalan.Relay.Chats;
+using Dalan.Relay.Contracts;
 
 namespace Dalan.Relay.Queue;
 
-/// <summary>One user message waiting for a bot. Its id is the id of the stored message.</summary>
-public sealed record QueuedUpdate(long Id, UserProfile From, long Seq, string Text, DateTimeOffset Date)
+/// <summary>
+/// One update waiting for a bot: a user message (its id is the id of the stored message),
+/// or a press on a button of <see cref="Message"/> (REL-21) when <see cref="CallbackData"/> is set.
+/// </summary>
+public sealed record QueuedUpdate(long Id, UserProfile From, DateTimeOffset Date, BotMessage Message, string? CallbackData = null)
 {
-    public static QueuedUpdate Of(Message message, UserProfile sender) =>
-        new(message.Id, sender, message.Seq, message.Content.Text, message.CreatedAt);
+    public static QueuedUpdate Of(Message message, UserProfile sender) => new(message.Id, sender, message.CreatedAt, message.ToBot());
+
+    public BotUpdate ToBot()
+    {
+        var from = new BotUser(From.Id, From.DisplayName, From.Username);
+        return CallbackData is null
+            ? new BotUpdate(Id, from, Message, null)
+            : new BotUpdate(Id, from, null, new BotCallback(Id.ToString(CultureInfo.InvariantCulture), Message, CallbackData));
+    }
 }
 
 /// <summary>

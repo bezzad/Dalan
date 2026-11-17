@@ -1,9 +1,11 @@
 using Dalan.Relay.BotApi;
 using Dalan.Relay.Bots;
+using Dalan.Relay.Buttons;
 using Dalan.Relay.Chats;
 using Dalan.Relay.ClientApi;
 using Dalan.Relay.Contracts;
 using Dalan.Relay.Data;
+using Dalan.Relay.Files;
 using Dalan.Relay.Live;
 using Dalan.Relay.Outbox;
 using Dalan.Relay.Queue;
@@ -31,6 +33,10 @@ public static class RelayService
         services.AddSingleton<IUpdateQueue, InMemoryUpdateQueue>();
         services.AddSingleton<BotRegistry>();
         services.AddSingleton<ChatService>();
+        services.AddSingleton<ButtonPresses>();
+        services.AddSingleton<FileStore>();
+        services.AddSingleton<FileSweeper>();
+        services.AddHostedService(provider => provider.GetRequiredService<FileSweeper>());
         services.AddSingleton<QueueLoader>();
         services.AddSingleton<RateLimits>();
         services.AddSingleton<IBotGateway, BotGateway>();

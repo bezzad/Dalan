@@ -79,7 +79,7 @@ public sealed partial class OutboxWorker(
 
         foreach (var outboxEvent in events)
         {
-            if (outboxEvent.AsMessageCreated() is { } message) notifier.Publish(message);
+            if (outboxEvent.AsMessageChanged() is { } message) notifier.Publish(message);
         }
 
         var ids = events.ConvertAll(e => e.Id);

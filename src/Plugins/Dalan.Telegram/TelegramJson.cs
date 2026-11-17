@@ -18,6 +18,9 @@ internal static class TelegramJson
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
+    /// <summary>For reading JSON parameters (snake_case names).</summary>
+    public static JsonSerializerOptions ReadOptions => Options;
+
     public static IResult Ok<T>(T result) => Results.Json(new OkJson<T>(true, result), Options);
 
     /// <summary>The HTTP status is the error code, as in Telegram.</summary>
@@ -45,32 +48,108 @@ internal sealed record ErrorJson(bool Ok, int ErrorCode, string Description, Err
 
 internal sealed record ErrorParametersJson(int RetryAfter);
 
-/// <summary>Telegram's Update. Dalan has one kind for now: a message from a user.</summary>
-internal sealed record UpdateJson(long UpdateId, MessageJson Message)
+/// <summary>Telegram's Update: a user's message, or a press on an inline button (TG-14).</summary>
+internal sealed record UpdateJson(long UpdateId, MessageJson? Message, CallbackQueryJson? CallbackQuery)
 {
-    public static UpdateJson Of(BotUpdate update) => new(update.Id, MessageJson.Received(update));
+    public static UpdateJson Of(BotInfo bot, BotUpdate update)
+    {
+        var from = UserJson.Of(update.From);
+        return new UpdateJson(
+            update.Id,
+            update.Message is { } message ? MessageJson.Received(update.From, message) : null,
+            update.Callback is { } callback
+                ? new CallbackQueryJson(
+                    callback.Id, from, MessageJson.Sent(bot, callback.Message),
+                    update.From.Id.ToString(CultureInfo.InvariantCulture), callback.Data)
+                : null);
+    }
 }
 
-/// <summary>Telegram's Message. <see cref="Date"/> is Unix seconds.</summary>
-internal sealed record MessageJson(
-    long MessageId, UserJson From, ChatJson Chat, long Date, string Text, IReadOnlyList<EntityJson>? Entities)
-{
-    public static MessageJson Received(BotUpdate update) => new(
-        update.MessageId,
-        new UserJson(update.From.Id, false, update.From.Name, update.From.Username),
-        new ChatJson(update.From.Id, ChatJson.Private, update.From.Name, update.From.Username),
-        update.Date.ToUnixTimeSeconds(),
-        update.Text,
-        BotCommands.Find(update.Text));
+internal sealed record CallbackQueryJson(string Id, UserJson From, MessageJson Message, string ChatInstance, string Data);
 
-    public static MessageJson Sent(BotInfo bot, BotMessage message) => new(
-        message.Id,
+/// <summary>
+/// Telegram's Message. <see cref="Date"/> is Unix seconds. A message with a file has a caption instead of a text,
+/// and the file in the field of its kind (TG-20, TG-21).
+/// </summary>
+internal sealed record MessageJson(
+    long MessageId,
+    UserJson From,
+    ChatJson Chat,
+    long Date,
+    long? EditDate,
+    string? Text,
+    IReadOnlyList<EntityJson>? Entities,
+    IReadOnlyList<FileJson>? Photo,
+    FileJson? Document,
+    FileJson? Audio,
+    FileJson? Voice,
+    FileJson? Video,
+    string? Caption,
+    InlineMarkupJson? ReplyMarkup)
+{
+    public static MessageJson Received(BotUser user, BotMessage message) => Of(
+        message,
+        UserJson.Of(user),
+        new ChatJson(user.Id, ChatJson.Private, user.Name, user.Username),
+        message.File is null ? BotCommands.Find(message.Text) : null);
+
+    public static MessageJson Sent(BotInfo bot, BotMessage message) => Of(
+        message,
         new UserJson(bot.Id, true, bot.Name, bot.Username),
         new ChatJson(message.UserId, ChatJson.Private),
-        message.Date.ToUnixTimeSeconds(),
-        message.Text,
-        Entities: null);
+        entities: null);
+
+    private static MessageJson Of(BotMessage message, UserJson from, ChatJson chat, IReadOnlyList<EntityJson>? entities)
+    {
+        var file = message.File;
+        FileJson? Of(FileKind kind) => file?.Kind == kind ? FileJson.Of(file) : null;
+        return new MessageJson(
+            message.Id,
+            from,
+            chat,
+            message.Date.ToUnixTimeSeconds(),
+            message.EditDate?.ToUnixTimeSeconds(),
+            file is null ? message.Text : null,
+            entities,
+            Of(FileKind.Photo) is { } photo ? [photo] : null,
+            Of(FileKind.Document),
+            Of(FileKind.Audio),
+            Of(FileKind.Voice),
+            Of(FileKind.Video),
+            file is not null && message.Text.Length > 0 ? message.Text : null,
+            message.InlineKeyboard is { } rows ? InlineMarkupJson.Of(rows) : null);
+    }
 }
+
+/// <summary>
+/// Telegram's PhotoSize, Document, Audio, Voice and Video in one shape; fields a kind does not have stay out.
+/// Dalan does not read media, so width, height and duration are 0.
+/// </summary>
+internal sealed record FileJson(
+    string FileId, string FileUniqueId, long FileSize, string? FileName, string? MimeType, int? Width, int? Height, int? Duration)
+{
+    public static FileJson Of(BotFile file) => file.Kind switch
+    {
+        FileKind.Photo => new(file.Id, file.Id, file.Size, null, null, 0, 0, null),
+        FileKind.Voice => new(file.Id, file.Id, file.Size, null, file.ContentType, null, null, 0),
+        FileKind.Audio => new(file.Id, file.Id, file.Size, file.Name, file.ContentType, null, null, 0),
+        FileKind.Video => new(file.Id, file.Id, file.Size, file.Name, file.ContentType, 0, 0, 0),
+        _ => new(file.Id, file.Id, file.Size, file.Name, file.ContentType, null, null, null),
+    };
+}
+
+/// <summary>Telegram's File, the answer of getFile (TG-21). The path is the file id.</summary>
+internal sealed record TelegramFileJson(string FileId, string FileUniqueId, long FileSize, string FilePath);
+
+internal sealed record InlineMarkupJson(List<List<InlineButtonJson>> InlineKeyboard)
+{
+    public static InlineMarkupJson Of(List<List<InlineButton>> rows) =>
+        new(rows.ConvertAll(row => row.ConvertAll(b => new InlineButtonJson(b.Text, b.CallbackData, b.Url))));
+}
+
+internal sealed record InlineButtonJson(string Text, string? CallbackData, string? Url);
+
+internal sealed record CommandJson(string Command, string Description);
 
 /// <summary>Telegram's User: a person or a bot. No phone number (REL-10).</summary>
 internal sealed record UserJson(
@@ -84,6 +163,8 @@ internal sealed record UserJson(
 {
     /// <summary>TG-04: the answer of getMe. Dalan has no groups and no inline mode.</summary>
     public static UserJson Of(BotInfo bot) => new(bot.Id, true, bot.Name, bot.Username, false, false, false);
+
+    public static UserJson Of(BotUser user) => new(user.Id, false, user.Name, user.Username);
 }
 
 /// <summary>Telegram's Chat. A Dalan chat is always one user, so its id is the user's id.</summary>

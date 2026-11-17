@@ -8,6 +8,9 @@ namespace Dalan.Relay.Contracts;
 /// </summary>
 public interface IBotGateway
 {
+    /// <summary>The biggest file a bot may upload, in bytes (REL-27). A door lets a request body be this big.</summary>
+    long MaxUploadBytes { get; }
+
     /// <summary>
     /// Checks the token (REL-04), records the call in the access log (ADM-01), then checks the call limit of that bot (SEC-01).
     /// Call it once for each bot call, with the address and port of the connection as they are (<c>HttpContext.Connection</c>).
@@ -21,7 +24,35 @@ public interface IBotGateway
     Task<IReadOnlyList<BotUpdate>?> GetUpdatesAsync(
         long botId, long offset, long? limit, long? timeoutSeconds, CancellationToken cancellationToken);
 
-    /// <summary>The bot writes to a user who started it (REL-08, REL-09, REL-17).</summary>
-    Task<SendResult> SendMessageAsync(
-        long botId, long userId, string text, List<List<string>>? replyKeyboard, CancellationToken cancellationToken);
+    /// <summary>The bot writes to a user who started it (REL-08, REL-09, REL-17, REL-20, REL-27).</summary>
+    Task<BotResult<BotMessage>> SendAsync(long botId, long userId, OutgoingMessage message, CancellationToken cancellationToken);
+
+    /// <summary>REL-23: null <paramref name="text"/> keeps the text; the inline keyboard is always replaced (null = none).</summary>
+    Task<BotResult<BotMessage>> EditAsync(
+        long botId, long userId, long messageId, string? text, List<List<InlineButton>>? inlineKeyboard,
+        CancellationToken cancellationToken);
+
+    /// <summary>REL-24.</summary>
+    Task<BotError> DeleteAsync(long botId, long userId, long messageId, CancellationToken cancellationToken);
+
+    /// <summary>REL-25: pins this message and unpins the one before.</summary>
+    Task<BotError> PinAsync(long botId, long userId, long messageId, CancellationToken cancellationToken);
+
+    /// <summary>REL-25.</summary>
+    Task<BotError> UnpinAsync(long botId, long userId, CancellationToken cancellationToken);
+
+    /// <summary>REL-22.</summary>
+    Task<BotError> AnswerCallbackAsync(
+        long botId, string callbackId, string? text, bool showAlert, CancellationToken cancellationToken);
+
+    /// <summary>REL-26: replaces the command list.</summary>
+    Task<BotError> SetCommandsAsync(long botId, IReadOnlyList<BotCommand> commands, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<BotCommand>> GetCommandsAsync(long botId, CancellationToken cancellationToken);
+
+    /// <summary>REL-29: a file of this bot, or null when it does not exist or expired.</summary>
+    Task<BotFile?> GetFileAsync(long botId, string fileId, CancellationToken cancellationToken);
+
+    /// <summary>REL-29: the bytes of a file of this bot, or null. The caller disposes the stream.</summary>
+    Task<Stream?> OpenFileAsync(long botId, string fileId, CancellationToken cancellationToken);
 }

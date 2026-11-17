@@ -8,9 +8,9 @@ public sealed class InMemoryMessageNotifier(IOptionsMonitor<RelayOptions> option
     private sealed class Subscription(InMemoryMessageNotifier owner, long userId, int bufferSize) : IMessageSubscription
     {
         // Full buffer = TryWrite fails, and the stream is closed (LIVE-08).
-        public Channel<MessageCreated> Channel { get; } = System.Threading.Channels.Channel.CreateBounded<MessageCreated>(bufferSize);
+        public Channel<LiveEvent> Channel { get; } = System.Threading.Channels.Channel.CreateBounded<LiveEvent>(bufferSize);
 
-        public ChannelReader<MessageCreated> Events => Channel.Reader;
+        public ChannelReader<LiveEvent> Events => Channel.Reader;
 
         public void Dispose() => owner.Remove(userId, this);
     }
@@ -18,15 +18,15 @@ public sealed class InMemoryMessageNotifier(IOptionsMonitor<RelayOptions> option
     private readonly Lock _lock = new();
     private readonly Dictionary<long, List<Subscription>> _streams = [];
 
-    public void Publish(MessageCreated message)
+    public void Publish(LiveEvent liveEvent)
     {
         lock (_lock)
         {
-            if (!_streams.TryGetValue(message.UserId, out var streams)) return;
+            if (!_streams.TryGetValue(liveEvent.UserId, out var streams)) return;
 
             // A stream that does not keep up is closed. Its client reconnects and syncs.
-            foreach (var slow in streams.FindAll(s => !s.Channel.Writer.TryWrite(message)))
-                Close(message.UserId, streams, slow);
+            foreach (var slow in streams.FindAll(s => !s.Channel.Writer.TryWrite(liveEvent)))
+                Close(liveEvent.UserId, streams, slow);
         }
     }
 

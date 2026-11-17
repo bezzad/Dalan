@@ -26,6 +26,20 @@ public sealed class RelayOptions
     public int OutboxBatchSize { get; set; }
     public int ClientReconnectMinSeconds { get; set; }
     public int ClientReconnectMaxSeconds { get; set; }
+    public int MaxCaptionLength { get; set; }
+    public int MaxCallbackDataBytes { get; set; }
+    public int MaxButtonUrlLength { get; set; }
+    public int CallbackAnswerSeconds { get; set; }
+    public int MaxCallbackAnswerLength { get; set; }
+    public int MaxCommands { get; set; }
+    public int MaxCommandDescriptionLength { get; set; }
+
+    /// <summary>Folder of the files; a relative path is under the program's folder.</summary>
+    public string FileFolder { get; set; } = "";
+    public int MaxFileSizeMb { get; set; }
+    public int FileRetentionDays { get; set; }
+    public int FileSweepMinutes { get; set; }
+    public int UserUploadMbPerDay { get; set; }
 
     public TimeSpan UpdateExpiry => TimeSpan.FromSeconds(UpdateExpirySeconds);
 }

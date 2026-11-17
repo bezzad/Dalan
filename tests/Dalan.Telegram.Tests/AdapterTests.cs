@@ -92,7 +92,7 @@ public class AdapterTests(PostgresServer postgres)
 
     [Theory]
     [Trait("Rule", "TG-09")]
-    [InlineData("sendPhoto")]
+    [InlineData("sendSticker")]
     [InlineData("setWebhook")]
     [InlineData("noSuchMethod")]
     public async Task TG09_method_dalan_does_not_have_is_a_clear_400(string method)

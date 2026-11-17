@@ -8,6 +8,7 @@ namespace Dalan.Telegram;
 internal sealed class TelegramParameters
 {
     private readonly Dictionary<string, JsonElement> _values = new(StringComparer.Ordinal);
+    private IFormFileCollection? _files;
 
     /// <summary>Returns null when the body cannot be read.</summary>
     public static async Task<TelegramParameters?> ReadAsync(HttpContext http)
@@ -20,8 +21,9 @@ internal sealed class TelegramParameters
         {
             if (request.HasFormContentType)
             {
-                foreach (var (name, value) in await request.ReadFormAsync(http.RequestAborted))
-                    parameters.Set(name, value.ToString());
+                var form = await request.ReadFormAsync(http.RequestAborted);
+                foreach (var (name, value) in form) parameters.Set(name, value.ToString());
+                parameters._files = form.Files;
             }
             else if (request.HasJsonContentType() && request.ContentLength != 0)
             {
@@ -54,6 +56,30 @@ internal sealed class TelegramParameters
         _ => null,
     };
 
+    /// <summary>True for JSON true or the text "true", as forms send it.</summary>
+    public bool Flag(string name) => _values.GetValueOrDefault(name) switch
+    {
+        { ValueKind: JsonValueKind.True } => true,
+        { ValueKind: JsonValueKind.String } value => string.Equals(value.GetString(), "true", StringComparison.OrdinalIgnoreCase),
+        _ => false,
+    };
+
+    public bool Has(string name) => _values.ContainsKey(name);
+
+    /// <summary>A file part of a multipart body (TG-20).</summary>
+    public IFormFile? File(string name) => _files?.GetFile(name);
+
+    /// <summary>A JSON list, sent as a list or as a string of JSON. False when the parameter is there but is not a list.</summary>
+    public bool TryArray(string name, out JsonElement? value)
+    {
+        value = null;
+        if (!_values.TryGetValue(name, out var raw)) return true;
+        if (!TryParse(ref raw)) return false;
+
+        value = raw;
+        return raw.ValueKind == JsonValueKind.Array;
+    }
+
     /// <summary>
     /// A JSON object, sent as an object or as a string of JSON (the only way in a form).
     /// False when the parameter is there but is not a JSON object.
@@ -63,20 +89,26 @@ internal sealed class TelegramParameters
         value = null;
         if (!_values.TryGetValue(name, out var raw)) return true;
 
-        if (raw.ValueKind == JsonValueKind.String)
-        {
-            try
-            {
-                raw = JsonSerializer.Deserialize<JsonElement>(raw.GetString()!);
-            }
-            catch (JsonException)
-            {
-                return false;
-            }
-        }
+        if (!TryParse(ref raw)) return false;
 
         value = raw;
         return raw.ValueKind == JsonValueKind.Object;
+    }
+
+    /// <summary>A string holds JSON text in a form or a query; parse it.</summary>
+    private static bool TryParse(ref JsonElement raw)
+    {
+        if (raw.ValueKind != JsonValueKind.String) return true;
+
+        try
+        {
+            raw = JsonSerializer.Deserialize<JsonElement>(raw.GetString()!);
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     private void Set(string name, string value) => _values[name] = JsonSerializer.SerializeToElement(value);

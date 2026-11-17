@@ -198,7 +198,7 @@ public class SendMessageTests(PostgresServer postgres)
 
     [Theory]
     [Trait("Rule", "TG-08")]
-    [InlineData("""{"inline_keyboard":[[{"text":"A","callback_data":"a"}]]}""")]
+    [InlineData("""{"inline_keyboard":[[{"text":"A","switch_inline_query":"a"}]]}""")]
     [InlineData("""{"force_reply":true}""")]
     [InlineData("""{"keyboard":[[{"text":"Phone","request_contact":true}]]}""")]
     [InlineData("""{"keyboard":[[{"text":"App","web_app":{"url":"https://example.ir"}}]]}""")]

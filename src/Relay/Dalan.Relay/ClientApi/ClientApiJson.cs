@@ -1,7 +1,5 @@
 using System.Text.Json.Serialization;
 using Dalan.Relay.Bots;
-using Dalan.Relay.Chats;
-using Dalan.Relay.Live;
 
 namespace Dalan.Relay.ClientApi;
 
@@ -16,27 +14,26 @@ internal sealed record FoundBotJson(long Id, string Username, string Name, bool 
 
 internal sealed record UserMessageRequest(string? Text);
 
-/// <summary>A message as a person sees it. Its id is the sequence number in the chat.</summary>
-internal sealed record ChatMessageJson(
-    long Id,
-    string From,
-    string Text,
-    DateTimeOffset Date,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] List<List<string>>? ReplyKeyboard)
-{
-    public static ChatMessageJson Of(Message message) => new(
-        message.Seq, Name(message.Direction), message.Content.Text, message.CreatedAt, message.Content.ReplyKeyboard?.ToRows());
-
-    public static ChatMessageJson Of(MessageCreated message) => new(
-        message.Seq, Name(message.Direction), message.Text, message.Date, message.ReplyKeyboard);
-
-    private static string Name(Direction direction) => direction == Direction.FromBot ? "bot" : "user";
-}
-
-internal sealed record MessagesResponse(IEnumerable<ChatMessageJson> Messages);
+internal sealed record MessagesResponse(IEnumerable<ChatMessageJson> Messages, ChatMessageJson? Pinned);
 
 /// <summary>The data of a "message" event in the live stream (LIVE-02).</summary>
 internal sealed record MessageEventJson(long BotId, ChatMessageJson Message);
 
+/// <summary>The data of an "answer" event in the live stream (LIVE-09).</summary>
+internal sealed record AnswerEventJson(
+    long BotId,
+    string CallbackId,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Text,
+    bool ShowAlert);
+
+internal sealed record PressRequest(long? MessageId, string? Data);
+
+internal sealed record PressJson(string Id);
+
+internal sealed record CommandsJson(IEnumerable<CommandJson> Commands);
+
+internal sealed record CommandJson(string Command, string Description);
+
 /// <summary>REL-18: what the client must know and may not hard-code.</summary>
-internal sealed record ClientSettingsJson(int MaxTextLength, int SyncPageSize, int ReconnectMinSeconds, int ReconnectMaxSeconds);
+internal sealed record ClientSettingsJson(
+    int MaxTextLength, int MaxCaptionLength, int MaxFileSizeMb, int SyncPageSize, int ReconnectMinSeconds, int ReconnectMaxSeconds);

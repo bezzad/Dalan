@@ -17,4 +17,7 @@ public sealed class Membership
 
     /// <summary>Sequence number of the newest message in this chat (REL-06).</summary>
     public long LastSeq { get; set; }
+
+    /// <summary>The chat's change counter (REL-16): every new message and every change takes the next number.</summary>
+    public long LastVersion { get; set; }
 }
