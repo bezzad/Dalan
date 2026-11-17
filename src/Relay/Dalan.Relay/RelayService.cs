@@ -10,6 +10,7 @@ using Dalan.Relay.Files;
 using Dalan.Relay.Live;
 using Dalan.Relay.Outbox;
 using Dalan.Relay.Queue;
+using Dalan.Relay.Showcase;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -48,6 +49,8 @@ public static class RelayService
         services.AddSingleton<IMessageNotifier, InMemoryMessageNotifier>();
         services.AddSingleton<OutboxWorker>();
         services.AddHostedService(provider => provider.GetRequiredService<OutboxWorker>());
+        services.AddSingleton<HistorySweeper>();
+        services.AddHostedService(provider => provider.GetRequiredService<HistorySweeper>());
         services.AddSingleton<ExpirySweeper>();
         services.AddHostedService(provider => provider.GetRequiredService<ExpirySweeper>());
         return services;
@@ -57,6 +60,7 @@ public static class RelayService
     {
         endpoints.MapBotApi();
         endpoints.MapClientApi();
+        endpoints.MapPublicShowcase();
         return endpoints;
     }
 

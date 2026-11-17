@@ -44,6 +44,18 @@ public sealed class RelayOptions
     public int ClientStatusRefreshSeconds { get; set; }
     public int MaxBotsPerBuilder { get; set; }
     public int MaxBotNameLength { get; set; }
+    public int MaxBotDescriptionLength { get; set; }
+    public int MaxBotIconKb { get; set; }
+
+    /// <summary>REL-40: comma separated keys, like "games,tools".</summary>
+    public string ShowcaseCategories { get; set; } = "";
+    public int ShowcasePageSize { get; set; }
+    public int HistoryMessages { get; set; }
+    public int HistoryDays { get; set; }
+    public int HistorySweepMinutes { get; set; }
+
+    public IReadOnlyList<string> Categories =>
+        ShowcaseCategories.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
     public TimeSpan UpdateExpiry => TimeSpan.FromSeconds(UpdateExpirySeconds);
 }

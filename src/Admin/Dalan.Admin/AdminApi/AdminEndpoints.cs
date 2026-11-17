@@ -31,7 +31,9 @@ internal sealed record UsersResponse(IEnumerable<AdminUser> Users);
 
 internal sealed record BotsResponse(IEnumerable<AdminBot> Bots);
 
-/// <summary>ADM-05 to ADM-12: the one admin door. Identity and Relay keep their data; Admin calls their contracts.</summary>
+internal sealed record ShowcaseResponse(IEnumerable<ShowcaseRequest> Entries);
+
+/// <summary>ADM-05 to ADM-13: the one admin door. Identity and Relay keep their data; Admin calls their contracts.</summary>
 internal static class AdminEndpoints
 {
     public static void MapAdminApi(this IEndpointRouteBuilder endpoints)
@@ -47,6 +49,8 @@ internal static class AdminEndpoints
         admin.MapPost("/users/{userId:long}/suspend", SuspendUserAsync);
         admin.MapGet("/bots", BotsAsync);
         admin.MapPost("/bots/{botId:long}/suspend", SuspendBotAsync);
+        admin.MapGet("/showcase", ShowcaseAsync);
+        admin.MapPost("/showcase/{botId:long}", ReviewShowcaseAsync);
     }
 
     private static readonly string[] AccessFilters = ["user", "bot", "phone", "address"];
@@ -180,6 +184,22 @@ internal static class AdminEndpoints
         await audit.RecordAsync(AdminFilter.UserId(http), suspended ? "bot.suspend" : "bot.unsuspend",
             string.Create(CultureInfo.InvariantCulture, $"bot {botId}"), null, http.RequestAborted);
         return AdminJson.Ok(bot);
+    }
+
+    /// <summary>ADM-13.</summary>
+    private static async Task<IResult> ShowcaseAsync(HttpContext http, IBotAdmin bots, IOptionsMonitor<AdminOptions> options) =>
+        AdminJson.Ok(new ShowcaseResponse(await bots.ShowcaseRequestsAsync(options.CurrentValue.PageSize, http.RequestAborted)));
+
+    private static async Task<IResult> ReviewShowcaseAsync(long botId, HttpContext http, IBotAdmin bots, IAuditLog audit)
+    {
+        if (await AdminJson.ReadAsync<BuilderRequest>(http) is not { Approve: { } approve })
+            return AdminJson.BadRequest("""Send JSON like {"approve": true}.""");
+
+        if (!await bots.ReviewShowcaseAsync(botId, approve, http.RequestAborted))
+            return AdminJson.NotFound("showcase_not_found", "This bot has no showcase entry.");
+        await audit.RecordAsync(AdminFilter.UserId(http), approve ? "showcase.approve" : "showcase.refuse",
+            string.Create(CultureInfo.InvariantCulture, $"bot {botId}"), null, http.RequestAborted);
+        return Results.NoContent();
     }
 
     private static IResult UserNotFound() => AdminJson.NotFound("user_not_found", "There is no user with this id.");

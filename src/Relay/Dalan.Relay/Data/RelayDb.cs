@@ -2,6 +2,7 @@ using Dalan.Relay.Bots;
 using Dalan.Relay.Chats;
 using Dalan.Relay.Files;
 using Dalan.Relay.Outbox;
+using Dalan.Relay.Showcase;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dalan.Relay.Data;
@@ -15,6 +16,7 @@ public sealed class RelayDb(DbContextOptions<RelayDb> options) : DbContext(optio
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<OutboxEvent> Outbox => Set<OutboxEvent>();
     public DbSet<StoredFile> Files => Set<StoredFile>();
+    public DbSet<ShowcaseEntry> Showcase => Set<ShowcaseEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -50,6 +52,14 @@ public sealed class RelayDb(DbContextOptions<RelayDb> options) : DbContext(optio
         {
             file.HasIndex(f => f.ExpiresAt);
             file.HasIndex(f => new { f.UserId, f.CreatedAt });
+        });
+
+        modelBuilder.Entity<ShowcaseEntry>(entry =>
+        {
+            entry.ToTable("showcase");
+            entry.HasKey(e => e.BotId);
+            entry.HasOne<Bot>().WithOne().HasForeignKey<ShowcaseEntry>(e => e.BotId);
+            entry.HasIndex(e => e.State);
         });
 
         modelBuilder.Entity<OutboxEvent>(outbox =>
