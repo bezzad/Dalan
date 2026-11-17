@@ -44,13 +44,15 @@ internal static class EventStream
         }
     }
 
-    /// <summary>LIVE-02 and LIVE-09: one Server-Sent Event.</summary>
+    /// <summary>LIVE-02, LIVE-09 and LIVE-10: one Server-Sent Event.</summary>
     private static string Format(LiveEvent liveEvent) => liveEvent switch
     {
         MessageChanged changed =>
             $"event: message\ndata: {JsonSerializer.Serialize(new MessageEventJson(changed.BotId, changed.Message), ApiJson.Options)}\n\n",
         CallbackAnswered answer =>
             $"event: answer\ndata: {JsonSerializer.Serialize(new AnswerEventJson(answer.BotId, answer.CallbackId, answer.Text, answer.ShowAlert), ApiJson.Options)}\n\n",
+        ChatRead read =>
+            $"event: read\ndata: {JsonSerializer.Serialize(new ReadEventJson(read.BotId, read.Unread), ApiJson.Options)}\n\n",
         _ => throw new ArgumentOutOfRangeException(nameof(liveEvent)),
     };
 

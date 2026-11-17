@@ -22,7 +22,8 @@ public class ChangeTests(PostgresServer postgres)
     [Trait("Rule", "REL-23")]
     public async Task REL16_sync_after_a_version_brings_an_edit_of_an_old_message()
     {
-        await using var app = await RelayApp.StartAsync(postgres);
+        // Two user messages that wait would make the first "not delivered", which is a change too (REL-31).
+        await using var app = await RelayApp.StartAsync(postgres, ("Relay:LatestCommandWins", "false"));
         var chat = await Chat.StartAsync(app);
         var wait = await chat.BotSaysAsync("wait");
         await chat.Browser.SayAsync(chat.BotId, "ok");

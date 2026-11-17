@@ -33,6 +33,8 @@ public static class RelayService
         services.AddSingleton<IUpdateQueue, InMemoryUpdateQueue>();
         services.AddSingleton<BotRegistry>();
         services.AddSingleton<ChatService>();
+        services.AddSingleton<DeliveryMarks>();
+        services.AddSingleton<BotPresence>();
         services.AddSingleton<ButtonPresses>();
         services.AddSingleton<FileStore>();
         services.AddSingleton<FileSweeper>();

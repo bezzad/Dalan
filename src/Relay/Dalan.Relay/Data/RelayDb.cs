@@ -58,29 +58,4 @@ public sealed class RelayDb(DbContextOptions<RelayDb> options) : DbContext(optio
             outbox.Property(e => e.Payload).HasColumnType("jsonb");
         });
     }
-
-    /// <summary>
-    /// Writes the outcome of user messages. Each message leaves the queue once, so each id is written once.
-    /// Ids of button presses match no row: a press is not stored (REL-21).
-    /// </summary>
-    public static async Task MarkAsync(
-        IDbContextFactory<RelayDb> dbFactory, IReadOnlyCollection<long> messageIds, DeliveryState state)
-    {
-        if (messageIds.Count == 0) return;
-
-        await using var db = await dbFactory.CreateDbContextAsync();
-        await db.Messages
-            .Where(m => messageIds.Contains(m.Id))
-            .ExecuteUpdateAsync(set => set.SetProperty(m => m.Delivery, state));
-
-        if (state != DeliveryState.NotDelivered) return;
-
-        // REL-30: the bot never saw these files, so nobody needs them.
-        var files = await db.Messages
-            .Where(m => messageIds.Contains(m.Id) && m.Content.File != null)
-            .Select(m => m.Content.File!.Id)
-            .ToListAsync();
-        if (files.Count > 0)
-            await db.Files.Where(f => files.Contains(f.Id)).ExecuteUpdateAsync(set => set.SetProperty(f => f.ExpiresAt, f => f.CreatedAt));
-    }
 }

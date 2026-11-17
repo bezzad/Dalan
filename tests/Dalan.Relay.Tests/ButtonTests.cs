@@ -113,10 +113,10 @@ public class ButtonTests(PostgresServer postgres)
         var response = await chat.Bot.PostAsJsonAsync($"/v1/callbacks/{pressId}/answer", new { text = "Saved", show_alert = true }, Cancel);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        // Heartbeats, and the "not delivered" mark of the message the press replaced (REL-31), come first.
         var block = await stream.NextAsync();
-        while (block!.StartsWith(':')) block = await stream.NextAsync();
+        while (!block!.StartsWith("event: answer", StringComparison.Ordinal)) block = await stream.NextAsync();
         var lines = block.Split('\n');
-        Assert.Equal("event: answer", lines[0]);
         var data = JsonSerializer.Deserialize<JsonElement>(lines[1]["data: ".Length..]);
         Assert.Equal(chat.BotId, data.GetProperty("bot_id").GetInt64());
         Assert.Equal(pressId, data.GetProperty("callback_id").GetString());

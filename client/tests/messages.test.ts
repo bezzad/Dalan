@@ -221,6 +221,7 @@ test("CLI-16 a file over the limit is refused before it is sent", () => {
 });
 
 test("CLI-17 an edited message has the edited mark", () => {
-  assert.equal(stamp(m(1), "12:00", "edited"), "12:00");
-  assert.equal(stamp({ ...m(1), edited: "2026-11-16T12:05:00Z" }, "12:00", "edited"), "12:00 · edited");
+  const words = { edited: "edited", notDelivered: "not delivered" };
+  assert.equal(stamp(m(1), "12:00", words), "12:00");
+  assert.equal(stamp({ ...m(1), edited: "2026-11-16T12:05:00Z" }, "12:00", words), "12:00 · edited");
 });

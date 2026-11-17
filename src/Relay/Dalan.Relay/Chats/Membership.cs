@@ -20,4 +20,7 @@ public sealed class Membership
 
     /// <summary>The chat's change counter (REL-16): every new message and every change takes the next number.</summary>
     public long LastVersion { get; set; }
+
+    /// <summary>REL-32: the newest message the user has read. Bot messages above it are unread.</summary>
+    public long LastReadSeq { get; set; }
 }

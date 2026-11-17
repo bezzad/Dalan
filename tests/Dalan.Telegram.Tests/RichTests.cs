@@ -91,7 +91,12 @@ public class RichTests(PostgresServer postgres)
 
         answer.IsOk();
         Assert.True(answer.Result.GetBoolean());
-        Assert.True(stream.Events.TryRead(out var heard));
+        // The "not delivered" mark of the message the press replaced (REL-31) may come first.
+        LiveEvent? heard;
+        while (stream.Events.TryRead(out heard) && heard is not CallbackAnswered)
+        {
+        }
+
         Assert.Equal("Saved", Assert.IsType<CallbackAnswered>(heard).Text);
     }
 

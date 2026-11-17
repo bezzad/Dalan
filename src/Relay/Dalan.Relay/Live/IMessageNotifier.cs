@@ -6,8 +6,14 @@ namespace Dalan.Relay.Live;
 /// <summary>Something a user's open streams must hear about.</summary>
 public abstract record LiveEvent(long BotId, long UserId);
 
-/// <summary>LIVE-02: a message was saved or changed. It carries the whole message, so no reader asks the database.</summary>
-public sealed record MessageChanged(long BotId, long UserId, ChatMessageJson Message) : LiveEvent(BotId, UserId);
+/// <summary>
+/// LIVE-02: a message was saved or changed. It carries the whole message, so no reader asks the database.
+/// <paramref name="New"/> is true only when the message was just saved (REL-34 pushes those).
+/// </summary>
+public sealed record MessageChanged(long BotId, long UserId, ChatMessageJson Message, bool New = false) : LiveEvent(BotId, UserId);
+
+/// <summary>LIVE-10: the user read a chat. Not stored.</summary>
+public sealed record ChatRead(long BotId, long UserId, int Unread) : LiveEvent(BotId, UserId);
 
 /// <summary>LIVE-09: the bot's answer to a button press. Not stored.</summary>
 public sealed record CallbackAnswered(long BotId, long UserId, string CallbackId, string? Text, bool ShowAlert)

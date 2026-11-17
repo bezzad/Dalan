@@ -16,7 +16,8 @@ public sealed record ChatMessageJson(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] FileJson? File = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DateTimeOffset? Edited = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Pinned = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Deleted = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Deleted = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? NotDelivered = null)
 {
     public static ChatMessageJson Of(Message message) => new(
         message.Seq,
@@ -29,7 +30,8 @@ public sealed record ChatMessageJson(
         message.Content.File is { } file ? FileJson.Of(file.ToBot()) : null,
         message.EditedAt,
         message.Pinned ? true : null,
-        message.Deleted ? true : null);
+        message.Deleted ? true : null,
+        message.Delivery == DeliveryState.NotDelivered && !message.Deleted ? true : null);
 }
 
 public sealed record InlineButtonJson(

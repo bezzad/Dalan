@@ -268,7 +268,8 @@ public class ClientApiTests(PostgresServer postgres)
     [Trait("Rule", "REL-16")]
     public async Task REL16_after_returns_the_oldest_messages_after_that_number()
     {
-        await using var app = await RelayApp.StartAsync(postgres);
+        // Waiting user messages that become "not delivered" would be changes too (REL-31).
+        await using var app = await RelayApp.StartAsync(postgres, ("Relay:LatestCommandWins", "false"));
         var (browser, botId) = await ChatWithFiveMessagesAsync(app);
 
         var afterTwo = await browser.HistoryAsync(botId, "after=2&limit=2");
@@ -420,7 +421,8 @@ public class ClientApiTests(PostgresServer postgres)
     {
         await using var app = await RelayApp.StartAsync(postgres,
             ("Relay:MaxTextLength", "10"), ("Relay:MaxMessagesPerSync", "7"),
-            ("Relay:ClientReconnectMinSeconds", "2"), ("Relay:ClientReconnectMaxSeconds", "40"));
+            ("Relay:ClientReconnectMinSeconds", "2"), ("Relay:ClientReconnectMaxSeconds", "40"),
+            ("Relay:ClientStatusRefreshSeconds", "15"));
         var (browser, _) = await app.LoginAsync();
 
         var settings = await browser.JsonAsync("/api/settings");
@@ -429,6 +431,7 @@ public class ClientApiTests(PostgresServer postgres)
         Assert.Equal(7, settings.GetProperty("sync_page_size").GetInt32());
         Assert.Equal(2, settings.GetProperty("reconnect_min_seconds").GetInt32());
         Assert.Equal(40, settings.GetProperty("reconnect_max_seconds").GetInt32());
+        Assert.Equal(15, settings.GetProperty("status_refresh_seconds").GetInt32());
     }
 
     [Fact]

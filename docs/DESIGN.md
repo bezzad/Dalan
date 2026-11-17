@@ -93,7 +93,7 @@ The parts in the picture:
 2. The server saves the message and puts an update in that bot's in-memory queue.
 3. The bot's open long-polling call returns with the update.
 4. The bot does its work at home and calls `sendMessage`.
-5. The server saves the reply and sends it to the browser over SSE. If the browser has no open connection, it sends a Web Push.
+5. The server saves the reply and sends it to the browser over SSE, and also as a Web Push. The service worker shows the push only when the chat is not already in front (a locked phone often keeps its connection open on the server, so the server cannot know).
 
 **Technology choices and why:**
 
@@ -116,7 +116,7 @@ The parts in the picture:
 | --- | --- | --- |
 | User | PostgreSQL | Numeric id (stable, the only identity bots see), verified phone, username, password hash, optional email, optional TOTP secret, role, per-user limits |
 | Bot | PostgreSQL | Numeric id, unique username (used in `dalanet.ir/@name`), owner, token hash, name, description, icon, visibility (private by default), delivery mode (polling or webhook), per-bot limits, last-seen time |
-| Membership | PostgreSQL | User, bot, state (active, stopped, blocked), start time |
+| Membership | PostgreSQL | User, bot, state (active, stopped, blocked), start time, read position (for unread counts) |
 | Message | PostgreSQL | Per-chat sequence number, bot, user, direction, content as `jsonb`, time, delivery state, pinned flag |
 | Update | Memory only | Update id, type, payload, expiry time |
 | Push subscription | PostgreSQL | User, endpoint, keys |
@@ -186,6 +186,11 @@ The client is one PWA at `dalanet.ir`, served by the same server. Persian (right
 - On iPhone it works only after the user adds the PWA to the home screen.
 - The payload is encrypted by the standard; the push service cannot read the text.
 - Push travels through Google, Apple or Mozilla servers, so it stops during an international shutdown. Sync still works.
+- The server sends a push only to the push services of Google, Apple, Mozilla and Microsoft (a setting), never to an address a user typed.
+
+**Unread counts:** the bot list shows how many bot messages each chat has after the user's read position. Reading a chat on one device clears the number on the others.
+
+**Built in milestone 7:** Web Push for every new bot message (on when the server has VAPID keys), unread counts, the bot's status in the chat header, and the "not delivered" mark.
 
 **Bot status and failed delivery:**
 
@@ -455,6 +460,10 @@ None of these is planned work. They are recorded so the design does not block th
 | Password tries per login name / per client address | 5 / 100 in 15 minutes | Assumed |
 | Long-polling timeout | 30 seconds default, 50 maximum | Assumed (Telegram-like) |
 | Bot shown as online | Last poll under 60 seconds ago | Assumed |
+| Bot status refresh in an open chat | Every 30 seconds | Assumed (milestone 7) |
+| Push kept by the push service | 1 day | Assumed (milestone 7) |
+| Push subscriptions per user | 10 devices | Assumed (milestone 7) |
+| Push text | First 200 characters | Assumed (milestone 7) |
 | Message text length | 4,096 characters | Assumed (Telegram parity) |
 | File size per message | 20 MB | Assumed |
 | Files kept on the server | 30 days | Assumed (milestone 6) |

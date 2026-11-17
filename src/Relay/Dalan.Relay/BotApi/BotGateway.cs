@@ -4,10 +4,8 @@ using Dalan.Relay.Bots;
 using Dalan.Relay.Buttons;
 using Dalan.Relay.Chats;
 using Dalan.Relay.Contracts;
-using Dalan.Relay.Data;
 using Dalan.Relay.Files;
 using Dalan.Relay.Queue;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
@@ -22,7 +20,8 @@ internal sealed class BotGateway(
     ChatService chats,
     ButtonPresses presses,
     FileStore files,
-    IDbContextFactory<RelayDb> dbFactory,
+    DeliveryMarks marks,
+    BotPresence presence,
     IOptionsMonitor<RelayOptions> options,
     TimeProvider time,
     IHostApplicationLifetime lifetime) : IBotGateway
@@ -44,6 +43,20 @@ internal sealed class BotGateway(
         long botId, long offset, long? limit, long? timeoutSeconds, CancellationToken cancellationToken)
     {
         var poll = PollRequest.Of(offset, limit, timeoutSeconds, options.CurrentValue);
+        // REL-33: every bot door polls here, so the status covers them all.
+        try
+        {
+            await presence.PollStartsAsync(botId, cancellationToken);
+            return await PollAsync(botId, poll, cancellationToken);
+        }
+        finally
+        {
+            presence.PollEnds(botId);
+        }
+    }
+
+    private async Task<IReadOnlyList<BotUpdate>?> PollAsync(long botId, PollRequest poll, CancellationToken cancellationToken)
+    {
         var replaced = queue.BeginPoll(botId);
         using var timeout = new CancellationTokenSource(poll.Timeout, time);
         using var endOfWait = CancellationTokenSource.CreateLinkedTokenSource(
@@ -52,8 +65,8 @@ internal sealed class BotGateway(
         while (!replaced.IsCancellationRequested)
         {
             var batch = queue.Take(botId, poll.Offset, poll.Limit);
-            await RelayDb.MarkAsync(dbFactory, batch.Delivered, DeliveryState.Delivered);
-            await RelayDb.MarkAsync(dbFactory, batch.NotDelivered, DeliveryState.NotDelivered);
+            await marks.MarkDeliveredAsync(batch.Delivered);
+            await marks.MarkNotDeliveredAsync(batch.NotDelivered);
             if (batch.Updates.Count > 0) return batch.Updates.Select(u => u.ToBot()).ToList();
 
             try

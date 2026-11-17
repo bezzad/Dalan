@@ -198,3 +198,17 @@ a.button {
   text-decoration: none;
 }
 form.row > button:not(.primary) { padding: 8px 10px; }
+
+/* Presence and push (CLI-18 to CLI-21) */
+.bots strong { flex: 1; }
+.bots .badge {
+  min-width: 24px;
+  padding: 0 8px;
+  border-radius: 12px;
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: 13px;
+  line-height: 24px;
+  text-align: center;
+}
+.chat .status { margin-block-start: -10px; }

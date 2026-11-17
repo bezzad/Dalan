@@ -14,6 +14,9 @@ public sealed class Bot
 
     /// <summary>REL-26: the command menu, stored as jsonb.</summary>
     public List<CommandEntry> Commands { get; set; } = [];
+
+    /// <summary>REL-33: the last get-updates call, saved at most once per Relay:BotOnlineSeconds.</summary>
+    public DateTimeOffset? LastSeenAt { get; set; }
 }
 
 public sealed class CommandEntry

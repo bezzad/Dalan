@@ -8,6 +8,7 @@ import { chatScreen } from "./chat.ts";
 import { Language } from "./i18n.ts";
 import { Live } from "./live.ts";
 import { loginScreen } from "./login.ts";
+import { turnOff } from "./push.ts";
 import { Chats } from "./messages.ts";
 
 const language = new Language(document.documentElement, localStorage);
@@ -59,6 +60,7 @@ async function enter(user: User): Promise<void> {
     chats: new Chats(api.messages, settings.sync_page_size),
     maxTextLength: settings.max_text_length,
     maxFileSizeMb: settings.max_file_size_mb,
+    statusRefreshSeconds: settings.status_refresh_seconds,
     go(path) {
       accountOpen = false;
       history.pushState(null, "", path);
@@ -69,7 +71,8 @@ async function enter(user: User): Promise<void> {
       route();
     },
     logout() {
-      void api.logout().finally(showLogin);
+      // CLI-21: the next person on this browser must not get this user's notifications.
+      void turnOff().catch(() => {}).then(() => api.logout()).finally(showLogin);
     },
   };
 
@@ -86,6 +89,7 @@ async function enter(user: User): Promise<void> {
     onAnswer(botId, answer) {
       if (answer.text) screen?.onAnswer?.(botId, answer.text, answer.show_alert);
     },
+    onRead: botId => screen?.onRead?.(botId),
     onDown: () => document.body.classList.add("offline"),
     onLoggedOut: showLogin,
   });
@@ -103,7 +107,14 @@ window.addEventListener("popstate", route);
 // Back on the network before the app could start: start again.
 window.addEventListener("online", () => { if (!app) location.reload(); });
 
-if ("serviceWorker" in navigator) void navigator.serviceWorker.register("/sw.js");
+if ("serviceWorker" in navigator) {
+  void navigator.serviceWorker.register("/sw.js");
+  // CLI-22: a tap on a notification while the app is open goes to that chat.
+  navigator.serviceWorker.addEventListener("message", event => {
+    const open = (event.data as { open?: unknown } | null)?.open;
+    if (typeof open === "string" && open.startsWith("/") && !open.startsWith("//")) app?.go(open);
+  });
+}
 
 document.body.dataset["connecting"] = language.t("connecting");
 api.me().then(enter).catch(fail);

@@ -1,6 +1,4 @@
 using Dalan.Relay.Chats;
-using Dalan.Relay.Data;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -11,7 +9,7 @@ namespace Dalan.Relay.Queue;
 public sealed partial class ExpirySweeper(
     IUpdateQueue queue,
     Buttons.ButtonPresses presses,
-    IDbContextFactory<RelayDb> dbFactory,
+    DeliveryMarks marks,
     IOptionsMonitor<RelayOptions> options,
     TimeProvider time,
     ILogger<ExpirySweeper> logger) : BackgroundService
@@ -19,7 +17,7 @@ public sealed partial class ExpirySweeper(
     public Task SweepOnceAsync()
     {
         presses.RemoveOld();
-        return RelayDb.MarkAsync(dbFactory, queue.RemoveExpired(), DeliveryState.NotDelivered);
+        return marks.MarkNotDeliveredAsync(queue.RemoveExpired());
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

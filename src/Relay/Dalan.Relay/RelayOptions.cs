@@ -40,6 +40,8 @@ public sealed class RelayOptions
     public int FileRetentionDays { get; set; }
     public int FileSweepMinutes { get; set; }
     public int UserUploadMbPerDay { get; set; }
+    public int BotOnlineSeconds { get; set; }
+    public int ClientStatusRefreshSeconds { get; set; }
 
     public TimeSpan UpdateExpiry => TimeSpan.FromSeconds(UpdateExpirySeconds);
 }
