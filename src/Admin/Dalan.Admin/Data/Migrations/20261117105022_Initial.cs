@@ -25,6 +25,7 @@ namespace Dalan.Admin.Data.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     actor = table.Column<string>(type: "text", nullable: false),
                     actor_id = table.Column<long>(type: "bigint", nullable: false),
+                    phone = table.Column<string>(type: "text", nullable: true),
                     address = table.Column<IPAddress>(type: "inet", nullable: false),
                     port = table.Column<int>(type: "integer", nullable: true),
                     at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
@@ -45,6 +46,13 @@ namespace Dalan.Admin.Data.Migrations
                 schema: "admin",
                 table: "access_log",
                 column: "at");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_access_log_phone",
+                schema: "admin",
+                table: "access_log",
+                column: "phone",
+                filter: "phone IS NOT NULL");
         }
 
         /// <inheritdoc />

@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Dalan.Admin.Data.Migrations
 {
     [DbContext(typeof(AdminDb))]
-    [Migration("20261117054318_Initial")]
+    [Migration("20261117105022_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -54,6 +54,10 @@ namespace Dalan.Admin.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("at");
 
+                    b.Property<string>("Phone")
+                        .HasColumnType("text")
+                        .HasColumnName("phone");
+
                     b.Property<int?>("Port")
                         .HasColumnType("integer")
                         .HasColumnName("port");
@@ -63,6 +67,10 @@ namespace Dalan.Admin.Data.Migrations
 
                     b.HasIndex("At")
                         .HasDatabaseName("ix_access_log_at");
+
+                    b.HasIndex("Phone")
+                        .HasDatabaseName("ix_access_log_phone")
+                        .HasFilter("phone IS NOT NULL");
 
                     b.HasIndex("Actor", "ActorId", "At")
                         .HasDatabaseName("ix_access_log_actor_actor_id_at");
