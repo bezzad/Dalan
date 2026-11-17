@@ -14,4 +14,5 @@
 ## 3. Finish
 
 - [x] 3.1 Update `docs/ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/TESTING.md`, `CLAUDE.md`, `README.md`
-- [ ] 3.2 Verify CI is green, review the whole diff, archive this change
+- [x] 2.5 Write tests for TG-13; record every bot call in the access log inside the gateway; verify they pass
+- [x] 3.2 Verify CI is green, review the whole diff, archive this change
