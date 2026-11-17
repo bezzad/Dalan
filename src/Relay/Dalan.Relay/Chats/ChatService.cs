@@ -41,6 +41,8 @@ public sealed class ChatService(
     IUserDirectory users,
     IUpdateQueue queue,
     OutboxWorker outbox,
+    DeliveryMarks marks,
+    IMessageNotifier notifier,
     FileStore files,
     IOptionsMonitor<RelayOptions> options,
     TimeProvider time)
@@ -67,9 +69,10 @@ public sealed class ChatService(
         {
             message = await SaveAsync(
                 db => db.Database.SqlQuery<long>($"""
-                    INSERT INTO relay.memberships (bot_id, user_id, state, started_at, last_seq, last_version)
-                    VALUES ({botId}, {userId}, {(int)MembershipState.Active}, {now}, 1, 0)
-                    ON CONFLICT (bot_id, user_id) DO UPDATE SET last_seq = relay.memberships.last_seq + 1
+                    INSERT INTO relay.memberships (bot_id, user_id, state, started_at, last_seq, last_version, last_read_seq)
+                    VALUES ({botId}, {userId}, {(int)MembershipState.Active}, {now}, 1, 0, 1)
+                    ON CONFLICT (bot_id, user_id) DO UPDATE
+                    SET last_seq = relay.memberships.last_seq + 1, last_read_seq = relay.memberships.last_seq + 1
                     RETURNING last_seq AS "Value"
                     """),
                 new Message
@@ -93,7 +96,7 @@ public sealed class ChatService(
 
         // Q-01: the message is saved; only now may the bot see it.
         var replaced = queue.Enqueue(botId, QueuedUpdate.Of(message!, sender));
-        await RelayDb.MarkAsync(dbFactory, replaced, DeliveryState.NotDelivered);
+        await marks.MarkNotDeliveredAsync(replaced);
         return (ChatError.None, message);
     }
 
@@ -222,6 +225,29 @@ public sealed class ChatService(
             return (ChatError.None, changed);
         }, cancellationToken);
 
+    /// <summary>
+    /// REL-32: moves the read position forward, never past the newest message, and tells the user's other devices (LIVE-10).
+    /// Returns the unread count, or null when the user has no chat with this bot.
+    /// </summary>
+    public async Task<int?> ReadAsync(long botId, long userId, long seq, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var changed = await db.Memberships
+            .Where(m => m.BotId == botId && m.UserId == userId)
+            .ExecuteUpdateAsync(set => set.SetProperty(
+                m => m.LastReadSeq,
+                m => seq > m.LastReadSeq ? (seq < m.LastSeq ? seq : m.LastSeq) : m.LastReadSeq), cancellationToken);
+        if (changed == 0) return null;
+
+        var unread = await db.Memberships
+            .Where(m => m.BotId == botId && m.UserId == userId)
+            .Select(chat => db.Messages.Count(m => m.BotId == chat.BotId && m.UserId == chat.UserId
+                && m.Direction == Direction.FromBot && !m.Deleted && m.Seq > chat.LastReadSeq))
+            .FirstAsync(cancellationToken);
+        notifier.Publish(new ChatRead(botId, userId, unread));
+        return unread;
+    }
+
     /// <summary>A file of this bot that has not expired, or null.</summary>
     public async Task<BotFile?> FindFileAsync(long botId, string fileId, CancellationToken cancellationToken)
     {
@@ -336,7 +362,7 @@ public sealed class ChatService(
         message.Version = await NextVersionAsync(db, message.BotId, message.UserId, cancellationToken);
         db.Messages.Add(message);
         if (newFile is not null) db.Files.Add(newFile);
-        db.Outbox.Add(OutboxEvent.Of(new MessageChanged(message.BotId, message.UserId, ChatMessageJson.Of(message))));
+        db.Outbox.Add(OutboxEvent.Of(new MessageChanged(message.BotId, message.UserId, ChatMessageJson.Of(message), New: true)));
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         outbox.Wake();
@@ -376,7 +402,7 @@ public sealed class ChatService(
         return ChatError.None;
     }
 
-    private static async Task<long> NextVersionAsync(RelayDb db, long botId, long userId, CancellationToken cancellationToken) =>
+    internal static async Task<long> NextVersionAsync(RelayDb db, long botId, long userId, CancellationToken cancellationToken) =>
         (await db.Database.SqlQuery<long>($"""
             UPDATE relay.memberships SET last_version = last_version + 1
             WHERE bot_id = {botId} AND user_id = {userId}

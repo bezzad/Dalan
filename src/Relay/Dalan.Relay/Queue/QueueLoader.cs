@@ -11,6 +11,7 @@ public sealed class QueueLoader(
     IDbContextFactory<RelayDb> dbFactory,
     IUserDirectory users,
     IUpdateQueue queue,
+    DeliveryMarks marks,
     IOptionsMonitor<RelayOptions> options,
     TimeProvider time)
 {
@@ -19,18 +20,14 @@ public sealed class QueueLoader(
         var expired = time.GetUtcNow() - options.CurrentValue.UpdateExpiry;
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
 
-        await db.Messages
-            .Where(m => m.Delivery == DeliveryState.Pending && m.CreatedAt <= expired)
-            .ExecuteUpdateAsync(set => set.SetProperty(m => m.Delivery, DeliveryState.NotDelivered), cancellationToken);
-
         var waiting = await db.Messages.AsNoTracking()
             .Where(m => m.Delivery == DeliveryState.Pending)
             .OrderBy(m => m.Id)
             .ToListAsync(cancellationToken);
 
         var senders = new Dictionary<long, UserProfile?>();
-        var dropped = new List<long>();
-        foreach (var message in waiting)
+        var dropped = waiting.Where(m => m.CreatedAt <= expired).Select(m => m.Id).ToList();
+        foreach (var message in waiting.Where(m => m.CreatedAt > expired))
         {
             if (!senders.TryGetValue(message.UserId, out var sender))
                 senders[message.UserId] = sender = await users.FindAsync(message.UserId, cancellationToken);
@@ -41,6 +38,6 @@ public sealed class QueueLoader(
                 dropped.AddRange(queue.Enqueue(message.BotId, QueuedUpdate.Of(message, sender)));
         }
 
-        await RelayDb.MarkAsync(dbFactory, dropped, DeliveryState.NotDelivered);
+        await marks.MarkNotDeliveredAsync(dropped);
     }
 }

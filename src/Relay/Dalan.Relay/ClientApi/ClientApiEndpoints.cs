@@ -5,6 +5,7 @@ using Dalan.Relay.Chats;
 using Dalan.Relay.Data;
 using Dalan.Relay.Files;
 using Dalan.Relay.Live;
+using Dalan.Relay.Push;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -28,7 +29,10 @@ internal static class ClientApiEndpoints
         api.MapGet("/bots/{botId:long}/files/{fileId}", GetFileAsync);
         api.MapPost("/bots/{botId:long}/callbacks", PressAsync);
         api.MapGet("/bots/{botId:long}/commands", GetCommandsAsync);
+        api.MapPost("/bots/{botId:long}/read", ReadAsync);
+        api.MapGet("/bots/{botId:long}/status", StatusAsync);
         api.MapGet("/events", EventStream.RunAsync);
+        api.MapPush();
     }
 
     private static IResult Settings(IOptionsMonitor<RelayOptions> options)
@@ -36,22 +40,34 @@ internal static class ClientApiEndpoints
         var relay = options.CurrentValue;
         return ApiJson.Ok(new ClientSettingsJson(
             relay.MaxTextLength, relay.MaxCaptionLength, relay.MaxFileSizeMb, relay.MaxMessagesPerSync,
-            relay.ClientReconnectMinSeconds, relay.ClientReconnectMaxSeconds));
+            relay.ClientReconnectMinSeconds, relay.ClientReconnectMaxSeconds, relay.ClientStatusRefreshSeconds));
     }
 
     /// <summary>REL-14: the bots this user has a chat with, newest chat first.</summary>
-    private static async Task<IResult> ListBotsAsync(HttpContext http, IDbContextFactory<RelayDb> dbFactory)
+    private static async Task<IResult> ListBotsAsync(HttpContext http, IDbContextFactory<RelayDb> dbFactory, BotPresence presence)
     {
         var userId = ClientApiFilter.UserId(http);
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
         var bots = await db.Memberships
             .Where(m => m.UserId == userId)
             .OrderByDescending(m => m.StartedAt)
-            .Join(db.Bots, m => m.BotId, b => b.Id, (_, bot) => bot)
-            .AsNoTracking()
+            .Join(db.Bots, m => m.BotId, b => b.Id, (chat, bot) => new
+            {
+                bot.Id,
+                bot.Username,
+                bot.Name,
+                bot.LastSeenAt,
+                // REL-32: the same count as in ChatService.ReadAsync.
+                Unread = db.Messages.Count(m => m.BotId == chat.BotId && m.UserId == chat.UserId
+                    && m.Direction == Direction.FromBot && !m.Deleted && m.Seq > chat.LastReadSeq),
+            })
             .ToListAsync(http.RequestAborted);
 
-        return ApiJson.Ok(new BotsResponse(bots.Select(BotJson.Of)));
+        return ApiJson.Ok(new BotsResponse(bots.Select(bot =>
+        {
+            var status = presence.Of(bot.Id, bot.LastSeenAt);
+            return new BotJson(bot.Id, bot.Username, bot.Name, bot.Unread, status.Online, status.LastSeen);
+        })));
     }
 
     /// <summary>REL-13: this is how a person reaches a bot from its link (/@name).</summary>
@@ -127,6 +143,28 @@ internal static class ClientApiEndpoints
             ? ApiJson.Ok(new PressJson(id))
             : ApiJson.Error(StatusCodes.Status404NotFound, "button_not_found",
                 "This message has no such button any more. Load the chat again.");
+    }
+
+    /// <summary>REL-32: the user read the chat up to a message.</summary>
+    private static async Task<IResult> ReadAsync(long botId, HttpContext http, ChatService chats)
+    {
+        if (await ApiJson.ReadAsync<ReadRequest>(http) is not { MessageId: { } messageId })
+            return ApiJson.BadRequest("""Send JSON like {"message_id": 7} with Content-Type application/json.""");
+
+        return await chats.ReadAsync(botId, ClientApiFilter.UserId(http), messageId, http.RequestAborted) is { } unread
+            ? ApiJson.Ok(new UnreadJson(unread))
+            : BotNotFound();
+    }
+
+    /// <summary>REL-33: is the bot's home computer on?</summary>
+    private static async Task<IResult> StatusAsync(long botId, HttpContext http, IDbContextFactory<RelayDb> dbFactory, BotPresence presence)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
+        var bot = await db.Bots.Where(b => b.Id == botId).Select(b => new { b.LastSeenAt }).FirstOrDefaultAsync(http.RequestAborted);
+        if (bot is null) return BotNotFound();
+
+        var status = presence.Of(botId, bot.LastSeenAt);
+        return ApiJson.Ok(new StatusJson(status.Online, status.LastSeen));
     }
 
     /// <summary>REL-26: the bot's command menu.</summary>

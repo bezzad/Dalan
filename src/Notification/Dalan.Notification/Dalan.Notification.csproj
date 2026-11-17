@@ -3,6 +3,11 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Lib.Net.Http.WebPush" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../Dalan.Notification.Contracts/Dalan.Notification.Contracts.csproj" />
   </ItemGroup>
 </Project>

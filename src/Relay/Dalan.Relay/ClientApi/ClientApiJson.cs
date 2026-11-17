@@ -1,12 +1,9 @@
 using System.Text.Json.Serialization;
-using Dalan.Relay.Bots;
 
 namespace Dalan.Relay.ClientApi;
 
-internal sealed record BotJson(long Id, string Username, string Name)
-{
-    public static BotJson Of(Bot bot) => new(bot.Id, bot.Username, bot.Name);
-}
+/// <summary>REL-14: a bot in the user's list, with the unread count (REL-32) and the status (REL-33).</summary>
+internal sealed record BotJson(long Id, string Username, string Name, int Unread, bool Online, DateTimeOffset? LastSeen);
 
 internal sealed record BotsResponse(IEnumerable<BotJson> Bots);
 
@@ -26,6 +23,15 @@ internal sealed record AnswerEventJson(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Text,
     bool ShowAlert);
 
+/// <summary>The data of a "read" event in the live stream (LIVE-10).</summary>
+internal sealed record ReadEventJson(long BotId, int Unread);
+
+internal sealed record ReadRequest(long? MessageId);
+
+internal sealed record UnreadJson(int Unread);
+
+internal sealed record StatusJson(bool Online, DateTimeOffset? LastSeen);
+
 internal sealed record PressRequest(long? MessageId, string? Data);
 
 internal sealed record PressJson(string Id);
@@ -36,4 +42,5 @@ internal sealed record CommandJson(string Command, string Description);
 
 /// <summary>REL-18: what the client must know and may not hard-code.</summary>
 internal sealed record ClientSettingsJson(
-    int MaxTextLength, int MaxCaptionLength, int MaxFileSizeMb, int SyncPageSize, int ReconnectMinSeconds, int ReconnectMaxSeconds);
+    int MaxTextLength, int MaxCaptionLength, int MaxFileSizeMb, int SyncPageSize, int ReconnectMinSeconds, int ReconnectMaxSeconds,
+    int StatusRefreshSeconds);

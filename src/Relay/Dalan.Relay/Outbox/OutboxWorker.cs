@@ -1,3 +1,4 @@
+using Dalan.Notification.Contracts;
 using Dalan.Relay.Data;
 using Dalan.Relay.Live;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,7 @@ namespace Dalan.Relay.Outbox;
 public sealed partial class OutboxWorker(
     IDbContextFactory<RelayDb> dbFactory,
     IMessageNotifier notifier,
+    IWebPush push,
     IOptionsMonitor<RelayOptions> options,
     TimeProvider time,
     ILogger<OutboxWorker> logger) : BackgroundService
@@ -77,15 +79,32 @@ public sealed partial class OutboxWorker(
             .ToListAsync(cancellationToken);
         if (events.Count == 0) return 0;
 
-        foreach (var outboxEvent in events)
-        {
-            if (outboxEvent.AsMessageChanged() is { } message) notifier.Publish(message);
-        }
+        var changes = events.Select(e => e.AsMessageChanged()).OfType<MessageChanged>().ToList();
+        foreach (var change in changes) notifier.Publish(change);
+        await PushAsync(db, changes, cancellationToken);
 
         var ids = events.ConvertAll(e => e.Id);
         await db.Outbox.Where(e => ids.Contains(e.Id)).ExecuteDeleteAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return events.Count;
+    }
+
+    /// <summary>REL-34: a push for each new bot message. Sending only fills Notification's queue, so this is quick.</summary>
+    private async Task PushAsync(RelayDb db, List<MessageChanged> changes, CancellationToken cancellationToken)
+    {
+        var fresh = changes.FindAll(c => c.New && c.Message.From == "bot");
+        if (fresh.Count == 0) return;
+
+        var botIds = fresh.Select(c => c.BotId).Distinct().ToList();
+        var bots = await db.Bots.Where(b => botIds.Contains(b.Id))
+            .ToDictionaryAsync(b => b.Id, b => new { b.Name, b.Username }, cancellationToken);
+        foreach (var change in fresh)
+        {
+            if (!bots.TryGetValue(change.BotId, out var bot)) continue;
+            var message = change.Message;
+            var body = message.Text.Length > 0 ? message.Text : message.File?.Name ?? "";
+            push.Send(change.UserId, new PushNote(bot.Name, body, $"/@{bot.Username}", $"bot-{change.BotId}"));
+        }
     }
 
     private static TaskCompletionSource NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);

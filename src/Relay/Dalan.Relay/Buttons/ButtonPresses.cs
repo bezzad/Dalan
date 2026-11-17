@@ -16,6 +16,7 @@ namespace Dalan.Relay.Buttons;
 /// </summary>
 public sealed class ButtonPresses(
     IDbContextFactory<RelayDb> dbFactory,
+    DeliveryMarks marks,
     IUserDirectory users,
     IUpdateQueue queue,
     IMessageNotifier notifier,
@@ -47,7 +48,7 @@ public sealed class ButtonPresses(
         _presses[callbackId] = new Press(botId, userId, now);
 
         var replaced = queue.Enqueue(botId, new QueuedUpdate(id, sender, now, message.ToBot(), data));
-        await RelayDb.MarkAsync(dbFactory, replaced, DeliveryState.NotDelivered);
+        await marks.MarkNotDeliveredAsync(replaced);
         return callbackId;
     }
 

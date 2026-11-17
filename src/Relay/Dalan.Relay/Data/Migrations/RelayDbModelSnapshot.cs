@@ -36,6 +36,10 @@ namespace Dalan.Relay.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<DateTimeOffset?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen_at");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
@@ -70,6 +74,10 @@ namespace Dalan.Relay.Data.Migrations
                     b.Property<long>("UserId")
                         .HasColumnType("bigint")
                         .HasColumnName("user_id");
+
+                    b.Property<long>("LastReadSeq")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_read_seq");
 
                     b.Property<long>("LastSeq")
                         .HasColumnType("bigint")
