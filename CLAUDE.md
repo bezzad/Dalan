@@ -15,7 +15,7 @@ Read first:
 dotnet build Dalan.slnx -c Release          # needs .NET SDK 11 (global.json)
 dotnet test -c Release                      # all .NET tests; needs Docker, or DALAN_TEST_POSTGRES=<connection string>
 docker compose up -d                        # local PostgreSQL for the next line
-dotnet run --project src/Dalan.Host         # run the server; open http://localhost:5000 (development login is on)
+dotnet run --project src/Dalan.Host         # run the server; open http://localhost:5000 (development login is on; SMS codes go to the log)
 node scripts/demo-bot.mjs 1                 # a small bot to chat with; see the top of the file
 bash scripts/check-rules.sh                 # every spec rule ID has a test
 bash tests/deploy/deploy_test.sh            # deploy script tests
