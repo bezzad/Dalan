@@ -17,11 +17,11 @@ A bot never gets a user's phone number, only id, name and username.
 
 Header on every call: `Authorization: Bearer <bot token>`. Base: {api}
 
-- `GET /v1/updates?offset=<last update_id + 1>&timeout=30` long polls (timeout at most 50 seconds). An update is confirmed by the next call's offset. Each update has `update_id` and a `message` (`id`, `from` {`id`, `name`, `username`}, `text`, `date`) or a `callback`.
+- `GET /v1/updates?offset=<last update_id + 1>&timeout=30` long polls (the server cuts a timeout over its maximum). An update is confirmed by the next call's offset. Each update has `update_id` and a `message` (`id`, `from` {`id`, `name`, `username`}, `text`, `date`) or a `callback`.
 - `POST /v1/messages` with JSON `{"user_id": 5, "text": "Hi"}` sends a message.
 - Errors are JSON `{"error": "<code>", "message": "<what went wrong and how to fix it>"}`.
 
-A user message waits for the bot for a short time only (about a minute); after that it is marked "not delivered". Keep the bot polling.
+A user message waits for the bot only a short time (`update_expiry_seconds` in {site}/api/public/settings); after that it is marked "not delivered". Keep the bot polling.
 
 ## Get an access key (for agents and the CLI)
 
