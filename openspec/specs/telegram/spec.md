@@ -137,7 +137,7 @@ A `message` whose text has commands SHALL carry `entities` with one `bot_command
 - **THEN** the response is 200 and the stored text is the text as sent
 
 ### Requirement: TG-08 Reply keyboard
-`sendMessage` and the file methods SHALL accept `reply_markup` as a JSON object or as a string of JSON. A `ReplyKeyboardMarkup` SHALL become the reply keyboard of the message (REL-17); a button is a string or an object with `text`. A `ReplyKeyboardRemove` SHALL remove the keyboard. An `InlineKeyboardMarkup` SHALL become the inline keyboard (TG-14). Look-only fields SHALL be ignored. Markup that Dalan cannot serve, or cannot read, SHALL get 400 with a `description` that says what is wrong, and nothing SHALL be stored.
+`sendMessage` and the file methods SHALL accept `reply_markup` as a JSON object or as a string of JSON. A `ReplyKeyboardMarkup` SHALL become the reply keyboard (REL-17); a button is a string or an object with `text`. `ReplyKeyboardRemove` SHALL remove it. `InlineKeyboardMarkup` SHALL become the inline keyboard (TG-14). Look-only fields SHALL be ignored. Markup Dalan cannot serve or read SHALL get 400 with a `description` that says what is wrong, and nothing is stored.
 
 #### Scenario: Keyboard as an object
 - **WHEN** the bot posts JSON with `"reply_markup":{"keyboard":[[{"text":"Yes"},"No"],["Cancel"]],"resize_keyboard":true}`

@@ -203,7 +203,11 @@ Every Client API call (paths under `/api/bots`, `/api/events` and `/api/settings
 - **THEN** the response is 400 with error code `bad_request`
 
 ### Requirement: REL-16 History and sync
-`GET /api/bots/{bot id}/messages` SHALL return `{"messages":[...],"pinned":...}` from the chat of this user and that bot only, in rising `id` order, or rising `version` order with `after`. Each message has `id`, `version`, `from` ("user" or "bot"), `text`, `date` and, when set, `reply_keyboard`, `inline_keyboard`, `file`, `edited` (time of the last edit), `pinned` (true) and `deleted` (true). `pinned` is the pinned message of the chat, or null. The parameter `after` returns the messages whose `version` is above it; `before` returns messages whose `id` is below it; `limit` sets the size. The page size is never above `Relay:MaxMessagesPerSync` (start 100).
+`GET /api/bots/{bot id}/messages` SHALL return `{"messages":[...],"pinned":...}` of this user's chat with that bot only, in rising `id` order (rising `version` with `after`). `pinned` is the chat's pinned message or null. `after` gives the messages with a higher `version`; `before` those with a lower `id`; `limit` sets the size, at most `Relay:MaxMessagesPerSync` (start 100).
+
+#### Scenario: Fields of a message
+- **WHEN** the history is read
+- **THEN** each message has `id`, `version`, `from` ("user" or "bot"), `text`, `date` and, when set, `reply_keyboard`, `inline_keyboard`, `file`, `edited`, `pinned` and `deleted`
 
 #### Scenario: Open a chat
 - **GIVEN** a chat with messages 1 to 5
