@@ -59,7 +59,11 @@ jobs:
           bash tests/delivery/ci_workflow_test.sh
 
       - name: Deploy script tests
-        run: bash tests/deploy/deploy_test.sh
+        run: |
+          bash tests/deploy/deploy_test.sh
+          bash tests/deploy/setup_test.sh
+          bash tests/deploy/backup_test.sh
+          bash tests/deploy/drill_test.sh
 
       - name: Install Caddy
         run: |

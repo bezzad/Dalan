@@ -1,0 +1,12 @@
+# Daily database dump (OPS-11). Started by dalan-backup.timer; deploy/setup.sh installs both.
+[Unit]
+Description=Dalan database backup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=postgres
+Environment=BACKUP_DIR=/var/backups/dalan BACKUP_KEEP_DAYS=14
+# Optional: BACKUP_KEEP_DAYS=<days>
+EnvironmentFile=-/etc/dalan/backup.env
+ExecStart=/opt/dalan/tools/backup.sh

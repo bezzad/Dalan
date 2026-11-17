@@ -1,0 +1,27 @@
+# systemd unit for Caddy, the front proxy. deploy/setup.sh installs it.
+[Unit]
+Description=Caddy front proxy for Dalan
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+# Certificates live in /var/lib/caddy.
+StateDirectory=caddy
+Environment=XDG_DATA_HOME=/var/lib XDG_CONFIG_HOME=/var/lib
+# DALAN_SITE_DOMAIN and DALAN_API_DOMAIN, written by setup.sh.
+EnvironmentFile=/etc/dalan/caddy.env
+ExecStart=/usr/local/bin/caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
