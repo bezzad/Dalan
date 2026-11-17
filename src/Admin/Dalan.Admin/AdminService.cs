@@ -4,6 +4,7 @@ using Dalan.Admin.Audit;
 using Dalan.Admin.Settings;
 using Dalan.Admin.Contracts;
 using Dalan.Admin.Data;
+using Dalan.Admin.PublicPages;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -37,6 +38,7 @@ public static class AdminService
     public static IEndpointRouteBuilder MapAdminService(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapAdminApi();
+        endpoints.MapPublicSettings();
         return endpoints;
     }
 

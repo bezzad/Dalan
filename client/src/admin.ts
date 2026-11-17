@@ -1,14 +1,15 @@
 // The admin screen (CLI-25): settings, builder requests, users, bots, the access log and the audit log.
-import { ApiError, api, type AccessRow, type AdminBot, type AdminUser } from "./api.ts";
+import { ApiError, api, type AccessRow, type AdminBot, type AdminUser, type ShowcaseRequest } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { h } from "./dom.ts";
 import type { TextKey } from "./i18n.ts";
+import { categoryName, initial } from "./pages.ts";
 import { cleanValue, groupSettings, utc, type Setting } from "./panels.ts";
 
-type Tab = "settings" | "requests" | "users" | "bots" | "access" | "audit";
+type Tab = "settings" | "requests" | "users" | "bots" | "showcase" | "access" | "audit";
 const Tabs: [Tab, TextKey][] = [
   ["settings", "tabSettings"], ["requests", "tabRequests"], ["users", "tabUsers"],
-  ["bots", "tabBots"], ["access", "tabAccess"], ["audit", "tabAudit"],
+  ["bots", "tabBots"], ["showcase", "showcase"], ["access", "tabAccess"], ["audit", "tabAudit"],
 ];
 
 export function adminScreen(app: App): Screen {
@@ -126,6 +127,31 @@ export function adminScreen(app: App): Screen {
     }));
   }
 
+  // ---- showcase review (ADM-13, CLI-29) ----
+  function showcaseCard(entry: ShowcaseRequest): HTMLElement {
+    const card = h("div", { class: "card" });
+    const review = (approve: boolean) => action(approve ? "approve" : "refuse", async () => {
+      await api.reviewShowcase(entry.bot_id, approve);
+      card.remove();
+    });
+    card.append(
+      h("div", { class: "line" },
+        entry.icon
+          ? h("img", { class: "avatar", src: api.ownIconUrl(entry.bot_id), alt: "" })
+          : h("span", { class: "avatar" }, initial(entry.name)),
+        h("strong", { dir: "auto" }, `${entry.name} (#${entry.bot_id})`)),
+      h("span", { dir: "ltr" }, `@${entry.username} · ${t("owner")} #${entry.owner_user_id} · ${categoryName(app.language.current, entry.category)}`
+        + (entry.suspended ? ` · ${t("suspended")}` : "")),
+      h("p", { dir: "auto" }, entry.description),
+      h("div", { class: "row wrap" }, review(true), review(false)));
+    return card;
+  }
+
+  async function showShowcase(): Promise<void> {
+    const entries = await api.showcaseRequests();
+    body.replaceChildren(...(entries.length === 0 ? [h("p", { class: "note" }, t("noShowcaseRequests"))] : entries.map(showcaseCard)));
+  }
+
   // ---- access log (ADM-10) ----
   function accessLine(row: AccessRow): HTMLElement {
     const who = row.actor === "phone" ? row.phone ?? "" : `${t(row.actor === "bot" ? "botWord" : "userWord")} #${row.actor_id}`;
@@ -184,7 +210,7 @@ export function adminScreen(app: App): Screen {
     error.textContent = "";
     body.replaceChildren();
     const shows: Record<Tab, () => void | Promise<void>> = {
-      settings: showSettings, requests: showRequests, users: showUsers, bots: showBots, access: () => showAccess(), audit: showAudit,
+      settings: showSettings, requests: showRequests, users: showUsers, bots: showBots, showcase: showShowcase, access: () => showAccess(), audit: showAudit,
     };
     Promise.resolve(shows[tab]()).catch(failed);
   }

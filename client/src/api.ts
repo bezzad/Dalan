@@ -1,6 +1,7 @@
 // Calls to the server. Same origin only; the session is a cookie the browser sends by itself.
 import { createCaller } from "./caller.ts";
 import type { Message, Page } from "./messages.ts";
+import type { PublicNumbers, ShowcaseBot } from "./pages.ts";
 import type { BuilderBot, BuilderState, NewToken, Setting } from "./panels.ts";
 
 export { ApiError } from "./caller.ts";
@@ -37,6 +38,19 @@ export interface AdminBot {
   created_at: string;
   last_seen_at: string | null;
   suspended: boolean;
+}
+
+/** ADM-13: an entry that waits for review. */
+export interface ShowcaseRequest {
+  bot_id: number;
+  username: string;
+  name: string;
+  owner_user_id: number;
+  suspended: boolean;
+  description: string;
+  category: string;
+  icon: boolean;
+  updated_at: string;
 }
 
 /** ADM-10 */
@@ -156,6 +170,23 @@ export const api = {
   },
   audit: async (before?: number) =>
     (await call<{ rows: AuditRow[] }>("GET", `/api/admin/audit${before ? `?before=${before}` : ""}`)).rows,
+  /** ADM-14 */
+  publicSettings: () => call<PublicNumbers>("GET", "/api/public/settings"),
+  /** REL-43 */
+  showcase: (category: string, after?: number) => {
+    const query = new URLSearchParams({ ...(category ? { category } : {}), ...(after ? { after: String(after) } : {}) });
+    return call<{ categories: string[]; bots: ShowcaseBot[] }>("GET", `/api/showcase?${query}`);
+  },
+  showcaseIconUrl: (botId: number) => `/api/showcase/${botId}/icon`,
+  /** REL-40 to REL-42 */
+  askShowcase: (botId: number, description: string, category: string) =>
+    call<BuilderBot["showcase"]>("PUT", `/api/builder/bots/${botId}/showcase`, { description, category }),
+  setShowcaseIcon: (botId: number, file: File) => call<BuilderBot["showcase"]>("PUT", `/api/builder/bots/${botId}/showcase/icon`, file),
+  ownIconUrl: (botId: number) => `/api/builder/bots/${botId}/showcase/icon`,
+  leaveShowcase: (botId: number) => call<null>("DELETE", `/api/builder/bots/${botId}/showcase`),
+  /** ADM-13 */
+  showcaseRequests: async () => (await call<{ entries: ShowcaseRequest[] }>("GET", "/api/admin/showcase")).entries,
+  reviewShowcase: (botId: number, approve: boolean) => call<null>("POST", `/api/admin/showcase/${botId}`, { approve }),
   commands: async (botId: number) =>
     (await call<{ commands: Command[] }>("GET", `/api/bots/${botId}/commands`)).commands,
 };

@@ -253,6 +253,51 @@ namespace Dalan.Relay.Data.Migrations
                     b.ToTable("outbox", "relay");
                 });
 
+            modelBuilder.Entity("Dalan.Relay.Showcase.ShowcaseEntry", b =>
+                {
+                    b.Property<long>("BotId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("bot_id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("category");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<byte[]>("Icon")
+                        .HasColumnType("bytea")
+                        .HasColumnName("icon");
+
+                    b.Property<string>("IconType")
+                        .HasColumnType("text")
+                        .HasColumnName("icon_type");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer")
+                        .HasColumnName("state");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("BotId")
+                        .HasName("pk_showcase");
+
+                    b.HasIndex("State")
+                        .HasDatabaseName("ix_showcase_state");
+
+                    b.ToTable("showcase", "relay");
+                });
+
             modelBuilder.Entity("Dalan.Relay.Bots.Bot", b =>
                 {
                     b.OwnsMany("Dalan.Relay.Bots.CommandEntry", "Commands", b1 =>
@@ -453,6 +498,16 @@ namespace Dalan.Relay.Data.Migrations
 
                     b.Navigation("Content")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Dalan.Relay.Showcase.ShowcaseEntry", b =>
+                {
+                    b.HasOne("Dalan.Relay.Bots.Bot", null)
+                        .WithOne()
+                        .HasForeignKey("Dalan.Relay.Showcase.ShowcaseEntry", "BotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_showcase_bots_bot_id");
                 });
 #pragma warning restore 612, 618
         }

@@ -20,6 +20,9 @@ public class ClientAppTests(PostgresServer postgres)
     [Trait("Rule", "CLI-01")]
     [InlineData("/")]
     [InlineData("/@ArcaneBot")]
+    [InlineData("/privacy")]
+    [InlineData("/faq")]
+    [InlineData("/showcase")]
     public async Task CLI01_page_is_served_and_not_cached(string path)
     {
         await using var app = await StartAsync();

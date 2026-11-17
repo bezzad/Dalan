@@ -5,6 +5,7 @@ using Dalan.Identity.Contracts;
 using Dalan.Relay.Bots;
 using Dalan.Relay.ClientApi;
 using Dalan.Relay.Data;
+using Dalan.Relay.Showcase;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -17,7 +18,7 @@ namespace Dalan.Relay.Builder;
 internal sealed record CreateBotRequest(string? Username, string? Name);
 
 internal sealed record BuilderBotJson(
-    long Id, string Username, string Name, DateTimeOffset CreatedAt, DateTimeOffset? LastSeen, bool Suspended);
+    long Id, string Username, string Name, DateTimeOffset CreatedAt, DateTimeOffset? LastSeen, bool Suspended, ShowcaseJson? Showcase);
 
 internal sealed record BuilderBotsResponse(IEnumerable<BuilderBotJson> Bots);
 
@@ -35,6 +36,7 @@ internal static partial class BuilderEndpoints
         builder.MapGet("/bots", ListAsync);
         builder.MapPost("/bots", CreateAsync);
         builder.MapPost("/bots/{botId:long}/token", RotateAsync);
+        builder.MapShowcaseForBuilder();
     }
 
     private static async Task<IResult> ListAsync(HttpContext http, IDbContextFactory<RelayDb> dbFactory, BotPresence presence)
@@ -46,8 +48,14 @@ internal static partial class BuilderEndpoints
             .OrderBy(b => b.Id)
             .Select(b => new { b.Id, b.Username, b.Name, b.CreatedAt, b.LastSeenAt, Suspended = b.SuspendedAt != null })
             .ToListAsync(http.RequestAborted);
+        var ids = bots.ConvertAll(b => b.Id);
+        // REL-40: the entry without the icon bytes; "icon" only says whether there is one.
+        var entries = await db.Showcase.AsNoTracking().Where(e => ids.Contains(e.BotId))
+            .Select(e => new { e.BotId, e.State, e.Description, e.Category, Icon = e.Icon != null })
+            .ToDictionaryAsync(e => e.BotId, e => ShowcaseJson.Of(e.State, e.Description, e.Category, e.Icon), http.RequestAborted);
         return ApiJson.Ok(new BuilderBotsResponse(bots.Select(b => new BuilderBotJson(
-            b.Id, b.Username, b.Name, b.CreatedAt, presence.Of(b.Id, b.LastSeenAt).LastSeen, b.Suspended))));
+            b.Id, b.Username, b.Name, b.CreatedAt, presence.Of(b.Id, b.LastSeenAt).LastSeen, b.Suspended,
+            entries.GetValueOrDefault(b.Id)))));
     }
 
     private static async Task<IResult> CreateAsync(
@@ -92,21 +100,27 @@ internal static partial class BuilderEndpoints
     private static async Task<IResult> RotateAsync(
         long botId, HttpContext http, IDbContextFactory<RelayDb> dbFactory, BotRegistry bots, IAuditLog audit, IUserDirectory users)
     {
-        var userId = ClientApiFilter.UserId(http);
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
         var bot = await db.Bots.AsNoTracking().FirstOrDefaultAsync(b => b.Id == botId, http.RequestAborted);
-        var mayRotate = bot is not null
-            && (bot.OwnerUserId == userId || (await users.GetAccessAsync(userId, http.RequestAborted)).IsAdmin);
-        if (!mayRotate || await bots.RotateTokenAsync(botId, http.RequestAborted) is not { } token)
-        {
-            return ApiJson.Error(StatusCodes.Status404NotFound, "bot_not_found", "You have no bot with this id.");
-        }
+        if (!await MayChangeAsync(db, users, http, botId) || await bots.RotateTokenAsync(botId, http.RequestAborted) is not { } token)
+            return BotNotFound();
 
-        await audit.RecordAsync(userId, "bot.token", BotTarget(botId), null, http.RequestAborted);
+        await audit.RecordAsync(ClientApiFilter.UserId(http), "bot.token", BotTarget(botId), null, http.RequestAborted);
         return ApiJson.Ok(new NewTokenJson(bot!.Id, bot.Username, bot.Name, token));
     }
 
-    private static string BotTarget(long botId) => string.Create(CultureInfo.InvariantCulture, $"bot {botId}");
+    /// <summary>REL-37 and REL-40: only the owner of the bot, or an admin.</summary>
+    internal static async Task<bool> MayChangeAsync(RelayDb db, IUserDirectory users, HttpContext http, long botId)
+    {
+        var userId = ClientApiFilter.UserId(http);
+        var ownerId = await db.Bots.Where(b => b.Id == botId).Select(b => (long?)b.OwnerUserId).FirstOrDefaultAsync(http.RequestAborted);
+        return ownerId is not null && (ownerId == userId || (await users.GetAccessAsync(userId, http.RequestAborted)).IsAdmin);
+    }
+
+    internal static IResult BotNotFound() =>
+        ApiJson.Error(StatusCodes.Status404NotFound, "bot_not_found", "You have no bot with this id.");
+
+    internal static string BotTarget(long botId) => string.Create(CultureInfo.InvariantCulture, $"bot {botId}");
 
     [GeneratedRegex("^[a-z][a-z0-9_]{4,31}$", RegexOptions.CultureInvariant)]
     private static partial Regex UsernameShape();

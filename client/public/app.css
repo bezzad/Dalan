@@ -230,3 +230,28 @@ form.row > button:not(.primary) { padding: 8px 10px; }
 .card .setting button { flex: none; margin: 0; min-height: 36px; padding: 4px 10px; }
 .log { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 select { font: inherit; color: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: transparent; }
+/* Public pages (CLI-26 to CLI-28) and the showcase parts (CLI-29). */
+main.public header h1 a { color: var(--brand); text-decoration: none; }
+.links a { color: var(--brand); }
+.page ol { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 8px; }
+.avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--brand);
+  color: var(--on-brand);
+  font-weight: 700;
+}
+.showcase a { justify-content: flex-start; align-items: flex-start; }
+.bots .avatar { color: var(--on-brand); }
+.showcase .column { gap: 0; min-width: 0; overflow-wrap: anywhere; }
+.line { display: flex; align-items: center; gap: 8px; }
+.showcase-form textarea { min-height: 80px; }
+.showcase-form { padding-inline: 12px; padding-block-end: 8px; }
+.showcase-form summary { cursor: pointer; color: var(--brand); font-size: 14px; }
+.scroller > .bots { flex: none; overflow: visible; }
+:lang(fa) .page ol { list-style-type: persian; }

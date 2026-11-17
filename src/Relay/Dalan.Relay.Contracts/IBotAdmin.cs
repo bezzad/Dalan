@@ -4,7 +4,12 @@ namespace Dalan.Relay.Contracts;
 public sealed record AdminBot(
     long Id, string Username, string Name, long OwnerUserId, DateTimeOffset CreatedAt, DateTimeOffset? LastSeenAt, bool Suspended);
 
-/// <summary>What the admin door asks of Relay (ADM-12, REL-38, AUTH-20).</summary>
+/// <summary>A showcase entry that waits for review (ADM-13). The icon bytes stay in Relay.</summary>
+public sealed record ShowcaseRequest(
+    long BotId, string Username, string Name, long OwnerUserId, bool Suspended, string Description, string Category, bool Icon,
+    DateTimeOffset UpdatedAt);
+
+/// <summary>What the admin door asks of Relay (ADM-12, ADM-13, REL-38, AUTH-20).</summary>
 public interface IBotAdmin
 {
     /// <summary>Exact id, username or owner id.</summary>
@@ -12,6 +17,12 @@ public interface IBotAdmin
 
     /// <summary>REL-38. Null when the bot does not exist.</summary>
     Task<AdminBot?> SetSuspendedAsync(long botId, bool suspended, CancellationToken cancellationToken);
+
+    /// <summary>ADM-13: pending entries, oldest change first.</summary>
+    Task<IReadOnlyList<ShowcaseRequest>> ShowcaseRequestsAsync(int limit, CancellationToken cancellationToken);
+
+    /// <summary>ADM-13: lists or refuses. False when the bot has no entry.</summary>
+    Task<bool> ReviewShowcaseAsync(long botId, bool approve, CancellationToken cancellationToken);
 
     /// <summary>AUTH-20: closes the live streams of a suspended user.</summary>
     void EndUserStreams(long userId);

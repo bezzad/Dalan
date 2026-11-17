@@ -2,6 +2,7 @@ using System.Globalization;
 using Dalan.Relay.Contracts;
 using Dalan.Relay.Data;
 using Dalan.Relay.Live;
+using Dalan.Relay.Showcase;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dalan.Relay.Bots;
@@ -39,6 +40,27 @@ internal sealed class BotAdmin(
 
         suspendedBots.Set(botId, suspended);
         return await Shape(db.Bots.Where(b => b.Id == botId)).FirstAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ShowcaseRequest>> ShowcaseRequestsAsync(int limit, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.Showcase.AsNoTracking()
+            .Where(e => e.State == ShowcaseState.Pending)
+            .OrderBy(e => e.UpdatedAt)
+            .Take(limit)
+            .Join(db.Bots, e => e.BotId, b => b.Id, (e, b) => new ShowcaseRequest(
+                b.Id, b.Username, b.Name, b.OwnerUserId, b.SuspendedAt != null, e.Description, e.Category, e.Icon != null, e.UpdatedAt))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<bool> ReviewShowcaseAsync(long botId, bool approve, CancellationToken cancellationToken)
+    {
+        var state = approve ? ShowcaseState.Listed : ShowcaseState.Refused;
+        var at = time.GetUtcNow();
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.Showcase.Where(e => e.BotId == botId)
+            .ExecuteUpdateAsync(set => set.SetProperty(e => e.State, state).SetProperty(e => e.ReviewedAt, at), cancellationToken) > 0;
     }
 
     public void EndUserStreams(long userId) => notifier.EndStreams(userId);

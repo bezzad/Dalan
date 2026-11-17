@@ -62,7 +62,15 @@ export function botsScreen(app: App, onLanguage: () => void): Screen {
     ...(app.user.has_password ? [] : [h("p", { class: "note" }, t("noPasswordYet"))]),
     open,
     error,
-    list);
+    list,
+    // CLI-26: the public pages, from inside the app too.
+    h("nav", { class: "links" }, ...(["showcase", "faq", "privacy"] as const).map(page => h("a", {
+      href: `/${page}`,
+      onclick: event => {
+        event.preventDefault();
+        app.go(`/${page}`);
+      },
+    }, t(page)))));
 
   return { element, onMessage: reload, onRead: reload };
 }

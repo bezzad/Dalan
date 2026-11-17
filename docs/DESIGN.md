@@ -350,6 +350,8 @@ Do not advertise "free tunnel". Cloudflare does that better for anyone with open
 5. The home machine belongs to the builder. Dalan only carries messages between the two sides and is not responsible for the builder's uptime.
 6. Dalan keeps the IP address, port and time of users and bots for a limited time, to answer legal complaints.
 
+**Built in milestone 9:** landing (for visitors at `/`), `/privacy`, `/faq` and `/showcase`, in Persian and English. The numbers on the pages come from the settings. A builder asks to list a bot (description, category, icon); every change waits for the admin's review; a suspended bot is hidden. History per chat is now kept as section 18 says. The texts are not yet checked by a lawyer.
+
 **Legal check.** Before opening to the public, ask a lawyer about responsibility for hosted content and for storing phone numbers. The owner's rule that Dalan has no user-to-user chat, groups or channels stays in place.
 
 ## 14. Infrastructure and deployment facts for Iran
@@ -477,6 +479,10 @@ None of these is planned work. They are recorded so the design does not block th
 | Bot name length | 64 characters | Assumed (milestone 8) |
 | Rows per page in the admin screens | 100 | Assumed (milestone 8) |
 | Text setting length | 1,000 characters | Assumed (milestone 8) |
+| Bot description in the showcase | 512 characters | Assumed (milestone 9, like Telegram) |
+| Showcase icon | 100 KB, PNG, JPEG or WebP | Assumed (milestone 9) |
+| Showcase categories | games, tools, education, news, shopping, other | Assumed (milestone 9) |
+| Bots per showcase page | 50 | Assumed (milestone 9) |
 | Site storage per bot (Layer 2) | 200 MB | Agreed in discussion |
 | Pending site requests per user (Layer 2) | 20 | Assumed |
 | Site request timeout (Layer 2) | 30 seconds | Assumed |

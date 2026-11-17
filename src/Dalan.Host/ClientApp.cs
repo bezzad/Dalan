@@ -21,11 +21,11 @@ public static class ClientApp
         OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = NoCache,
     });
 
-    /// <summary>The page itself. Only these two addresses exist; any other unknown path is a real 404.</summary>
+    /// <summary>The page itself. Only these addresses exist; any other unknown path is a real 404.</summary>
     public static void MapClientPage(this WebApplication app)
     {
-        app.MapGet("/", Page).DisableRateLimiting();
-        app.MapGet("/@{username}", Page).DisableRateLimiting();
+        foreach (var path in (string[])["/", "/privacy", "/faq", "/showcase", "/@{username}"])
+            app.MapGet(path, Page).DisableRateLimiting();
     }
 
     private static IResult Page(HttpContext http)

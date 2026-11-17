@@ -2,7 +2,8 @@
 import { ApiError, api } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { h } from "./dom.ts";
-import { BuilderList, type NewToken } from "./panels.ts";
+import { categoryName, showcaseStateName } from "./pages.ts";
+import { BuilderList, type BuilderBot, type NewToken } from "./panels.ts";
 
 export function builderScreen(app: App): Screen {
   const t = app.language.t.bind(app.language);
@@ -23,7 +24,8 @@ export function builderScreen(app: App): Screen {
           h("span", { dir: "ltr" }, `@${bot.username}`),
           ...(bot.suspended ? [h("span", { class: "badge danger" }, t("suspended"))] : []),
           h("button", { type: "button", class: "link", onclick: () => void rotate(bot.id) }, t("newToken"))),
-        h("span", { class: "note" }, app.language.seen({ online: false, last_seen: bot.last_seen }, new Date())))));
+        h("span", { class: "note" }, app.language.seen({ online: false, last_seen: bot.last_seen }, new Date())),
+        showcasePart(bot))));
     drawToken(state.shownToken);
   }
 
@@ -45,6 +47,56 @@ export function builderScreen(app: App): Screen {
         }, t("copy")),
         h("button", { type: "button", onclick: () => { state.closeToken(); draw(); } }, t("close"))),
       copied);
+  }
+
+  // CLI-29: ask to be listed, change the entry (each change waits for review), or leave.
+  let categories: string[] = [];
+  function showcasePart(bot: BuilderBot): HTMLElement {
+    const entry = bot.showcase;
+    const changed = (next: BuilderBot["showcase"]) => {
+      bot.showcase = next;
+      draw();
+    };
+    const run = (work: () => Promise<void>) => {
+      error.textContent = "";
+      work().catch(failed);
+    };
+    const description = h("textarea", { dir: "auto", "aria-label": t("description"), required: true });
+    description.value = entry?.description ?? "";
+    const category = h("select", { "aria-label": t("category") },
+      ...categories.map(key => h("option", { value: key }, categoryName(app.language.current, key))));
+    if (entry) category.value = entry.category;
+    const icon = h("input", { type: "file", accept: "image/png,image/jpeg,image/webp", "aria-label": t("icon") });
+    icon.addEventListener("change", () => run(async () => {
+      const file = icon.files?.[0];
+      if (file) changed(await api.setShowcaseIcon(bot.id, file));
+    }));
+
+    return h("details", { class: "showcase-form" },
+      h("summary", {}, `${t("showcase")}: ${showcaseStateName(app.language.current, entry)}`),
+      h("form", {
+        class: "column",
+        onsubmit: event => {
+          event.preventDefault();
+          run(async () => changed(await api.askShowcase(bot.id, description.value.trim(), category.value)));
+        },
+      },
+      h("p", { class: "note" }, t("reviewNote")),
+      h("label", {}, t("description")), description,
+      h("label", {}, t("category")), category,
+      h("button", { type: "submit", class: "primary" }, t("sendForReview")),
+      ...(entry ? [
+        h("label", {}, t("icon")),
+        ...(entry.icon ? [h("img", { class: "avatar", src: `${api.ownIconUrl(bot.id)}?v=${Date.now()}`, alt: "" })] : []),
+        icon,
+        h("button", {
+          type: "button",
+          onclick: () => run(async () => {
+            await api.leaveShowcase(bot.id);
+            changed(null);
+          }),
+        }, t("leaveShowcase")),
+      ] : [])));
   }
 
   async function rotate(botId: number): Promise<void> {
@@ -80,8 +132,9 @@ export function builderScreen(app: App): Screen {
   h("label", { for: "new-bot-name" }, t("name")), name,
   h("button", { type: "submit", class: "primary" }, t("createBot")));
 
-  api.builderBots().then(bots => {
+  Promise.all([api.builderBots(), api.showcase("")]).then(([bots, showcase]) => {
     state.bots = bots;
+    categories = showcase.categories;
     draw();
   }).catch(failed);
 

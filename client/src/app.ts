@@ -58,6 +58,8 @@ export function errorText(error: unknown): TextKey {
     case "not_builder": return "notBuilder";
     case "bot_limit": return "botLimit";
     case "bad_value": return "badValue";
+    case "bad_icon": return "badIcon";
+    case "showcase_not_found": return "showcaseFirst";
     default: return "failed";
   }
 }

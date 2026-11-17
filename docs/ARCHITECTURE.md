@@ -186,6 +186,11 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 45 | 2026-11-17 | Admins by phone number in `Identity:AdminPhones`; no role in the session token, access asked on each call |
 | 46 | 2026-11-17 | Builder needs only admin approval for now (no email) |
 | 47 | 2026-11-17 | Suspended users and bots are kept in memory sets loaded at start, so the hot paths need no extra query |
+| 48 | 2026-11-17 | Public pages (landing, privacy, FAQ, showcase) live in the PWA; the host serves the same page at their addresses |
+| 49 | 2026-11-17 | The numbers the public pages print come from `GET /api/public/settings` in Admin, never from the text |
+| 50 | 2026-11-17 | Showcase entries in `relay.showcase`; every builder change goes back to review; icons (PNG, JPEG, WebP, no SVG) kept in the row |
+| 51 | 2026-11-17 | Anonymous public endpoints write no access log row (they know no caller); the per-address limit holds |
+| 52 | 2026-11-17 | History kept per chat by a sweeper (`Relay:HistoryMessages`, `Relay:HistoryDays`); sequence numbers keep counting |
 
 ## 11. Client address and access log
 
@@ -195,7 +200,7 @@ The owner must be able to tell the cyber police from which address a user or a b
 - **The header is believed only from `Dalan:TrustedProxies`** (addresses or CIDR ranges, comma separated; read at start). The header is read from the right until the first address that is not trusted, so one proxy or several work the same, and what a client wrote is never believed.
 - **Caddy replaces the header** with the client's `address:port` (`header_up X-Forwarded-For {remote}`).
 - **Adding a load balancer or a second proxy:** (1) add its address or range to `Dalan:TrustedProxies` on every instance; (2) make the first hop from the internet write the client's `address:port` and drop the client's own header (Envoy: set `X-Forwarded-For` to `%DOWNSTREAM_REMOTE_ADDRESS%`); (3) a proxy behind it must keep that header (Caddy: list the balancer in `trusted_proxies` and remove the `header_up` line). If step 1 is forgotten the server logs a warning that names the proxy (SEC-11).
-- **Access log:** table `admin.access_log` (actor `User`, `Bot` or `Phone`, actor id, phone, address, port, time). Relay's two door filters call `IAccessLog` for every accepted call, so a new endpoint in those groups is covered with no extra code. A new door that knows its caller must call `IAccessLog` too. A row is written for a new address at once and for a known one after `Admin:AccessLogIntervalMinutes`; "last written" is in memory per instance. A call whose row cannot be written fails.
+- **Access log:** table `admin.access_log` (actor `User`, `Bot` or `Phone`, actor id, phone, address, port, time). Relay's two door filters call `IAccessLog` for every accepted call, so a new endpoint in those groups is covered with no extra code. A new door that knows its caller must call `IAccessLog` too. The anonymous public endpoints (`/api/public/settings`, `/api/showcase`) know no caller and write no row. A row is written for a new address at once and for a known one after `Admin:AccessLogIntervalMinutes`; "last written" is in memory per instance. A call whose row cannot be written fails.
 - **SMS codes:** Identity calls `IAccessLog.RecordSmsAsync` for every login code that was sent: actor `Phone`, the number, and the address of the caller who asked.
 - **Retention:** a sweep deletes rows older than `Admin:AccessLogRetentionDays`.
 - **Admin screen:** the access log tab searches by user, bot, phone or address (`GET /api/admin/access-log`, ADM-10), with times in UTC. Plain SQL still works: `SELECT address, port, at FROM admin.access_log WHERE actor = 'Bot' AND actor_id = 5 ORDER BY at`.
