@@ -22,8 +22,7 @@ id deploy >/dev/null 2>&1 || useradd --create-home --shell /bin/bash deploy
 install -d -m 700 -o deploy -g deploy "$root/home/deploy/.ssh"
 install -m 600 -o deploy -g deploy "$key_file" "$root/home/deploy/.ssh/authorized_keys"
 # deploy.sh needs only this one command with root rights.
-echo 'deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart dalan' > "$root/etc/sudoers.d/dalan-deploy"
-chmod 440 "$root/etc/sudoers.d/dalan-deploy"
+echo 'deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart dalan' | install -m 440 /dev/stdin "$root/etc/sudoers.d/dalan-deploy"
 
 echo "Folders"
 install -d -m 755 -o deploy -g deploy "$root/opt/dalan" "$root/opt/dalan/releases"
