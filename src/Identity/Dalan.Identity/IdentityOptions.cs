@@ -6,6 +6,12 @@ public sealed class IdentityOptions
     /// <summary>Lifetime of a session token (AUTH-03).</summary>
     public int AccessTokenMinutes { get; set; }
 
+    /// <summary>Lifetime of a refresh token, counted from its last use (AUTH-08, AUTH-09).</summary>
+    public int RefreshTokenDays { get; set; }
+
+    /// <summary>An old refresh token that comes back inside this time is only refused; later it ends the session (AUTH-10).</summary>
+    public int RefreshReuseGraceSeconds { get; set; }
+
     /// <summary>P-256 private key, PKCS#8, base64. A secret: it lives only in the server's environment (AUTH-07).</summary>
     public string? SigningKey { get; set; }
 
@@ -13,4 +19,45 @@ public sealed class IdentityOptions
     public bool DevLogin { get; set; }
 
     public int MaxNameLength { get; set; }
+
+    /// <summary>Zero bits the proof of work must have (SEC-06).</summary>
+    public int PowDifficultyBits { get; set; }
+
+    public int PowChallengeSeconds { get; set; }
+
+    public int SmsCodeDigits { get; set; }
+
+    public int SmsCodeSeconds { get; set; }
+
+    /// <summary>Wrong tries allowed on one code (AUTH-12).</summary>
+    public int SmsCodeTries { get; set; }
+
+    /// <summary>Time between two SMS to one number (SEC-07).</summary>
+    public int SmsWaitSeconds { get; set; }
+
+    public int SmsPerPhonePerDay { get; set; }
+
+    /// <summary>High on purpose: many people can share one address (SEC-08).</summary>
+    public int SmsPerIpPerDay { get; set; }
+
+    /// <summary>The SMS budget of the whole server for 24 hours (SEC-08).</summary>
+    public int SmsPerDay { get; set; }
+
+    public int PasswordMinLength { get; set; }
+
+    public int PasswordMaxLength { get; set; }
+
+    /// <summary>Argon2id memory in KiB (AUTH-13).</summary>
+    public int PasswordMemoryKb { get; set; }
+
+    /// <summary>Argon2id passes (AUTH-13).</summary>
+    public int PasswordIterations { get; set; }
+
+    /// <summary>Password hashes that may run at the same time. Each one takes PasswordMemoryKb. Read once at start.</summary>
+    public int PasswordHashConcurrency { get; set; }
+
+    /// <summary>Password tries for one login name in each window (SEC-09).</summary>
+    public int PasswordTries { get; set; }
+
+    public int PasswordTriesWindowMinutes { get; set; }
 }
