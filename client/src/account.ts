@@ -1,7 +1,8 @@
-// The account screen: set the username (AUTH-15), the password (AUTH-13) and notifications (CLI-21).
+// The account screen: set the username (AUTH-15), the password (AUTH-13), notifications (CLI-21) and building bots (CLI-23).
 import { api } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { h } from "./dom.ts";
+import { builderView } from "./panels.ts";
 import { currentPushState, turnOff, turnOn, type PushState } from "./push.ts";
 
 export function accountScreen(app: App): Screen {
@@ -98,12 +99,39 @@ export function accountScreen(app: App): Screen {
     showPush(await currentPushState(key));
   }).catch(() => {});
 
+  // CLI-23: ask to become a builder, wait for the admin, or open "My bots". Admins also open the admin screen.
+  const builderError = h("p", { class: "error", role: "alert" });
+  const builderBody = h("div", { class: "column" });
+  function showBuilder(): void {
+    const view = builderView(app.user);
+    builderBody.replaceChildren(
+      view === "request"
+        ? h("button", {
+          type: "button", class: "primary", onclick: async () => {
+            builderError.textContent = "";
+            try {
+              app.user = await api.askBuilder();
+              showBuilder();
+            } catch (failure) {
+              builderError.textContent = t(errorText(failure));
+            }
+          },
+        }, t("askBuilder"))
+        : view === "waiting"
+          ? h("p", { class: "note" }, t("builderWaiting"))
+          : h("button", { type: "button", class: "primary", onclick: () => app.showPanel("builder") }, t("builderBots")),
+      ...(app.user.admin ? [h("button", { type: "button", onclick: () => app.showPanel("admin") }, t("adminScreen"))] : []));
+  }
+  showBuilder();
+  const builderCard = h("section", { class: "card" },
+    h("h2", {}, t("building")), h("p", { class: "note" }, t("buildingNote")), builderBody, builderError);
+
   const element = h("main", {},
     h("header", {},
-      h("button", { type: "button", class: "link", onclick: () => app.showAccount(false) }, t("back")),
+      h("button", { type: "button", class: "link", onclick: () => app.showPanel(null) }, t("back")),
       h("h1", {}, t("account"))),
     h("p", { class: "note", dir: "auto" }, app.user.name),
-    h("div", { class: "scroller" }, pushCard, usernameForm, passwordForm));
+    h("div", { class: "scroller" }, pushCard, usernameForm, passwordForm, builderCard));
 
   return { element };
 }

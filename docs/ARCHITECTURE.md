@@ -28,7 +28,7 @@ Identity    Relay      Notification     Admin
 | **Identity** | users, phone numbers, password hashes, TOTP, refresh tokens, builder approval | **sync** calls (a token is needed now) |
 | **Relay** (core) | bots, memberships, messages, the in-memory queue of each bot | sync in; **async** out to bots (queue + long polling) |
 | **Notification** | push subscriptions | **async**, except the login SMS (`ISmsSender`) and the subscription calls (`IWebPush`), which are sync. It gets "send this to this receiver by this channel" and knows no business. Channels: Web Push and SMS, later Email |
-| **Admin** | settings and limits, audit log, access log | sync. Other services read settings from it and write the access log through `IAccessLog` |
+| **Admin** | settings the admin changed, audit log, access log; the one admin door `/api/admin/...` | sync. Other services write the access log and audit log through `IAccessLog` and `IAuditLog`; Admin calls `IUserAdmin` (Identity) and `IBotAdmin` (Relay) for users and bots |
 
 Relay has two thin HTTP doors, both inside Relay:
 
@@ -68,7 +68,8 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 - Events: `MessageChanged` (→ SSE, and Web Push for a new bot message); planned: `UserSuspended` (Identity → all).
 - The login SMS is **not** an event: Identity calls `ISmsSender` (in `Dalan.Notification.Contracts`) and waits. A code lives 2 minutes, so a late retry is useless and the person must know at once when the SMS failed.
 - Built so far: `relay.outbox` with `MessageCreated`. One worker in Relay takes the oldest rows, passes them to `IMessageNotifier`, and deletes them, all in one transaction (at least once). The writer wakes the worker in memory after its commit; a poll is the safety net.
-- Relay learns a user's name from Identity through `IUserDirectory`. That profile has no phone number.
+- Relay learns a user's name from Identity through `IUserDirectory`. That profile has no phone number. `IUserDirectory.GetAccessAsync` says whether a user is admin, builder or suspended; it is asked on every admin and builder call, so a change works at once.
+- Only Admin uses `IUserAdmin`, the one contract with phone numbers (AUTH-02).
 - Push: `MessageChanged` has a `new` flag. For each new bot message the outbox worker calls `IWebPush.Send` (Notification.Contracts), which only puts the push in an in-memory queue; a few workers in Notification send it. A push lost in a restart is not sent again; the message arrives by sync.
 
 ## 5. Data
@@ -106,8 +107,17 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 - Keys for the MACs (proof of work, SMS codes) are derived from `Identity:SigningKey`, so there is no second secret.
 - SMS providers live in Notification behind `ISmsSender`; setting `Notification:SmsProvider` (`kavenegar`, `log` for Development only, or empty).
 - Security events (login, failed login, SMS sent or refused, refresh reuse, password change) are log lines until the audit table comes with Admin.
-- **Blocking is by user id.** Refresh checks the user's status. `UserSuspended(userId)` puts the id in a small in-memory deny list in every service until the last token expires; SSE for that user closes at once.
+- **Admins** are the users whose phone is in `Identity:AdminPhones` (file or environment only, never the panel).
+- **Builders**: `identity.users.builder` is `none`, `requested` or `approved`; the admin approves. Email is not asked for yet.
+- **Blocking is by user id.** A suspend deletes the user's sessions and puts the id in an in-memory deny list (`SuspendedUsers`, loaded at start) that the JWT handler checks, so an unexpired token stops at once; Admin then asks Relay to end the user's live streams. With more than one server this becomes a `UserSuspended` event.
 - Access token lifetime is an admin setting.
+
+## 7a. Settings the admin changes
+
+- `admin.settings` holds only the values the admin changed. The host adds them as the last configuration source (`AddAdminSettings`), loaded before traffic; Admin starts first.
+- A change reloads that source; every service reads settings through `IOptionsMonitor`, so it applies at once. A few settings are read only at start and are marked "after restart".
+- Not in the panel: secrets, `Identity:DevLogin`, `Identity:AdminPhones`, `Dalan:TrustedProxies`, `Notification:SmsProvider`, `Notification:Kavenegar:BaseUrl`, `Relay:FileFolder` and the other `Dalan` keys. Change those in `/etc/dalan/dalan.env`.
+- With more than one server, each one must reload on a shared signal.
 
 ## 8. Scale
 
@@ -119,7 +129,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 
 ## 9. Live messages and the client
 
-- Client API paths are under `/api`: Identity owns `/api/me`, `/api/logout`, `/api/auth/...` (no session needed), `/api/account/...` and the development login; Relay owns `/api/bots...`, `/api/events`, `/api/settings` and `/api/push...` (the door; the subscriptions live in Notification). Rules in `openspec/specs/relay` and `openspec/specs/live-updates`.
+- Client API paths are under `/api`: Identity owns `/api/me`, `/api/logout`, `/api/auth/...` (no session needed), `/api/account/...` and the development login; Relay owns `/api/bots...`, `/api/events`, `/api/settings`, `/api/push...` (the door; the subscriptions live in Notification) and `/api/builder/...`; Admin owns `/api/admin/...`. Rules in `openspec/specs/relay` and `openspec/specs/live-updates`.
 - `GET /api/events` is one SSE stream per user for all of that user's chats, behind `IMessageNotifier` (the second seam; in memory now). A stream ends at session expiry, at server stop, when it is too slow, or when the user opens too many; the client then reconnects.
 - The client never trusts the stream alone: every time it opens, the client asks for the changes after the highest `version` it has. Every new message and every edit, delete or pin takes the next version of its chat, so a sync sees changes too.
 - The PWA (`client/`) is plain TypeScript compiled to ES modules, no bundler. `client/dist` is embedded in `Dalan.Host`, so the release is still one file. Only `/` and `/@<bot>` return the page.
@@ -170,6 +180,12 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 39 | 2026-11-17 | Unread = bot messages after `memberships.last_read_seq`; the read position only moves forward |
 | 40 | 2026-11-17 | Bot status in memory, asked by the client every few seconds; no live status event (it would go to every user of a bot) |
 | 41 | 2026-11-17 | "Not delivered" makes a new version and an event; "delivered" stays quiet |
+| 42 | 2026-11-17 | Admin settings are a configuration source read from `admin.settings`, added last, so `IOptionsMonitor` sees changes with no service code |
+| 43 | 2026-11-17 | Editable settings are computed from the configuration minus a fixed list of secrets and start-only safety settings |
+| 44 | 2026-11-17 | One admin door in the Admin service; Identity and Relay keep their data behind `IUserAdmin` and `IBotAdmin` |
+| 45 | 2026-11-17 | Admins by phone number in `Identity:AdminPhones`; no role in the session token, access asked on each call |
+| 46 | 2026-11-17 | Builder needs only admin approval for now (no email) |
+| 47 | 2026-11-17 | Suspended users and bots are kept in memory sets loaded at start, so the hot paths need no extra query |
 
 ## 11. Client address and access log
 
@@ -182,4 +198,4 @@ The owner must be able to tell the cyber police from which address a user or a b
 - **Access log:** table `admin.access_log` (actor `User`, `Bot` or `Phone`, actor id, phone, address, port, time). Relay's two door filters call `IAccessLog` for every accepted call, so a new endpoint in those groups is covered with no extra code. A new door that knows its caller must call `IAccessLog` too. A row is written for a new address at once and for a known one after `Admin:AccessLogIntervalMinutes`; "last written" is in memory per instance. A call whose row cannot be written fails.
 - **SMS codes:** Identity calls `IAccessLog.RecordSmsAsync` for every login code that was sent: actor `Phone`, the number, and the address of the caller who asked.
 - **Retention:** a sweep deletes rows older than `Admin:AccessLogRetentionDays`.
-- Until the admin screen exists (milestone 8): `SELECT address, port, at FROM admin.access_log WHERE actor = 'Bot' AND actor_id = 5 ORDER BY at`.
+- **Admin screen:** the access log tab searches by user, bot, phone or address (`GET /api/admin/access-log`, ADM-10), with times in UTC. Plain SQL still works: `SELECT address, port, at FROM admin.access_log WHERE actor = 'Bot' AND actor_id = 5 ORDER BY at`.

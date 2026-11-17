@@ -212,3 +212,21 @@ form.row > button:not(.primary) { padding: 8px 10px; }
   text-align: center;
 }
 .chat .status { margin-block-start: -10px; }
+
+/* Builder and admin screens (CLI-23 to CLI-25) */
+.column { display: flex; flex-direction: column; gap: 8px; }
+.row.wrap { flex-wrap: wrap; }
+.badge.danger { background: var(--danger); color: var(--on-brand); }
+.bots .line { display: flex; flex: 1; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bots li > .note { padding-inline: 12px; }
+.token code, .log code { overflow-wrap: anywhere; font-family: ui-monospace, monospace; }
+.token code { padding: 8px; border-radius: 8px; background: var(--bg); user-select: all; }
+.tabs { margin-block: 4px; }
+.tabs button { min-height: 36px; padding: 4px 10px; }
+.setting { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-block: 6px; border-top: 1px solid var(--line); }
+.setting label { flex: 1 1 100%; overflow-wrap: anywhere; font-size: 14px; }
+.setting input, .setting select { flex: 1; width: auto; padding: 6px 10px; }
+.setting .badge { margin-inline-start: 6px; padding: 0 6px; border-radius: 8px; background: var(--brand); color: var(--on-brand); font-size: 11px; }
+.card .setting button { flex: none; margin: 0; min-height: 36px; padding: 4px 10px; }
+.log { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+select { font: inherit; color: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: transparent; }

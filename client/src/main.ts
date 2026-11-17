@@ -1,9 +1,11 @@
 // PWA entry point: who is logged in, which screen is open, and the live stream.
 import { accountScreen } from "./account.ts";
 import { ApiError, api, type AuthSettings, type User } from "./api.ts";
-import type { App, Screen } from "./app.ts";
+import { adminScreen } from "./admin.ts";
+import type { App, Panel, Screen } from "./app.ts";
 import { Backoff } from "./backoff.ts";
 import { botsScreen } from "./bots.ts";
+import { builderScreen } from "./builder.ts";
 import { chatScreen } from "./chat.ts";
 import { Language } from "./i18n.ts";
 import { Live } from "./live.ts";
@@ -15,7 +17,7 @@ const language = new Language(document.documentElement, localStorage);
 let app: App | null = null;
 let live: Live | null = null;
 let screen: Screen | null = null;
-let accountOpen = false;
+let panel: Panel | null = null;
 let auth: AuthSettings | null = null;
 
 /** AUTH-16: read once; the login and account screens need it. */
@@ -33,7 +35,7 @@ function show(element: HTMLElement): void {
 function showLogin(): void {
   live?.stop();
   app = live = screen = null;
-  accountOpen = false;
+  panel = null;
   authSettings().then(settings => show(loginScreen(language, settings, user => void enter(user).catch(fail), () => {
     language.toggle();
     showLogin();
@@ -44,10 +46,14 @@ function showLogin(): void {
 function route(): void {
   if (!app) return;
   const username = /^\/@([^/]+)$/.exec(decodeURIComponent(location.pathname))?.[1];
-  screen = username ? chatScreen(app, username) : accountOpen ? accountScreen(app) : botsScreen(app, () => {
-    language.toggle();
-    route();
-  });
+  screen = username ? chatScreen(app, username)
+    : panel === "account" ? accountScreen(app)
+    : panel === "builder" ? builderScreen(app)
+    : panel === "admin" ? adminScreen(app)
+    : botsScreen(app, () => {
+      language.toggle();
+      route();
+    });
   show(screen.element);
 }
 
@@ -62,12 +68,12 @@ async function enter(user: User): Promise<void> {
     maxFileSizeMb: settings.max_file_size_mb,
     statusRefreshSeconds: settings.status_refresh_seconds,
     go(path) {
-      accountOpen = false;
+      panel = null;
       history.pushState(null, "", path);
       route();
     },
-    showAccount(open) {
-      accountOpen = open;
+    showPanel(next) {
+      panel = next;
       route();
     },
     logout() {

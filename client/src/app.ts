@@ -14,10 +14,12 @@ export interface App {
   statusRefreshSeconds: number;
   /** Goes to "/" or "/@name" without a page load. */
   go(path: string): void;
-  /** Shows the account screen (username, password), or goes back from it. */
-  showAccount(open: boolean): void;
+  /** Shows the account, builder or admin screen over the bot list, or goes back to the list (null). */
+  showPanel(panel: Panel | null): void;
   logout(): void;
 }
+
+export type Panel = "account" | "builder" | "admin";
 
 /** What the open screen does with live events. */
 export interface Screen {
@@ -51,6 +53,11 @@ export function errorText(error: unknown): TextKey {
     case "wrong_password": return "wrongPassword";
     case "bad_username": return "badUsername";
     case "username_taken": return "usernameTaken";
+    case "bot_suspended": return "botSuspended";
+    case "suspended": return "accountSuspended";
+    case "not_builder": return "notBuilder";
+    case "bot_limit": return "botLimit";
+    case "bad_value": return "badValue";
     default: return "failed";
   }
 }
