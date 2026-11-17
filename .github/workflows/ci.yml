@@ -50,7 +50,7 @@ jobs:
         run: dotnet test -c Release --no-build
 
       - name: Specs are valid
-        run: npx --yes @fission-ai/openspec@2.0.0 validate --all --strict
+        run: npx --yes @fission-ai/openspec@2.1.0 validate --all --strict
 
       - name: Every rule has a test
         run: |
