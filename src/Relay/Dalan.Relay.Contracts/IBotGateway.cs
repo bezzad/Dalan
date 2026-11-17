@@ -1,3 +1,5 @@
+using System.Net;
+
 namespace Dalan.Relay.Contracts;
 
 /// <summary>
@@ -6,8 +8,11 @@ namespace Dalan.Relay.Contracts;
 /// </summary>
 public interface IBotGateway
 {
-    /// <summary>Checks the token (REL-04), then the call limit of that bot (SEC-01). Call it once for each bot call.</summary>
-    Task<BotAccess> EnterAsync(string? token, CancellationToken cancellationToken);
+    /// <summary>
+    /// Checks the token (REL-04), records the call in the access log (ADM-01), then checks the call limit of that bot (SEC-01).
+    /// Call it once for each bot call, with the address and port of the connection as they are (<c>HttpContext.Connection</c>).
+    /// </summary>
+    Task<BotAccess> EnterAsync(string? token, IPAddress? address, int port, CancellationToken cancellationToken);
 
     /// <summary>
     /// One long poll (Q-03, Q-05, Q-06, Q-08). No <paramref name="limit"/> or <paramref name="timeoutSeconds"/>

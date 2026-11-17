@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace Dalan.Relay.BotApi;
 
-/// <summary>Runs before every core Bot API call: token check (REL-04), then the limit per bot (SEC-01).</summary>
+/// <summary>Runs before every core Bot API call: token check (REL-04), the access log (ADM-01), then the limit per bot (SEC-01).</summary>
 internal sealed class BotApiFilter(IBotGateway gateway) : IEndpointFilter
 {
     private const string Scheme = "Bearer ";
@@ -17,7 +17,8 @@ internal sealed class BotApiFilter(IBotGateway gateway) : IEndpointFilter
 
         var header = http.Request.Headers.Authorization.ToString();
         var token = header.StartsWith(Scheme, StringComparison.OrdinalIgnoreCase) ? header[Scheme.Length..].Trim() : null;
-        var access = await gateway.EnterAsync(token, http.RequestAborted);
+        var access = await gateway.EnterAsync(
+            token, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
         if (access.RetryAfter is { } wait) return ApiJson.TooManyRequests(http, wait);
         if (access.Bot is null)
         {

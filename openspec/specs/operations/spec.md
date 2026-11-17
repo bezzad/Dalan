@@ -63,7 +63,7 @@ At start each service SHALL apply its own database migrations, in its own schema
 
 #### Scenario: Empty database
 - **WHEN** the server starts on an empty database
-- **THEN** the schemas `identity` and `relay` exist, each with its own migration history table, and `/ready` answers 200
+- **THEN** the schemas `identity`, `relay` and `admin` exist, each with its own migration history table, and `/ready` answers 200
 
 #### Scenario: Start again
 - **WHEN** the server starts on a database that already has the newest schema

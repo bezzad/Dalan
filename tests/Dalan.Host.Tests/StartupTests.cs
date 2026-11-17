@@ -39,12 +39,12 @@ public class StartupTests(PostgresServer postgres)
 
     [Fact]
     [Trait("Rule", "OPS-07")]
-    public async Task OPS07_empty_database_gets_both_schemas_with_their_own_history()
+    public async Task OPS07_empty_database_gets_every_schema_with_its_own_history()
     {
         await using var app = new DalanApp(await postgres.NewDatabaseAsync());
         await app.ReadyAsync();
 
-        foreach (var table in new[] { "identity.__ef_migrations_history", "relay.__ef_migrations_history" })
+        foreach (var table in new[] { "identity.__ef_migrations_history", "relay.__ef_migrations_history", "admin.__ef_migrations_history" })
         {
             Assert.True(
                 await PostgresServer.ScalarAsync<bool>(app.ConnectionString, $"SELECT to_regclass('{table}') IS NOT NULL"),

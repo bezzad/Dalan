@@ -1,3 +1,5 @@
+using System.Net;
+using Dalan.Admin.Contracts;
 using Dalan.Relay.Bots;
 using Dalan.Relay.Chats;
 using Dalan.Relay.Contracts;
@@ -12,6 +14,7 @@ namespace Dalan.Relay.BotApi;
 /// <summary>REL-19: the one place where the rules for bots live. Every bot door calls it.</summary>
 internal sealed class BotGateway(
     BotRegistry bots,
+    IAccessLog accessLog,
     RateLimits limits,
     IUpdateQueue queue,
     ChatService chats,
@@ -20,9 +23,12 @@ internal sealed class BotGateway(
     TimeProvider time,
     IHostApplicationLifetime lifetime) : IBotGateway
 {
-    public async Task<BotAccess> EnterAsync(string? token, CancellationToken cancellationToken)
+    public async Task<BotAccess> EnterAsync(string? token, IPAddress? address, int port, CancellationToken cancellationToken)
     {
         if (await bots.AuthenticateAsync(token, cancellationToken) is not { } bot) return new BotAccess(null, null);
+
+        // ADM-01: every door for bots ends here, so every bot call is in the access log.
+        await accessLog.RecordAsync(AccessActor.Bot, bot.Id, address, port, cancellationToken);
 
         // After the token check, so a wrong token cannot use up a real bot's limit.
         return limits.CheckBot(bot.Id) is { } wait ? new BotAccess(null, wait) : new BotAccess(bot, null);

@@ -21,7 +21,9 @@ public static class TelegramAdapter
 
     private static async Task<IResult> HandleAsync(string token, string method, HttpContext http, IBotGateway gateway)
     {
-        var access = await gateway.EnterAsync(token, http.RequestAborted);
+        // ADM-01: the gateway records the call with the real address (CLAUDE.md rule 13: never read X-Forwarded-For here).
+        var access = await gateway.EnterAsync(
+            token, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
         if (access.RetryAfter is { } wait) return TelegramJson.TooManyRequests(http, wait);
         if (access.Bot is not { } bot) return TelegramJson.Error(StatusCodes.Status401Unauthorized, "Unauthorized");
 

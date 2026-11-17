@@ -31,7 +31,8 @@ Milestones 1 to 4 are merged. The core Bot API has two calls: `GET /v1/updates` 
 11. **Calls with nothing to do:** `deleteWebhook` answers `true` (there is no webhook; libraries call it before they start polling). `sendChatAction` answers `true` and shows nothing yet.
 12. **Errors:** HTTP status = `error_code`. Texts follow Telegram's where bots match on them: `Unauthorized`, `Conflict: terminated by other getUpdates request; make sure that only one bot instance is running`, `Bad Request: message text is empty`, `Bad Request: message is too long`, `Bad Request: chat not found`, `Too Many Requests: retry after N` with `parameters.retry_after`. A user who has not started the bot: 403 `Forbidden: bot can't initiate conversation with a user`. A method the adapter does not have: 400 `Bad Request: method <name> is not supported by Dalan` (not 404: some libraries read 404 as "wrong token").
 13. **JSON:** snake_case, empty fields left out, Persian text not escaped.
-14. **Tests:** a new project `tests/Dalan.Telegram.Tests`. Answers are compared with saved JSON files (`Examples/`). One test drives the real `Telegram.Bot` client against the test server, so a wrong shape fails in a real parser.
+14. **Access log (ADM-01):** `IBotGateway.EnterAsync` takes the address and port of the connection and records the call after the token check, before the limit. So every bot door is in the log by construction, and no door reads `X-Forwarded-For` (CLAUDE.md rule 13).
+15. **Tests:** a new project `tests/Dalan.Telegram.Tests`. Answers are compared with saved JSON files (`Examples/`). One test drives the real `Telegram.Bot` client against the test server, so a wrong shape fails in a real parser.
 
 ## Starting values used
 

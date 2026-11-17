@@ -3,6 +3,10 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../Dalan.Admin.Contracts/Dalan.Admin.Contracts.csproj" />
   </ItemGroup>
 </Project>

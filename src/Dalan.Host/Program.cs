@@ -4,7 +4,6 @@ using Dalan.Identity;
 using Dalan.Notification;
 using Dalan.Relay;
 using Dalan.Telegram;
-using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,8 +19,7 @@ builder.Logging.AddJsonConsole(o =>
 builder.Services.Configure<HostOptions>(o =>
     o.ShutdownTimeout = TimeSpan.FromSeconds(builder.Configuration.GetValue<int>("Dalan:ShutdownTimeoutSeconds")));
 
-// SEC-02: the real client address comes from the front proxy on this machine (the default trusts only loopback).
-builder.Services.Configure<ForwardedHeadersOptions>(o => o.ForwardedHeaders = ForwardedHeaders.XForwardedFor);
+builder.Services.AddClientAddress(builder.Configuration);
 builder.Services.AddIpRateLimit(builder.Configuration);
 
 builder.Services
@@ -35,7 +33,7 @@ builder.Services.AddHostedService(provider => provider.GetRequiredService<Startu
 
 var app = builder.Build();
 
-app.UseForwardedHeaders();
+app.UseClientAddress();
 app.UseSecurityHeaders();
 app.UseReadyGate();
 app.UseClientFiles();

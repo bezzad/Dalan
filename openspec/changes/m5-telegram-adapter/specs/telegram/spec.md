@@ -196,3 +196,18 @@ A stock Telegram client library SHALL work against Dalan with only its base addr
 - **GIVEN** the `Telegram.Bot` client with base address `<server>` and the bot's Dalan token
 - **WHEN** it calls `GetMe`, reads the "/start" of a user with `GetUpdates`, and answers with `SendMessage` and a `ReplyKeyboardMarkup`
 - **THEN** every call works, the update has the user and the text, and the user's history has the answer with its keyboard
+
+### Requirement: TG-13 Adapter calls are in the access log
+Every adapter call with a valid token SHALL be recorded in the access log as that bot, with the real client address and port (ADM-01, SEC-10), in the same way as a core Bot API call. A call with a wrong token SHALL write no row.
+
+#### Scenario: A Telegram call
+- **WHEN** a bot calls `getMe` through the adapter from address `203.0.113.7` port `51000`
+- **THEN** the access log has one row for that bot with that address and port
+
+#### Scenario: A faked header from the client
+- **WHEN** a client that is not a trusted proxy sends `X-Forwarded-For: 9.9.9.9` with its adapter call
+- **THEN** the row has the address of the connection, not `9.9.9.9`
+
+#### Scenario: Wrong token
+- **WHEN** an adapter call has a wrong token
+- **THEN** the access log has no row
