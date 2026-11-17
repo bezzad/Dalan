@@ -1,8 +1,11 @@
 using Dalan.Identity.Contracts;
 using Dalan.Relay.Data;
+using Dalan.Relay.Live;
+using Dalan.Relay.Outbox;
 using Dalan.Relay.Queue;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace Dalan.Relay.Chats;
 
@@ -10,9 +13,11 @@ public enum ChatError
 {
     None,
     UnknownUser,
+    UnknownBot,
     TextEmpty,
     TextTooLong,
     ChatNotActive,
+    BadKeyboard,
 }
 
 /// <summary>Saves the messages of a chat. Both doors of Relay (users and bots) end here.</summary>
@@ -20,6 +25,7 @@ public sealed class ChatService(
     IDbContextFactory<RelayDb> dbFactory,
     IUserDirectory users,
     IUpdateQueue queue,
+    OutboxWorker outbox,
     IOptionsMonitor<RelayOptions> options,
     TimeProvider time)
 {
@@ -33,7 +39,10 @@ public sealed class ChatService(
         if (sender is null) return (ChatError.UnknownUser, null);
 
         var now = time.GetUtcNow();
-        var message = await SaveAsync(
+        Message? message;
+        try
+        {
+            message = await SaveAsync(
             db => db.Database.SqlQuery<long>($"""
                 INSERT INTO relay.memberships (bot_id, user_id, state, started_at, last_seq)
                 VALUES ({botId}, {userId}, {(int)MembershipState.Active}, {now}, 1)
@@ -50,6 +59,12 @@ public sealed class ChatService(
                 Delivery = DeliveryState.Pending,
             },
             cancellationToken);
+        }
+        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.ForeignKeyViolation)
+        {
+            // The membership points to a bot that does not exist.
+            return (ChatError.UnknownBot, null);
+        }
 
         // Q-01: the message is saved; only now may the bot see it.
         var replaced = queue.Enqueue(botId, QueuedUpdate.Of(message!, sender));
@@ -59,9 +74,10 @@ public sealed class ChatService(
 
     /// <summary>A bot writes to a user who has started it (REL-08).</summary>
     public async Task<(ChatError Error, Message? Message)> SendFromBotAsync(
-        long botId, long userId, string text, CancellationToken cancellationToken)
+        long botId, long userId, string text, List<List<string>>? replyKeyboard, CancellationToken cancellationToken)
     {
         if (CheckText(text) is var error and not ChatError.None) return (error, null);
+        if (!IsValid(replyKeyboard)) return (ChatError.BadKeyboard, null);
 
         var message = await SaveAsync(
             db => db.Database.SqlQuery<long>($"""
@@ -74,7 +90,7 @@ public sealed class ChatService(
                 BotId = botId,
                 UserId = userId,
                 Direction = Direction.FromBot,
-                Content = new MessageContent { Text = text },
+                Content = new MessageContent { Text = text, ReplyKeyboard = ReplyKeyboard.Of(replyKeyboard) },
                 CreatedAt = time.GetUtcNow(),
             },
             cancellationToken);
@@ -87,8 +103,20 @@ public sealed class ChatService(
         : text.Length > options.CurrentValue.MaxTextLength ? ChatError.TextTooLong
         : ChatError.None;
 
+    /// <summary>REL-17: rows of button texts, inside the limits.</summary>
+    private bool IsValid(List<List<string>>? keyboard)
+    {
+        if (keyboard is null) return true;
+
+        var limits = options.CurrentValue;
+        return keyboard.TrueForAll(row => row is not null)
+            && keyboard.Sum(row => row.Count) <= limits.MaxKeyboardButtons
+            && keyboard.TrueForAll(row => row.TrueForAll(text => text is { Length: > 0 } && text.Length <= limits.MaxButtonTextLength));
+    }
+
     /// <summary>
     /// REL-06: takes the next sequence number of the chat and inserts the message in one transaction.
+    /// LIVE-04: the event for the live streams is written in the same transaction, so the two never disagree.
     /// The lock on the membership row makes the numbers of one chat commit in order.
     /// Returns null when the chat gave no number (no active membership).
     /// </summary>
@@ -103,8 +131,10 @@ public sealed class ChatService(
 
         message.Seq = seq[0];
         db.Messages.Add(message);
+        db.Outbox.Add(OutboxEvent.Of(MessageCreated.Of(message)));
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        outbox.Wake();
         return message;
     }
 }

@@ -1,7 +1,10 @@
 using Dalan.Relay.BotApi;
 using Dalan.Relay.Bots;
 using Dalan.Relay.Chats;
+using Dalan.Relay.ClientApi;
 using Dalan.Relay.Data;
+using Dalan.Relay.Live;
+using Dalan.Relay.Outbox;
 using Dalan.Relay.Queue;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +31,10 @@ public static class RelayService
         services.AddSingleton<BotRegistry>();
         services.AddSingleton<ChatService>();
         services.AddSingleton<QueueLoader>();
-        services.AddSingleton<BotApiLimits>();
+        services.AddSingleton<RateLimits>();
+        services.AddSingleton<IMessageNotifier, InMemoryMessageNotifier>();
+        services.AddSingleton<OutboxWorker>();
+        services.AddHostedService(provider => provider.GetRequiredService<OutboxWorker>());
         services.AddSingleton<ExpirySweeper>();
         services.AddHostedService(provider => provider.GetRequiredService<ExpirySweeper>());
         return services;
@@ -37,10 +43,11 @@ public static class RelayService
     public static IEndpointRouteBuilder MapRelayService(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapBotApi();
+        endpoints.MapClientApi();
         return endpoints;
     }
 
-    /// <summary>OPS-07 and Q-07: applies this service's migrations, then reloads the queues. The host calls it before the server is ready.</summary>
+    /// <summary>OPS-07, Q-07 and LIVE-04: applies this service's migrations, reloads the queues, wakes the outbox worker. The host calls it before the server is ready.</summary>
     public static async Task StartAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
         var dbFactory = services.GetRequiredService<IDbContextFactory<RelayDb>>();
@@ -48,5 +55,8 @@ public static class RelayService
             await db.Database.MigrateAsync(cancellationToken);
 
         await services.GetRequiredService<QueueLoader>().LoadAsync(cancellationToken);
+
+        // LIVE-04: events that an earlier run saved but did not pass on.
+        services.GetRequiredService<OutboxWorker>().Wake();
     }
 }

@@ -15,7 +15,17 @@ public sealed class RelayOptions
     public int MaxTextLength { get; set; }
     public int RateLimitWindowSeconds { get; set; }
     public int BotRequestLimit { get; set; }
-    public int IpRequestLimit { get; set; }
+    public int UserRequestLimit { get; set; }
+    public int MaxMessagesPerSync { get; set; }
+    public int MaxKeyboardButtons { get; set; }
+    public int MaxButtonTextLength { get; set; }
+    public int MaxStreamsPerUser { get; set; }
+    public int StreamHeartbeatSeconds { get; set; }
+    public int StreamBufferSize { get; set; }
+    public int OutboxPollSeconds { get; set; }
+    public int OutboxBatchSize { get; set; }
+    public int ClientReconnectMinSeconds { get; set; }
+    public int ClientReconnectMaxSeconds { get; set; }
 
     public TimeSpan UpdateExpiry => TimeSpan.FromSeconds(UpdateExpirySeconds);
 }

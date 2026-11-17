@@ -11,27 +11,28 @@ Read first:
 ## Commands
 
 ```bash
+(cd client && npm ci && npm run check && npm run build && npm test)   # client first: the server embeds client/dist
 dotnet build Dalan.slnx -c Release          # needs .NET SDK 11 (global.json)
 dotnet test -c Release                      # all .NET tests; needs Docker, or DALAN_TEST_POSTGRES=<connection string>
 docker compose up -d                        # local PostgreSQL for the next line
-dotnet run --project src/Dalan.Host         # run the server; GET /health, GET /ready
-(cd client && npm ci && npm run check)      # client type check
+dotnet run --project src/Dalan.Host         # run the server; open http://localhost:5000 (development login is on)
+node scripts/demo-bot.mjs 1                 # a small bot to chat with; see the top of the file
 bash scripts/check-rules.sh                 # every spec rule ID has a test
 bash tests/deploy/deploy_test.sh            # deploy script tests
 bash tests/proxy/caddy_test.sh              # needs caddy on PATH
-bash scripts/publish.sh out                 # self-contained linux-x64 release
+bash scripts/publish.sh out                 # builds the client, then the self-contained linux-x64 release
 openspec validate --all --strict            # OpenSpec CLI 2.0.0
 ```
 
 ## Layout
 
 ```
-src/Dalan.Host/                    the one process; wires services; /health, /ready
+src/Dalan.Host/                    the one process; wires services; /health, /ready; serves the embedded client; per-address rate limit
 src/<Service>/Dalan.<Service>      Identity, Relay (core), Notification, Admin
 src/<Service>/Dalan.<Service>.Contracts   the only thing other services may reference
 src/Plugins/Dalan.Telegram         Telegram adapter plugin (no data, no domain)
 tests/                             one project or script folder per area
-client/                            PWA, plain TypeScript, no framework
+client/                            PWA, plain TypeScript, no framework, no bundler; src, public, tests; built into dist
 deploy/                            deploy.sh, dalan.service (systemd), Caddyfile
 compose.yaml                       PostgreSQL for local work only
 openspec/                          specs and changes

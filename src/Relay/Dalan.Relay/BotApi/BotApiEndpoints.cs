@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Dalan.Relay.Chats;
 using Dalan.Relay.Data;
 using Dalan.Relay.Queue;
@@ -30,7 +29,7 @@ internal static class BotApiEndpoints
         IHostApplicationLifetime lifetime)
     {
         if (PollRequest.Parse(http.Request.Query, options.CurrentValue, out var error) is not { } poll)
-            return BotApiJson.BadRequest(error);
+            return ApiJson.BadRequest(error);
 
         var botId = BotApiFilter.BotId(http);
         var replaced = queue.BeginPoll(botId);
@@ -59,37 +58,32 @@ internal static class BotApiEndpoints
             }
         }
 
-        return BotApiJson.Error(StatusCodes.Status409Conflict, "conflict",
+        return ApiJson.Error(StatusCodes.Status409Conflict, "conflict",
             "A newer get-updates call with the same token replaced this one. Run only one copy of the bot.");
     }
 
     private static IResult Updates(IReadOnlyList<QueuedUpdate> updates) =>
-        BotApiJson.Ok(new UpdatesResponse(updates.Select(UpdateJson.Of)));
+        ApiJson.Ok(new UpdatesResponse(updates.Select(UpdateJson.Of)));
 
     private static async Task<IResult> SendMessageAsync(HttpContext http, ChatService chats, IOptionsMonitor<RelayOptions> options)
     {
-        SendMessageRequest? request;
-        try
-        {
-            request = await http.Request.ReadFromJsonAsync<SendMessageRequest>(BotApiJson.Options, http.RequestAborted);
-        }
-        catch (Exception exception) when (exception is JsonException or InvalidOperationException)
-        {
-            request = null;
-        }
-
+        var request = await ApiJson.ReadAsync<SendMessageRequest>(http);
         if (request is not { UserId: { } userId, Text: { } text })
-            return BotApiJson.BadRequest("""Send JSON like {"user_id": 1, "text": "hello"} with Content-Type application/json.""");
+            return ApiJson.BadRequest("""Send JSON like {"user_id": 1, "text": "hello"} with Content-Type application/json.""");
 
-        var (error, message) = await chats.SendFromBotAsync(BotApiFilter.BotId(http), userId, text, http.RequestAborted);
+        var (error, message) = await chats.SendFromBotAsync(
+            BotApiFilter.BotId(http), userId, text, request.ReplyKeyboard, http.RequestAborted);
         return error switch
         {
-            ChatError.None => BotApiJson.Ok(SentMessageJson.Of(message!)),
-            ChatError.TextEmpty => BotApiJson.Error(StatusCodes.Status400BadRequest, "text_empty",
+            ChatError.None => ApiJson.Ok(SentMessageJson.Of(message!)),
+            ChatError.TextEmpty => ApiJson.Error(StatusCodes.Status400BadRequest, "text_empty",
                 "'text' is empty. Send at least one character."),
-            ChatError.TextTooLong => BotApiJson.Error(StatusCodes.Status400BadRequest, "text_too_long",
+            ChatError.TextTooLong => ApiJson.Error(StatusCodes.Status400BadRequest, "text_too_long",
                 $"'text' is longer than {options.CurrentValue.MaxTextLength} characters. Send it as several messages."),
-            _ => BotApiJson.Error(StatusCodes.Status403Forbidden, "chat_not_active",
+            ChatError.BadKeyboard => ApiJson.Error(StatusCodes.Status400BadRequest, "bad_keyboard",
+                $"'reply_keyboard' must be rows of button texts: at most {options.CurrentValue.MaxKeyboardButtons} buttons, " +
+                $"each text 1 to {options.CurrentValue.MaxButtonTextLength} characters."),
+            _ => ApiJson.Error(StatusCodes.Status403Forbidden, "chat_not_active",
                 "This user has not started the bot, or has stopped it. A bot can write only to users who started it."),
         };
     }
