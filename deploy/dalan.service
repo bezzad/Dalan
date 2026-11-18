@@ -17,7 +17,7 @@ Environment=Relay__FileFolder=/var/lib/dalan/files
 # Secrets live only on the server, never in the repository. deploy/setup.sh writes the file with the database, signing key and push keys.
 # Must hold the database: ConnectionStrings__Dalan=Host=localhost;Database=dalan;Username=dalan;Password=...
 # Must hold the key that signs sessions (without it every restart logs all users out): Identity__SigningKey=<key>
-#   Make one with: openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -outform DER | base64 -w0
+#   Make one (PKCS#8) with: openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 | openssl pkcs8 -topk8 -nocrypt -outform DER | base64 -w0
 # Must hold the SMS provider, or nobody can log in by SMS:
 #   Notification__SmsProvider=kavenegar
 #   Notification__Kavenegar__ApiKey=<key>

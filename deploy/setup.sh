@@ -53,7 +53,8 @@ env_file="$root/etc/dalan/dalan.env"
 if [ ! -f "$env_file" ]; then
   echo "Secrets (new $env_file)"
   password=$(openssl rand -hex 24)
-  signing_key=$(openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -outform DER | base64 -w0)
+  # .NET reads the signing key as PKCS#8; genpkey alone writes SEC1 in DER.
+  signing_key=$(openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 | openssl pkcs8 -topk8 -nocrypt -outform DER | base64 -w0)
   # A P-256 private key in DER (SEC1): the 32 private bytes start at byte 7, the last 65 bytes are the public key.
   der=$(openssl ecparam -name prime256v1 -genkey -noout -outform DER | od -An -tx1 -v | tr -d ' \n')
   push_private=$(printf '%s' "${der:14:64}" | hex_bytes | base64url)
