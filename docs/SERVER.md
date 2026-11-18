@@ -13,10 +13,10 @@ How to set up the production server, deploy, back up and run the shutdown drill.
 From the repository on your own machine (Linux, macOS, WSL or Git Bash; needs `ssh`, `scp`, `curl`):
 
 ```bash
-bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
+bash deploy/install.sh <user>@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
 ```
 
-It downloads Caddy here, copies it with `deploy/` to the server and runs `deploy/setup.sh` as root. The server downloads only Ubuntu packages from its mirror. It is safe to run again.
+The user is root or has sudo. It downloads Caddy here, copies it with `deploy/` to the server and runs `deploy/setup.sh` with sudo. A server with less than 2 GB of memory and no swap gets a 2 GB swap file (`SWAP_MB`). The server downloads only Ubuntu packages from its mirror. It is safe to run again.
 
 Result: users `dalan` (service) and `deploy` (CI; may only `sudo systemctl restart dalan`), PostgreSQL with database `dalan`, Caddy, the units `dalan`, `caddy`, `dalan-backup.timer`, and `/etc/dalan/dalan.env` with a new database password, signing key and push keys. That file is made once and never overwritten.
 

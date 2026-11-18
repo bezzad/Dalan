@@ -9,6 +9,11 @@
 - **WHEN** `setup.sh` runs on a fresh server
 - **THEN** the `dalan`, `caddy` and backup units are installed and enabled, and Caddy gets the domains
 
+#### Scenario: Small server
+- **GIVEN** a server with less memory than `SWAP_MB` (start 2048) and no swap
+- **WHEN** `setup.sh` runs, and runs again
+- **THEN** a swap file of `SWAP_MB` is made once and kept after a reboot
+
 #### Scenario: Deploy user rights
 - **WHEN** `setup.sh` is done
 - **THEN** the sudoers file lets `deploy` run only `systemctl restart dalan`
