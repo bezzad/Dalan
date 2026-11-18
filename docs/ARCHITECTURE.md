@@ -198,6 +198,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 54 | 2026-11-17 | MCP door `/api/mcp` with the official C# SDK (`ModelContextProtocol.AspNetCore`), stateless; tools call the same `BuilderBots` class as REST |
 | 55 | 2026-11-17 | CLI is one Node file with no packages, served by Dalan at `/dalan.mjs`; `/llms.txt` served by Admin with the addresses from settings |
 | 56 | 2026-11-18 | Two levels: email code login (level 1, use bots) and a verified phone (level 2, may become a builder). SMTP through `System.Net.Mail` (no package); replaces decision 46 |
+| 57 | 2026-11-18 | Login emails from our own server: Postfix (send only, loopback only) plus OpenDKIM, set up by `setup.sh`; no outside mail service |
 
 ## 11. Client address and access log
 

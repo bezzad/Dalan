@@ -5,7 +5,7 @@ deploy="$(cd "$(dirname "$0")/../.." && pwd)/deploy"
 fail() { echo "FAIL: $*"; exit 1; }
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 root="$tmp/root"; bin="$tmp/bin"; state="$tmp/state"
-mkdir -p "$bin" "$state" "$root"/{etc/sudoers.d,etc/systemd/system,usr/local/bin,home,opt,var/backups}
+mkdir -p "$bin" "$state" "$root"/{etc/sudoers.d,etc/dkimkeys,etc/systemd/system,usr/local/bin,home,opt,var/backups}
 
 # The setup folder as install.sh copies it: deploy/ plus a fake caddy binary.
 src="$tmp/dalan-setup"; mkdir "$src"
@@ -21,6 +21,14 @@ log fallocate 'touch "$3"'
 log mkswap
 log systemctl
 log chown
+log debconf-set-selections 'cat >> '"$state"'/debconf.txt'
+log postconf
+# Writes the two files the real one writes; the record is in quoted pieces like the real one.
+cat > "$bin/opendkim-genkey" <<SH
+#!/bin/bash
+dir="\$4"; touch "\$dir/dalan.private" "$state/genkey"
+printf 'dalan._domainkey\tIN\tTXT\t( "v=DKIM1; h=sha256; k=rsa; "\n\t  "p=MIIBIjAN"\n\t  "Bgkqhk" )  ; ----- DKIM key dalan for dalanet.ir\n' > "\$dir/dalan.txt"
+SH
 log useradd 'eval "name=\${$#}"; touch '"$state"'/user-$name'
 log id '[ -f '"$state"'/user-$1 ]'
 # Real install, without owners (the test is not root).
@@ -56,7 +64,7 @@ for cmd in 'systemctl enable dalan.service' 'systemctl enable caddy.service' 'sy
   grep -qF "$cmd" "$state/commands.log" || fail "not run: $cmd"
 done
 grep -qx 'apt-get update -q' "$state/commands.log" || fail "package lists not updated"
-grep -q 'apt-get install .*postgresql.* libicu76$' "$state/commands.log" || fail "PostgreSQL and the newest ICU not installed: $(grep apt-get "$state/commands.log")"
+grep -q 'apt-get install .*postgresql.* libicu76 ' "$state/commands.log" || fail "PostgreSQL and the newest ICU not installed: $(grep apt-get "$state/commands.log")"
 grep -qx 'DALAN_SITE_DOMAIN=dalanet.ir' "$root/etc/dalan/caddy.env" || fail "site domain not set for Caddy"
 grep -qx 'DALAN_API_DOMAIN=api.dalanet.ir' "$root/etc/dalan/caddy.env" || fail "api domain not set for Caddy"
 [ -x "$root/usr/local/bin/caddy" ] || fail "caddy not installed"
@@ -92,17 +100,53 @@ echo "$signing" | base64 -d | openssl pkey -inform DER -noout 2>/dev/null || fai
 grep -qE '^Notification__Push__PublicKey=B[A-Za-z0-9_-]{86}$' "$env_file" || fail "no push public key"
 grep -qE '^Notification__Push__PrivateKey=[A-Za-z0-9_-]{43}$' "$env_file" || fail "no push private key"
 grep -q '^# Notification__Kavenegar__ApiKey=' "$env_file" || fail "no line for the SMS key"
-grep -q '^# Notification__Smtp__Password=' "$env_file" || fail "no line for the SMTP password"
 echo "PASS OPS-10 first run makes the secrets"
+
+# Rule: OPS-13 mail on a new server
+grep -q 'apt-get install .*postfix opendkim opendkim-tools' "$state/commands.log" || fail "Postfix and OpenDKIM not installed"
+grep -qx 'postfix postfix/mailname string dalanet.ir' "$state/debconf.txt" || fail "Postfix not told its name"
+for setting in 'myhostname = dalanet.ir' 'inet_interfaces = loopback-only' 'inet_protocols = ipv4' 'smtpd_milters = inet:127.0.0.1:8891' 'non_smtpd_milters = $smtpd_milters'; do
+  grep -qF "$setting" "$state/commands.log" || fail "Postfix setting missing: $setting"
+done
+grep -qx 'Domain dalanet.ir' "$root/etc/opendkim.conf" && grep -qx 'Selector dalan' "$root/etc/opendkim.conf" \
+  && grep -qx 'Socket inet:8891@127.0.0.1' "$root/etc/opendkim.conf" || fail "OpenDKIM config: $(cat "$root/etc/opendkim.conf")"
+grep -qF 'systemctl restart opendkim.service postfix.service' "$state/commands.log" || fail "mail services not started"
+for line in 'Notification__EmailProvider=smtp' 'Notification__Smtp__Host=127.0.0.1' 'Notification__Smtp__Port=25' \
+  'Notification__Smtp__StartTls=false' 'Notification__Smtp__From=Dalan <no-reply@dalanet.ir>'; do
+  grep -qxF "$line" "$env_file" || fail "dalan.env misses: $line"
+done
+grep -qF 'v=spf1 a -all' "$tmp/out1" || fail "no SPF record printed"
+grep -qF 'dalan._domainkey.dalanet.ir     v=DKIM1; h=sha256; k=rsa; p=MIIBIjANBgkqhk' "$tmp/out1" || fail "no DKIM record printed: $(grep -i dkim "$tmp/out1")"
+grep -qF '_dmarc.dalanet.ir               v=DMARC1; p=none' "$tmp/out1" || fail "no DMARC record printed"
+echo "PASS OPS-13 mail on a new server"
 
 # Rule: OPS-10 second run keeps dalan.env
 echo 'Notification__Kavenegar__ApiKey=owner-key' >> "$env_file"
 before=$(sha256sum < "$env_file")
-: > "$state/commands.log"
+: > "$state/commands.log"; rm "$state/genkey"
 bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out2" || { cat "$tmp/out2"; fail "second run failed"; }
 [ "$(sha256sum < "$env_file")" = "$before" ] || fail "dalan.env changed"
 grep -qE 'CREATE|ALTER|useradd|fallocate' "$state/commands.log" && fail "second run made things again: $(grep -E 'CREATE|ALTER|useradd' "$state/commands.log")"
 echo "PASS OPS-10 second run keeps dalan.env"
+
+# Rule: OPS-13 key made once
+[ -f "$state/genkey" ] && fail "DKIM key made again"
+grep -qF 'p=MIIBIjANBgkqhk' "$tmp/out2" || fail "DKIM record not printed on the second run"
+grep -qF 'try-restart' "$state/commands.log" && fail "dalan restarted with no new lines"
+echo "PASS OPS-13 key made once"
+
+# Rule: OPS-13 server made before own mail
+grep -v -e '^Notification__Smtp__' -e '^Notification__EmailProvider=' -e '^# Login emails' "$env_file" > "$tmp/old.env"
+echo 'Notification__EmailProvider=log' >> "$tmp/old.env"
+cp "$tmp/old.env" "$env_file"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out3" || { cat "$tmp/out3"; fail "third run failed"; }
+[ "$(head -n "$(wc -l < "$tmp/old.env")" "$env_file")" = "$(cat "$tmp/old.env")" ] || fail "old lines changed"
+[ "$(tail -n 1 "$env_file")" = 'Notification__Smtp__From=Dalan <no-reply@dalanet.ir>' ] || fail "mail lines not added at the end"
+grep -qF 'systemctl try-restart dalan.service' "$state/commands.log" || fail "dalan not restarted for the new lines"
+added=$(sha256sum < "$env_file")
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || fail "fourth run failed"
+[ "$(sha256sum < "$env_file")" = "$added" ] || fail "mail lines added twice"
+echo "PASS OPS-13 server made before own mail"
 
 # Rule: OPS-09 install.sh downloads Caddy on the owner's machine (the CI version, checked) and runs setup over SSH
 inst="$tmp/inst"; mkdir -p "$inst/bin"
