@@ -24,7 +24,7 @@
 - **THEN** the sudoers file lets `deploy` run only `systemctl restart dalan`
 
 ### Requirement: OPS-10 Server secrets are made once
-`setup.sh` SHALL write `/etc/dalan/dalan.env` (mode 640) with a random database password, a signing key and a push key pair only when the file does not exist. It MUST NOT change the secrets in an existing file, unless `install.sh` gets `ROTATE_SECRETS=1`: then it SHALL make new ones and change the database password to match. The settings given to `install.sh` (`ADMIN_PHONES`, `SMS` as `log` or `kavenegar`, `KAVENEGAR_KEY`) SHALL replace their lines in the file on each run; `SMS=log` sends codes only to `ADMIN_PHONES`.
+`setup.sh` SHALL write `/etc/dalan/dalan.env` (mode 640) with a random database password, a signing key and a push key pair when the file does not exist. It MUST NOT change these secrets later, unless `install.sh` gets `ROTATE_SECRETS=1`. The settings given to `install.sh` SHALL replace their lines in the file on each run.
 
 #### Scenario: First run
 - **WHEN** `setup.sh` runs on a server without `/etc/dalan/dalan.env`
@@ -38,7 +38,7 @@
 #### Scenario: Settings from install.sh
 - **GIVEN** `/etc/dalan/dalan.env` exists
 - **WHEN** `install.sh` runs with `ADMIN_PHONES` and `SMS=log`, and later with `SMS=kavenegar` and `KAVENEGAR_KEY`
-- **THEN** each setting is in the file once, the log sender numbers are removed for Kavenegar, the secrets are unchanged, and an unknown `SMS` value stops the script
+- **THEN** each setting is in the file once, the log sender sends only to `ADMIN_PHONES`, the log sender numbers are removed for Kavenegar, the secrets are unchanged, and an unknown `SMS` value stops the script
 
 #### Scenario: Secrets made again
 - **GIVEN** the secrets were seen by someone else
