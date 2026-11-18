@@ -1,7 +1,7 @@
 // Rules: CLI-26, CLI-27, CLI-28, CLI-29, CLI-30
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { categoryName, diagram, faqItems, initial, landing, steps, pageFor, privacyPoints, readyPrompt, showcaseStateName, type PublicNumbers } from "../src/pages.ts";
+import { categoryName, faqItems, initial, installCommands, landing, problems, products, security, steps, pageFor, privacyPoints, readyPrompt, showcaseStateName, type PublicNumbers } from "../src/pages.ts";
 
 const numbers: PublicNumbers = { history_messages: 200, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60,
   site_url: "https://dalanet.ir", bot_api_url: "https://api.dalanet.ir" };
@@ -18,11 +18,12 @@ test("CLI-26 the landing page has the three messages in order and never says tun
   }
 });
 
-test("CLI-26 the diagram has the user, Dalan and your computer, and the computer only calls out", () => {
-  assert.deepEqual(diagram.en.parts.map(part => part.title), ["User", "Dalan", "Your computer"]);
-  assert.equal(diagram.fa.parts.length, 3);
-  assert.match(diagram.en.outgoing, /outgoing/);
-  assert.match(diagram.fa.outgoing, /خروجی/);
+test("CLI-26 the bot card shows users, Dalan and your computer, and the computer only calls out", () => {
+  const [en, fa] = [products.en[0]!, products.fa[0]!];
+  assert.match(en.from, /users/i);
+  assert.match(en.to, /your computer/);
+  assert.match(en.via, /outgoing only/);
+  assert.match(fa.via, /خروجی/);
 });
 
 test("CLI-26 the steps use the addresses from the public settings", () => {
@@ -33,6 +34,25 @@ test("CLI-26 the steps use the addresses from the public settings", () => {
     assert.ok(list[1]!.code!.includes("https://api.example.ir/bot<token>/getUpdates"));
     assert.ok(list[2]!.code!.includes("https://example.ir/@"));
     for (const step of list) assert.doesNotMatch(step.title + step.text + (step.code ?? ""), /tunnel|تونل|dalanet/i);
+  }
+});
+
+test("CLI-26 try it on every system with the site address from the settings", () => {
+  const values = { ...numbers, site_url: "https://example.ir" };
+  const tabs = installCommands(values);
+  assert.deepEqual(tabs.map(tab => tab.os), ["Linux", "macOS", "Windows", "Docker"]);
+  for (const tab of tabs) assert.ok(tab.code.includes("https://example.ir/dalan.mjs"), tab.os);
+});
+
+test("CLI-26 only real things are offered: what is not built says soon", () => {
+  for (const lang of ["fa", "en"] as const) {
+    const items = problems[lang].flatMap(group => group.items);
+    assert.ok(items.some(item => item.soon) && items.some(item => !item.soon));
+    for (const item of items) assert.ok(item.soon || item.href, item.title);
+    assert.deepEqual(products[lang].map(product => product.soon), [false, true]);
+    assert.ok(security[lang].length >= 6);
+    const all = JSON.stringify([problems[lang], products[lang], security[lang]]);
+    assert.doesNotMatch(all, /tunnel|تونل/i);
   }
 });
 

@@ -3,7 +3,7 @@ import { api } from "./api.ts";
 import { errorText } from "./app.ts";
 import { h } from "./dom.ts";
 import type { Language } from "./i18n.ts";
-import { categoryName, closing, diagram, faqItems, hero, initial, landing, privacyPoints, steps, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
+import { categoryName, closing, faqItems, hero, initial, installCommands, labels, landing, privacyPoints, problems, products, security, steps, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
 
 export type PublicPage = "landing" | "privacy" | "faq" | "showcase";
 
@@ -27,6 +27,10 @@ const icons = {
   home: ["M3 11l9-8 9 8", "M5 10v10h14V10", "M10 20v-5h4v5"],
   shield: ["M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z", "M9 12l2 2 4-4"],
   offline: ["M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z", "M3 12h18", "M4 4l16 16"],
+  globe: ["M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z", "M3 12h18", "M12 3c3 3 3 15 0 18", "M12 3c-3 3-3 15 0 18"],
+  check: ["M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z", "M8 12l3 3 5-6"],
+  terminal: ["M3 5h18v14H3z", "M7 10l3 2-3 2", "M12 15h5"],
+  arrow: ["M5 12h14", "M13 6l6 6-6 6"],
 };
 
 function icon(name: keyof typeof icons): SVGSVGElement {
@@ -45,6 +49,7 @@ function icon(name: keyof typeof icons): SVGSVGElement {
 
 export function publicScreen(page: PublicPage, context: PublicContext): HTMLElement {
   const { language } = context;
+  const lang = language.current;
   const t = language.t.bind(language);
   const error = h("p", { class: "error", role: "alert" });
   const failed = (failure: unknown) => { error.textContent = t(errorText(failure)); };
@@ -64,6 +69,29 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
 
   const enterButton = () => h("button", { type: "button", class: "primary", onclick: context.enter }, t(context.loggedIn ? "myBots" : "enter"));
 
+  // CLI-26: "Problems we solve". A <details> panel; choosing an item closes it.
+  const menu = h("details", { class: "menu" },
+    h("summary", {}, labels[lang].problems),
+    h("div", { class: "panel" }, ...problems[lang].map(group => h("div", { class: "column" },
+      h("span", { class: "label" }, group.group),
+      ...group.items.map(item => {
+        const body = [h("strong", {}, item.title, ...(item.soon ? [h("span", { class: "soon" }, labels[lang].soon)] : [])), h("small", {}, item.text)];
+        if (!item.href) return h("div", { class: "item off" }, ...body);
+        return h("a", { class: "item", href: item.href, onclick: event => go(event, item.href!) }, ...body);
+      })))));
+
+  function go(event: Event, href: string): void {
+    menu.open = false;
+    if (href.startsWith("#")) {
+      event.preventDefault();
+      if (page !== "landing") return context.go("/");
+      body.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
+    } else if (href.startsWith("/") && !href.includes(".")) {
+      event.preventDefault();
+      context.go(href);
+    }
+  }
+
   const header = h("header", { class: "site" },
     h("h1", {}, h("a", {
       href: "/",
@@ -72,11 +100,11 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
         context.go("/");
       },
     }, h("span", { class: "mark" }, icon("gate")), t("appName"))),
+    menu,
     nav,
     enterButton());
 
   const body = h("div", { class: "content" });
-  const lang = language.current;
   const n = (value: number) => language.number(value);
 
   function withNumbers(draw: (values: PublicNumbers) => void): void {
@@ -105,53 +133,74 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
       break;
   }
 
-  // CLI-26: hero, picture, three steps, the three messages, a closing call.
+  // CLI-26: hero, products, try it, steps, the three messages, security, a closing call.
   function landingPage(target: HTMLElement): void {
-    const how = h("a", {
-      href: "#how",
-      class: "button",
-      onclick: event => {
-        event.preventDefault();
-        target.querySelector("#how")?.scrollIntoView({ behavior: "smooth" });
-      },
-    }, hero[lang].how);
-
-    const d = diagram[lang];
-    const part = (index: number, name: keyof typeof icons, extra = "") => h("div", { class: `part ${extra}` },
-      h("span", { class: "bubble" }, icon(name)),
-      h("strong", {}, d.parts[index]!.title),
-      h("small", {}, d.parts[index]!.note));
-    const link = (kind: string, label: string) => h("div", { class: `link ${kind}` },
-      h("span", { class: "line" }, h("i", { class: "dot" })),
-      h("small", {}, label));
-    const picture = h("figure", { class: "flow" },
-      h("div", { class: "flow-row" },
-        part(0, "phone"), link("both", d.both), part(1, "gate", "dalan"), link("out", d.outgoing), part(2, "computer")),
-      h("figcaption", {}, d.caption));
+    const label = (text: string) => h("span", { class: "label" }, text);
 
     const stepList = h("ol", { class: "steps" });
-    withNumbers(values => stepList.append(...steps(lang, values).map((step, i) => h("li", { class: "step" },
-      h("span", { class: "number" }, language.number(i + 1)),
-      h("h3", {}, step.title),
-      h("p", {}, step.text),
-      ...(step.code ? [codeBlock(step.code)] : [])))));
+    const tabs = h("div", { class: "os-tabs", role: "tablist" });
+    const command = h("div", { class: "command" });
+    withNumbers(values => {
+      stepList.append(...steps(lang, values).map((step, i) => h("li", { class: "step" },
+        h("span", { class: "number" }, language.number(i + 1)),
+        h("h3", {}, step.title),
+        h("p", {}, step.text),
+        ...(step.code ? [codeBlock(step.code)] : []))));
+      const list = installCommands(values);
+      const pick = (index: number) => {
+        for (const [i, tab] of [...tabs.children].entries()) tab.setAttribute("aria-selected", String(i === index));
+        command.replaceChildren(codeBlock(list[index]!.code));
+      };
+      tabs.append(...list.map((item, i) => h("button", { type: "button", role: "tab", onclick: () => pick(i) }, item.os)));
+      pick(0);
+    });
 
     const featureIcons: (keyof typeof icons)[] = ["home", "shield", "offline"];
     target.append(
-      h("section", { class: "hero" },
-        h("div", { class: "column" },
-          h("span", { class: "pill" }, hero[lang].badge),
-          h("h2", {}, hero[lang].title),
-          h("p", { class: "lead" }, hero[lang].text),
-          h("div", { class: "row wrap" }, enterButton(), how)),
-        picture),
+      h("section", { class: "hero glow" },
+        h("h2", {}, hero[lang].title, h("br"), h("span", { class: "rainbow" }, hero[lang].glow)),
+        h("p", { class: "lead" }, hero[lang].text),
+        h("div", { class: "row wrap" }, enterButton(), h("a", { href: "#how", class: "button", onclick: event => go(event, "#how") }, hero[lang].how))),
+      h("section", { class: "products" },
+        label(labels[lang].products),
+        h("div", { class: "cards" }, ...products[lang].map((product, i) => productCard(product, i === 0 ? "gate" : "globe")))),
+      h("section", { id: "try", class: "try framed" },
+        h("span", { class: "badge-icon" }, icon("terminal")),
+        label(labels[lang].try),
+        h("h2", {}, labels[lang].tryTitle),
+        tabs,
+        command,
+        h("p", { class: "note" }, labels[lang].tryNote)),
       h("section", { id: "how", class: "band" }, h("h2", {}, hero[lang].how), stepList),
-      h("section", { class: "features" }, ...landing[lang].map((message, i) => h("article", {},
+      h("section", { id: "features", class: "features" }, ...landing[lang].map((message, i) => h("article", {},
         h("span", { class: "bubble" }, icon(featureIcons[i]!)), h("h3", {}, message.title), h("p", {}, message.text)))),
-      h("section", { class: "cta" },
-        h("h2", {}, closing[lang].title),
+      h("section", { class: "security" },
+        h("h2", {}, labels[lang].security),
+        h("ul", {}, ...security[lang].map(item => h("li", {}, icon("check"), item))),
+        pageLink("/privacy", t("privacy"), "more")),
+      h("section", { class: "cta glow framed" },
+        h("h2", {}, closing[lang].title, h("br"), h("span", { class: "rainbow" }, closing[lang].glow)),
         h("p", {}, closing[lang].text),
         h("div", { class: "row wrap" }, enterButton(), pageLink("/showcase", t("showcase"), "button"))));
+  }
+
+  /** A product card with its traffic picture: from, Dalan with its guards, to. */
+  function productCard(product: Product, name: keyof typeof icons): HTMLElement {
+    return h("article", { class: product.soon ? "product soon-card" : "product" },
+      h("span", { class: "badge-icon" }, icon(name)),
+      h("span", { class: "label" }, product.label, ...(product.soon ? [h("span", { class: "soon" }, labels[lang].soon)] : [])),
+      h("h3", {}, product.title),
+      h("p", {}, product.text),
+      h("figure", { class: "traffic" },
+        h("span", { class: "tag" }, product.from),
+        h("span", { class: "wire" }),
+        h("div", { class: "hub-row" },
+          h("span", { class: "hub" }, icon("gate")),
+          h("ul", { class: "guards" }, ...product.guards.map(guard => h("li", {}, icon("check"), guard)))),
+        h("span", { class: "wire up" }),
+        h("span", { class: "tag", dir: "auto" }, product.via),
+        h("span", { class: "wire up" }),
+        h("span", { class: "box" }, icon("computer"), h("span", { dir: "auto" }, product.to))));
   }
 
   /** A code block, always left to right, with a copy button. */
@@ -216,8 +265,14 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
     load(true).catch(failed);
   }
 
+  const column = (title: string, ...items: Node[]) => h("div", { class: "column" }, h("span", { class: "label" }, title), ...items);
   const footer = h("footer", { class: "site" },
-    h("nav", { class: "links" }, pageLink("/showcase", t("showcase")), pageLink("/faq", t("faq")), pageLink("/privacy", t("privacy"))),
-    h("small", {}, `${t("appName")} · ${diagram[lang].parts[1]!.note}`));
-  return h("main", { class: "public" }, header, error, h("div", { class: "scroller page" }, body, footer));
+    h("div", { class: "columns" },
+      column(labels[lang].product, ...products[lang].map(product => h("span", {}, product.label,
+        ...(product.soon ? [h("span", { class: "soon" }, labels[lang].soon)] : []))), pageLink("/showcase", t("showcase"))),
+      column(labels[lang].problems, ...problems[lang].map(group => h("span", {}, group.group))),
+      column(labels[lang].resources, pageLink("/faq", t("faq")), pageLink("/privacy", t("privacy")),
+        h("a", { href: "/llms.txt" }, "llms.txt"), h("a", { href: "/dalan.mjs" }, "dalan.mjs"))),
+    h("div", { class: "wordmark", "aria-hidden": "true" }, t("appName")));
+  return h("main", { class: "public dark" }, header, error, h("div", { class: "scroller page" }, body, footer));
 }
