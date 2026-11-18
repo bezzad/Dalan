@@ -55,6 +55,7 @@ done
 for cmd in 'systemctl enable dalan.service' 'systemctl enable caddy.service' 'systemctl enable --now dalan-backup.timer' 'useradd --system' 'apt-get install'; do
   grep -qF "$cmd" "$state/commands.log" || fail "not run: $cmd"
 done
+grep -qx 'apt-get update -q' "$state/commands.log" || fail "package lists not updated"
 grep -q 'apt-get install .*postgresql.* libicu76$' "$state/commands.log" || fail "PostgreSQL and the newest ICU not installed: $(grep apt-get "$state/commands.log")"
 grep -qx 'DALAN_SITE_DOMAIN=dalanet.ir' "$root/etc/dalan/caddy.env" || fail "site domain not set for Caddy"
 grep -qx 'DALAN_API_DOMAIN=api.dalanet.ir' "$root/etc/dalan/caddy.env" || fail "api domain not set for Caddy"
