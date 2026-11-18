@@ -5,15 +5,34 @@ How to set up the production server, deploy, back up and run the shutdown drill.
 ## 1. Before the server
 
 1. Server in an Iranian data centre, newest Ubuntu LTS, 2 vCPU, 4 GB RAM, 40 GB or more SSD. In the provider's firewall open only TCP 22, 80, 443.
-2. DNS hosted inside Iran (for example the provider's DNS). Add `A` records: `dalanet.ir` and `api.dalanet.ir` to the server address. Do this first: Caddy asks Let's Encrypt for certificates as soon as it starts.
-3. A key pair for CI, on your own machine: `ssh-keygen -t ed25519 -N "" -C dalan-ci -f ~/.ssh/dalan-deploy`.
+2. Log in with your own SSH key instead of a password (on your own machine; skip `ssh-keygen` if `~/.ssh/id_ed25519.pub` exists):
+
+   ```bash
+   ssh-keygen -t ed25519
+   ssh-copy-id -i ~/.ssh/id_ed25519.pub root@<server>
+   ssh root@<server>     # must not ask for a password
+   ```
+
+3. Check the server (on the server). Ports 80 and 443 must be free; stop any old web server first:
+
+   ```bash
+   lsb_release -ds; free -m; df -h /; ss -ltnp | grep -E ':(80|443|5432|5000) '
+   ```
+
+4. DNS hosted inside Iran (for example the provider's DNS). Add `A` records: `dalanet.ir` and `api.dalanet.ir` to the server address. Do this first: Caddy asks Let's Encrypt for certificates as soon as it starts. Before the domain is ready, test with `sslip.io` names, which point to the address inside them, for example `80-244-7-112.sslip.io` and `api.80-244-7-112.sslip.io` (they need foreign DNS, so not for the drill). Later run `install.sh` again with the real domains; secrets and data stay.
+5. A key pair for CI, on your own machine. It must exist before the next step:
+
+   ```bash
+   ssh-keygen -t ed25519 -N "" -C dalan-ci -f ~/.ssh/dalan-deploy
+   ```
 
 ## 2. Set up the server (once)
 
 From the repository on your own machine (Linux, macOS, WSL or Git Bash; needs `ssh`, `scp`, `curl`):
 
 ```bash
-bash deploy/install.sh <user>@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
+git pull
+bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
 ```
 
 The user is root or has sudo. It downloads Caddy here, copies it with `deploy/` to the server and runs `deploy/setup.sh` with sudo. A server with less than 2 GB of memory and no swap gets a 2 GB swap file (`SWAP_MB`). The server downloads only Ubuntu packages from its mirror. It is safe to run again.
