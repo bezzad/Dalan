@@ -19,7 +19,7 @@ How to set up the production server, deploy, back up and run the shutdown drill.
    lsb_release -ds; free -m; df -h /; ss -ltnp | grep -E ':(80|443|5432|5000) '
    ```
 
-4. DNS hosted inside Iran (for example the provider's DNS). Add `A` records: `dalanet.ir` and `api.dalanet.ir` to the server address. Do this first: Caddy asks Let's Encrypt for certificates as soon as it starts. Before the domain is ready, test with `sslip.io` names, which point to the address inside them, for example `203-0-113-10.sslip.io` and `api.203-0-113-10.sslip.io` for the address 203.0.113.10 (they need foreign DNS, so not for the drill). Later run `install.sh` again with the real domains; secrets and data stay.
+4. DNS hosted inside Iran (for example ArvanCloud DNS or the provider's DNS): add the domain there, put its two nameservers in the nic.ir panel, then add `A` records `@` and `api` to the server address with the CDN proxy **off** (with it on, Caddy gets no certificate and the server sees the CDN's address instead of the client's, which breaks the access log duty). Check with `dig +short dalanet.ir`. Do this first: Caddy asks Let's Encrypt for certificates as soon as it starts. Before the domain is ready, test with `sslip.io` names, which point to the address inside them, for example `203-0-113-10.sslip.io` and `api.203-0-113-10.sslip.io` for the address 203.0.113.10 (they need foreign DNS, so not for the drill). Later run `install.sh` again with the real domains; secrets and data stay.
 5. A key pair for CI, on your own machine. It must exist before the next step:
 
    ```bash
