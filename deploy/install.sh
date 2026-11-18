@@ -8,7 +8,7 @@
 # Example: deploy/install.sh root@203.0.113.10 dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
 # Settings (environment):
 #   CADDY_VERSION          default: the version CI tests
-#   GITHUB_CLIENT_ID       with GITHUB_CLIENT_SECRET: the GitHub OAuth app for "Log in with GitHub" (OPS-13).
+#   GITHUB_CLIENT_ID       with GITHUB_CLIENT_SECRET: the GitHub OAuth app for "Log in with GitHub" (OPS-14).
 #   GITHUB_CLIENT_SECRET   Sent in a file, never on a command line. docs/SERVER.md says how to make the app.
 set -euo pipefail
 

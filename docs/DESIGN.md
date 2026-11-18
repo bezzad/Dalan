@@ -343,7 +343,7 @@ Version 1 ships a small MCP server and CLI (create bot, token, status). They gro
 **Landing page.** Three messages, in this order:
 
 1. Run your app from your own computer. Do not buy a server.
-2. Get real users, verified by mobile number, without building SMS login.
+2. Get real users, verified by email or SMS, without building a login.
 3. Keep working when international internet is cut.
 
 Do not advertise "free tunnel". Cloudflare does that better for anyone with open internet (section 15).

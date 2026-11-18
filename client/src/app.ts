@@ -2,9 +2,11 @@
 import { ApiError, type AuthSettings, type User } from "./api.ts";
 import type { Language, TextKey } from "./i18n.ts";
 import type { Chats } from "./messages.ts";
+import type { Theme } from "./theme.ts";
 
 export interface App {
   language: Language;
+  theme: Theme;
   user: User;
   auth: AuthSettings;
   chats: Chats;

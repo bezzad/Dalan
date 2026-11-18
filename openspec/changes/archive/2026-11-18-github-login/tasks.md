@@ -11,7 +11,7 @@
 
 ## 3. Server setup
 
-- [x] 3.1 Write tests for OPS-13; change `install.sh` and `setup.sh`; verify they pass
+- [x] 3.1 Write tests for OPS-14; change `install.sh` and `setup.sh`; verify they pass
 
 ## 4. Finish
 

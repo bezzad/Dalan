@@ -21,10 +21,10 @@ Out of scope: Google login (needs a second app at Google; later if wanted), unli
 
 - `identity`: AUTH-01, AUTH-16; new AUTH-27 to AUTH-29.
 - `client`: CLI-33; new CLI-36.
-- `operations`: new OPS-13.
+- `operations`: new OPS-14.
 
 ## Impact
 
 - Migration: `identity.users.github_id` (unique, nullable).
 - New settings: `Identity:GitHub:ClientId` (empty = off), `Identity:GitHub:ClientSecret`, `Identity:GitHub:CallbackUrl` (`https://dalanet.ir/api/auth/github/callback`), `Identity:GitHub:WebUrl` (`https://github.com`), `Identity:GitHub:ApiUrl` (`https://api.github.com`), `Identity:GitHub:StateSeconds` (600), `Identity:GitHub:TimeoutSeconds` (10).
-- Docs: DESIGN section 9, ARCHITECTURE decisions log, SERVER.md (how to make the GitHub OAuth app).
+- Docs: DESIGN section 9, ARCHITECTURE decisions log (decision 58), SERVER.md (how to make the GitHub OAuth app).

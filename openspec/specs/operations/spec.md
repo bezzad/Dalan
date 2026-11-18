@@ -77,7 +77,7 @@ Until the start-up work is done, every request other than `/health` and `/ready`
 - **WHEN** a bot calls `GET /v1/updates`
 - **THEN** the response is 503 with error code `not_ready`
 
-### Requirement: OPS-13 GitHub login is set up by the install script
+### Requirement: OPS-14 GitHub login is set up by the install script
 With `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in its environment, `deploy/install.sh` SHALL pass them to `setup.sh` in a file of mode 600, never on a command line. `setup.sh` SHALL then set `Identity__GitHub__ClientId`, `Identity__GitHub__ClientSecret` and `Identity__GitHub__CallbackUrl` (`https://<site>/api/auth/github/callback`) in `dalan.env`, keep every other line, and restart `dalan` if it runs. Without them `dalan.env` SHALL NOT change.
 
 #### Scenario: New values

@@ -2,6 +2,7 @@
 import { api } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { h } from "./dom.ts";
+import { themeButton } from "./theme.ts";
 
 export function botsScreen(app: App, onLanguage: () => void): Screen {
   const t = app.language.t.bind(app.language);
@@ -35,7 +36,8 @@ export function botsScreen(app: App, onLanguage: () => void): Screen {
               app.go(`/@${bot.username}`);
             },
           },
-          h("strong", { dir: "auto" }, bot.name),
+          // <bdi>: a Latin name keeps its own direction, but the row still starts at the language's side.
+          h("strong", {}, h("bdi", {}, bot.name)),
           h("span", { dir: "ltr" }, `@${bot.username}`),
           ...(bot.unread > 0
             ? [h("span", { class: "badge", title: t("unread").replace("{n}", app.language.number(bot.unread)) }, app.language.number(bot.unread))]
@@ -57,8 +59,9 @@ export function botsScreen(app: App, onLanguage: () => void): Screen {
       h("h1", {}, t("myBots")),
       h("button", { type: "button", class: "link", onclick: () => app.showPanel("account") }, t("account")),
       h("button", { type: "button", class: "link", onclick: onLanguage }, t("language")),
+      themeButton(app.theme, t),
       h("button", { type: "button", class: "link", onclick: () => app.logout() }, t("logout"))),
-    h("p", { class: "note", dir: "auto" }, app.user.name),
+    h("p", { class: "note" }, h("bdi", {}, app.user.name)),
     ...(app.user.has_password ? [] : [h("p", { class: "note" }, t("noPasswordYet"))]),
     open,
     error,
