@@ -27,7 +27,9 @@ Milestones 1 to 10 are merged. `deploy/deploy.sh` copies a release over SSH, swi
 
 8. **Log in before the SMS provider is ready.** A Kavenegar account takes time. The `log` sender (code in the server log, no SMS) may now run outside Development, but only for the numbers in `Notification:LogSmsPhones`; any other number gets a failed send. The log is readable only by root on the server. The setting is hidden from the admin area, like the provider.
 
-9. **Every merge to main deploys** (owner, 2026-11-18). The gates and the rollback guard it; a manual run with "Deploy" ticked stays for the first deploy. On main a newer CI run waits instead of cancelling, so a deploy is never stopped half way.
+9. **Own mail, send only.** The owner wants login emails from `no-reply@dalanet.ir` with no outside mail service. `setup.sh` installs Postfix (Ubuntu package, "Internet Site", `inet_interfaces = loopback-only`, IPv4 only, `myhostname` = site domain, no relay for others) and OpenDKIM (`/etc/opendkim.conf` written each run, key `/etc/dkimkeys/dalan.private` made once, milter on `127.0.0.1:8891`). Dalan sends by plain SMTP to `127.0.0.1:25`; Postfix sends on with opportunistic TLS. If `dalan.env` has no `Notification__Smtp__Host` line, setup adds `EmailProvider=smtp`, host, port 25, no STARTTLS and `From` at the end (a later line wins in a systemd environment file, so an old `EmailProvider=log` line needs no edit) and restarts `dalan` if it runs. Setup prints the three TXT records: SPF `v=spf1 a -all`, DKIM `dalan._domainkey`, DMARC `v=DMARC1; p=none`. Reverse DNS of the server address is set in the provider panel by hand.
+
+10. **Every merge to main deploys** (owner, 2026-11-18). The gates and the rollback guard it; a manual run with "Deploy" ticked stays for the first deploy. On main a newer CI run waits instead of cancelling, so a deploy is never stopped half way.
 
 ## Starting values used
 
@@ -43,4 +45,5 @@ Milestones 1 to 10 are merged. `deploy/deploy.sh` copies a release over SSH, swi
 
 - [Backups on the same disk] A lost disk loses them too. The runbook says to copy them off the server; automatic off-site copy is later.
 - [No firewall from the script] Only Caddy (80, 443) and SSH listen publicly; PostgreSQL and Kestrel listen on localhost. A script that changes the firewall can lock the owner out.
+- [Own mail can be blocked] Port 25 outbound may be closed by the provider, and a new address has no reputation, so mail may land in spam. The login screen already says to look in spam. When the international internet is cut, foreign mailboxes cannot be reached; SMS login keeps working.
 - [The drill is a simulation] A real shutdown may also break domestic DNS or the certificate renewal; the runbook lists those.

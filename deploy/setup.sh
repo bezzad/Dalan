@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Prepare a fresh Ubuntu server for the first deploy (OPS-09, OPS-10). Run as root, on the server.
-# Safe to run again: it never changes an existing /etc/dalan/dalan.env.
+# Prepare a fresh Ubuntu server for the first deploy (OPS-09, OPS-10, OPS-13). Run as root, on the server.
+# Safe to run again: it never changes a line of an existing /etc/dalan/dalan.env (it may add the mail lines).
 # deploy/install.sh copies this folder and the Caddy binary to the server and runs it.
 #
 # Usage: setup.sh <site domain> <api domain> <deploy public key file>
@@ -22,7 +22,9 @@ echo "Packages (from the Ubuntu mirror)"
 apt-get update -q
 # .NET needs ICU; its package name has the version in it (libicu74 on 24.04), so ask apt for the one this Ubuntu has.
 icu=$(apt-cache search --names-only '^libicu[0-9]+$' | awk '{ print $1 }' | sort -V | tail -n 1)
-DEBIAN_FRONTEND=noninteractive apt-get install -y -q postgresql curl nftables openssl $icu
+# Postfix asks questions while it installs; these are the answers.
+printf 'postfix postfix/main_mailer_type select Internet Site\npostfix postfix/mailname string %s\n' "$site" | debconf-set-selections
+DEBIAN_FRONTEND=noninteractive apt-get install -y -q postgresql curl nftables openssl $icu postfix opendkim opendkim-tools
 
 swap_mb="${SWAP_MB:-2048}"
 memory_mb=$(awk '/^MemTotal:/ { print int($2 / 1024) }' "${MEMINFO:-/proc/meminfo}")
@@ -56,6 +58,9 @@ hex_bytes() { local hex; hex=$(cat); printf '%b' "$(printf '%s' "$hex" | sed 's/
 sql() { sudo -u postgres psql -Atq -c "$1"; }
 
 env_file="$root/etc/dalan/dalan.env"
+domains_file="$root/etc/dalan/domains.env"
+settings_hash() { { cat "$env_file" "$domains_file" 2>/dev/null || true; } | sha256sum; }
+settings_before=$(settings_hash)
 # Replace the line "$1=..." in dalan.env (or add it); with no $2, only remove it. Keeps the file's owner and mode.
 set_env() {
   local lines
@@ -73,15 +78,20 @@ if [ ! -f "$env_file" ]; then
 # Notification__SmsProvider=kavenegar
 # Notification__Kavenegar__ApiKey=
 # Identity__AdminPhones=
-# Email login, by hand:
-# Notification__EmailProvider=smtp
-# Notification__Smtp__Host=
-# Notification__Smtp__UserName=
-# Notification__Smtp__Password=
-# Notification__Smtp__From=Dalan <no-reply@dalanet.ir>
 ENV
   )
   ROTATE_SECRETS=1
+fi
+if ! grep -q '^Notification__Smtp__Host=' "$env_file"; then
+  echo "Email lines (added to $env_file)"
+  cat >> "$env_file" <<ENV
+# Login emails go through the Postfix of this server (made by deploy/setup.sh).
+Notification__EmailProvider=smtp
+Notification__Smtp__Host=127.0.0.1
+Notification__Smtp__Port=25
+Notification__Smtp__StartTls=false
+Notification__Smtp__From=Dalan <no-reply@$site>
+ENV
 fi
 chown root:dalan "$env_file"
 chmod 640 "$env_file"
@@ -121,14 +131,42 @@ if [ -z "$(sql "SELECT 1 FROM pg_database WHERE datname = 'dalan'")" ]; then
   sql "CREATE DATABASE dalan OWNER dalan"
 fi
 
+echo "Mail (send only, signed with DKIM)"
+# Only Dalan on this server may send; nothing listens outside. IPv4 only: the address has a reverse DNS name.
+postconf -e "myhostname = $site" "myorigin = $site" "mydestination = localhost" "inet_interfaces = loopback-only" \
+  "inet_protocols = ipv4" "smtp_tls_security_level = may" "smtpd_milters = inet:127.0.0.1:8891" \
+  'non_smtpd_milters = $smtpd_milters' "milter_default_action = accept"
+dkim_key="$root/etc/dkimkeys/dalan.private"
+if [ ! -f "$dkim_key" ]; then
+  install -d -m 700 -o opendkim -g opendkim "$root/etc/dkimkeys"
+  opendkim-genkey -b 2048 -D "$root/etc/dkimkeys" -d "$site" -s dalan
+  chown opendkim:opendkim "$dkim_key"
+fi
+cat > "$root/etc/opendkim.conf" <<CONF
+# Made by deploy/setup.sh.
+Syslog yes
+UMask 007
+UserID opendkim
+PidFile /run/opendkim/opendkim.pid
+Mode s
+Domain $site
+Selector dalan
+KeyFile /etc/dkimkeys/dalan.private
+Socket inet:8891@127.0.0.1
+Canonicalization relaxed/simple
+OversignHeaders From
+CONF
+systemctl enable opendkim.service postfix.service
+systemctl restart opendkim.service postfix.service
+
 echo "Caddy and units"
 install -m 755 "$here/caddy" "$root/usr/local/bin/caddy"
 install -d -m 755 "$root/etc/caddy"
 install -m 644 "$here/Caddyfile" "$root/etc/caddy/Caddyfile"
 # Domains for Caddy and for the links the server makes; written each run, so a new domain needs only a new run.
 printf 'DALAN_SITE_DOMAIN=%s\nDALAN_API_DOMAIN=%s\nAdmin__SiteUrl=https://%s\nAdmin__BotApiUrl=https://%s\nNotification__Push__Subject=https://%s\n' \
-  "$site" "$api" "$site" "$api" "$site" > "$root/etc/dalan/domains.env"
-chmod 644 "$root/etc/dalan/domains.env"
+  "$site" "$api" "$site" "$api" "$site" > "$domains_file"
+chmod 644 "$domains_file"
 rm -f "$root/etc/dalan/caddy.env"
 install -d -m 755 "$root/opt/dalan/tools"
 install -m 755 "$here/backup.sh" "$here/drill.sh" "$root/opt/dalan/tools/"
@@ -140,7 +178,18 @@ systemctl enable dalan.service
 systemctl enable --now dalan-backup.timer
 systemctl enable caddy.service
 systemctl restart caddy.service
-# Reads new settings and domains; does nothing before the first deploy.
-systemctl try-restart dalan.service
+# A running Dalan reads new settings, domains or email lines only after a restart.
+[ "$(settings_hash)" = "$settings_before" ] || systemctl try-restart dalan.service
 
-echo "Done. Next: run the deploy from CI (the first time), and see $env_file for the SMS provider."
+# The key file has the record in quoted pieces; DNS panels want one line.
+dkim_record=$(tr -d '\n' < "$root/etc/dkimkeys/dalan.txt" | grep -o '"[^"]*"' | tr -d '"\t\n ' | sed 's/;/; /g; s/ $//')
+cat <<DNS
+
+DNS records for $site (TXT):
+  $site                      v=spf1 a -all
+  dalan._domainkey.$site     $dkim_record
+  _dmarc.$site               v=DMARC1; p=none
+Reverse DNS (provider panel): the server address -> $site
+
+DNS
+echo "Done. Next: run the deploy from CI (the first time), and see docs/SERVER.md for the SMS settings."

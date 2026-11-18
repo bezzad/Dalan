@@ -24,7 +24,7 @@
 - **THEN** the sudoers file lets `deploy` run only `systemctl restart dalan`
 
 ### Requirement: OPS-10 Server secrets are made once
-`setup.sh` SHALL write `/etc/dalan/dalan.env` (mode 640) with a random database password, a signing key and a push key pair when the file does not exist. It MUST NOT change these secrets later, unless `install.sh` gets `ROTATE_SECRETS=1`. The settings given to `install.sh` SHALL replace their lines in the file on each run.
+`setup.sh` SHALL write `/etc/dalan/dalan.env` (mode 640) with a random database password, a signing key and a push key pair when the file does not exist. It MUST NOT change these secrets later, unless `install.sh` gets `ROTATE_SECRETS=1`. The settings given to `install.sh` SHALL replace their lines on each run. It MAY add the own-mail lines of OPS-13 at the end.
 
 #### Scenario: First run
 - **WHEN** `setup.sh` runs on a server without `/etc/dalan/dalan.env`
@@ -68,3 +68,20 @@ The server SHALL dump the database once a day to `/var/backups/dalan` and delete
 - **GIVEN** the drill blocked calls to two foreign addresses
 - **WHEN** the owner runs `drill.sh stop`
 - **THEN** the block is removed and the two addresses are printed once each
+
+### Requirement: OPS-13 Own mail for login codes
+`setup.sh` SHALL install Postfix that sends only, listens only on loopback and signs mail with DKIM (OpenDKIM, selector `dalan`, key made once). When `dalan.env` has no `Notification__Smtp__Host` line, it SHALL add lines so Dalan sends from `no-reply@<site domain>` through it. It SHALL print the SPF, DKIM and DMARC records for the domain.
+
+#### Scenario: Mail on a new server
+- **WHEN** `setup.sh` runs
+- **THEN** Postfix listens only on loopback with the site domain as its name, OpenDKIM signs for the site domain, and `dalan.env` sends email by SMTP to `127.0.0.1:25` from `no-reply@<site domain>`
+
+#### Scenario: Server made before own mail
+- **GIVEN** a `dalan.env` without an SMTP host
+- **WHEN** `setup.sh` runs, and runs again
+- **THEN** the mail lines are added once and the old lines stay the same
+
+#### Scenario: Key made once
+- **GIVEN** the DKIM key exists
+- **WHEN** `setup.sh` runs again
+- **THEN** the key is not made again and the same DKIM record is printed

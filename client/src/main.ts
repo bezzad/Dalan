@@ -14,8 +14,10 @@ import { pageFor } from "./pages.ts";
 import { publicScreen, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
 import { Chats } from "./messages.ts";
+import { Theme } from "./theme.ts";
 
 const language = new Language(document.documentElement, localStorage);
+const theme = new Theme(document.documentElement, localStorage);
 let app: App | null = null;
 let live: Live | null = null;
 let screen: Screen | null = null;
@@ -66,6 +68,7 @@ function guest(): void {
 function publicPage(page: PublicPage, loggedIn: boolean): HTMLElement {
   return publicScreen(page, {
     language,
+    theme,
     loggedIn,
     go: navigate,
     enter: loggedIn ? () => navigate("/") : showLogin,
@@ -97,6 +100,7 @@ async function enter(user: User): Promise<void> {
   const settings = await api.settings();
   app = {
     language,
+    theme,
     user,
     auth: await authSettings(),
     chats: new Chats(api.messages, settings.sync_page_size),

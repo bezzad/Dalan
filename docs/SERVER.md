@@ -37,7 +37,7 @@ bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-depl
 
 The user is root or has sudo. It downloads Caddy here, copies it with `deploy/` to the server and runs `deploy/setup.sh` with sudo. A server with less than 2 GB of memory and no swap gets a 2 GB swap file (`SWAP_MB`). The server downloads only Ubuntu packages from its mirror. It is safe to run again.
 
-Result: users `dalan` (service) and `deploy` (CI; may only `sudo systemctl restart dalan`), PostgreSQL with database `dalan`, Caddy, the units `dalan`, `caddy`, `dalan-backup.timer`, `/etc/dalan/domains.env` (the domains; written each run) and `/etc/dalan/dalan.env` with a new database password, signing key and push keys. The secrets are made once and never overwritten.
+Result: users `dalan` (service) and `deploy` (CI; may only `sudo systemctl restart dalan`), PostgreSQL with database `dalan`, Caddy, the units `dalan`, `caddy`, `dalan-backup.timer`, Postfix and OpenDKIM for the login emails, `/etc/dalan/domains.env` (the domains; written each run) and `/etc/dalan/dalan.env` with a new database password, signing key and push keys. The secrets are made once and never overwritten; setup only adds the email lines at the end when it has no `Notification__Smtp__Host` line.
 
 Admin phone and SMS go in as settings of the same command. Run it again to change them, or to move to new domains; it restarts the server by itself:
 
@@ -55,18 +55,35 @@ Without an SMS provider nobody can log in: the first login is always by SMS.
 
 If the secrets in `dalan.env` were seen by someone else (for example pasted in a chat), make new ones: `ROTATE_SECRETS=1 bash deploy/install.sh ...` (same arguments). Everyone must log in again and browsers subscribe to push again.
 
-Email login is set by hand on the server (any SMTP service; port 587 with STARTTLS), then `sudo systemctl restart dalan`:
+### Login emails (own mail)
 
-```bash
-sudo nano /etc/dalan/dalan.env
-#   Notification__EmailProvider=smtp
-#   Notification__Smtp__Host=<smtp host of your mail service>
-#   Notification__Smtp__UserName=<smtp user>
-#   Notification__Smtp__Password=<smtp password or app password>
-#   Notification__Smtp__From=Dalan <no-reply@dalanet.ir>
+The server sends the login emails itself, from `no-reply@<site domain>`: Postfix sends only, listens only on `127.0.0.1`, and OpenDKIM signs each mail (key `/etc/dkimkeys/dalan.private`, made once). Setup writes these lines to `dalan.env`, so there is nothing to fill in:
+
+```
+Notification__EmailProvider=smtp
+Notification__Smtp__Host=127.0.0.1
+Notification__Smtp__Port=25
+Notification__Smtp__StartTls=false
+Notification__Smtp__From=Dalan <no-reply@dalanet.ir>
 ```
 
-Email login works the same way: before SMTP is ready, `Notification__EmailProvider=log` and `Notification__LogEmailAddresses=<your email>`, then `journalctl -u dalan | grep "login code"`. Emails from a new domain often land in spam; the login screen tells people to look there. When the international internet is cut, foreign SMTP services cannot be reached, so email login stops and SMS login keeps working. An email user (level 1) can use bots; to build bots the user must verify a mobile number in the account screen (level 2).
+At the end setup prints three TXT records. Add them in the DNS panel (Arvan: DNS, records, add a TXT record; the cloud icon of `dalanet.ir` must be off, because SPF uses its A record):
+
+| Name | Value |
+|---|---|
+| `@` | `v=spf1 a -all` |
+| `dalan._domainkey` | `v=DKIM1; h=sha256; k=rsa; p=...` (from the setup output, or `sudo cat /etc/dkimkeys/dalan.txt`) |
+| `_dmarc` | `v=DMARC1; p=none` |
+
+In the server provider's panel, set the reverse DNS (PTR) of the server address to `dalanet.ir`. Check:
+
+```bash
+timeout 8 bash -c '</dev/tcp/gmail-smtp-in.l.google.com/25' && echo "port 25 open"   # the provider may block it
+sudo opendkim-testkey -d dalanet.ir -s dalan -vvv                                     # "key OK" after DNS is live
+journalctl -u postfix -n 30                                                            # status=sent, or why not
+```
+
+Then log in with your Gmail address on the site; in Gmail, "Show original" should say SPF, DKIM and DMARC: PASS. Mail from a new address often lands in spam; the login screen tells people to look there. When the international internet is cut, foreign mailboxes cannot be reached, so email login stops and SMS login keeps working. To test without mail: `Notification__EmailProvider=log` and `Notification__LogEmailAddresses=<your email>` at the end of `dalan.env`, then `journalctl -u dalan | grep "login code"`. An email user (level 1) can use bots; to build bots the user must verify a mobile number in the account screen (level 2).
 
 ## 3. Deploy
 
