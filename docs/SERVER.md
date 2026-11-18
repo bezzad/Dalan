@@ -46,16 +46,22 @@ sudo nano /etc/dalan/dalan.env
 #   Notification__SmsProvider=kavenegar
 #   Notification__Kavenegar__ApiKey=<from the Kavenegar panel; template dalan-login>
 #   Identity__AdminPhones=<your mobile number; several are comma separated>
+# Only when the domains are not dalanet.ir and api.dalanet.ir (for example sslip.io names):
+#   Admin__SiteUrl=https://<site domain>
+#   Admin__BotApiUrl=https://<api domain>
+#   Notification__Push__Subject=https://<site domain>
 ```
+
+Without the SMS provider nobody can log in: the first login is always by SMS.
 
 ## 3. Deploy
 
-GitHub, repository settings, environment `production`, secrets:
+GitHub, repository Settings, Environments, `production` (create it if missing), secrets:
 
 | Secret | Value |
 |---|---|
 | `DEPLOY_HOST` | `deploy@<server>` |
-| `DEPLOY_SSH_KEY` | the private key `~/.ssh/dalan-deploy` |
+| `DEPLOY_SSH_KEY` | the private key: the whole output of `cat ~/.ssh/dalan-deploy` |
 | `DEPLOY_KNOWN_HOSTS` | the output of `ssh-keyscan <server>` |
 
 Actions, workflow `ci`, "Run workflow", tick "Deploy". After all gates pass it uploads the release and rolls back by itself if `/ready` fails. A later change of `dalan.env` needs `sudo systemctl restart dalan`.
