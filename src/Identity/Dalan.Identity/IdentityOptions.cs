@@ -46,6 +46,21 @@ public sealed class IdentityOptions
     /// <summary>The SMS budget of the whole server for 24 hours (SEC-08).</summary>
     public int SmsPerDay { get; set; }
 
+    /// <summary>AUTH-24, AUTH-25, SEC-13: the email codes, like the SMS ones above.</summary>
+    public int EmailCodeDigits { get; set; }
+
+    public int EmailCodeSeconds { get; set; }
+
+    public int EmailCodeTries { get; set; }
+
+    public int EmailWaitSeconds { get; set; }
+
+    public int EmailPerAddressPerDay { get; set; }
+
+    public int EmailPerIpPerDay { get; set; }
+
+    public int EmailPerDay { get; set; }
+
     public int PasswordMinLength { get; set; }
 
     public int PasswordMaxLength { get; set; }

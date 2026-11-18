@@ -23,6 +23,102 @@ namespace Dalan.Identity.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Dalan.Identity.Codes.EmailCode", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<byte[]>("CodeHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("code_hash");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Ip")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ip");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<int>("Tries")
+                        .HasColumnType("integer")
+                        .HasColumnName("tries");
+
+                    b.Property<bool>("Used")
+                        .HasColumnType("boolean")
+                        .HasColumnName("used");
+
+                    b.HasKey("Id")
+                        .HasName("pk_email_codes");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_email_codes_created_at");
+
+                    b.HasIndex("Target", "CreatedAt")
+                        .HasDatabaseName("ix_email_codes_email_created_at");
+
+                    b.ToTable("email_codes", "identity");
+                });
+
+            modelBuilder.Entity("Dalan.Identity.Codes.SmsCode", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<byte[]>("CodeHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("code_hash");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Ip")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ip");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("phone");
+
+                    b.Property<int>("Tries")
+                        .HasColumnType("integer")
+                        .HasColumnName("tries");
+
+                    b.Property<bool>("Used")
+                        .HasColumnType("boolean")
+                        .HasColumnName("used");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sms_codes");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_sms_codes_created_at");
+
+                    b.HasIndex("Target", "CreatedAt")
+                        .HasDatabaseName("ix_sms_codes_phone_created_at");
+
+                    b.ToTable("sms_codes", "identity");
+                });
+
             modelBuilder.Entity("Dalan.Identity.Keys.AccessKey", b =>
                 {
                     b.Property<long>("Id")
@@ -122,54 +218,6 @@ namespace Dalan.Identity.Data.Migrations
                     b.ToTable("sessions", "identity");
                 });
 
-            modelBuilder.Entity("Dalan.Identity.SmsLogin.SmsCode", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<byte[]>("CodeHash")
-                        .IsRequired()
-                        .HasColumnType("bytea")
-                        .HasColumnName("code_hash");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Ip")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("ip");
-
-                    b.Property<string>("Phone")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("phone");
-
-                    b.Property<int>("Tries")
-                        .HasColumnType("integer")
-                        .HasColumnName("tries");
-
-                    b.Property<bool>("Used")
-                        .HasColumnType("boolean")
-                        .HasColumnName("used");
-
-                    b.HasKey("Id")
-                        .HasName("pk_sms_codes");
-
-                    b.HasIndex("CreatedAt")
-                        .HasDatabaseName("ix_sms_codes_created_at");
-
-                    b.HasIndex("Phone", "CreatedAt")
-                        .HasDatabaseName("ix_sms_codes_phone_created_at");
-
-                    b.ToTable("sms_codes", "identity");
-                });
-
             modelBuilder.Entity("Dalan.Identity.Users.User", b =>
                 {
                     b.Property<long>("Id")
@@ -196,12 +244,15 @@ namespace Dalan.Identity.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("display_name");
 
+                    b.Property<string>("Email")
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
                     b.Property<string>("Phone")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("phone");
 
@@ -216,11 +267,18 @@ namespace Dalan.Identity.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_users");
 
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_email");
+
                     b.HasIndex("Phone")
                         .IsUnique()
                         .HasDatabaseName("ix_users_phone");
 
-                    b.ToTable("users", "identity");
+                    b.ToTable("users", "identity", t =>
+                        {
+                            t.HasCheckConstraint("ck_users_phone_or_email", "phone IS NOT NULL OR email IS NOT NULL");
+                        });
                 });
 
             modelBuilder.Entity("Dalan.Identity.Keys.AccessKey", b =>

@@ -4,10 +4,11 @@ import type { ShowcaseEntry } from "./pages.ts";
 
 export type BuilderState = "none" | "requested" | "approved";
 
-/** CLI-23: what the account screen shows about building bots. */
-export function builderView(user: { builder: BuilderState; admin: boolean }): "request" | "waiting" | "bots" {
+/** CLI-23: what the account screen shows about building bots. A user with no phone must verify one first (CLI-34). */
+export function builderView(user: { builder: BuilderState; admin: boolean; has_phone: boolean }): "phone" | "request" | "waiting" | "bots" {
   if (user.admin || user.builder === "approved") return "bots";
-  return user.builder === "requested" ? "waiting" : "request";
+  if (user.builder === "requested") return "waiting";
+  return user.has_phone ? "request" : "phone";
 }
 
 export interface BuilderBot {

@@ -46,6 +46,12 @@ sudo nano /etc/dalan/dalan.env
 #   Notification__SmsProvider=kavenegar
 #   Notification__Kavenegar__ApiKey=<from the Kavenegar panel; template dalan-login>
 #   Identity__AdminPhones=<your mobile number; several are comma separated>
+# Email login (level 1). Any SMTP service; port 587 with STARTTLS:
+#   Notification__EmailProvider=smtp
+#   Notification__Smtp__Host=<smtp host of your mail service>
+#   Notification__Smtp__UserName=<smtp user>
+#   Notification__Smtp__Password=<smtp password or app password>
+#   Notification__Smtp__From=Dalan <no-reply@dalanet.ir>
 # Only when the domains are not dalanet.ir and api.dalanet.ir (for example sslip.io names):
 #   Admin__SiteUrl=https://<site domain>
 #   Admin__BotApiUrl=https://<api domain>
@@ -53,6 +59,8 @@ sudo nano /etc/dalan/dalan.env
 ```
 
 Without the SMS provider nobody can log in: the first login is always by SMS. Before Kavenegar is ready, test with the log sender: `Notification__SmsProvider=log` and `Notification__LogSmsPhones=<your number>` (only listed numbers get a code), then read the code with `journalctl -u dalan | grep "login code"`. Remove both lines when Kavenegar works.
+
+Email login works the same way: before SMTP is ready, `Notification__EmailProvider=log` and `Notification__LogEmailAddresses=<your email>`, then `journalctl -u dalan | grep "login code"`. Emails from a new domain often land in spam; the login screen tells people to look there. When the international internet is cut, foreign SMTP services cannot be reached, so email login stops and SMS login keeps working. An email user (level 1) can use bots; to build bots the user must verify a mobile number in the account screen (level 2).
 
 ## 3. Deploy
 

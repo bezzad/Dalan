@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using Dalan.Identity.SmsLogin;
+using Dalan.Identity.Codes;
 using Dalan.Testing;
 using static Dalan.Identity.Tests.Http;
 
@@ -509,5 +509,5 @@ public class SmsLoginTests(PostgresServer postgres)
     }
 
     /// <summary>A browser whose calls reach the server through the front proxy, which reports this client address.</summary>
-    private static HttpClient ThroughProxy(DalanApp app, string client) => DalanApp.From(app.Browser(client), "127.0.0.1:40000");
+    internal static HttpClient ThroughProxy(DalanApp app, string client) => DalanApp.From(app.Browser(client), "127.0.0.1:40000");
 }

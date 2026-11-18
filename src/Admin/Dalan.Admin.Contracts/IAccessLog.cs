@@ -10,6 +10,9 @@ public enum AccessActor
 
     /// <summary>A phone number that got a login code by SMS, before anyone is logged in.</summary>
     Phone = 3,
+
+    /// <summary>An email address that got a login code, before anyone is logged in.</summary>
+    Email = 4,
 }
 
 /// <summary>
@@ -26,4 +29,7 @@ public interface IAccessLog
 
     /// <summary>ADM-04: records who asked for the login code that was sent to this phone number. Every SMS gets its own row.</summary>
     ValueTask RecordSmsAsync(string phone, IPAddress? address, int port, CancellationToken cancellationToken);
+
+    /// <summary>ADM-16: records who asked for the login code that was sent to this email address. Every email gets its own row.</summary>
+    ValueTask RecordEmailAsync(string email, IPAddress? address, int port, CancellationToken cancellationToken);
 }

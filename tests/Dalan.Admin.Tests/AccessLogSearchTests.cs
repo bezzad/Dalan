@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Dalan.Admin.Contracts;
 using Dalan.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -60,6 +61,22 @@ public class AccessLogSearchTests(PostgresServer postgres)
 
         Assert.Equal("phone", row.GetProperty("actor").GetString());
         Assert.Equal("+989121234567", row.GetProperty("phone").GetString());
+    }
+
+    [Fact]
+    [Trait("Rule", "ADM-10")]
+    public async Task ADM10_by_email_in_any_case()
+    {
+        await using var app = await AdminApp.StartAsync(postgres);
+        var (admin, _) = await app.AdminAsync();
+        await app.Services.GetRequiredService<IAccessLog>()
+            .RecordEmailAsync("sara@example.com", System.Net.IPAddress.Parse("203.0.113.7"), 51000, AdminApp.Cancel);
+
+        var row = Assert.Single((await admin.JsonAsync("/api/admin/access-log?email=Sara@Example.com")).Rows());
+
+        Assert.Equal("email", row.GetProperty("actor").GetString());
+        Assert.Equal("sara@example.com", row.GetProperty("email").GetString());
+        Assert.Equal(JsonValueKind.Null, row.GetProperty("actor_id").ValueKind);
     }
 
     [Fact]

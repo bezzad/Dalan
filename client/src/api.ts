@@ -10,7 +10,11 @@ export interface User {
   id: number;
   name: string;
   username: string | null;
+  /** AUTH-04: null for a user who logged in only by SMS. */
+  email: string | null;
   has_password: boolean;
+  /** AUTH-26: false for a level 1 (email only) user, who cannot build bots yet. */
+  has_phone: boolean;
   /** AUTH-18 */
   admin: boolean;
   /** AUTH-19 */
@@ -20,7 +24,8 @@ export interface User {
 /** ADM-11 */
 export interface AdminUser {
   id: number;
-  phone: string;
+  phone: string | null;
+  email: string | null;
   name: string;
   username: string | null;
   created_at: string;
@@ -56,9 +61,10 @@ export interface ShowcaseRequest {
 /** ADM-10 */
 export interface AccessRow {
   id: number;
-  actor: "user" | "bot" | "phone";
+  actor: "user" | "bot" | "phone" | "email";
   actor_id: number | null;
   phone: string | null;
+  email: string | null;
   address: string;
   port: number | null;
   at: string;
@@ -77,6 +83,8 @@ export interface AuditRow {
 /** AUTH-16: what the login and account screens must not hard-code. */
 export interface AuthSettings {
   dev_login: boolean;
+  /** CLI-33 */
+  email_login: boolean;
   password_min_length: number;
   name_max_length: number;
 }
@@ -126,10 +134,19 @@ export const api = {
   me: () => call<User>("GET", "/api/me"),
   authSettings: () => call<AuthSettings>("GET", "/api/auth/settings"),
   devLogin: (phone: string, name: string) => call<User>("POST", "/api/dev/login", { phone, name }),
-  challenge: (phone: string) => call<{ challenge: string; difficulty: number }>("POST", "/api/auth/challenge", { phone }),
+  /** SEC-06: for a phone or an email. */
+  challenge: (target: { phone: string } | { email: string }) =>
+    call<{ challenge: string; difficulty: number }>("POST", "/api/auth/challenge", target),
   sendCode: (phone: string, challenge: string, nonce: string) =>
     call<{ expires_in: number; retry_in: number; code_digits: number }>("POST", "/api/auth/sms", { phone, challenge, nonce }),
   verifyCode: (phone: string, code: string, name?: string) => call<User>("POST", "/api/auth/sms/verify", { phone, code, name }),
+  /** AUTH-24, AUTH-25 */
+  sendEmailCode: (email: string, challenge: string, nonce: string) =>
+    call<{ expires_in: number; retry_in: number; code_digits: number }>("POST", "/api/auth/email", { email, challenge, nonce }),
+  verifyEmailCode: (email: string, code: string, name?: string) =>
+    call<User>("POST", "/api/auth/email/verify", { email, code, name }),
+  /** AUTH-26: the code comes from sendCode. */
+  addPhone: (phone: string, code: string) => call<User>("POST", "/api/account/phone", { phone, code }),
   passwordLogin: (login: string, password: string) => call<User>("POST", "/api/auth/password", { login, password }),
   setPassword: (password: string, current?: string) =>
     call<null>("POST", "/api/account/password", { password, current_password: current }),

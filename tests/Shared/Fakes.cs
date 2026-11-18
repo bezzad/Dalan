@@ -22,6 +22,26 @@ public sealed class FakeSmsSender : ISmsSender
     }
 }
 
+/// <summary>Stands in for the email provider: it keeps what would have been sent.</summary>
+public sealed class FakeEmailSender : IEmailSender
+{
+    private readonly ConcurrentQueue<(string Email, string Code)> _sent = new();
+
+    /// <summary>Set to true to play a provider that is down.</summary>
+    public bool Fails { get; set; }
+
+    public bool IsOn => true;
+
+    public IReadOnlyList<(string Email, string Code)> Sent => [.. _sent];
+
+    public Task<bool> SendLoginCodeAsync(string email, string code, CancellationToken cancellationToken)
+    {
+        if (Fails) return Task.FromResult(false);
+        _sent.Enqueue((email, code));
+        return Task.FromResult(true);
+    }
+}
+
 /// <summary>Keeps every log line of the server, so a test can read them.</summary>
 public sealed class LogCollector : ILoggerProvider
 {

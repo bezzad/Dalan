@@ -11,10 +11,11 @@ public enum BuilderState
 /// <summary>What a user may do now. A user that does not exist has every flag false.</summary>
 public sealed record UserAccess(bool IsAdmin, bool IsBuilder, bool IsSuspended);
 
-/// <summary>A user as the admin sees it: with the phone number, for legal complaints (ADM-11).</summary>
+/// <summary>A user as the admin sees it: with the phone number and email, for legal complaints (ADM-11).</summary>
 public sealed record AdminUser(
     long Id,
-    string Phone,
+    string? Phone,
+    string? Email,
     string Name,
     string? Username,
     DateTimeOffset CreatedAt,
@@ -28,7 +29,7 @@ public sealed record AdminUser(
 /// </summary>
 public interface IUserAdmin
 {
-    /// <summary>Exact id, phone (any Iranian form) or username, or the start of the name.</summary>
+    /// <summary>Exact id, phone (any Iranian form), email (any case) or username, or the start of the name.</summary>
     Task<IReadOnlyList<AdminUser>> SearchAsync(string query, int limit, CancellationToken cancellationToken);
 
     /// <summary>Open builder requests, oldest first.</summary>
@@ -42,4 +43,7 @@ public interface IUserAdmin
 
     /// <summary>An Iranian mobile number in any form as +989121234567, or null.</summary>
     string? NormalizePhone(string? input);
+
+    /// <summary>An email address in lower case, or null.</summary>
+    string? NormalizeEmail(string? input);
 }

@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using System.Text.RegularExpressions;
+using Dalan.Identity.Codes;
 using Dalan.Identity.Contracts;
 using Dalan.Identity.Data;
 using Dalan.Identity.Passwords;
 using Dalan.Identity.Sessions;
+using Dalan.Identity.SmsLogin;
 using Dalan.Identity.Users;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -14,18 +16,21 @@ using Npgsql;
 
 namespace Dalan.Identity.Account;
 
-/// <summary>What a logged-in user changes on the account: the password (AUTH-13) and the username (AUTH-15).</summary>
+/// <summary>What a logged-in user changes on the account: the password (AUTH-13), the username (AUTH-15) and the phone (AUTH-26).</summary>
 internal static partial class AccountEndpoints
 {
     private sealed record PasswordRequest(string? Password, string? CurrentPassword);
 
     private sealed record UsernameRequest(string? Username);
 
+    private sealed record PhoneRequest(string? Phone, string? Code);
+
     public static void MapAccount(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapPost("/api/account/password", SetPasswordAsync).RequireAuthorization();
         endpoints.MapPost("/api/account/username", SetUsernameAsync).RequireAuthorization();
         endpoints.MapPost("/api/account/builder", AskBuilderAsync).RequireAuthorization();
+        endpoints.MapPost("/api/account/phone", AddPhoneAsync).RequireAuthorization();
     }
 
     private static async Task<IResult> SetPasswordAsync(
@@ -50,9 +55,9 @@ internal static partial class AccountEndpoints
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, http.RequestAborted);
         if (user is null) return AuthJson.Unauthorized();
 
-        // A session that started with an SMS code has proved the phone: that is the "forgot my password" path.
-        var provedPhone = http.User.FindFirstValue(SessionTokens.MethodClaim) == SessionTokens.BySms;
-        if (user.PasswordHash is { } stored && !provedPhone)
+        // A session that started with an SMS or email code has proved the phone or email: that is the "forgot my password" path.
+        var provedByCode = http.User.FindFirstValue(SessionTokens.MethodClaim) is SessionTokens.BySms or SessionTokens.ByEmail;
+        if (user.PasswordHash is { } stored && !provedByCode)
         {
             var current = request?.CurrentPassword ?? "";
             if (current.Length == 0 || current.Length > settings.PasswordMaxLength || !await hasher.VerifyAsync(stored, current))
@@ -94,19 +99,55 @@ internal static partial class AccountEndpoints
         return profile is null ? AuthJson.Unauthorized() : AuthJson.Ok(profile);
     }
 
-    /// <summary>AUTH-19: asks the admin for the right to create bots. An approved user stays approved.</summary>
+    /// <summary>AUTH-19: asks the admin for the right to create bots. An approved user stays approved. Needs a phone (level 2).</summary>
     private static async Task<IResult> AskBuilderAsync(
         HttpContext http, IDbContextFactory<IdentityDb> dbFactory, UserAdmin users, TimeProvider time)
     {
         var userId = SessionTokens.UserId(http.User);
         await using (var db = await dbFactory.CreateDbContextAsync(http.RequestAborted))
         {
+            if (await db.Users.AnyAsync(u => u.Id == userId && u.Phone == null, http.RequestAborted))
+            {
+                return AuthJson.Error(StatusCodes.Status403Forbidden, "phone_required",
+                    "To build bots, first verify your mobile number in the account screen.");
+            }
+
             await db.Users.Where(u => u.Id == userId && u.Builder == BuilderState.None)
                 .ExecuteUpdateAsync(set => set
                     .SetProperty(u => u.Builder, BuilderState.Requested)
                     .SetProperty(u => u.BuilderRequestedAt, time.GetUtcNow()), http.RequestAborted);
         }
 
+        var profile = await users.ProfileAsync(userId, http.RequestAborted);
+        return profile is null ? AuthJson.Unauthorized() : AuthJson.Ok(profile);
+    }
+
+    /// <summary>AUTH-26: a level 1 user proves a phone with an SMS code (sent by POST /api/auth/sms) and becomes level 2.</summary>
+    private static async Task<IResult> AddPhoneAsync(
+        HttpContext http, IDbContextFactory<IdentityDb> dbFactory, SmsCodes codes, UserAdmin users, SecurityLog log)
+    {
+        var request = await AuthJson.ReadAsync<PhoneRequest>(http);
+        if (PhoneNumber.Normalize(request?.Phone) is not { } phone) return SmsLoginEndpoints.BadPhone();
+
+        var userId = SessionTokens.UserId(http.User);
+        await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
+        if (await db.Users.AnyAsync(u => u.Id == userId && u.Phone != null, http.RequestAborted))
+            return AuthJson.Error(StatusCodes.Status409Conflict, "has_phone", "This account has a mobile number already.");
+
+        var (check, codeId) = await codes.CheckAsync(phone, request!.Code?.Trim() ?? "", http.RequestAborted);
+        if (check == CodeCheck.Wrong || !await codes.UseAsync(codeId, http.RequestAborted)) return SmsLoginEndpoints.WrongCode();
+
+        try
+        {
+            await db.Users.Where(u => u.Id == userId && u.Phone == null)
+                .ExecuteUpdateAsync(set => set.SetProperty(u => u.Phone, phone), http.RequestAborted);
+        }
+        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            return AuthJson.Error(StatusCodes.Status409Conflict, "phone_taken", "Another account has this mobile number.");
+        }
+
+        log.PhoneAdded(userId);
         var profile = await users.ProfileAsync(userId, http.RequestAborted);
         return profile is null ? AuthJson.Unauthorized() : AuthJson.Ok(profile);
     }

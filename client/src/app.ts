@@ -48,6 +48,13 @@ export function errorText(error: unknown): TextKey {
     case "sms_wait": return "smsWait";
     case "sms_limit": return "smsLimit";
     case "sms_unavailable": return "smsUnavailable";
+    case "bad_email": return "badEmail";
+    case "email_wait": return "emailWait";
+    case "email_limit": return "emailLimit";
+    case "email_unavailable": return "emailUnavailable";
+    case "phone_required": return "phoneRequired";
+    case "phone_taken": return "phoneTaken";
+    case "has_phone": return "hasPhone";
     case "wrong_login": return "wrongLogin";
     case "weak_password": return "weakPassword";
     case "wrong_password": return "wrongPassword";

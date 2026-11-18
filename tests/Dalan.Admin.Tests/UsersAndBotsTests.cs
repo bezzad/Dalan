@@ -26,6 +26,20 @@ public class UsersAndBotsTests(PostgresServer postgres)
 
     [Fact]
     [Trait("Rule", "ADM-11")]
+    public async Task ADM11_find_by_email_in_any_case()
+    {
+        await using var app = await AdminApp.StartAsync(postgres);
+        var (admin, _) = await app.AdminAsync();
+        await app.LoginByEmailAsync("sara@example.com");
+
+        var user = Assert.Single((await admin.JsonAsync("/api/admin/users?q=SARA@example.com")).Rows("users"));
+
+        Assert.Equal("sara@example.com", user.GetProperty("email").GetString());
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, user.GetProperty("phone").ValueKind);
+    }
+
+    [Fact]
+    [Trait("Rule", "ADM-11")]
     public async Task ADM11_find_by_id_username_and_name_start()
     {
         await using var app = await AdminApp.StartAsync(postgres);
