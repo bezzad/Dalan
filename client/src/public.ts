@@ -3,7 +3,7 @@ import { api } from "./api.ts";
 import { errorText } from "./app.ts";
 import { h } from "./dom.ts";
 import type { Language } from "./i18n.ts";
-import { categoryName, closing, faqItems, hero, initial, installCommands, labels, landing, privacyPoints, problems, products, security, steps, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
+import { categoryName, closing, faqItems, hero, initial, installCommands, labels, landing, notOffered, offers, privacyPoints, problems, products, security, steps, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
 
 export type PublicPage = "landing" | "privacy" | "faq" | "showcase";
 
@@ -156,6 +156,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
     });
 
     const featureIcons: (keyof typeof icons)[] = ["home", "shield", "offline"];
+    const offerIcons: (keyof typeof icons)[] = ["gate", "shield", "terminal", "globe"];
     target.append(
       h("section", { class: "hero glow" },
         h("h2", {}, hero[lang].title, h("br"), h("span", { class: "rainbow" }, hero[lang].glow)),
@@ -164,6 +165,16 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
       h("section", { class: "products" },
         label(labels[lang].products),
         h("div", { class: "cards" }, ...products[lang].map((product, i) => productCard(product, i === 0 ? "gate" : "globe")))),
+      h("section", { id: "offers", class: "offers" },
+        label(labels[lang].offers),
+        h("h2", {}, labels[lang].offersTitle),
+        h("div", { class: "groups" }, ...offers[lang].map((group, i) => h("article", { class: i === 3 ? "soon-card" : "" },
+          h("span", { class: "badge-icon" }, icon(offerIcons[i]!)),
+          h("h3", {}, group.title),
+          h("p", {}, group.text),
+          h("ul", {}, ...group.items.map(item => h("li", {}, icon("check"), h("span", {}, item.text),
+            ...(item.soon ? [h("span", { class: "soon" }, labels[lang].soon)] : []))))))),
+        h("p", { class: "note" }, notOffered[lang])),
       h("section", { id: "try", class: "try framed" },
         h("span", { class: "badge-icon" }, icon("terminal")),
         label(labels[lang].try),

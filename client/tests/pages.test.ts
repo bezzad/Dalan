@@ -1,7 +1,7 @@
-// Rules: CLI-26, CLI-27, CLI-28, CLI-29, CLI-30
+// Rules: CLI-26, CLI-27, CLI-28, CLI-29, CLI-30, CLI-35
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { categoryName, faqItems, initial, installCommands, landing, problems, products, security, steps, pageFor, privacyPoints, readyPrompt, showcaseStateName, type PublicNumbers } from "../src/pages.ts";
+import { categoryName, faqItems, initial, installCommands, landing, notOffered, offers, problems, products, security, steps, pageFor, privacyPoints, readyPrompt, showcaseStateName, type PublicNumbers } from "../src/pages.ts";
 
 const numbers: PublicNumbers = { history_messages: 200, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60,
   site_url: "https://dalanet.ir", bot_api_url: "https://api.dalanet.ir" };
@@ -55,6 +55,29 @@ test("CLI-26 only real things are offered: what is not built says soon", () => {
     assert.ok(security[lang].length >= 6);
     const all = JSON.stringify([problems[lang], products[lang], security[lang]]);
     assert.doesNotMatch(all, /tunnel|تونل/i);
+  }
+});
+
+test("CLI-35 what you get: three ready groups, then sites and gateway, all soon", () => {
+  for (const lang of ["fa", "en"] as const) {
+    const groups = offers[lang];
+    assert.equal(groups.length, 4);
+    for (const group of groups.slice(0, 3)) {
+      assert.ok(group.items.length >= 3, group.title);
+      assert.ok(group.items.every(item => !item.soon), group.title);
+    }
+    assert.ok(groups[3]!.items.every(item => item.soon));
+    assert.match(groups[0]!.items[0]!.text, /Bot API/);
+  }
+  assert.match(offers.en[3]!.title, /Sites/);
+});
+
+test("CLI-35 says what Dalan does not offer and never says tunnel", () => {
+  for (const lang of ["fa", "en"] as const) {
+    assert.match(notOffered[lang], /TCP/);
+    assert.match(notOffered[lang], /SSH/);
+    assert.match(notOffered[lang], /AI|هوش مصنوعی/);
+    assert.doesNotMatch(JSON.stringify(offers[lang]) + notOffered[lang], /tunnel|تونل/i);
   }
 });
 
