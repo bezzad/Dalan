@@ -320,15 +320,15 @@ The admin screen SHALL have tabs: settings (grouped by section, each with its va
 - **THEN** the chat shows that the bot is suspended
 
 ### Requirement: CLI-26 Landing page
-A visitor who is not logged in SHALL see at `/` the landing page: a hero with an "Enter" button; a diagram of the user, Dalan and the builder's computer, where the computer only calls out; three steps whose code shows `bot_api_url` and `site_url` from the public settings; the three messages of DESIGN section 13 in order; links to the showcase, FAQ and privacy page. It SHALL NOT say "tunnel". A logged-in user at `/` SHALL get the bot list. The public pages SHALL open with or without login.
+A visitor who is not logged in SHALL see at `/` a dark landing page: a "Problems we solve" menu; a hero with "Enter"; product cards with a traffic picture (bot relay, where the computer only calls out; sites, marked soon); OS tabs with real commands built from `site_url`; three steps using `bot_api_url`; the three messages of DESIGN section 13 in order; a security list; a closing call; a footer. It SHALL NOT say "tunnel". A logged-in user at `/` SHALL get the bot list.
 
 #### Scenario: Three messages in order
 - **WHEN** the landing texts are read in Persian or English
 - **THEN** they are, in this order: run your app from your own computer; real users verified by mobile number without building SMS login; keeps working when international internet is cut. None says "tunnel"
 
 #### Scenario: Diagram parts
-- **WHEN** the diagram labels are read in Persian or English
-- **THEN** there are three parts in order (user, Dalan, your computer), and the link to the computer says the call goes out from the computer only
+- **WHEN** the bot card picture is read in Persian or English
+- **THEN** it goes from the users through Dalan to your computer, and the link to the computer says the call goes out from the computer only
 
 #### Scenario: Steps use the real addresses
 - **GIVEN** the public settings say `bot_api_url` is `https://api.example.ir` and `site_url` is `https://example.ir`
@@ -342,6 +342,15 @@ A visitor who is not logged in SHALL see at `/` the landing page: a hero with an
 #### Scenario: Drawn in the page
 - **WHEN** the landing page is drawn
 - **THEN** the diagram and icons are made in the page, nothing is loaded from another host, and the moving dots stop when the visitor asks for reduced motion
+
+#### Scenario: Try it on every system
+- **GIVEN** the public settings say `site_url` is `https://example.ir`
+- **WHEN** the commands are made
+- **THEN** there are tabs for Linux, macOS, Windows and Docker, and each command gets `https://example.ir/dalan.mjs`
+
+#### Scenario: Only real things are offered
+- **WHEN** the menu and the product cards are read
+- **THEN** every item that is not built yet is marked "soon", and no text says "tunnel"
 
 ### Requirement: CLI-27 Privacy page and FAQ
 The privacy page SHALL say plainly, in both languages, the six points of DESIGN section 13 (showcase only on request, no phone number to bots, no end-to-end encryption, history kept, the home machine is the builder's, the access log). The numbers SHALL come from ADM-14, never from the text. The FAQ SHALL answer the same six points as questions.

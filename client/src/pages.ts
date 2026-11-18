@@ -38,44 +38,98 @@ export const landing: Record<Lang, { title: string; text: string }[]> = {
   ],
 };
 
-/** CLI-26: the hero at the top of the landing page. */
-export const hero: Record<Lang, { badge: string; title: string; text: string; how: string }> = {
+/** CLI-26: the hero at the top of the landing page. `glow` is drawn in colour on its own line. */
+export const hero: Record<Lang, { title: string; glow: string; text: string; how: string }> = {
   fa: {
-    badge: "سازگار با Bot API تلگرام",
-    title: "بات روی کامپیوتر شما، کاربران از دالان به آن می‌رسند.",
-    text: "کامپیوتر شما فقط به دالان وصل می‌شود. نه سرور لازم است، نه IP عمومی، نه پورت باز.",
+    title: "بات روی کامپیوتر خودتان،",
+    glow: "در دسترس همه‌ی ایران.",
+    text: "دالان کاربران تأییدشده را به بات یا برنامه‌ی روی کامپیوتر شما می‌رساند. نه سرور، نه IP عمومی، نه پورت باز.",
     how: "چطور کار می‌کند؟",
   },
   en: {
-    badge: "Works with the Telegram Bot API",
-    title: "Your bot runs on your computer. Users reach it through Dalan.",
-    text: "Your computer only connects out to Dalan. No server, no public IP, no open port.",
+    title: "Your bot on your computer,",
+    glow: "reachable from all of Iran.",
+    text: "Dalan brings verified users to the bot or app on your own computer. No server, no public IP, no open port.",
     how: "How does it work?",
   },
 };
 
-/** CLI-26: the three parts of the picture, in order, and the two links between them. */
-export const diagram: Record<Lang, { parts: { title: string; note: string }[]; both: string; outgoing: string; caption: string }> = {
-  fa: {
-    parts: [
-      { title: "کاربر", note: "موبایل یا مرورگر" },
-      { title: "دالان", note: "سرور در ایران" },
-      { title: "کامپیوتر شما", note: "بدون IP عمومی" },
-    ],
-    both: "پیام‌ها می‌روند و می‌آیند",
-    outgoing: "فقط اتصال خروجی",
-    caption: "کامپیوتر شما خودش به دالان زنگ می‌زند و پیام‌های تازه را می‌گیرد. هیچ‌کس از بیرون به کامپیوتر شما وصل نمی‌شود.",
-  },
-  en: {
-    parts: [
-      { title: "User", note: "Phone or browser" },
-      { title: "Dalan", note: "Server in Iran" },
-      { title: "Your computer", note: "No public IP" },
-    ],
-    both: "Messages go both ways",
-    outgoing: "Only an outgoing call",
-    caption: "Your computer calls Dalan by itself and picks up new messages. Nobody from outside connects to your computer.",
-  },
+export interface MenuItem { title: string; text: string; href?: string; soon?: boolean }
+
+/** CLI-26: the "Problems we solve" menu. A live item links to the page; what is not built yet says "soon". */
+export const problems: Record<Lang, { group: string; items: MenuItem[] }[]> = {
+  fa: [
+    { group: "ساخت و تست", items: [
+      { title: "اجرای بات از خانه", text: "بات روی کامپیوتر خودتان، بدون سرور و IP عمومی", href: "#how" },
+      { title: "بات‌های تلگرامی، بدون تغییر کد", text: "فقط آدرس سرور را عوض کنید", href: "#try" },
+      { title: "دستیار هوش مصنوعی", text: "ساخت و مدیریت بات با CLI و MCP", href: "/llms.txt" },
+    ] },
+    { group: "رساندن به کاربر", items: [
+      { title: "کاربر واقعی", text: "همه‌ی کاربران با پیامک تأیید شده‌اند", href: "#features" },
+      { title: "وقتی اینترنت بین‌الملل قطع است", text: "دالان در ایران است", href: "#features" },
+      { title: "ویترین بات‌ها", text: "کاربران تازه بات شما را پیدا می‌کنند", href: "/showcase" },
+    ] },
+    { group: "سایت‌ها", items: [
+      { title: "سایت محلی با آدرس ثابت", text: "سایت روی کامپیوتر شما، با زیردامنه‌ی دالان", soon: true },
+      { title: "دامنه‌ی خودتان", text: "سایت با دامنه‌ی شخصی", soon: true },
+      { title: "بررسی و تکرار وب‌هوک", text: "درخواست‌ها را ببینید و دوباره بفرستید", soon: true },
+    ] },
+  ],
+  en: [
+    { group: "Build and test", items: [
+      { title: "Run a bot from home", text: "Your own computer, no server, no public IP", href: "#how" },
+      { title: "Telegram bots, no code change", text: "Change only the server address", href: "#try" },
+      { title: "AI assistants", text: "Make and manage bots with the CLI and MCP", href: "/llms.txt" },
+    ] },
+    { group: "Reach users", items: [
+      { title: "Real users", text: "Every user is verified by SMS", href: "#features" },
+      { title: "When international internet is cut", text: "Dalan runs inside Iran", href: "#features" },
+      { title: "Bot showcase", text: "New users find your bot", href: "/showcase" },
+    ] },
+    { group: "Sites", items: [
+      { title: "A local site with a fixed address", text: "A site on your computer, on a Dalan subdomain", soon: true },
+      { title: "Your own domain", text: "Your site on your own domain", soon: true },
+      { title: "Inspect and replay webhooks", text: "See requests and send them again", soon: true },
+    ] },
+  ],
+};
+
+export interface Product { label: string; title: string; text: string; soon: boolean; from: string; to: string; via: string; guards: string[] }
+
+/** CLI-26: the product cards and the words of their traffic pictures. */
+export const products: Record<Lang, Product[]> = {
+  fa: [
+    { label: "رله‌ی بات", title: "یک دالان بین کاربران و بات شما.", text: "کاربر در دالان پیام می‌دهد. بات روی کامپیوتر شما پیام را با getUpdates برمی‌دارد.", soon: false,
+      from: "کاربران تأییدشده", via: "getUpdates (فقط خروجی)", to: "بات روی کامپیوتر شما", guards: ["محدودیت سرعت", "گواه کار پیش از پیامک", "ثبت دسترسی"] },
+    { label: "سایت‌ها", title: "سایت روی کامپیوترتان، با یک آدرس ثابت.", text: "یک برنامه‌ی کوچک روی کامپیوتر شما به دالان وصل می‌شود و سایت محلی را به بازدیدکننده‌ها نشان می‌دهد.", soon: true,
+      from: "بازدیدکننده‌ها", via: "your-site.dalan", to: "localhost:8080", guards: ["رمز ورود", "فهرست IP مجاز", "بازبینی درخواست‌ها"] },
+  ],
+  en: [
+    { label: "Bot relay", title: "A passage between users and your bot.", text: "Users write in Dalan. The bot on your computer picks up messages with getUpdates.", soon: false,
+      from: "Verified users", via: "getUpdates (outgoing only)", to: "Bot on your computer", guards: ["Rate limits", "Proof of work before SMS", "Access log"] },
+    { label: "Sites", title: "A site on your computer, at a fixed address.", text: "A small program on your computer connects out to Dalan and shows your local site to visitors.", soon: true,
+      from: "Visitors", via: "your-site.dalan", to: "localhost:8080", guards: ["Basic Auth", "IP allowlist", "Request inspector"] },
+  ],
+};
+
+/** CLI-26: "Try it right now". Real commands only: get the CLI (CLI-31) from the site and make a bot. */
+export function installCommands(numbers: PublicNumbers): { os: string; code: string }[] {
+  const site = numbers.site_url;
+  const unix = `curl -fsSO ${site}/dalan.mjs\nexport DALAN_URL=${site} DALAN_KEY=dalan_...\nnode dalan.mjs create my_bot "My bot"`;
+  return [
+    { os: "Linux", code: unix },
+    { os: "macOS", code: unix },
+    { os: "Windows", code: `iwr ${site}/dalan.mjs -OutFile dalan.mjs\n$env:DALAN_URL="${site}"; $env:DALAN_KEY="dalan_..."\nnode dalan.mjs create my_bot "My bot"` },
+    { os: "Docker", code: `docker run --rm -e DALAN_URL=${site} -e DALAN_KEY=dalan_... node:lts-alpine \\\n  sh -c 'wget -q ${site}/dalan.mjs && node dalan.mjs create my_bot "My bot"'` },
+  ];
+}
+
+/** CLI-26: what Dalan really does for safety (CLAUDE.md rules 5, 7, 8 and 13). */
+export const security: Record<Lang, string[]> = {
+  fa: ["کاربران تأییدشده با پیامک", "بات هرگز شماره نمی‌بیند", "توکن بات به شکل hash", "رمز با hash کند", "محدودیت سرعت روی هر در",
+    "گواه کار پیش از هر پیامک", "گزارش کارهای ادمین", "سرور در ایران", "بدون اسکریپت و فونت خارجی", "فقط HTTPS"],
+  en: ["SMS-verified users", "Bots never see phone numbers", "Hashed bot tokens", "Slow password hashing", "Rate limits on every door",
+    "Proof of work before each SMS", "Admin audit log", "Servers in Iran", "No foreign scripts or fonts", "HTTPS only"],
 };
 
 export interface Step { title: string; text: string; code?: string }
@@ -96,9 +150,17 @@ export function steps(lang: Lang, numbers: PublicNumbers): Step[] {
 }
 
 /** CLI-26: the closing call of the landing page. */
-export const closing: Record<Lang, { title: string; text: string }> = {
-  fa: { title: "آماده‌اید؟", text: "وارد شوید و اولین بات‌تان را بسازید، یا بات‌های ویترین را ببینید." },
-  en: { title: "Ready?", text: "Log in and make your first bot, or look at the bots in the showcase." },
+export const closing: Record<Lang, { title: string; glow: string; text: string }> = {
+  fa: { title: "نوبت شماست.", glow: "بات‌تان را روشن کنید.", text: "وارد شوید و اولین بات‌تان را بسازید، یا بات‌های ویترین را ببینید." },
+  en: { title: "Your turn.", glow: "Put your bot online.", text: "Log in and make your first bot, or look at the bots in the showcase." },
+};
+
+/** CLI-26: the small labels above the landing sections and the words of the footer. */
+export const labels: Record<Lang, Record<"products" | "try" | "tryTitle" | "tryNote" | "security" | "problems" | "soon" | "resources" | "product" | "start", string>> = {
+  fa: { products: "محصولات ما", try: "همین الان", tryTitle: "همین الان یک بات بسازید.", tryNote: "کد بات شما با هر زبانی کار می‌کند: هر کتابخانه‌ی بات تلگرام، فقط با عوض کردن آدرس سرور.",
+    security: "امنیت از روز اول.", problems: "چه مشکلی را حل می‌کنیم", soon: "به‌زودی", resources: "منابع", product: "محصول", start: "شروع کنید" },
+  en: { products: "Our products", try: "Right now", tryTitle: "Make a bot right now.", tryNote: "Your bot code works in any language: any Telegram bot library, after changing only the server address.",
+    security: "Security from day one.", problems: "Problems we solve", soon: "Soon", resources: "Resources", product: "Product", start: "Get started" },
 };
 
 /** CLI-27: the six points of DESIGN section 13. `n` writes a number in the page's digits. */
