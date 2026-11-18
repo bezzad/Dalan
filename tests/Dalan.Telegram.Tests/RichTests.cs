@@ -211,7 +211,7 @@ public class RichTests(PostgresServer postgres)
         var id = await SendAsync(bot, user, "keep");
 
         var answer = await bot.PostJsonAsync("deleteMessages",
-            JsonDocument.Parse($"{{\"chat_id\":{user},\"message_ids\":{ids}}}").RootElement);
+            JsonElement.Parse($"{{\"chat_id\":{user},\"message_ids\":{ids}}}"));
 
         answer.IsError(400, "Bad Request");
         Assert.False((await app.MessagesAsync()).Single(m => m.Seq == id).Deleted);
