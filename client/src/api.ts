@@ -85,6 +85,8 @@ export interface AuthSettings {
   dev_login: boolean;
   /** CLI-33 */
   email_login: boolean;
+  /** CLI-35 */
+  github_login: boolean;
   password_min_length: number;
   name_max_length: number;
 }

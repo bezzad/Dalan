@@ -6,7 +6,10 @@
 # Usage: deploy/install.sh <user@server> <site domain> <api domain> <deploy public key file>
 # The user is root, or a user who may use sudo (it may ask for the password).
 # Example: deploy/install.sh root@203.0.113.10 dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
-# Settings (environment): CADDY_VERSION (default: the version CI tests)
+# Settings (environment):
+#   CADDY_VERSION          default: the version CI tests
+#   GITHUB_CLIENT_ID       with GITHUB_CLIENT_SECRET: the GitHub OAuth app for "Log in with GitHub" (OPS-13).
+#   GITHUB_CLIENT_SECRET   Sent in a file, never on a command line. docs/SERVER.md says how to make the app.
 set -euo pipefail
 
 target="${1:?user@server is required}"
@@ -28,6 +31,9 @@ mkdir "$work/dalan-setup"
 tar -xzf "$work/$file" -C "$work/dalan-setup" caddy
 cp "$here"/{setup.sh,backup.sh,drill.sh,Caddyfile,dalan.service,caddy.service,dalan-backup.service,dalan-backup.timer} "$work/dalan-setup/"
 cp "$key" "$work/dalan-setup/deploy.pub"
+if [ -n "${GITHUB_CLIENT_ID:-}" ] && [ -n "${GITHUB_CLIENT_SECRET:-}" ]; then
+  (umask 077 && printf 'GITHUB_CLIENT_ID=%s\nGITHUB_CLIENT_SECRET=%s\n' "$GITHUB_CLIENT_ID" "$GITHUB_CLIENT_SECRET" > "$work/dalan-setup/github.env")
+fi
 
 echo "Copying to $target"
 ssh "$target" "rm -rf /tmp/dalan-setup"

@@ -87,4 +87,31 @@ public sealed class IdentityOptions
 
     /// <summary>AUTH-21: access keys one user may have.</summary>
     public int MaxAccessKeys { get; set; }
+
+    /// <summary>AUTH-27 to AUTH-29.</summary>
+    public GitHubOptions GitHub { get; set; } = new();
+}
+
+/// <summary>Section "Identity:GitHub": the GitHub OAuth app. Login with GitHub is on when the id and the secret are set.</summary>
+public sealed class GitHubOptions
+{
+    public string? ClientId { get; set; }
+
+    /// <summary>A secret: it lives only in the server's environment.</summary>
+    public string? ClientSecret { get; set; }
+
+    /// <summary>Must be the same as the "Authorization callback URL" of the GitHub app.</summary>
+    public string? CallbackUrl { get; set; }
+
+    public string? WebUrl { get; set; }
+
+    public string? ApiUrl { get; set; }
+
+    /// <summary>Time the person has at GitHub before the state cookie ends.</summary>
+    public int StateSeconds { get; set; }
+
+    /// <summary>Wait for each call to GitHub. Short: GitHub may be cut off from Iran.</summary>
+    public int TimeoutSeconds { get; set; }
+
+    public bool IsOn => !string.IsNullOrEmpty(ClientId) && !string.IsNullOrEmpty(ClientSecret);
 }

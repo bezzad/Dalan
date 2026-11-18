@@ -125,3 +125,39 @@ grep -q "releases/download/v${ci_version}/caddy_${ci_version}_linux_amd64.tar.gz
 for f in caddy setup.sh drill.sh backup.sh Caddyfile caddy.service deploy.pub; do [ -f "$inst/copied/$f" ] || fail "$f not copied"; done
 grep -q "ssh -t admin@server sudo bash /tmp/dalan-setup/setup.sh 'dalanet.ir' 'api.dalanet.ir' /tmp/dalan-setup/deploy.pub" "$inst/remote.log" || fail "setup not run: $(cat "$inst/remote.log")"
 echo "PASS OPS-09 install.sh copies Caddy and runs setup"
+
+# Rule: OPS-13 a GitHub file sets the GitHub lines and keeps the rest
+cp "$env_file" "$tmp/env-before"
+printf 'GITHUB_CLIENT_ID=abc\nGITHUB_CLIENT_SECRET=s3\n' > "$src/github.env"
+: > "$state/commands.log"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out3" || { cat "$tmp/out3"; fail "run with GitHub failed"; }
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out3" || { cat "$tmp/out3"; fail "second run with GitHub failed"; }
+[ "$(grep -c '^Identity__GitHub__ClientId=abc$' "$env_file")" = 1 ] || fail "client id: $(grep GitHub "$env_file")"
+[ "$(grep -c '^Identity__GitHub__ClientSecret=s3$' "$env_file")" = 1 ] || fail "client secret"
+[ "$(grep -c '^Identity__GitHub__CallbackUrl=https://dalanet.ir/api/auth/github/callback$' "$env_file")" = 1 ] || fail "callback url"
+diff <(grep -v '^Identity__GitHub__' "$env_file") "$tmp/env-before" > /dev/null || fail "other lines changed"
+[ "$(stat -c %a "$env_file")" = 640 ] || fail "dalan.env mode is $(stat -c %a "$env_file")"
+[ -f "$env_file.new" ] && fail "temporary file left"
+grep -qF 'systemctl try-restart dalan.service' "$state/commands.log" || fail "dalan not restarted"
+echo "PASS OPS-13 GitHub file sets the GitHub lines"
+
+# Rule: OPS-13 no GitHub file: dalan.env does not change
+rm "$src/github.env"
+before=$(sha256sum < "$env_file")
+: > "$state/commands.log"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out4" || { cat "$tmp/out4"; fail "run without GitHub failed"; }
+[ "$(sha256sum < "$env_file")" = "$before" ] || fail "dalan.env changed without a GitHub file"
+grep -qF 'try-restart' "$state/commands.log" && fail "restarted without a reason"
+echo "PASS OPS-13 no GitHub file keeps dalan.env"
+
+# Rule: OPS-13 install.sh sends the secret in a file, never on a command line
+rm -rf "$inst/copied" "$inst/remote.log"
+GITHUB_CLIENT_ID=abc GITHUB_CLIENT_SECRET=very-secret PATH="$inst/bin:$PATH" \
+  bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null || fail "install.sh with GitHub failed"
+grep -q 'very-secret' "$inst/remote.log" && fail "secret on a command line"
+grep -qx 'GITHUB_CLIENT_SECRET=very-secret' "$inst/copied/github.env" || fail "github.env not sent"
+[ "$(stat -c %a "$inst/copied/github.env")" = 600 ] || fail "github.env mode is $(stat -c %a "$inst/copied/github.env")"
+rm -rf "$inst/copied"
+PATH="$inst/bin:$PATH" bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null || fail "install.sh failed"
+[ -f "$inst/copied/github.env" ] && fail "github.env sent without values"
+echo "PASS OPS-13 install.sh sends the GitHub secret in a file"

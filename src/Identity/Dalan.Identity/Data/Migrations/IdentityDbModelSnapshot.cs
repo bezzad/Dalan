@@ -248,6 +248,10 @@ namespace Dalan.Identity.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("email");
 
+                    b.Property<long?>("GithubId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("github_id");
+
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
@@ -270,6 +274,10 @@ namespace Dalan.Identity.Data.Migrations
                     b.HasIndex("Email")
                         .IsUnique()
                         .HasDatabaseName("ix_users_email");
+
+                    b.HasIndex("GithubId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_github_id");
 
                     b.HasIndex("Phone")
                         .IsUnique()

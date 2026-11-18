@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Prepare a fresh Ubuntu server for the first deploy (OPS-09, OPS-10). Run as root, on the server.
-# Safe to run again: it never changes an existing /etc/dalan/dalan.env.
+# Safe to run again: it never changes an existing /etc/dalan/dalan.env, except the GitHub login lines when
+# install.sh sends a github.env (OPS-13).
 # deploy/install.sh copies this folder and the Caddy binary to the server and runs it.
 #
 # Usage: setup.sh <site domain> <api domain> <deploy public key file>
@@ -82,6 +83,19 @@ Notification__Push__PrivateKey=$push_private
 ENV
   )
 fi
+
+# OPS-13: the GitHub OAuth app, from install.sh. Older lines of these keys go; every other line stays.
+github_file="$here/github.env"
+if [ -f "$github_file" ]; then
+  echo "GitHub login"
+  github_id=$(sed -n 's/^GITHUB_CLIENT_ID=//p' "$github_file")
+  github_secret=$(sed -n 's/^GITHUB_CLIENT_SECRET=//p' "$github_file")
+  (umask 077 && { grep -vE '^Identity__GitHub__(ClientId|ClientSecret|CallbackUrl)=' "$env_file" || true
+    printf 'Identity__GitHub__ClientId=%s\nIdentity__GitHub__ClientSecret=%s\nIdentity__GitHub__CallbackUrl=https://%s/api/auth/github/callback\n' \
+      "$github_id" "$github_secret" "$site"
+  } > "$env_file.new")
+  cat "$env_file.new" > "$env_file" && rm -f "$env_file.new"
+fi
 chown root:dalan "$env_file"
 chmod 640 "$env_file"
 
@@ -106,5 +120,7 @@ systemctl enable dalan.service
 systemctl enable --now dalan-backup.timer
 systemctl enable caddy.service
 systemctl restart caddy.service
+# A running Dalan reads the new GitHub lines only after a restart.
+if [ -f "$github_file" ]; then systemctl try-restart dalan.service; fi
 
 echo "Done. Next: fill in $env_file, then run the deploy from CI."

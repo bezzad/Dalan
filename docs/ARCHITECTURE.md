@@ -102,9 +102,10 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 - Identity registers the standard JWT bearer handler. Other services only ask ASP.NET Core who the user is (`sub` claim) and need no Identity code.
 - Development login (`Identity:DevLogin`) works only in the Development environment; with the setting on anywhere else the server refuses to start.
 - Refresh token: random, in the cookie `__Host-dalan_refresh`, stored as SHA-256, replaced on every use (`POST /api/auth/refresh`). The row keeps the hash of the current token and of the one before it. An older token that comes back after a short grace time deletes the row (that device is logged out); inside the grace it only gets 401, because two tabs can refresh at the same moment.
-- Ways to log in: email code (level 1), SMS code (level 2), password, development login. All end in the same place: one session row and two cookies. The access token says how the session started (`amr`).
+- Ways to log in: GitHub or email code (level 1), SMS code (level 2), password, development login. All end in the same place: one session row and two cookies. The access token says how the session started (`amr`).
 - SMS login: `POST /api/auth/challenge` → the browser solves a small proof of work → `POST /api/auth/sms` → `POST /api/auth/sms/verify`. The challenge needs no server state (a MAC ties it to the phone and an expiry). The rows of `identity.sms_codes` of the last 24 hours are the counters of the SMS limits (per number, per address, whole server), so they survive a restart.
 - Email login: the same steps with `email` (`/api/auth/challenge`, `/api/auth/email`, `/api/auth/email/verify`). `identity.email_codes` counts apart from `identity.sms_codes`; both are `LoginCode` rows handled by one generic `LoginCodes<T>`. A user has a phone, an email, or both; **level 2 = has a phone**. `POST /api/account/phone` adds a phone with an SMS code. Email senders live in Notification behind `IEmailSender`; setting `Notification:EmailProvider` (`smtp`, `log`, or empty).
+- GitHub login: `GET /api/auth/github` sets a state cookie (`__Host-dalan_github`, `SameSite=Lax`) and sends the browser to GitHub; `GET /api/auth/github/callback` checks the state, calls GitHub with `HttpClient` (no package), finds the user by `github_id`, else by the primary verified email, else makes one, writes the access log row and sends the browser to `/`. Errors go to `/?login_error=<code>`. On when `Identity:GitHub:ClientId` and `ClientSecret` are set; the callback URL is a setting (`Identity:GitHub:CallbackUrl`).
 - Passwords: Argon2id in PHC text form; only a few hashes run at once. Password tries are limited per login name and per client address, in memory.
 - Keys for the MACs (proof of work, SMS codes) are derived from `Identity:SigningKey`, so there is no second secret.
 - SMS providers live in Notification behind `ISmsSender`; setting `Notification:SmsProvider` (`kavenegar`, `log` for Development only, or empty).
@@ -198,6 +199,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 54 | 2026-11-17 | MCP door `/api/mcp` with the official C# SDK (`ModelContextProtocol.AspNetCore`), stateless; tools call the same `BuilderBots` class as REST |
 | 55 | 2026-11-17 | CLI is one Node file with no packages, served by Dalan at `/dalan.mjs`; `/llms.txt` served by Admin with the addresses from settings |
 | 56 | 2026-11-18 | Two levels: email code login (level 1, use bots) and a verified phone (level 2, may become a builder). SMTP through `System.Net.Mail` (no package); replaces decision 46 |
+| 57 | 2026-11-18 | "Log in with GitHub" (OAuth web flow, no package) on a one-card login screen like ngrok; a verified GitHub email is needed and the same email is the same user. No Google for now |
 
 ## 11. Client address and access log
 
