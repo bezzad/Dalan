@@ -158,9 +158,9 @@ export const closing: Record<Lang, { title: string; glow: string; text: string }
 /** CLI-26: the small labels above the landing sections and the words of the footer. */
 export const labels: Record<Lang, Record<"products" | "try" | "tryTitle" | "tryNote" | "security" | "problems" | "soon" | "resources" | "product" | "start", string>> = {
   fa: { products: "محصولات ما", try: "همین الان", tryTitle: "همین الان یک بات بسازید.", tryNote: "کد بات شما با هر زبانی کار می‌کند: هر کتابخانه‌ی بات تلگرام، فقط با عوض کردن آدرس سرور.",
-    security: "امنیت از روز اول.", problems: "چه مشکلی را حل می‌کنیم", soon: "به‌زودی", resources: "منابع", product: "محصول", start: "شروع کنید" },
+    security: "امنیت از روز اول.", problems: "چه مشکلی را حل می‌کنیم", soon: "به‌زودی", resources: "منابع", product: "محصول", start: "آزمایش کنید (رایگان)" },
   en: { products: "Our products", try: "Right now", tryTitle: "Make a bot right now.", tryNote: "Your bot code works in any language: any Telegram bot library, after changing only the server address.",
-    security: "Security from day one.", problems: "Problems we solve", soon: "Soon", resources: "Resources", product: "Product", start: "Get started" },
+    security: "Security from day one.", problems: "Problems we solve", soon: "Soon", resources: "Resources", product: "Product", start: "Try it (free)" },
 };
 
 /** CLI-27: the six points of DESIGN section 13. `n` writes a number in the page's digits. */

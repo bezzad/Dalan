@@ -66,7 +66,8 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
     pageLink("/showcase", t("showcase")), pageLink("/faq", t("faq")), pageLink("/privacy", t("privacy")),
     h("button", { type: "button", class: "link", onclick: context.onLanguage }, t("language")));
 
-  const enterButton = () => h("button", { type: "button", class: "primary", onclick: context.enter }, t(context.loggedIn ? "myBots" : "enter"));
+  /** Opens the login screen (or the bot list). In the page body a visitor sees "Try it (free)" (owner, 2026-11-18). */
+  const enterButton = (label = t("enter")) => h("button", { type: "button", class: "primary", onclick: context.enter }, context.loggedIn ? t("myBots") : label);
 
   // CLI-26: "Problems we solve". A <details> panel; choosing an item closes it.
   const menu = h("details", { class: "menu" },
@@ -159,7 +160,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
       h("section", { class: "hero glow" },
         h("h2", {}, hero[lang].title, h("br"), h("span", { class: "rainbow" }, hero[lang].glow)),
         h("p", { class: "lead" }, hero[lang].text),
-        h("div", { class: "row wrap" }, enterButton(), h("a", { href: "#how", class: "button", onclick: event => go(event, "#how") }, hero[lang].how))),
+        h("div", { class: "row wrap" }, enterButton(labels[lang].start), h("a", { href: "#how", class: "button", onclick: event => go(event, "#how") }, hero[lang].how))),
       h("section", { class: "products" },
         label(labels[lang].products),
         h("div", { class: "cards" }, ...products[lang].map((product, i) => productCard(product, i === 0 ? "gate" : "globe")))),
@@ -180,7 +181,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
       h("section", { class: "cta glow framed" },
         h("h2", {}, closing[lang].title, h("br"), h("span", { class: "rainbow" }, closing[lang].glow)),
         h("p", {}, closing[lang].text),
-        h("div", { class: "row wrap" }, enterButton(), pageLink("/showcase", t("showcase"), "button"))));
+        h("div", { class: "row wrap" }, enterButton(labels[lang].start), pageLink("/showcase", t("showcase"), "button"))));
   }
 
   /** A product card with its traffic picture: from, Dalan with its guards, to. */
