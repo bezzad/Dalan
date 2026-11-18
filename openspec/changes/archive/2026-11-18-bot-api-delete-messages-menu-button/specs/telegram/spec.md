@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: TG-09 Other methods get a clear error
-A method the adapter does not serve SHALL get 400 with `{"ok":false,"error_code":400,"description":"Bad Request: method <name> is not supported by Dalan"}`, and SHALL do nothing. `deleteWebhook` SHALL answer `true`, because Dalan has no webhook to delete. `sendChatAction` SHALL answer `true` and do nothing. `setChatMenuButton` with no `menu_button`, or one of type `commands` or `default`, SHALL answer `true` and do nothing; type `web_app` SHALL get 400 "Bad Request: web_app menu button is not supported by Dalan".
+A method the adapter does not serve SHALL get 400 with `{"ok":false,"error_code":400,"description":"Bad Request: method <name> is not supported by Dalan"}`, and SHALL do nothing. `deleteWebhook` (no webhook to delete), `sendChatAction`, and `setChatMenuButton` with no `menu_button` or type `commands` or `default` SHALL answer `true` and do nothing. A `web_app` menu button SHALL get 400 "Bad Request: web_app menu button is not supported by Dalan".
 
 #### Scenario: Method Dalan does not have yet
 - **WHEN** a bot calls `sendSticker`, `setWebhook` or `noSuchMethod`
