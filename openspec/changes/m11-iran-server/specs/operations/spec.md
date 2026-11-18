@@ -14,12 +14,17 @@
 - **WHEN** `setup.sh` runs, and runs again
 - **THEN** a swap file of `SWAP_MB` is made once and kept after a reboot
 
+#### Scenario: New domains
+- **GIVEN** the server was set up for other domains
+- **WHEN** `setup.sh` runs with new domains
+- **THEN** Caddy and the server's links use the new domains, and `dalan.env` is unchanged
+
 #### Scenario: Deploy user rights
 - **WHEN** `setup.sh` is done
 - **THEN** the sudoers file lets `deploy` run only `systemctl restart dalan`
 
 ### Requirement: OPS-10 Server secrets are made once
-`setup.sh` SHALL write `/etc/dalan/dalan.env` (mode 640) with a random database password, a signing key and a push key pair only when the file does not exist. It MUST NOT change an existing line. It MAY only add the own-mail lines of OPS-13 at the end.
+`setup.sh` SHALL write `/etc/dalan/dalan.env` (mode 640) with a random database password, a signing key and a push key pair when the file does not exist. It MUST NOT change these secrets later, unless `install.sh` gets `ROTATE_SECRETS=1`. The settings given to `install.sh` SHALL replace their lines on each run. It MAY add the own-mail lines of OPS-13 at the end.
 
 #### Scenario: First run
 - **WHEN** `setup.sh` runs on a server without `/etc/dalan/dalan.env`
@@ -29,6 +34,16 @@
 - **GIVEN** `/etc/dalan/dalan.env` exists and the owner added the SMS key to it
 - **WHEN** `setup.sh` runs again
 - **THEN** the file is unchanged and the script succeeds
+
+#### Scenario: Settings from install.sh
+- **GIVEN** `/etc/dalan/dalan.env` exists
+- **WHEN** `install.sh` runs with `ADMIN_PHONES` and `SMS=log`, and later with `SMS=kavenegar` and `KAVENEGAR_KEY`
+- **THEN** each setting is in the file once, the log sender sends only to `ADMIN_PHONES`, the log sender numbers are removed for Kavenegar, the secrets are unchanged, and an unknown `SMS` value stops the script
+
+#### Scenario: Secrets made again
+- **GIVEN** the secrets were seen by someone else
+- **WHEN** `install.sh` runs with `ROTATE_SECRETS=1`
+- **THEN** the database password, signing key and push keys in `dalan.env` are new, the database role has the new password, and the other settings stay
 
 ### Requirement: OPS-11 Daily database backup
 The server SHALL dump the database once a day to `/var/backups/dalan` and delete dumps older than `BACKUP_KEEP_DAYS` (start 14).
