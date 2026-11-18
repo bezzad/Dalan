@@ -26,11 +26,12 @@ public class SmsSenderTests
         }
     }
 
-    private static DalanApp App(string provider, string environment = "Development", FakeProvider? fake = null) => new(
+    private static DalanApp App(string provider, string environment = "Development", FakeProvider? fake = null, string logSmsPhones = "") => new(
         NoDatabase,
         new Dictionary<string, string>
         {
             ["Notification:SmsProvider"] = provider,
+            ["Notification:LogSmsPhones"] = logSmsPhones,
             ["Notification:Kavenegar:BaseUrl"] = "https://sms.test",
             ["Notification:Kavenegar:ApiKey"] = ApiKey,
             ["Notification:Kavenegar:Template"] = "dalan-login",
@@ -48,8 +49,8 @@ public class SmsSenderTests
         })
     { RealSms = true };
 
-    private static Task<bool> SendAsync(DalanApp app) =>
-        app.Services.GetRequiredService<ISmsSender>().SendLoginCodeAsync("+989121234567", "123456", Cancel);
+    private static Task<bool> SendAsync(DalanApp app, string phone = "+989121234567") =>
+        app.Services.GetRequiredService<ISmsSender>().SendLoginCodeAsync(phone, "123456", Cancel);
 
     [Fact]
     [Trait("Rule", "NTF-01")]
@@ -83,9 +84,24 @@ public class SmsSenderTests
         Assert.Contains(app.Logs.Lines, line => line.Text.Contains("123456", StringComparison.Ordinal));
     }
 
+    [Fact]
+    [Trait("Rule", "NTF-01")]
+    public async Task NTF01_log_sender_on_a_server_writes_the_code_only_for_listed_numbers()
+    {
+        await using var app = App(provider: "log", environment: "Production", logSmsPhones: "09351112233, 09121234567");
+
+        int CodeLines() => app.Logs.Lines.Count(line => line.Text.Contains("123456", StringComparison.Ordinal));
+
+        Assert.True(await SendAsync(app, "+989121234567"));
+        Assert.Equal(1, CodeLines());
+
+        Assert.False(await SendAsync(app, "+989129999999"));
+        Assert.Equal(1, CodeLines());
+    }
+
     [Theory]
     [Trait("Rule", "NTF-01")]
-    [InlineData("log", "Production", "Development")]
+    [InlineData("log", "Production", "Notification:LogSmsPhones")]
     [InlineData("pigeon", "Development", "pigeon")]
     public async Task NTF01_wrong_provider_setting_stops_the_start(string provider, string environment, string errorSays)
     {

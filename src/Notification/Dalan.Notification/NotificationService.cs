@@ -67,15 +67,16 @@ public static class NotificationService
                 return services.GetRequiredService<NoSmsSender>();
             case "kavenegar":
                 return services.GetRequiredService<KavenegarSmsSender>();
-            case "log" when services.GetRequiredService<IHostEnvironment>().IsDevelopment():
+            case "log" when services.GetRequiredService<IHostEnvironment>().IsDevelopment()
+                         || !string.IsNullOrWhiteSpace(services.GetRequiredService<IOptions<NotificationOptions>>().Value.LogSmsPhones):
                 return services.GetRequiredService<LogSmsSender>();
             case "log":
                 throw new InvalidOperationException(
-                    "Notification:SmsProvider is 'log', but this is not the Development environment. " +
-                    "The log sender writes login codes to the log and sends no SMS. Set a real provider.");
+                    "Notification:SmsProvider is 'log', but this is not the Development environment and Notification:LogSmsPhones is empty. " +
+                    "The log sender writes login codes to the log and sends no SMS. Set a real provider, or list the test numbers.");
             default:
                 throw new InvalidOperationException(
-                    $"Notification:SmsProvider is '{provider}'. Known providers: kavenegar, log (Development only), or empty.");
+                    $"Notification:SmsProvider is '{provider}'. Known providers: kavenegar, log, or empty.");
         }
     }
 }

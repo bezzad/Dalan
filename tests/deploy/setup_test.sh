@@ -87,6 +87,8 @@ password=$(sed -nE 's/.*Password=(.*)/\1/p' "$env_file")
 grep -qF "CREATE ROLE dalan LOGIN PASSWORD '$password'" "$state/commands.log" || fail "role password differs from dalan.env"
 signing=$(sed -nE 's/^Identity__SigningKey=(.*)/\1/p' "$env_file")
 echo "$signing" | base64 -d | openssl pkey -inform DER -noout 2>/dev/null || fail "signing key is not a key"
+# .NET imports it with ImportPkcs8PrivateKey: PKCS#8 starts with version 0 and the EC algorithm id, not SEC1's version 1.
+[[ "$(echo "$signing" | base64 -d | od -An -tx1 -N 19 | tr -d ' \n')" == 30818702010030130607*2a8648ce3d0201* ]] || fail "signing key is not PKCS#8"
 grep -qE '^Notification__Push__PublicKey=B[A-Za-z0-9_-]{86}$' "$env_file" || fail "no push public key"
 grep -qE '^Notification__Push__PrivateKey=[A-Za-z0-9_-]{43}$' "$env_file" || fail "no push private key"
 grep -q '^# Notification__Kavenegar__ApiKey=' "$env_file" || fail "no line for the SMS key"
