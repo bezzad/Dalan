@@ -102,7 +102,7 @@ internal static class GitHubLoginEndpoints
         return Results.Redirect("/");
     }
 
-    /// <summary>The callback is a page load, not a JSON call: the page shows the error (CLI-35).</summary>
+    /// <summary>The callback is a page load, not a JSON call: the page shows the error (CLI-36).</summary>
     private static IResult Fail(SecurityLog log, string code)
     {
         log.LoginFailed(SessionTokens.ByGitHub, code);

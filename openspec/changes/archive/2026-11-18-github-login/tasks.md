@@ -7,7 +7,7 @@
 
 ## 2. Client
 
-- [x] 2.1 Write tests for CLI-35; build the one-card login screen; check it in a real browser
+- [x] 2.1 Write tests for CLI-36; build the one-card login screen; check it in a real browser
 
 ## 3. Server setup
 

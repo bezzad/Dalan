@@ -58,7 +58,7 @@ function render(): void {
 
 /** CLI-26: a visitor gets the public pages; a bot address asks for login first and opens that chat after it. */
 function guest(): void {
-  // CLI-35: the GitHub login came back with an error. Show it once, and clean the address.
+  // CLI-36: the GitHub login came back with an error. Show it once, and clean the address.
   const error = loginErrorText(location.search);
   if (error) {
     history.replaceState(null, "", location.pathname);

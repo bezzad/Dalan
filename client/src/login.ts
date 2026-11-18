@@ -1,4 +1,4 @@
-// The login screen: one card like ngrok (CLI-35). GitHub (AUTH-27), email code (AUTH-24, AUTH-25), SMS code (AUTH-11, AUTH-12),
+// The login screen: one card like ngrok (CLI-36). GitHub (AUTH-27), email code (AUTH-24, AUTH-25), SMS code (AUTH-11, AUTH-12),
 // password (AUTH-14) and the development login (AUTH-06).
 import { ApiError, api, type AuthSettings, type User } from "./api.ts";
 import { errorText } from "./app.ts";
@@ -10,7 +10,7 @@ import { solve } from "./pow.ts";
 type Channel = "sms" | "email";
 type Mode = Channel | "password" | "dev";
 
-/** CLI-35: what the first card shows. GitHub first when it is on; then email, or SMS when email is off. */
+/** CLI-36: what the first card shows. GitHub first when it is on; then email, or SMS when email is off. */
 export function loginLayout(settings: AuthSettings): { github: boolean; first: Channel } {
   return { github: settings.github_login, first: settings.email_login ? "email" : "sms" };
 }

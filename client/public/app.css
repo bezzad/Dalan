@@ -155,7 +155,7 @@ button.link { min-height: 0; padding: 4px 6px; border: 0; background: none; colo
 .card button { margin-block-start: 8px; }
 .card button.link { align-self: flex-start; margin: 0; }
 .links { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; }
-/* CLI-35: one card like ngrok: the name above, GitHub, "or", the form, the other ways at the bottom. */
+/* CLI-36: one card like ngrok: the name above, GitHub, "or", the form, the other ways at the bottom. */
 .login .brand { flex: none; font-size: 32px; font-weight: 800; text-align: center; }
 .login .card { gap: 12px; padding: 24px; }
 .login .card-body { display: flex; flex-direction: column; gap: 12px; }

@@ -33,7 +33,7 @@ export interface Screen {
 }
 
 /** The text to show for a failed call. */
-/** CLI-35: the error the GitHub login sent back in the address ("?login_error=..."), or null. */
+/** CLI-36: the error the GitHub login sent back in the address ("?login_error=..."), or null. */
 export function loginErrorText(search: string): TextKey | null {
   const code = new URLSearchParams(search).get("login_error");
   return code ? errorText(new ApiError(0, code)) : null;

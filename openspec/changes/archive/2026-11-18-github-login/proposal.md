@@ -20,7 +20,7 @@ Out of scope: Google login (needs a second app at Google; later if wanted), unli
 ### Modified Capabilities
 
 - `identity`: AUTH-01, AUTH-16; new AUTH-27 to AUTH-29.
-- `client`: CLI-33; new CLI-35.
+- `client`: CLI-33; new CLI-36.
 - `operations`: new OPS-13.
 
 ## Impact
