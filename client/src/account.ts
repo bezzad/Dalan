@@ -121,6 +121,7 @@ export function accountScreen(app: App): Screen {
       phone.disabled = true;
       phoneCodeLabel.hidden = phoneCode.hidden = false;
       phoneCode.required = true;
+      phoneButton.textContent = t("save");
       phoneCode.focus();
       return;
     }
@@ -128,6 +129,8 @@ export function accountScreen(app: App): Screen {
     phoneForm.hidden = true;
     showBuilder();
   });
+  const phoneButton = phoneForm.querySelector("button[type=submit]")!;
+  phoneButton.textContent = t("sendCode");
   phoneForm.hidden = app.user.has_phone;
 
   // CLI-23: ask to become a builder, wait for the admin, or open "My bots". Admins also open the admin screen.
