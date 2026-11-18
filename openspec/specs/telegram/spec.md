@@ -2,9 +2,7 @@
 
 ## Purpose
 The Telegram-shaped door for bots: a bot written for Telegram works on Dalan with only the server address and the token changed. It follows Telegram Bot API 10.4 (2026-11-09) and serves only what the core can do.
-
 ## Requirements
-
 ### Requirement: TG-01 Telegram-shaped address and token
 The server SHALL serve Telegram Bot API calls at `/bot<token>/<method>`, at the root of the address as Telegram does, for GET and POST. The token SHALL be the bot's Dalan token (REL-03). The method name SHALL match without regard to letter case. A wrong or malformed token SHALL get HTTP 401 with `{"ok":false,"error_code":401,"description":"Unauthorized"}`, and the call SHALL do nothing.
 
@@ -160,7 +158,7 @@ A `message` whose text has commands SHALL carry `entities` with one `bot_command
 - **THEN** the response is 400 and nothing is stored
 
 ### Requirement: TG-09 Other methods get a clear error
-A method the adapter does not serve SHALL get 400 with `{"ok":false,"error_code":400,"description":"Bad Request: method <name> is not supported by Dalan"}`, and SHALL do nothing. `deleteWebhook` SHALL answer `true`, because Dalan has no webhook to delete. `sendChatAction` SHALL answer `true` and do nothing.
+A method the adapter does not serve SHALL get 400 with `{"ok":false,"error_code":400,"description":"Bad Request: method <name> is not supported by Dalan"}`, and SHALL do nothing. `deleteWebhook` SHALL answer `true`, because Dalan has no webhook to delete. `sendChatAction` SHALL answer `true` and do nothing. `setChatMenuButton` with no `menu_button`, or one of type `commands` or `default`, SHALL answer `true` and do nothing; type `web_app` SHALL get 400 "Bad Request: web_app menu button is not supported by Dalan".
 
 #### Scenario: Method Dalan does not have yet
 - **WHEN** a bot calls `sendSticker`, `setWebhook` or `noSuchMethod`
@@ -173,6 +171,14 @@ A method the adapter does not serve SHALL get 400 with `{"ok":false,"error_code"
 #### Scenario: Typing
 - **WHEN** a bot calls `sendChatAction` with `chat_id` and `action` "typing"
 - **THEN** the response is 200 with `"result":true`
+
+#### Scenario: Commands menu button
+- **WHEN** a bot calls `setChatMenuButton` with `menu_button` `{"type":"commands"}`
+- **THEN** the response is 200 with `"result":true`
+
+#### Scenario: Mini App menu button
+- **WHEN** a bot calls `setChatMenuButton` with `menu_button` of type `web_app`
+- **THEN** the response is 400 and the `description` says "not supported by Dalan"
 
 ### Requirement: TG-10 The token never reaches the log
 The server SHALL NOT write a bot token, or a request path that holds one, to its log.
@@ -257,11 +263,20 @@ An `InlineKeyboardMarkup` (`inline_keyboard`: rows of buttons with `text` and `c
 - **THEN** the response is 400 and the `description` starts with "Bad Request: message is not modified"
 
 ### Requirement: TG-17 Delete a message
-`deleteMessage` (`chat_id`, `message_id`) SHALL delete the message (REL-24) and return `true`; a missing one SHALL get 400 "Bad Request: message to delete not found".
+`deleteMessage` (`chat_id`, `message_id`) SHALL delete the message (REL-24) and return `true`; a missing one SHALL get 400 "Bad Request: message to delete not found". `deleteMessages` (`chat_id`, `message_ids`: a JSON list of 1 to 100 ids) SHALL delete each message it finds, skip the missing ones, and return `true`; a list that is missing, empty, longer than 100 or not numbers SHALL get 400 and delete nothing.
 
 #### Scenario: Delete
 - **WHEN** the bot deletes message 2
 - **THEN** the result is `true` and message 2 is marked deleted
+
+#### Scenario: Delete several
+- **GIVEN** the bot sent messages 2 and 3
+- **WHEN** the bot calls `deleteMessages` with `message_ids` `[2, 3, 99]`
+- **THEN** the result is `true` and messages 2 and 3 are marked deleted
+
+#### Scenario: Bad list
+- **WHEN** the bot calls `deleteMessages` with `message_ids` `[]`
+- **THEN** the response is 400
 
 ### Requirement: TG-18 Pin and unpin
 `pinChatMessage` (`chat_id`, `message_id`) SHALL pin the message (REL-25); `unpinChatMessage` and `unpinAllChatMessages` (`chat_id`) SHALL unpin it. Each returns `true`. A missing message SHALL get 400 "Bad Request: message to pin not found".
@@ -311,3 +326,4 @@ A Telegram adapter call of a suspended bot (REL-38) SHALL get HTTP 403 with `{"o
 - **GIVEN** a suspended bot
 - **WHEN** it calls `getMe`
 - **THEN** the answer is 403 with that description
+
