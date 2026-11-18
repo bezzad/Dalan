@@ -52,7 +52,7 @@ sudo nano /etc/dalan/dalan.env
 #   Notification__Push__Subject=https://<site domain>
 ```
 
-Without the SMS provider nobody can log in: the first login is always by SMS.
+Without the SMS provider nobody can log in: the first login is always by SMS. Before Kavenegar is ready, test with the log sender: `Notification__SmsProvider=log` and `Notification__LogSmsPhones=<your number>` (only listed numbers get a code), then read the code with `journalctl -u dalan | grep "login code"`. Remove both lines when Kavenegar works.
 
 ## 3. Deploy
 

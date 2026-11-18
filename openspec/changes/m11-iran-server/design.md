@@ -25,6 +25,8 @@ Milestones 1 to 10 are merged. `deploy/deploy.sh` copies a release over SSH, swi
 6. **The drill blocks outbound, not inbound.** `drill.sh start` adds one nftables table with an output hook: allow loopback, replies (established), private ranges, and the CIDRs in `/etc/dalan/drill-allow.txt` (if present; for example an Iranian ranges list); log and drop the rest. Users, the bot machine and SSH still come in. A systemd timer runs `drill.sh stop` after `DRILL_MINUTES`, so a forgotten drill ends. `stop` removes the table and prints each blocked address once, from the kernel log. Without an allow list, even domestic services (Kavenegar, DNS) are blocked: the report shows them.
 7. **The real check is by hand**, written in `docs/SERVER.md`: with the drill on, a phone on Iranian mobile data with no VPN logs in by SMS, opens ArcaneBot, presses buttons and gets replies; ArcaneBot changed only its address and token. Push is expected to stop (DESIGN section 8).
 
+8. **Log in before the SMS provider is ready.** A Kavenegar account takes time. The `log` sender (code in the server log, no SMS) may now run outside Development, but only for the numbers in `Notification:LogSmsPhones`; any other number gets a failed send. The log is readable only by root on the server. The setting is hidden from the admin area, like the provider.
+
 ## Starting values used
 
 | Setting | Value | Source |
@@ -33,6 +35,7 @@ Milestones 1 to 10 are merged. `deploy/deploy.sh` copies a release over SSH, swi
 | `DRILL_MINUTES` (`/etc/dalan/drill.env`) | 60 | Assumed |
 | `CADDY_VERSION` (`install.sh`) | same as CI | Rule 10 |
 | `SWAP_MB` (`setup.sh`) | 2048 | Assumed (the US test server has 1 GB) |
+| `Notification:LogSmsPhones` | empty | Owner (2026-11-18): log in on the server before Kavenegar is ready |
 
 ## Risks / Trade-offs
 

@@ -3,8 +3,11 @@ namespace Dalan.Notification;
 /// <summary>Section "Notification" of the settings. Starting values are in appsettings.json; nothing here is a default.</summary>
 public sealed class NotificationOptions
 {
-    /// <summary>"kavenegar", "log" (Development only) or empty: no SMS can be sent (NTF-01).</summary>
+    /// <summary>"kavenegar", "log" or empty: no SMS can be sent (NTF-01).</summary>
     public string? SmsProvider { get; set; }
+
+    /// <summary>NTF-01: outside Development the "log" sender works only for these numbers (comma separated), for tests before a provider is ready.</summary>
+    public string? LogSmsPhones { get; set; }
 
     public KavenegarOptions Kavenegar { get; set; } = new();
 
