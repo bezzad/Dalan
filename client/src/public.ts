@@ -3,12 +3,14 @@ import { api } from "./api.ts";
 import { errorText } from "./app.ts";
 import { h } from "./dom.ts";
 import type { Language } from "./i18n.ts";
+import { themeButton, type Theme } from "./theme.ts";
 import { categoryName, closing, faqItems, hero, initial, installCommands, labels, landing, privacyPoints, problems, products, security, steps, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
 
 export type PublicPage = "landing" | "privacy" | "faq" | "showcase";
 
 export interface PublicContext {
   language: Language;
+  theme: Theme;
   loggedIn: boolean;
   /** Goes to an address of the site without a page load. */
   go(path: string): void;
@@ -102,6 +104,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
     }, h("span", { class: "mark" }, icon("gate")), t("appName"))),
     menu,
     nav,
+    themeButton(context.theme, t),
     enterButton());
 
   const body = h("div", { class: "content" });
@@ -277,5 +280,5 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
       column(labels[lang].resources, pageLink("/faq", t("faq")), pageLink("/privacy", t("privacy")),
         h("a", { href: "/llms.txt" }, "llms.txt"), h("a", { href: "/dalan.mjs" }, "dalan.mjs"))),
     h("div", { class: "wordmark", "aria-hidden": "true" }, t("appName")));
-  return h("main", { class: "public dark" }, header, error, h("div", { class: "scroller page" }, body, footer));
+  return h("main", { class: "public" }, header, error, h("div", { class: "scroller page" }, body, footer));
 }

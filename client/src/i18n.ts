@@ -170,6 +170,9 @@ export const texts = {
     badIcon: "آیکون باید تصویر PNG، JPEG یا WebP و کوچک باشد.",
     showcaseFirst: "اول توضیح و دسته را بفرستید، بعد آیکون را.",
     noShowcaseRequests: "درخواست تازه‌ای برای ویترین نیست.",
+    themeSystem: "تم: مثل دستگاه",
+    themeLight: "تم: روشن",
+    themeDark: "تم: تیره",
   },
   en: {
     appName: "Dalan",
@@ -340,6 +343,9 @@ export const texts = {
     badIcon: "The icon must be a small PNG, JPEG or WebP image.",
     showcaseFirst: "Send the description and category first, then the icon.",
     noShowcaseRequests: "No new showcase requests.",
+    themeSystem: "Theme: like the device",
+    themeLight: "Theme: light",
+    themeDark: "Theme: dark",
   },
 } as const;
 
