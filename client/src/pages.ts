@@ -94,21 +94,25 @@ export const problems: Record<Lang, { group: string; items: MenuItem[] }[]> = {
   ],
 };
 
-export interface Product { label: string; title: string; text: string; soon: boolean; from: string; to: string; via: string; guards: string[] }
+/** `branches`: the traffic splits in two below Dalan; `frame` names the place both branches run in. */
+export interface Product {
+  label: string; title: string; text: string; soon: boolean; from: string; guards: string[];
+  branches: { via: string; to: string }[]; frame: string;
+}
 
 /** CLI-26: the product cards and the words of their traffic pictures. */
 export const products: Record<Lang, Product[]> = {
   fa: [
     { label: "رله‌ی بات", title: "یک دالان بین کاربران و بات شما.", text: "کاربر در دالان پیام می‌دهد. بات روی کامپیوتر شما پیام را با getUpdates برمی‌دارد.", soon: false,
-      from: "کاربران تأییدشده", via: "getUpdates (فقط خروجی)", to: "بات روی کامپیوتر شما", guards: ["محدودیت سرعت", "گواه کار پیش از پیامک", "ثبت دسترسی"] },
+      from: "کاربران تأییدشده", branches: [{ via: "getUpdates", to: "@shop_bot" }, { via: "getUpdates", to: "@game_bot" }], frame: "کامپیوتر شما · فقط اتصال خروجی", guards: ["محدودیت سرعت", "گواه کار پیش از پیامک", "ثبت دسترسی"] },
     { label: "سایت‌ها", title: "سایت روی کامپیوترتان، با یک آدرس ثابت.", text: "یک برنامه‌ی کوچک روی کامپیوتر شما به دالان وصل می‌شود و سایت محلی را به بازدیدکننده‌ها نشان می‌دهد.", soon: true,
-      from: "بازدیدکننده‌ها", via: "your-site.dalan", to: "localhost:8080", guards: ["رمز ورود", "فهرست IP مجاز", "بازبینی درخواست‌ها"] },
+      from: "بازدیدکننده‌ها", branches: [{ via: "/", to: "localhost:3000" }, { via: "/api", to: "localhost:8080" }], frame: "کامپیوتر شما", guards: ["رمز ورود", "فهرست IP مجاز", "بازبینی درخواست‌ها"] },
   ],
   en: [
     { label: "Bot relay", title: "A passage between users and your bot.", text: "Users write in Dalan. The bot on your computer picks up messages with getUpdates.", soon: false,
-      from: "Verified users", via: "getUpdates (outgoing only)", to: "Bot on your computer", guards: ["Rate limits", "Proof of work before SMS", "Access log"] },
+      from: "Verified users", branches: [{ via: "getUpdates", to: "@shop_bot" }, { via: "getUpdates", to: "@game_bot" }], frame: "Your computer · outgoing only", guards: ["Rate limits", "Proof of work before SMS", "Access log"] },
     { label: "Sites", title: "A site on your computer, at a fixed address.", text: "A small program on your computer connects out to Dalan and shows your local site to visitors.", soon: true,
-      from: "Visitors", via: "your-site.dalan", to: "localhost:8080", guards: ["Basic Auth", "IP allowlist", "Request inspector"] },
+      from: "Visitors", branches: [{ via: "/", to: "localhost:3000" }, { via: "/api", to: "localhost:8080" }], frame: "Your computer", guards: ["Basic Auth", "IP allowlist", "Request inspector"] },
   ],
 };
 

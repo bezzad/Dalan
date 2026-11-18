@@ -366,15 +366,27 @@ a.button:hover, .public button:hover { border-color: var(--brand); }
 .soon-card .badge-icon { background: rgb(242 180 90 / .12); color: var(--accent); }
 .traffic { display: flex; flex-direction: column; align-items: center; margin: var(--space-m) 0 0; width: 100%; }
 .tag { padding: 2px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font: 13px/1.7 var(--mono); color: var(--text); }
-.wire { position: relative; width: 0; height: 28px; border-inline-start: 2px dashed var(--brand); }
+.wire { position: relative; width: 0; height: 32px; border-inline-start: 2px dashed var(--brand); }
 .soon-card .wire { border-color: var(--accent); }
 /* The dot moves down from the users and up from your computer: the computer only calls out. */
-.wire::after { content: ""; position: absolute; inset-inline-start: -5px; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); animation: down 1.8s linear infinite; }
+.wire::after { content: ""; position: absolute; inset-inline-start: -5px; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 10px var(--brand); animation: down 1.4s linear infinite; }
 .wire.up::after { animation-name: up; }
 .soon-card .wire::after { background: var(--accent); }
 @keyframes down { from { top: 0; opacity: 0; } 30% { opacity: 1; } to { top: calc(100% - 8px); opacity: 1; } }
 @keyframes up { from { top: calc(100% - 8px); opacity: 0; } 30% { opacity: 1; } to { top: 0; opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .wire::after { animation: none; top: 10px; } }
+/* The traffic splits in two below Dalan (owner, 2026-11-18), like ngrok's gateway picture. */
+.split { position: relative; display: grid; grid-template-columns: 1fr 1fr; width: 100%; padding-block-end: 22px; }
+.split::before { content: ""; position: absolute; top: 0; inset-inline: 25%; border-block-start: 2px dashed var(--brand); }
+.soon-card .split::before { border-color: var(--accent); }
+.split::after { content: ""; position: absolute; inset-inline: 0; bottom: 8px; height: 76px; border: 1px solid var(--brand-soft); border-radius: 14px; pointer-events: none; }
+.soon-card .split::after { border-color: rgb(242 180 90 / .2); }
+.branch { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.branch .box { position: relative; z-index: 1; max-width: 100%; padding: 8px 10px; font-size: 12px; }
+.frame-label { margin-block-start: -20px; padding: 0 8px; background: var(--surface); color: var(--muted); font: 12px/1.6 var(--mono); position: relative; z-index: 1; }
+.hub { animation: pulse 2.4s ease-out infinite; }
+.soon-card .hub { animation: none; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgb(63 208 168 / .45); } 70% { box-shadow: 0 0 0 14px rgb(63 208 168 / 0); } 100% { box-shadow: 0 0 0 0 rgb(63 208 168 / 0); } }
+@media (prefers-reduced-motion: reduce) { .wire::after { animation: none; top: 10px; } .hub { animation: none; } }
 .hub-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-m); width: 100%; }
 .hub { grid-column: 2; display: grid; place-items: center; width: 72px; height: 72px; border: 1px solid var(--line); border-radius: 50%; background: var(--bg); color: var(--text); box-shadow: 0 0 0 6px var(--brand-soft); }
 .hub .icon { width: 34px; height: 34px; }

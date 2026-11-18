@@ -197,10 +197,13 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
         h("div", { class: "hub-row" },
           h("span", { class: "hub" }, icon("gate")),
           h("ul", { class: "guards" }, ...product.guards.map(guard => h("li", {}, icon("check"), guard)))),
-        h("span", { class: "wire up" }),
-        h("span", { class: "tag", dir: "auto" }, product.via),
-        h("span", { class: "wire up" }),
-        h("span", { class: "box" }, icon("computer"), h("span", { dir: "auto" }, product.to))));
+        h("span", { class: "wire" }),
+        h("div", { class: "split" }, ...product.branches.map(branch => h("div", { class: "branch" },
+          h("span", { class: "wire" }),
+          h("span", { class: "tag", dir: "ltr" }, branch.via),
+          h("span", { class: "wire up" }),
+          h("span", { class: "box" }, icon("computer"), h("span", { dir: "ltr" }, branch.to))))),
+        h("span", { class: "frame-label" }, product.frame)));
   }
 
   /** A code block, always left to right, with a copy button. */

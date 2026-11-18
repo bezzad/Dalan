@@ -21,9 +21,11 @@ test("CLI-26 the landing page has the three messages in order and never says tun
 test("CLI-26 the bot card shows users, Dalan and your computer, and the computer only calls out", () => {
   const [en, fa] = [products.en[0]!, products.fa[0]!];
   assert.match(en.from, /users/i);
-  assert.match(en.to, /your computer/);
-  assert.match(en.via, /outgoing only/);
-  assert.match(fa.via, /خروجی/);
+  assert.match(en.frame, /your computer/i);
+  assert.match(en.frame, /outgoing only/);
+  assert.match(fa.frame, /خروجی/);
+  // The traffic splits in two below Dalan, like two bots on one computer.
+  for (const product of [...products.en, ...products.fa]) assert.equal(product.branches.length, 2);
 });
 
 test("CLI-26 the steps use the addresses from the public settings", () => {
