@@ -5,6 +5,8 @@ using Dalan.Identity.Account;
 using Dalan.Identity.DevLogin;
 using Dalan.Identity.Passwords;
 using Dalan.Identity.Sessions;
+using Dalan.Identity.Codes;
+using Dalan.Identity.EmailLogin;
 using Dalan.Identity.SmsLogin;
 using Dalan.Identity.Users;
 using Microsoft.AspNetCore.Authentication;
@@ -39,6 +41,7 @@ public static class IdentityService
         services.AddSingleton<SecurityLog>();
         services.AddSingleton<ProofOfWork>();
         services.AddSingleton<SmsCodes>();
+        services.AddSingleton<EmailCodes>();
         services.AddSingleton<PasswordHasher>();
         services.AddSingleton<PasswordTries>();
 
@@ -58,7 +61,9 @@ public static class IdentityService
     public static IEndpointRouteBuilder MapIdentityService(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapSessions();
+        endpoints.MapChallenge();
         endpoints.MapSmsLogin();
+        endpoints.MapEmailLogin();
         endpoints.MapPasswordLogin();
         endpoints.MapAccount();
         endpoints.MapAccessKeys();

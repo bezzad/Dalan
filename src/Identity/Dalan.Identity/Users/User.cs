@@ -5,7 +5,12 @@ namespace Dalan.Identity.Users;
 public sealed class User
 {
     public long Id { get; private set; }
-    public required string Phone { get; set; }
+    /// <summary>Null for a user who logged in only by email (level 1). A user with a phone is level 2 (AUTH-19, AUTH-26).</summary>
+    public string? Phone { get; set; }
+
+    /// <summary>In lower case. Null for a user who logged in only by SMS (AUTH-24).</summary>
+    public string? Email { get; set; }
+
     public required string DisplayName { get; set; }
     public string? Username { get; set; }
 

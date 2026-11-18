@@ -92,6 +92,7 @@ echo "$signing" | base64 -d | openssl pkey -inform DER -noout 2>/dev/null || fai
 grep -qE '^Notification__Push__PublicKey=B[A-Za-z0-9_-]{86}$' "$env_file" || fail "no push public key"
 grep -qE '^Notification__Push__PrivateKey=[A-Za-z0-9_-]{43}$' "$env_file" || fail "no push private key"
 grep -q '^# Notification__Kavenegar__ApiKey=' "$env_file" || fail "no line for the SMS key"
+grep -q '^# Notification__Smtp__Password=' "$env_file" || fail "no line for the SMTP password"
 echo "PASS OPS-10 first run makes the secrets"
 
 # Rule: OPS-10 second run keeps dalan.env

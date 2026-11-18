@@ -1,5 +1,6 @@
 using Dalan.Notification.Contracts;
 using Dalan.Notification.Data;
+using Dalan.Notification.Email;
 using Dalan.Notification.Push;
 using Dalan.Notification.Sms;
 using Microsoft.AspNetCore.Routing;
@@ -24,6 +25,10 @@ public static class NotificationService
         services.AddHttpClient<KavenegarSmsSender>().RemoveAllLoggers();
         // A new one for each use, so the HTTP client under it is renewed by the factory.
         services.AddTransient(SmsSender);
+        services.AddSingleton<NoEmailSender>();
+        services.AddSingleton<LogEmailSender>();
+        services.AddSingleton<SmtpEmailSender>();
+        services.AddSingleton(EmailSender);
 
         services.TryAddSingleton(TimeProvider.System);
         services.AddPooledDbContextFactory<NotificationDb>((provider, options) => options
@@ -45,6 +50,8 @@ public static class NotificationService
     {
         // NTF-01: a wrong provider setting stops the start, not the first login.
         endpoints.ServiceProvider.GetRequiredService<ISmsSender>();
+        // NTF-10, NTF-11: and a wrong email setting.
+        endpoints.ServiceProvider.GetRequiredService<IEmailSender>();
         // NTF-05: so do wrong push keys.
         endpoints.ServiceProvider.GetRequiredService<IWebPush>();
         return endpoints;
@@ -77,6 +84,32 @@ public static class NotificationService
             default:
                 throw new InvalidOperationException(
                     $"Notification:SmsProvider is '{provider}'. Known providers: kavenegar, log, or empty.");
+        }
+    }
+
+    private static IEmailSender EmailSender(IServiceProvider services)
+    {
+        var settings = services.GetRequiredService<IOptions<NotificationOptions>>().Value;
+        var provider = settings.EmailProvider?.Trim() ?? "";
+        switch (provider)
+        {
+            case "":
+                return services.GetRequiredService<NoEmailSender>();
+            case "smtp" when string.IsNullOrWhiteSpace(settings.Smtp.Host) || string.IsNullOrWhiteSpace(settings.Smtp.From):
+                throw new InvalidOperationException(
+                    "Notification:EmailProvider is 'smtp', but Notification:Smtp:Host or Notification:Smtp:From is empty.");
+            case "smtp":
+                return services.GetRequiredService<SmtpEmailSender>();
+            case "log" when services.GetRequiredService<IHostEnvironment>().IsDevelopment()
+                         || !string.IsNullOrWhiteSpace(settings.LogEmailAddresses):
+                return services.GetRequiredService<LogEmailSender>();
+            case "log":
+                throw new InvalidOperationException(
+                    "Notification:EmailProvider is 'log', but this is not the Development environment and Notification:LogEmailAddresses is empty. " +
+                    "The log sender writes login codes to the log and sends no email. Set smtp, or list the test addresses.");
+            default:
+                throw new InvalidOperationException(
+                    $"Notification:EmailProvider is '{provider}'. Known providers: smtp, log, or empty.");
         }
     }
 }

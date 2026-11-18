@@ -1,15 +1,19 @@
-// The account screen: set the username (AUTH-15), the password (AUTH-13), notifications (CLI-21) and building bots (CLI-23).
+// The account screen: set the username (AUTH-15), the password (AUTH-13), notifications (CLI-21), building bots (CLI-23)
+// and the mobile number of a level 1 user (CLI-34).
 import { api } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
+import { latinDigits } from "./digits.ts";
 import { h } from "./dom.ts";
+import type { TextKey } from "./i18n.ts";
 import { builderView } from "./panels.ts";
+import { solve } from "./pow.ts";
 import { currentPushState, turnOff, turnOn, type PushState } from "./push.ts";
 
 export function accountScreen(app: App): Screen {
   const t = app.language.t.bind(app.language);
 
-  /** A small form with its own "saved" and error line. */
-  function form(fields: (Node | string)[], action: () => Promise<void>): HTMLFormElement {
+  /** A small form with its own status line ("saved", or the text the action returns) and error line. */
+  function form(fields: (Node | string)[], action: () => Promise<TextKey | void>): HTMLFormElement {
     const status = h("p", { class: "note", role: "status" });
     const error = h("p", { class: "error", role: "alert" });
     const submit = h("button", { type: "submit", class: "primary" }, t("save"));
@@ -20,8 +24,7 @@ export function accountScreen(app: App): Screen {
         submit.disabled = true;
         status.textContent = error.textContent = "";
         try {
-          await action();
-          status.textContent = t("saved");
+          status.textContent = t((await action()) ?? "saved");
         } catch (failure) {
           error.textContent = t(errorText(failure));
         }
@@ -99,6 +102,37 @@ export function accountScreen(app: App): Screen {
     showPush(await currentPushState(key));
   }).catch(() => {});
 
+  // CLI-34: a level 1 user verifies a mobile number with an SMS code (AUTH-26). Step 1 sends the code, step 2 checks it.
+  const phone = h("input", {
+    id: "phone", type: "tel", inputmode: "tel", dir: "ltr", autocomplete: "tel", placeholder: "09121234567", required: true });
+  const phoneCode = h("input", {
+    id: "phone-code", type: "text", inputmode: "numeric", dir: "ltr", autocomplete: "one-time-code", hidden: true });
+  const phoneCodeLabel = h("label", { for: "phone-code", hidden: true }, t("code"));
+  let sentTo: string | null = null;
+  const phoneForm = form([
+    h("h2", {}, t("verifyPhone")), h("p", { class: "note" }, t("verifyPhoneNote")),
+    h("label", { for: "phone" }, t("phone")), phone, phoneCodeLabel, phoneCode,
+  ], async () => {
+    if (sentTo === null) {
+      const number = latinDigits(phone.value);
+      const { challenge, difficulty } = await api.challenge({ phone: number });
+      await api.sendCode(number, challenge, await solve(challenge, difficulty));
+      sentTo = number;
+      phone.disabled = true;
+      phoneCodeLabel.hidden = phoneCode.hidden = false;
+      phoneCode.required = true;
+      phoneButton.textContent = t("save");
+      phoneCode.focus();
+      return "codeSent";
+    }
+    app.user = await api.addPhone(sentTo, latinDigits(phoneCode.value));
+    phoneForm.hidden = true;
+    showBuilder();
+  });
+  const phoneButton = phoneForm.querySelector("button[type=submit]")!;
+  phoneButton.textContent = t("sendCode");
+  phoneForm.hidden = app.user.has_phone;
+
   // CLI-23: ask to become a builder, wait for the admin, or open "My bots". Admins also open the admin screen.
   const builderError = h("p", { class: "error", role: "alert" });
   const builderBody = h("div", { class: "column" });
@@ -117,6 +151,8 @@ export function accountScreen(app: App): Screen {
             }
           },
         }, t("askBuilder"))
+        : view === "phone"
+          ? h("p", { class: "note" }, t("phoneRequired"))
         : view === "waiting"
           ? h("p", { class: "note" }, t("builderWaiting"))
           : h("button", { type: "button", class: "primary", onclick: () => app.showPanel("builder") }, t("builderBots")),
@@ -131,7 +167,7 @@ export function accountScreen(app: App): Screen {
       h("button", { type: "button", class: "link", onclick: () => app.showPanel(null) }, t("back")),
       h("h1", {}, t("account"))),
     h("p", { class: "note", dir: "auto" }, app.user.name),
-    h("div", { class: "scroller" }, pushCard, usernameForm, passwordForm, builderCard));
+    h("div", { class: "scroller" }, pushCard, phoneForm, usernameForm, passwordForm, builderCard));
 
   return { element };
 }

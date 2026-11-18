@@ -1,6 +1,6 @@
 using Dalan.Identity.Keys;
 using Dalan.Identity.Sessions;
-using Dalan.Identity.SmsLogin;
+using Dalan.Identity.Codes;
 using Dalan.Identity.Users;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,6 +13,7 @@ public sealed class IdentityDb(DbContextOptions<IdentityDb> options) : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Session> Sessions => Set<Session>();
     public DbSet<SmsCode> SmsCodes => Set<SmsCode>();
+    public DbSet<EmailCode> EmailCodes => Set<EmailCode>();
     public DbSet<AccessKey> AccessKeys => Set<AccessKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -21,6 +22,8 @@ public sealed class IdentityDb(DbContextOptions<IdentityDb> options) : DbContext
         modelBuilder.Entity<User>(user =>
         {
             user.HasIndex(u => u.Phone).IsUnique();
+            user.HasIndex(u => u.Email).IsUnique();
+            user.ToTable(table => table.HasCheckConstraint("ck_users_phone_or_email", "phone IS NOT NULL OR email IS NOT NULL"));
             // Username is unique without regard to case: see the index on lower(username) in the first migration.
         });
         modelBuilder.Entity<Session>(session =>
@@ -38,7 +41,14 @@ public sealed class IdentityDb(DbContextOptions<IdentityDb> options) : DbContext
         });
         modelBuilder.Entity<SmsCode>(code =>
         {
-            code.HasIndex(c => new { c.Phone, c.CreatedAt });
+            code.Property(c => c.Target).HasColumnName("phone");
+            code.HasIndex(c => new { c.Target, c.CreatedAt });
+            code.HasIndex(c => c.CreatedAt);
+        });
+        modelBuilder.Entity<EmailCode>(code =>
+        {
+            code.Property(c => c.Target).HasColumnName("email");
+            code.HasIndex(c => new { c.Target, c.CreatedAt });
             code.HasIndex(c => c.CreatedAt);
         });
     }

@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 namespace Dalan.Admin.AccessLog;
 
 /// <summary>
-/// ADM-01, ADM-02, ADM-04: writes a row when a caller shows up at a new address, or at a known one after the interval.
+/// ADM-01, ADM-02, ADM-04, ADM-16: writes a row when a caller shows up at a new address, or at a known one after the interval.
 /// "Last written" is kept in memory, so almost every call costs one dictionary read.
 /// With several instances each has its own memory: there can be more rows, never fewer.
 /// </summary>
@@ -48,6 +48,15 @@ public sealed class AccessLogService(
 
         await InsertAsync(
             new AccessLogEntry { Actor = AccessActor.Phone, Phone = phone, Address = Normalize(address), Port = Port(port), At = time.GetUtcNow() },
+            cancellationToken);
+    }
+
+    public async ValueTask RecordEmailAsync(string email, IPAddress? address, int port, CancellationToken cancellationToken)
+    {
+        if (address is null) return;
+
+        await InsertAsync(
+            new AccessLogEntry { Actor = AccessActor.Email, Email = email, Address = Normalize(address), Port = Port(port), At = time.GetUtcNow() },
             cancellationToken);
     }
 

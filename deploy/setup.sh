@@ -74,6 +74,11 @@ Notification__Push__PrivateKey=$push_private
 # Notification__SmsProvider=kavenegar
 # Notification__Kavenegar__ApiKey=
 # Identity__AdminPhones=
+# Notification__EmailProvider=smtp
+# Notification__Smtp__Host=
+# Notification__Smtp__UserName=
+# Notification__Smtp__Password=
+# Notification__Smtp__From=Dalan <no-reply@dalanet.ir>
 ENV
   )
 fi

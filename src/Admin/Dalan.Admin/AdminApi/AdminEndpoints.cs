@@ -21,7 +21,8 @@ internal sealed record SuspendRequest(bool? Suspended);
 
 internal sealed record SettingsResponse(IEnumerable<SettingEntry> Settings);
 
-internal sealed record AccessRowJson(long Id, string Actor, long? ActorId, string? Phone, string Address, int? Port, DateTimeOffset At);
+internal sealed record AccessRowJson(
+    long Id, string Actor, long? ActorId, string? Phone, string? Email, string Address, int? Port, DateTimeOffset At);
 
 internal sealed record AuditRowJson(long Id, long UserId, string Action, string Target, string? Detail, DateTimeOffset At);
 
@@ -53,7 +54,7 @@ internal static class AdminEndpoints
         admin.MapPost("/showcase/{botId:long}", ReviewShowcaseAsync);
     }
 
-    private static readonly string[] AccessFilters = ["user", "bot", "phone", "address"];
+    private static readonly string[] AccessFilters = ["user", "bot", "phone", "email", "address"];
 
     private static IResult SettingNotFound() => AdminJson.NotFound("setting_not_found",
         "There is no editable setting with this key. GET /api/admin/settings lists them.");
@@ -94,13 +95,14 @@ internal static class AdminEndpoints
         return AdminJson.Ok(new RowsResponse<AuditRowJson>(rows));
     }
 
-    /// <summary>ADM-10: exactly one of user, bot, phone or address; newest first.</summary>
+    /// <summary>ADM-10: exactly one of user, bot, phone, email or address; newest first.</summary>
     private static async Task<IResult> AccessLogAsync(
         HttpContext http, IDbContextFactory<AdminDb> dbFactory, IUserAdmin users, IOptionsMonitor<AdminOptions> options)
     {
         var query = http.Request.Query;
         var filters = AccessFilters.Where(query.ContainsKey).ToList();
-        const string Help = "Send exactly one of user=<id>, bot=<id>, phone=<number> or address=<ip>, and optionally before=<row id>.";
+        const string Help =
+            "Send exactly one of user=<id>, bot=<id>, phone=<number>, email=<address> or address=<ip>, and optionally before=<row id>.";
         if (filters.Count != 1 || !TryNumber(query["before"], out var before)) return AdminJson.BadRequest(Help);
 
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
@@ -117,6 +119,10 @@ internal static class AdminEndpoints
                 if (users.NormalizePhone(text) is not { } phone) return AdminJson.BadRequest(Help);
                 rows = rows.Where(e => e.Phone == phone);
                 break;
+            case "email":
+                if (users.NormalizeEmail(text) is not { } email) return AdminJson.BadRequest(Help);
+                rows = rows.Where(e => e.Email == email);
+                break;
             default:
                 if (!IPAddress.TryParse(text, out var address)) return AdminJson.BadRequest(Help);
                 if (address.IsIPv4MappedToIPv6) address = address.MapToIPv4();
@@ -127,7 +133,7 @@ internal static class AdminEndpoints
         var page = await rows.OrderByDescending(e => e.Id).Take(options.CurrentValue.PageSize).ToListAsync(http.RequestAborted);
 #pragma warning disable CA1308 // Lower case names in JSON, like every other enum value of the API.
         return AdminJson.Ok(new RowsResponse<AccessRowJson>(page.Select(e => new AccessRowJson(
-            e.Id, e.Actor.ToString().ToLowerInvariant(), e.Actor == AccessActor.Phone ? null : e.ActorId, e.Phone,
+            e.Id, e.Actor.ToString().ToLowerInvariant(), e.Actor is AccessActor.Phone or AccessActor.Email ? null : e.ActorId, e.Phone, e.Email,
             e.Address.ToString(), e.Port, e.At))));
 #pragma warning restore CA1308
     }

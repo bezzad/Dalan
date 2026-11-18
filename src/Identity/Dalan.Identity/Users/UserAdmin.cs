@@ -14,8 +14,8 @@ internal sealed class UserAdmin(
     TimeProvider time) : IUserAdmin
 {
     /// <summary>AUTH-18: read on every call, so a change of the setting works at once.</summary>
-    public bool IsAdminPhone(string phone) =>
-        (options.CurrentValue.AdminPhones ?? "")
+    public bool IsAdminPhone(string? phone) =>
+        phone is not null && (options.CurrentValue.AdminPhones ?? "")
             .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
             .Any(p => PhoneNumber.Normalize(p) == phone);
 
@@ -36,6 +36,7 @@ internal sealed class UserAdmin(
     {
         var text = query.Trim();
         var phone = PhoneNumber.Normalize(text.Replace(" ", "", StringComparison.Ordinal));
+        var email = EmailAddress.Normalize(text);
         var id = long.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var number) ? number : -1;
 #pragma warning disable CA1308 // Usernames are compared in lower case, as the unique index does (AUTH-01).
         var lower = text.ToLowerInvariant();
@@ -45,7 +46,8 @@ internal sealed class UserAdmin(
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         return await Shape(db.Users
 #pragma warning disable CA1304, CA1311, CA1862 // Runs in PostgreSQL.
-                .Where(u => u.Id == id || u.Phone == phone || (u.Username != null && u.Username.ToLower() == lower)
+                .Where(u => u.Id == id || (phone != null && u.Phone == phone) || (email != null && u.Email == email)
+                    || (u.Username != null && u.Username.ToLower() == lower)
                     || u.DisplayName.StartsWith(text))
 #pragma warning restore CA1304, CA1311, CA1862
                 .OrderBy(u => u.Id)
@@ -93,8 +95,8 @@ internal sealed class UserAdmin(
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
         return user is null ? null : new ProfileJson(
-            user.Id, user.DisplayName, user.Username, user.PasswordHash != null, IsAdminPhone(user.Phone),
-            BuilderName(user.Builder));
+            user.Id, user.DisplayName, user.Username, user.Email, user.PasswordHash != null, user.Phone != null,
+            IsAdminPhone(user.Phone), BuilderName(user.Builder));
     }
 
     private static string BuilderName(BuilderState state) => state switch
@@ -106,9 +108,11 @@ internal sealed class UserAdmin(
 
     public string? NormalizePhone(string? input) => PhoneNumber.Normalize(input?.Replace(" ", "", StringComparison.Ordinal));
 
+    public string? NormalizeEmail(string? input) => EmailAddress.Normalize(input);
+
     private static Task<AdminUser?> FindAsync(IdentityDb db, long userId, CancellationToken cancellationToken) =>
         Shape(db.Users.Where(u => u.Id == userId)).FirstOrDefaultAsync(cancellationToken);
 
     private static IQueryable<AdminUser> Shape(IQueryable<User> users) => users.AsNoTracking().Select(u => new AdminUser(
-        u.Id, u.Phone, u.DisplayName, u.Username, u.CreatedAt, u.Builder, u.BuilderRequestedAt, u.SuspendedAt != null));
+        u.Id, u.Phone, u.Email, u.DisplayName, u.Username, u.CreatedAt, u.Builder, u.BuilderRequestedAt, u.SuspendedAt != null));
 }

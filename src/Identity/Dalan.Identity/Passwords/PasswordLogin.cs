@@ -48,11 +48,11 @@ internal sealed class PasswordTries(IOptionsMonitor<IdentityOptions> options) : 
     }
 }
 
-/// <summary>AUTH-14: login with the phone number or the username, and the password.</summary>
+/// <summary>AUTH-14: login with the phone number, the email address or the username, and the password.</summary>
 internal static class PasswordLogin
 {
-    /// <summary>Longer than any phone number or username; a longer login cannot be a real one.</summary>
-    private const int MaxLoginLength = 64;
+    /// <summary>The longest email address; a longer login cannot be a real one.</summary>
+    private const int MaxLoginLength = 254;
 
     private sealed record Request(string? Login, string? Password);
 
@@ -75,15 +75,16 @@ internal static class PasswordLogin
         if (login.Length is 0 or > MaxLoginLength || password.Length == 0)
         {
             return AuthJson.BadRequest("bad_request",
-                """Send JSON like {"login": "09121234567", "password": "..."}. The login is the phone number or the username.""");
+                """Send JSON like {"login": "09121234567", "password": "..."}. The login is the phone number, the email or the username.""");
         }
 
         var phone = PhoneNumber.Normalize(login);
+        var email = EmailAddress.Normalize(login);
 #pragma warning disable CA1308 // Usernames are compared in lower case, as the unique index does (AUTH-01).
         var name = login.ToLowerInvariant();
 #pragma warning restore CA1308
         var address = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        if (tries.Check(phone ?? name, address) is { } wait)
+        if (tries.Check(phone ?? email ?? name, address) is { } wait)
         {
             log.LoginFailed(SessionTokens.ByPassword, "too many tries");
             return AuthJson.TooManyRequests(http, "rate_limited", wait,
@@ -93,7 +94,9 @@ internal static class PasswordLogin
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
         var user = await db.Users
 #pragma warning disable CA1304, CA1311, CA1862 // This runs in PostgreSQL as lower(username), which the unique index covers.
-            .Where(u => phone != null ? u.Phone == phone : u.Username != null && u.Username.ToLower() == name)
+            .Where(u => phone != null ? u.Phone == phone
+                : email != null ? u.Email == email
+                : u.Username != null && u.Username.ToLower() == name)
 #pragma warning restore CA1304, CA1311, CA1862
             .Select(u => new { u.Id, u.PasswordHash, Suspended = u.SuspendedAt != null })
             .FirstOrDefaultAsync(http.RequestAborted);

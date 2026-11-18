@@ -9,11 +9,14 @@ public sealed class AccessLogEntry
     public long Id { get; set; }
     public AccessActor Actor { get; set; }
 
-    /// <summary>The user or bot id; 0 for a phone number.</summary>
+    /// <summary>The user or bot id; 0 for a phone number or an email address.</summary>
     public long ActorId { get; set; }
 
     /// <summary>Only for <see cref="AccessActor.Phone"/>: the number the login code was sent to.</summary>
     public string? Phone { get; set; }
+
+    /// <summary>Only for <see cref="AccessActor.Email"/>: the address the login code was sent to.</summary>
+    public string? Email { get; set; }
 
     public required IPAddress Address { get; set; }
 
