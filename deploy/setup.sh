@@ -16,7 +16,9 @@ here="$(cd "$(dirname "$0")" && pwd)"
 root="${DALAN_ROOT:-}"
 
 echo "Packages (from the Ubuntu mirror)"
-DEBIAN_FRONTEND=noninteractive apt-get install -y -q postgresql curl nftables openssl
+# .NET needs ICU; its package name has the version in it (libicu74 on 24.04), so ask apt for the one this Ubuntu has.
+icu=$(apt-cache search --names-only '^libicu[0-9]+$' | awk '{ print $1 }' | sort -V | tail -n 1)
+DEBIAN_FRONTEND=noninteractive apt-get install -y -q postgresql curl nftables openssl $icu
 
 swap_mb="${SWAP_MB:-2048}"
 memory_mb=$(awk '/^MemTotal:/ { print int($2 / 1024) }' "${MEMINFO:-/proc/meminfo}")

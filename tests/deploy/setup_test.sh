@@ -15,6 +15,7 @@ echo 'ssh-ed25519 AAAA ci-deploy' > "$src/deploy.pub"
 
 log() { printf '#!/bin/sh\necho "%s $*" >> %s/commands.log\n%s\n' "$1" "$state" "${2:-}" > "$bin/$1"; }
 log apt-get
+log apt-cache 'printf "libicu74 - International Components for Unicode\nlibicu76 - International Components for Unicode\n"'
 log swapon
 log fallocate 'touch "$3"'
 log mkswap
@@ -54,7 +55,7 @@ done
 for cmd in 'systemctl enable dalan.service' 'systemctl enable caddy.service' 'systemctl enable --now dalan-backup.timer' 'useradd --system' 'apt-get install'; do
   grep -qF "$cmd" "$state/commands.log" || fail "not run: $cmd"
 done
-grep -q 'postgresql' "$state/commands.log" || fail "PostgreSQL not installed"
+grep -q 'apt-get install .*postgresql.* libicu76$' "$state/commands.log" || fail "PostgreSQL and the newest ICU not installed: $(grep apt-get "$state/commands.log")"
 grep -qx 'DALAN_SITE_DOMAIN=dalanet.ir' "$root/etc/dalan/caddy.env" || fail "site domain not set for Caddy"
 grep -qx 'DALAN_API_DOMAIN=api.dalanet.ir' "$root/etc/dalan/caddy.env" || fail "api domain not set for Caddy"
 [ -x "$root/usr/local/bin/caddy" ] || fail "caddy not installed"
