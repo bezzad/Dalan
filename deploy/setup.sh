@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Prepare a fresh Ubuntu server for the first deploy (OPS-09, OPS-10, OPS-13, OPS-14). Run as root, on the server.
+# Safe to run again: it never changes a line of an existing /etc/dalan/dalan.env (it may add the mail lines).
 # deploy/install.sh copies this folder and the Caddy binary to the server and runs it.
 #
 # Usage: setup.sh <site domain> <api domain> <deploy public key file>
@@ -92,7 +93,6 @@ Notification__Smtp__StartTls=false
 Notification__Smtp__From=Dalan <no-reply@$site>
 ENV
 fi
-
 chown root:dalan "$env_file"
 chmod 640 "$env_file"
 
