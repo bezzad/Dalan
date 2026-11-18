@@ -293,8 +293,8 @@ form.row > button:not(.primary) { padding: 8px 10px; }
 .card .setting button { flex: none; margin: 0; min-height: 36px; padding: 4px 10px; }
 .log { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 select { font: inherit; color: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: transparent; }
-/* Public pages (CLI-26 to CLI-28) and the showcase parts (CLI-29). They follow the theme (CLI-35). */
-/* Public pages: the document itself scrolls; the header stays on top. */
+/* Public pages (CLI-26 to CLI-28) and the showcase parts (CLI-29) follow the theme (CLI-35).
+   The document itself scrolls; the header stays on top. */
 main.public { --gutter: max(16px, calc((100vw - var(--page-width)) / 2)); height: auto; min-height: 100dvh; padding-block-end: 0; overflow-x: clip; }
 body.offline main.public { height: auto; }
 main.public > .scroller { flex: none; overflow: visible; }
