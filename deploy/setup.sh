@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Prepare a fresh Ubuntu server for the first deploy (OPS-09, OPS-10). Run as root, on the server.
-# Safe to run again: it never changes an existing /etc/dalan/dalan.env.
+# Prepare a fresh Ubuntu server for the first deploy (OPS-09, OPS-10, OPS-13). Run as root, on the server.
+# Safe to run again: it never changes a line of an existing /etc/dalan/dalan.env (it may add the mail lines).
 # deploy/install.sh copies this folder and the Caddy binary to the server and runs it.
 #
 # Usage: setup.sh <site domain> <api domain> <deploy public key file>
@@ -19,7 +19,9 @@ echo "Packages (from the Ubuntu mirror)"
 apt-get update -q
 # .NET needs ICU; its package name has the version in it (libicu74 on 24.04), so ask apt for the one this Ubuntu has.
 icu=$(apt-cache search --names-only '^libicu[0-9]+$' | awk '{ print $1 }' | sort -V | tail -n 1)
-DEBIAN_FRONTEND=noninteractive apt-get install -y -q postgresql curl nftables openssl $icu
+# Postfix asks questions while it installs; these are the answers.
+printf 'postfix postfix/main_mailer_type select Internet Site\npostfix postfix/mailname string %s\n' "$site" | debconf-set-selections
+DEBIAN_FRONTEND=noninteractive apt-get install -y -q postgresql curl nftables openssl $icu postfix opendkim opendkim-tools
 
 swap_mb="${SWAP_MB:-2048}"
 memory_mb=$(awk '/^MemTotal:/ { print int($2 / 1024) }' "${MEMINFO:-/proc/meminfo}")
@@ -74,13 +76,20 @@ Notification__Push__PrivateKey=$push_private
 # Notification__SmsProvider=kavenegar
 # Notification__Kavenegar__ApiKey=
 # Identity__AdminPhones=
-# Notification__EmailProvider=smtp
-# Notification__Smtp__Host=
-# Notification__Smtp__UserName=
-# Notification__Smtp__Password=
-# Notification__Smtp__From=Dalan <no-reply@dalanet.ir>
 ENV
   )
+fi
+if ! grep -q '^Notification__Smtp__Host=' "$env_file"; then
+  echo "Email lines (added to $env_file)"
+  cat >> "$env_file" <<ENV
+# Login emails go through the Postfix of this server (made by deploy/setup.sh).
+Notification__EmailProvider=smtp
+Notification__Smtp__Host=127.0.0.1
+Notification__Smtp__Port=25
+Notification__Smtp__StartTls=false
+Notification__Smtp__From=Dalan <no-reply@$site>
+ENV
+  mail_added=yes
 fi
 chown root:dalan "$env_file"
 chmod 640 "$env_file"
@@ -89,6 +98,34 @@ echo "Database"
 if [ -z "$(sql "SELECT 1 FROM pg_database WHERE datname = 'dalan'")" ]; then
   sql "CREATE DATABASE dalan OWNER dalan"
 fi
+
+echo "Mail (send only, signed with DKIM)"
+# Only Dalan on this server may send; nothing listens outside. IPv4 only: the address has a reverse DNS name.
+postconf -e "myhostname = $site" "myorigin = $site" "mydestination = localhost" "inet_interfaces = loopback-only" \
+  "inet_protocols = ipv4" "smtp_tls_security_level = may" "smtpd_milters = inet:127.0.0.1:8891" \
+  'non_smtpd_milters = $smtpd_milters' "milter_default_action = accept"
+dkim_key="$root/etc/dkimkeys/dalan.private"
+if [ ! -f "$dkim_key" ]; then
+  install -d -m 700 -o opendkim -g opendkim "$root/etc/dkimkeys"
+  opendkim-genkey -b 2048 -D "$root/etc/dkimkeys" -d "$site" -s dalan
+  chown opendkim:opendkim "$dkim_key"
+fi
+cat > "$root/etc/opendkim.conf" <<CONF
+# Made by deploy/setup.sh.
+Syslog yes
+UMask 007
+UserID opendkim
+PidFile /run/opendkim/opendkim.pid
+Mode s
+Domain $site
+Selector dalan
+KeyFile /etc/dkimkeys/dalan.private
+Socket inet:8891@127.0.0.1
+Canonicalization relaxed/simple
+OversignHeaders From
+CONF
+systemctl enable opendkim.service postfix.service
+systemctl restart opendkim.service postfix.service
 
 echo "Caddy and units"
 install -m 755 "$here/caddy" "$root/usr/local/bin/caddy"
@@ -106,5 +143,18 @@ systemctl enable dalan.service
 systemctl enable --now dalan-backup.timer
 systemctl enable caddy.service
 systemctl restart caddy.service
+# A running Dalan reads the new email lines only after a restart.
+[ -z "${mail_added:-}" ] || systemctl try-restart dalan.service
 
+# The key file has the record in quoted pieces; DNS panels want one line.
+dkim_record=$(tr -d '\n' < "$root/etc/dkimkeys/dalan.txt" | grep -o '"[^"]*"' | tr -d '"\t\n ' | sed 's/;/; /g; s/ $//')
+cat <<DNS
+
+DNS records for $site (TXT):
+  $site                      v=spf1 a -all
+  dalan._domainkey.$site     $dkim_record
+  _dmarc.$site               v=DMARC1; p=none
+Reverse DNS (provider panel): the server address -> $site
+
+DNS
 echo "Done. Next: fill in $env_file, then run the deploy from CI."
