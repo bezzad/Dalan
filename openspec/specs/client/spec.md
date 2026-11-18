@@ -328,7 +328,7 @@ A visitor who is not logged in SHALL see at `/` a landing page in the current th
 
 #### Scenario: Three messages in order
 - **WHEN** the landing texts are read in Persian or English
-- **THEN** they are, in this order: run your app from your own computer; real users verified by mobile number without building SMS login; keeps working when international internet is cut. None says "tunnel"
+- **THEN** they are, in this order: run your app from your own computer; real users verified by email or SMS without building a login; keeps working when international internet is cut. None says "tunnel"
 
 #### Scenario: Diagram parts
 - **WHEN** the bot card picture is read in Persian or English
