@@ -4,8 +4,9 @@
 # deploy/install.sh copies this folder and the Caddy binary to the server and runs it.
 #
 # Usage: setup.sh <site domain> <api domain> <deploy public key file>
-# Optional settings.env next to this script (install.sh writes it): ADMIN_PHONES, SMS (log or kavenegar), KAVENEGAR_KEY.
-#   They are written into dalan.env, each run. SMS=log sends login codes only to ADMIN_PHONES, into the log.
+# Optional settings.env next to this script (install.sh writes it): ADMIN_PHONES, SMS (log or kavenegar), KAVENEGAR_KEY,
+#   ROTATE_SECRETS=1. They are written into dalan.env, each run. SMS=log sends login codes only to ADMIN_PHONES, into the log.
+#   ROTATE_SECRETS=1 makes new secrets (database password, signing key, push keys) in an existing dalan.env.
 # Settings (environment):
 #   SWAP_MB      default 2048. A server with less memory than this and no swap gets a swap file of this size.
 #   DALAN_ROOT   for tests only (default empty, the real /); MEMINFO for tests only (default /proc/meminfo)
@@ -55,26 +56,18 @@ hex_bytes() { local hex; hex=$(cat); printf '%b' "$(printf '%s' "$hex" | sed 's/
 sql() { sudo -u postgres psql -Atq -c "$1"; }
 
 env_file="$root/etc/dalan/dalan.env"
+# Replace the line "$1=..." in dalan.env (or add it); with no $2, only remove it. Keeps the file's owner and mode.
+set_env() {
+  local lines
+  lines=$(grep -v "^$1=" "$env_file" || true)
+  { printf '%s\n' "$lines"; [ $# -lt 2 ] || printf '%s=%s\n' "$1" "$2"; } > "$env_file"
+}
+[ ! -f "$here/settings.env" ] || . "$here/settings.env"
+
 if [ ! -f "$env_file" ]; then
-  echo "Secrets (new $env_file)"
-  password=$(openssl rand -hex 24)
-  # .NET reads the signing key as PKCS#8; genpkey alone writes SEC1 in DER.
-  signing_key=$(openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 | openssl pkcs8 -topk8 -nocrypt -outform DER | base64 -w0)
-  # A P-256 private key in DER (SEC1): the 32 private bytes start at byte 7, the last 65 bytes are the public key.
-  der=$(openssl ecparam -name prime256v1 -genkey -noout -outform DER | od -An -tx1 -v | tr -d ' \n')
-  push_private=$(printf '%s' "${der:14:64}" | hex_bytes | base64url)
-  push_public=$(printf '%s' "${der: -130}" | hex_bytes | base64url)
-  if [ -z "$(sql "SELECT 1 FROM pg_roles WHERE rolname = 'dalan'")" ]; then
-    sql "CREATE ROLE dalan LOGIN PASSWORD '$password'"
-  else
-    sql "ALTER ROLE dalan LOGIN PASSWORD '$password'"
-  fi
-  (umask 027 && cat > "$env_file" <<ENV
+  echo "New $env_file"
+  (umask 027 && cat > "$env_file" <<'ENV'
 # Dalan server secrets. Made by deploy/setup.sh; never commit this file.
-ConnectionStrings__Dalan=Host=localhost;Database=dalan;Username=dalan;Password=$password
-Identity__SigningKey=$signing_key
-Notification__Push__PublicKey=$push_public
-Notification__Push__PrivateKey=$push_private
 # After a change by hand: sudo systemctl restart dalan
 # SMS and admin phones: install.sh sets them (ADMIN_PHONES, SMS, KAVENEGAR_KEY), or by hand:
 # Notification__SmsProvider=kavenegar
@@ -88,30 +81,40 @@ Notification__Push__PrivateKey=$push_private
 # Notification__Smtp__From=Dalan <no-reply@dalanet.ir>
 ENV
   )
+  ROTATE_SECRETS=1
 fi
 chown root:dalan "$env_file"
 chmod 640 "$env_file"
 
-# Replace the line "$1=..." in dalan.env (or add it); with no $2, only remove it. Keeps the file's owner and mode.
-set_env() {
-  local lines
-  lines=$(grep -v "^$1=" "$env_file" || true)
-  { printf '%s\n' "$lines"; [ $# -lt 2 ] || printf '%s=%s\n' "$1" "$2"; } > "$env_file"
-}
-if [ -f "$here/settings.env" ]; then
-  echo "Settings from install.sh"
-  . "$here/settings.env"
-  [ -z "${ADMIN_PHONES:-}" ] || set_env Identity__AdminPhones "$ADMIN_PHONES"
-  [ -z "${KAVENEGAR_KEY:-}" ] || set_env Notification__Kavenegar__ApiKey "$KAVENEGAR_KEY"
-  case "${SMS:-}" in
-    "") ;;
-    log) set_env Notification__SmsProvider log
-         set_env Notification__LogSmsPhones "${ADMIN_PHONES:?SMS=log needs ADMIN_PHONES}" ;;
-    kavenegar) set_env Notification__SmsProvider kavenegar
-               set_env Notification__LogSmsPhones ;;
-    *) echo "SMS must be log or kavenegar, not '$SMS'" >&2; exit 2 ;;
-  esac
+if [ "${ROTATE_SECRETS:-}" = 1 ]; then
+  # New secrets: database password, signing key (everyone logs in again), push keys (browsers subscribe again).
+  echo "Secrets (new)"
+  password=$(openssl rand -hex 24)
+  # .NET reads the signing key as PKCS#8; genpkey alone writes SEC1 in DER.
+  signing_key=$(openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 | openssl pkcs8 -topk8 -nocrypt -outform DER | base64 -w0)
+  # A P-256 private key in DER (SEC1): the 32 private bytes start at byte 7, the last 65 bytes are the public key.
+  der=$(openssl ecparam -name prime256v1 -genkey -noout -outform DER | od -An -tx1 -v | tr -d ' \n')
+  if [ -z "$(sql "SELECT 1 FROM pg_roles WHERE rolname = 'dalan'")" ]; then
+    sql "CREATE ROLE dalan LOGIN PASSWORD '$password'"
+  else
+    sql "ALTER ROLE dalan LOGIN PASSWORD '$password'"
+  fi
+  set_env ConnectionStrings__Dalan "Host=localhost;Database=dalan;Username=dalan;Password=$password"
+  set_env Identity__SigningKey "$signing_key"
+  set_env Notification__Push__PublicKey "$(printf '%s' "${der: -130}" | hex_bytes | base64url)"
+  set_env Notification__Push__PrivateKey "$(printf '%s' "${der:14:64}" | hex_bytes | base64url)"
 fi
+
+[ -z "${ADMIN_PHONES:-}" ] || set_env Identity__AdminPhones "$ADMIN_PHONES"
+[ -z "${KAVENEGAR_KEY:-}" ] || set_env Notification__Kavenegar__ApiKey "$KAVENEGAR_KEY"
+case "${SMS:-}" in
+  "") ;;
+  log) set_env Notification__SmsProvider log
+       set_env Notification__LogSmsPhones "${ADMIN_PHONES:?SMS=log needs ADMIN_PHONES}" ;;
+  kavenegar) set_env Notification__SmsProvider kavenegar
+             set_env Notification__LogSmsPhones ;;
+  *) echo "SMS must be log or kavenegar, not '$SMS'" >&2; exit 2 ;;
+esac
 
 echo "Database"
 if [ -z "$(sql "SELECT 1 FROM pg_database WHERE datname = 'dalan'")" ]; then

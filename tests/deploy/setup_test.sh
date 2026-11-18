@@ -137,6 +137,24 @@ bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null 2>&
 rm "$src/settings.env"
 echo "PASS OPS-10 settings from install.sh"
 
+# Rule: OPS-10 secrets can be made again
+old_secrets=$(grep -E '^(ConnectionStrings__Dalan|Identity__SigningKey|Notification__Push__(Public|Private)Key)=' "$env_file")
+printf 'ROTATE_SECRETS=1\n' > "$src/settings.env"
+: > "$state/commands.log"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || fail "run with ROTATE_SECRETS failed"
+rm "$src/settings.env"
+for key in ConnectionStrings__Dalan Identity__SigningKey Notification__Push__PublicKey Notification__Push__PrivateKey; do
+  [ "$(grep -c "^$key=" "$env_file")" = 1 ] || fail "$key should be in dalan.env once"
+  printf '%s\n' "$old_secrets" | grep -qxF "$(grep "^$key=" "$env_file")" && fail "$key not made again"
+done
+password=$(sed -nE 's/.*Password=(.*)/\1/p' "$env_file")
+grep -qF "ALTER ROLE dalan LOGIN PASSWORD '$password'" "$state/commands.log" || fail "database password not changed"
+signing=$(sed -nE 's/^Identity__SigningKey=(.*)/\1/p' "$env_file")
+echo "$signing" | base64 -d | openssl pkey -inform DER -noout 2>/dev/null || fail "new signing key is not a key"
+grep -qx 'Notification__Kavenegar__ApiKey=new-key' "$env_file" || fail "other settings lost"
+[ "$(stat -c %a "$env_file")" = 640 ] || fail "dalan.env mode changed"
+echo "PASS OPS-10 secrets can be made again"
+
 # Rule: OPS-09 install.sh downloads Caddy on the owner's machine (the CI version, checked) and runs setup over SSH
 inst="$tmp/inst"; mkdir -p "$inst/bin"
 ci_version=$(sed -nE 's/^ *CADDY_VERSION: "(.*)"/\1/p' "$deploy/../.github/workflows/ci.yml")

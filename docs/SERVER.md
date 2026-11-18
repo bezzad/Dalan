@@ -53,6 +53,8 @@ SMS=kavenegar bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.
 
 Without an SMS provider nobody can log in: the first login is always by SMS.
 
+If the secrets in `dalan.env` were seen by someone else (for example pasted in a chat), make new ones: `ROTATE_SECRETS=1 bash deploy/install.sh ...` (same arguments). Everyone must log in again and browsers subscribe to push again.
+
 Email login is set by hand on the server (any SMTP service; port 587 with STARTTLS), then `sudo systemctl restart dalan`:
 
 ```bash
