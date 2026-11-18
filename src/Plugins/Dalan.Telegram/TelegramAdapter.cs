@@ -58,6 +58,7 @@ public static class TelegramAdapter
             "EDITMESSAGETEXT" => await call.EditAsync(withText: true),
             "EDITMESSAGEREPLYMARKUP" => await call.EditAsync(withText: false),
             "DELETEMESSAGE" => await call.ChangeAsync(Change.Delete),
+            "DELETEMESSAGES" => await call.DeleteManyAsync(),
             "PINCHATMESSAGE" => await call.ChangeAsync(Change.Pin),
             "UNPINCHATMESSAGE" or "UNPINALLCHATMESSAGES" => await call.ChangeAsync(Change.Unpin),
             "ANSWERCALLBACKQUERY" => await call.AnswerAsync(),
@@ -67,6 +68,7 @@ public static class TelegramAdapter
             "GETFILE" => await call.GetFileAsync(),
             // TG-09: Dalan has no webhook to delete, and shows no "typing" yet. Libraries call both and expect true.
             "DELETEWEBHOOK" or "SENDCHATACTION" => TelegramJson.Ok(true),
+            "SETCHATMENUBUTTON" => call.SetMenuButton(),
             _ => TelegramJson.BadRequest($"method {method} is not supported by Dalan"),
         };
     }
@@ -179,6 +181,45 @@ public static class TelegramAdapter
             return error == BotError.None
                 ? TelegramJson.Ok(true)
                 : ErrorOf(error, change == Change.Delete ? "delete" : "pin", withFile: false);
+        }
+
+        /// <summary>TG-17: Telegram allows 1 to 100 ids and skips the ones it cannot find.</summary>
+        public async Task<IResult> DeleteManyAsync()
+        {
+            if (parameters.Number("chat_id") is not { } userId) return TelegramJson.BadRequest("chat not found");
+
+            List<long> ids;
+            try
+            {
+                ids = parameters.TryArray("message_ids", out var given) && given is { } list
+                    ? list.Deserialize<List<long>>(TelegramJson.ReadOptions)!
+                    : [];
+            }
+            catch (JsonException)
+            {
+                ids = [];
+            }
+
+            if (ids.Count is < 1 or > 100) return TelegramJson.BadRequest("message_ids must be a JSON list of 1 to 100 message ids");
+
+            foreach (var id in ids)
+            {
+                var error = await gateway.DeleteAsync(bot.Id, userId, id, cancellationToken);
+                if (error is not BotError.None and not BotError.MessageNotFound) return ErrorOf(error, "delete", withFile: false);
+            }
+
+            return TelegramJson.Ok(true);
+        }
+
+        /// <summary>TG-09: Dalan's chat already offers the bot's commands; it has no Mini Apps yet.</summary>
+        public IResult SetMenuButton()
+        {
+            if (!parameters.TryObject("menu_button", out var button)) return TelegramJson.BadRequest("can't parse menu_button: it must be a JSON object");
+
+            var type = button is { } b && b.TryGetProperty("type", out var t) ? t.GetString() : "default";
+            return type is "commands" or "default"
+                ? TelegramJson.Ok(true)
+                : TelegramJson.BadRequest($"{type} menu button is not supported by Dalan");
         }
 
         /// <summary>TG-15.</summary>
