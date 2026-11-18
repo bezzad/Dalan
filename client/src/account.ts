@@ -4,6 +4,7 @@ import { api } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { latinDigits } from "./digits.ts";
 import { h } from "./dom.ts";
+import type { TextKey } from "./i18n.ts";
 import { builderView } from "./panels.ts";
 import { solve } from "./pow.ts";
 import { currentPushState, turnOff, turnOn, type PushState } from "./push.ts";
@@ -11,8 +12,8 @@ import { currentPushState, turnOff, turnOn, type PushState } from "./push.ts";
 export function accountScreen(app: App): Screen {
   const t = app.language.t.bind(app.language);
 
-  /** A small form with its own "saved" and error line. */
-  function form(fields: (Node | string)[], action: () => Promise<void>): HTMLFormElement {
+  /** A small form with its own status line ("saved", or the text the action returns) and error line. */
+  function form(fields: (Node | string)[], action: () => Promise<TextKey | void>): HTMLFormElement {
     const status = h("p", { class: "note", role: "status" });
     const error = h("p", { class: "error", role: "alert" });
     const submit = h("button", { type: "submit", class: "primary" }, t("save"));
@@ -23,8 +24,7 @@ export function accountScreen(app: App): Screen {
         submit.disabled = true;
         status.textContent = error.textContent = "";
         try {
-          await action();
-          status.textContent = t("saved");
+          status.textContent = t((await action()) ?? "saved");
         } catch (failure) {
           error.textContent = t(errorText(failure));
         }
@@ -123,7 +123,7 @@ export function accountScreen(app: App): Screen {
       phoneCode.required = true;
       phoneButton.textContent = t("save");
       phoneCode.focus();
-      return;
+      return "codeSent";
     }
     app.user = await api.addPhone(sentTo, latinDigits(phoneCode.value));
     phoneForm.hidden = true;
