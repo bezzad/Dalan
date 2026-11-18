@@ -201,7 +201,7 @@ The client is one PWA at `dalanet.ir`, served by the same server. Persian (right
 
 Two levels (owner, 2026-11-18):
 
-- **Level 1:** login with a one-time code sent by email. The user can use bots. The login screen says to check the spam folder too.
+- **Level 1:** "Log in with GitHub", or a one-time code sent by email. The user can use bots. The login screen says to check the spam folder too.
 - **Level 2:** a verified Iranian mobile number (SMS code), at sign-up or later from the account screen. Only level 2 can ask to become a builder, because by law the owner of a bot or site must be known by phone.
 
 **Login flow:**
@@ -231,6 +231,8 @@ Two levels (owner, 2026-11-18):
 **Built in milestone 8:** builder request and admin approval, admins by phone number (`Identity:AdminPhones`), suspend for users and bots.
 
 **Built with email login (2026-11-18):** level 1 email login, level 2 phone step, password login by email. Email goes through `IEmailSender` (SMTP).
+
+**Built with GitHub login (2026-11-18):** the login screen is one card like ngrok: "Log in with GitHub", "or", email, and small links to SMS and password. GitHub needs a verified email; the same email is the same user. GitHub can be cut off from Iran, so email and SMS always stay.
 
 **Layer 2: "Login with Dalan".** An app on its own domain cannot read Dalan's cookie. It sends the user to Dalan's login page and gets a token back. This is OAuth 2 with PKCE (OpenID Connect).
 

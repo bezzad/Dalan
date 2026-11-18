@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Prepare a fresh Ubuntu server for the first deploy (OPS-09, OPS-10, OPS-13). Run as root, on the server.
+# Prepare a fresh Ubuntu server for the first deploy (OPS-09, OPS-10, OPS-13, OPS-14). Run as root, on the server.
 # Safe to run again: it never changes a line of an existing /etc/dalan/dalan.env (it may add the mail lines).
 # deploy/install.sh copies this folder and the Caddy binary to the server and runs it.
 #
 # Usage: setup.sh <site domain> <api domain> <deploy public key file>
 # Optional settings.env next to this script (install.sh writes it): ADMIN_PHONES, SMS (log or kavenegar), KAVENEGAR_KEY,
-#   ROTATE_SECRETS=1. They are written into dalan.env, each run. SMS=log sends login codes only to ADMIN_PHONES, into the log.
+#   ROTATE_SECRETS=1, GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET. They are written into dalan.env, each run. SMS=log sends login codes only to ADMIN_PHONES, into the log.
 #   ROTATE_SECRETS=1 makes new secrets (database password, signing key, push keys) in an existing dalan.env.
 # Settings (environment):
 #   SWAP_MB      default 2048. A server with less memory than this and no swap gets a swap file of this size.
@@ -125,6 +125,12 @@ case "${SMS:-}" in
              set_env Notification__LogSmsPhones ;;
   *) echo "SMS must be log or kavenegar, not '$SMS'" >&2; exit 2 ;;
 esac
+# OPS-14: "Log in with GitHub". The callback address must be the one in the GitHub OAuth app.
+if [ -n "${GITHUB_CLIENT_ID:-}" ] && [ -n "${GITHUB_CLIENT_SECRET:-}" ]; then
+  set_env Identity__GitHub__ClientId "$GITHUB_CLIENT_ID"
+  set_env Identity__GitHub__ClientSecret "$GITHUB_CLIENT_SECRET"
+  set_env Identity__GitHub__CallbackUrl "https://$site/api/auth/github/callback"
+fi
 
 echo "Database"
 if [ -z "$(sql "SELECT 1 FROM pg_database WHERE datname = 'dalan'")" ]; then

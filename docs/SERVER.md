@@ -85,6 +85,20 @@ journalctl -u postfix -n 30                                                     
 
 Then log in with your Gmail address on the site; in Gmail, "Show original" should say SPF, DKIM and DMARC: PASS. Mail from a new address often lands in spam; the login screen tells people to look there. When the international internet is cut, foreign mailboxes cannot be reached, so email login stops and SMS login keeps working. To test without mail: `Notification__EmailProvider=log` and `Notification__LogEmailAddresses=<your email>` at the end of `dalan.env`, then `journalctl -u dalan | grep "login code"`. An email user (level 1) can use bots; to build bots the user must verify a mobile number in the account screen (level 2).
 
+### Log in with GitHub (optional)
+
+1. On GitHub: Settings, Developer settings, OAuth Apps, **New OAuth App** (direct link: https://github.com/settings/applications/new).
+2. Application name `Dalan`; Homepage URL `https://dalanet.ir`; Authorization callback URL `https://dalanet.ir/api/auth/github/callback` (your site domain). Leave "Enable Device Flow" off. **Register application**.
+3. Copy the **Client ID**. Press **Generate a new client secret** and copy it (GitHub shows it once).
+4. On your own machine, run `install.sh` again with the two values. It writes them into `dalan.env` and restarts Dalan; nothing else changes:
+
+   ```bash
+   GITHUB_CLIENT_ID=<client id> GITHUB_CLIENT_SECRET=<client secret> \
+     bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
+   ```
+
+The login card then shows "Log in with GitHub" first. GitHub users are level 1, like email users. When the international internet is cut, GitHub cannot be reached and the card says to use email or SMS.
+
 ## 3. Deploy
 
 GitHub, repository Settings, Environments, `production` (create it if missing), secrets:

@@ -12,6 +12,7 @@
 #   SMS             log (codes only to ADMIN_PHONES, in the server log; before the provider is ready) or kavenegar
 #   KAVENEGAR_KEY   the Kavenegar API key
 #   ROTATE_SECRETS  1: new database password, signing key (everyone logs in again) and push keys
+#   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET   the GitHub OAuth app for "Log in with GitHub" (OPS-14; docs/SERVER.md)
 # Example: ADMIN_PHONES=09121234567 SMS=log deploy/install.sh root@203.0.113.10 dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
 set -euo pipefail
 
@@ -35,7 +36,7 @@ tar -xzf "$work/$file" -C "$work/dalan-setup" caddy
 cp "$here"/{setup.sh,backup.sh,drill.sh,Caddyfile,dalan.service,caddy.service,dalan-backup.service,dalan-backup.timer} "$work/dalan-setup/"
 cp "$key" "$work/dalan-setup/deploy.pub"
 # A file, not the command line, so the key is not visible in the server's process list.
-(umask 077 && for name in ADMIN_PHONES SMS KAVENEGAR_KEY ROTATE_SECRETS; do
+(umask 077 && for name in ADMIN_PHONES SMS KAVENEGAR_KEY ROTATE_SECRETS GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET; do
   [ -z "${!name:-}" ] || printf '%s=%q\n' "$name" "${!name}"
 done > "$work/dalan-setup/settings.env")
 

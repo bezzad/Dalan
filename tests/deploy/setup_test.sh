@@ -228,3 +228,33 @@ ADMIN_PHONES=09121234567 SMS=log KAVENEGAR_KEY='a b' PATH="$inst/bin:$PATH" \
   || fail "settings not passed: $(cat "$inst/copied/settings.env")"
 grep -q 'KAVENEGAR\|0912' "$inst/remote.log" && fail "settings on the command line"
 echo "PASS OPS-09 install.sh copies Caddy and runs setup"
+
+# Rule: OPS-14 GitHub settings set the GitHub lines and keep the rest
+cp "$env_file" "$tmp/env-before"
+printf 'GITHUB_CLIENT_ID=abc\nGITHUB_CLIENT_SECRET=s3\n' > "$src/settings.env"
+: > "$state/commands.log"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out3" || { cat "$tmp/out3"; fail "run with GitHub failed"; }
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out3" || { cat "$tmp/out3"; fail "second run with GitHub failed"; }
+[ "$(grep -c '^Identity__GitHub__ClientId=abc$' "$env_file")" = 1 ] || fail "client id: $(grep GitHub "$env_file")"
+[ "$(grep -c '^Identity__GitHub__ClientSecret=s3$' "$env_file")" = 1 ] || fail "client secret"
+[ "$(grep -c '^Identity__GitHub__CallbackUrl=https://dalanet.ir/api/auth/github/callback$' "$env_file")" = 1 ] || fail "callback url"
+diff <(grep -v '^Identity__GitHub__' "$env_file") <(grep -v '^Identity__GitHub__' "$tmp/env-before") > /dev/null || fail "other lines changed"
+[ "$(stat -c %a "$env_file")" = 640 ] || fail "dalan.env mode is $(stat -c %a "$env_file")"
+grep -qF 'systemctl try-restart dalan.service' "$state/commands.log" || fail "dalan not restarted"
+echo "PASS OPS-14 GitHub settings set the GitHub lines"
+
+# Rule: OPS-14 without GitHub settings dalan.env does not change
+rm "$src/settings.env"
+before=$(sha256sum < "$env_file")
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out4" || { cat "$tmp/out4"; fail "run without GitHub failed"; }
+[ "$(sha256sum < "$env_file")" = "$before" ] || fail "dalan.env changed without GitHub settings"
+echo "PASS OPS-14 no GitHub settings keep dalan.env"
+
+# Rule: OPS-14 install.sh sends the secret in a file, never on a command line
+rm -rf "$inst/copied" "$inst/remote.log"
+GITHUB_CLIENT_ID=abc GITHUB_CLIENT_SECRET=very-secret PATH="$inst/bin:$PATH" \
+  bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null || fail "install.sh with GitHub failed"
+grep -q 'very-secret' "$inst/remote.log" && fail "secret on a command line"
+( . "$inst/copied/settings.env" && [ "$GITHUB_CLIENT_ID" = abc ] && [ "$GITHUB_CLIENT_SECRET" = very-secret ] ) || fail "GitHub settings not sent"
+[ "$(stat -c %a "$inst/copied/settings.env")" = 600 ] || fail "settings.env mode is $(stat -c %a "$inst/copied/settings.env")"
+echo "PASS OPS-14 install.sh sends the GitHub secret in a file"

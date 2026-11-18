@@ -180,10 +180,20 @@ button.link { min-height: 0; padding: 4px 6px; border: 0; background: none; colo
   border-radius: 16px;
   background: var(--surface);
 }
-.card h1 { font-size: 28px; color: var(--brand); }
 .card button { margin-block-start: 8px; }
 .card button.link { align-self: flex-start; margin: 0; }
 .links { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; }
+/* CLI-36: one card like ngrok: the name above, GitHub, "or", the form, the other ways at the bottom. */
+.login .brand { flex: none; font-size: 32px; font-weight: 800; text-align: center; }
+.login .card { gap: 12px; padding: 24px; }
+.login .card-body { display: flex; flex-direction: column; gap: 12px; }
+.login .card form { display: flex; flex-direction: column; gap: 8px; }
+.login .card > .links { justify-content: center; margin-inline: -24px; padding: 12px 24px 0; border-top: 1px solid var(--line); }
+.login .card > .links button.link { align-self: center; }
+.login a.button.github { gap: 10px; min-height: 44px; border-radius: 10px; background: var(--surface); font-weight: 600; }
+.login a.button.github svg { width: 20px; height: 20px; flex: none; }
+.or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 14px; }
+.or::before, .or::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
 .scroller > .card { max-width: none; flex: none; }
 
 /* Bot list */
