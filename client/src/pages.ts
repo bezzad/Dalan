@@ -94,21 +94,25 @@ export const problems: Record<Lang, { group: string; items: MenuItem[] }[]> = {
   ],
 };
 
-export interface Product { label: string; title: string; text: string; soon: boolean; from: string; to: string; via: string; guards: string[] }
+/** `branches`: the traffic splits in two below Dalan; `frame` names the place both branches run in. */
+export interface Product {
+  label: string; title: string; text: string; soon: boolean; from: string; guards: string[];
+  branches: { via: string; to: string }[]; frame: string;
+}
 
 /** CLI-26: the product cards and the words of their traffic pictures. */
 export const products: Record<Lang, Product[]> = {
   fa: [
     { label: "رله‌ی بات", title: "یک دالان بین کاربران و بات شما.", text: "کاربر در دالان پیام می‌دهد. بات روی کامپیوتر شما پیام را با getUpdates برمی‌دارد.", soon: false,
-      from: "کاربران تأییدشده", via: "getUpdates (فقط خروجی)", to: "بات روی کامپیوتر شما", guards: ["محدودیت سرعت", "گواه کار پیش از پیامک", "ثبت دسترسی"] },
+      from: "کاربران تأییدشده", branches: [{ via: "getUpdates", to: "@shop_bot" }, { via: "getUpdates", to: "@game_bot" }], frame: "کامپیوتر شما · فقط اتصال خروجی", guards: ["محدودیت سرعت", "گواه کار پیش از پیامک", "ثبت دسترسی"] },
     { label: "سایت‌ها", title: "سایت روی کامپیوترتان، با یک آدرس ثابت.", text: "یک برنامه‌ی کوچک روی کامپیوتر شما به دالان وصل می‌شود و سایت محلی را به بازدیدکننده‌ها نشان می‌دهد.", soon: true,
-      from: "بازدیدکننده‌ها", via: "your-site.dalan", to: "localhost:8080", guards: ["رمز ورود", "فهرست IP مجاز", "بازبینی درخواست‌ها"] },
+      from: "بازدیدکننده‌ها", branches: [{ via: "/", to: "localhost:3000" }, { via: "/api", to: "localhost:8080" }], frame: "کامپیوتر شما", guards: ["رمز ورود", "فهرست IP مجاز", "بازبینی درخواست‌ها"] },
   ],
   en: [
     { label: "Bot relay", title: "A passage between users and your bot.", text: "Users write in Dalan. The bot on your computer picks up messages with getUpdates.", soon: false,
-      from: "Verified users", via: "getUpdates (outgoing only)", to: "Bot on your computer", guards: ["Rate limits", "Proof of work before SMS", "Access log"] },
+      from: "Verified users", branches: [{ via: "getUpdates", to: "@shop_bot" }, { via: "getUpdates", to: "@game_bot" }], frame: "Your computer · outgoing only", guards: ["Rate limits", "Proof of work before SMS", "Access log"] },
     { label: "Sites", title: "A site on your computer, at a fixed address.", text: "A small program on your computer connects out to Dalan and shows your local site to visitors.", soon: true,
-      from: "Visitors", via: "your-site.dalan", to: "localhost:8080", guards: ["Basic Auth", "IP allowlist", "Request inspector"] },
+      from: "Visitors", branches: [{ via: "/", to: "localhost:3000" }, { via: "/api", to: "localhost:8080" }], frame: "Your computer", guards: ["Basic Auth", "IP allowlist", "Request inspector"] },
   ],
 };
 
@@ -158,9 +162,9 @@ export const closing: Record<Lang, { title: string; glow: string; text: string }
 /** CLI-26: the small labels above the landing sections and the words of the footer. */
 export const labels: Record<Lang, Record<"products" | "try" | "tryTitle" | "tryNote" | "security" | "problems" | "soon" | "resources" | "product" | "start", string>> = {
   fa: { products: "محصولات ما", try: "همین الان", tryTitle: "همین الان یک بات بسازید.", tryNote: "کد بات شما با هر زبانی کار می‌کند: هر کتابخانه‌ی بات تلگرام، فقط با عوض کردن آدرس سرور.",
-    security: "امنیت از روز اول.", problems: "چه مشکلی را حل می‌کنیم", soon: "به‌زودی", resources: "منابع", product: "محصول", start: "شروع کنید" },
+    security: "امنیت از روز اول.", problems: "چه مشکلی را حل می‌کنیم", soon: "به‌زودی", resources: "منابع", product: "محصول", start: "آزمایش کنید (رایگان)" },
   en: { products: "Our products", try: "Right now", tryTitle: "Make a bot right now.", tryNote: "Your bot code works in any language: any Telegram bot library, after changing only the server address.",
-    security: "Security from day one.", problems: "Problems we solve", soon: "Soon", resources: "Resources", product: "Product", start: "Get started" },
+    security: "Security from day one.", problems: "Problems we solve", soon: "Soon", resources: "Resources", product: "Product", start: "Try it (free)" },
 };
 
 /** CLI-27: the six points of DESIGN section 13. `n` writes a number in the page's digits. */

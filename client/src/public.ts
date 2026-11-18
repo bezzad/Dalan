@@ -30,7 +30,6 @@ const icons = {
   globe: ["M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z", "M3 12h18", "M12 3c3 3 3 15 0 18", "M12 3c-3 3-3 15 0 18"],
   check: ["M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z", "M8 12l3 3 5-6"],
   terminal: ["M3 5h18v14H3z", "M7 10l3 2-3 2", "M12 15h5"],
-  arrow: ["M5 12h14", "M13 6l6 6-6 6"],
 };
 
 function icon(name: keyof typeof icons): SVGSVGElement {
@@ -67,7 +66,8 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
     pageLink("/showcase", t("showcase")), pageLink("/faq", t("faq")), pageLink("/privacy", t("privacy")),
     h("button", { type: "button", class: "link", onclick: context.onLanguage }, t("language")));
 
-  const enterButton = () => h("button", { type: "button", class: "primary", onclick: context.enter }, t(context.loggedIn ? "myBots" : "enter"));
+  /** Opens the login screen (or the bot list). In the page body a visitor sees "Try it (free)" (owner, 2026-11-18). */
+  const enterButton = (label = t("enter")) => h("button", { type: "button", class: "primary", onclick: context.enter }, context.loggedIn ? t("myBots") : label);
 
   // CLI-26: "Problems we solve". A <details> panel; choosing an item closes it.
   const menu = h("details", { class: "menu" },
@@ -160,7 +160,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
       h("section", { class: "hero glow" },
         h("h2", {}, hero[lang].title, h("br"), h("span", { class: "rainbow" }, hero[lang].glow)),
         h("p", { class: "lead" }, hero[lang].text),
-        h("div", { class: "row wrap" }, enterButton(), h("a", { href: "#how", class: "button", onclick: event => go(event, "#how") }, hero[lang].how))),
+        h("div", { class: "row wrap" }, enterButton(labels[lang].start), h("a", { href: "#how", class: "button", onclick: event => go(event, "#how") }, hero[lang].how))),
       h("section", { class: "products" },
         label(labels[lang].products),
         h("div", { class: "cards" }, ...products[lang].map((product, i) => productCard(product, i === 0 ? "gate" : "globe")))),
@@ -181,7 +181,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
       h("section", { class: "cta glow framed" },
         h("h2", {}, closing[lang].title, h("br"), h("span", { class: "rainbow" }, closing[lang].glow)),
         h("p", {}, closing[lang].text),
-        h("div", { class: "row wrap" }, enterButton(), pageLink("/showcase", t("showcase"), "button"))));
+        h("div", { class: "row wrap" }, enterButton(labels[lang].start), pageLink("/showcase", t("showcase"), "button"))));
   }
 
   /** A product card with its traffic picture: from, Dalan with its guards, to. */
@@ -197,10 +197,13 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
         h("div", { class: "hub-row" },
           h("span", { class: "hub" }, icon("gate")),
           h("ul", { class: "guards" }, ...product.guards.map(guard => h("li", {}, icon("check"), guard)))),
-        h("span", { class: "wire up" }),
-        h("span", { class: "tag", dir: "auto" }, product.via),
-        h("span", { class: "wire up" }),
-        h("span", { class: "box" }, icon("computer"), h("span", { dir: "auto" }, product.to))));
+        h("span", { class: "wire" }),
+        h("div", { class: "split" }, ...product.branches.map(branch => h("div", { class: "branch" },
+          h("span", { class: "wire" }),
+          h("span", { class: "tag", dir: "ltr" }, branch.via),
+          h("span", { class: "wire up" }),
+          h("span", { class: "box" }, icon("computer"), h("span", { dir: "ltr" }, branch.to))))),
+        h("span", { class: "frame-label" }, product.frame)));
   }
 
   /** A code block, always left to right, with a copy button. */
