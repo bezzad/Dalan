@@ -30,7 +30,6 @@ const icons = {
   globe: ["M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z", "M3 12h18", "M12 3c3 3 3 15 0 18", "M12 3c-3 3-3 15 0 18"],
   check: ["M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z", "M8 12l3 3 5-6"],
   terminal: ["M3 5h18v14H3z", "M7 10l3 2-3 2", "M12 15h5"],
-  arrow: ["M5 12h14", "M13 6l6 6-6 6"],
 };
 
 function icon(name: keyof typeof icons): SVGSVGElement {

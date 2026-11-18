@@ -309,7 +309,8 @@ header.site > button.primary { border-radius: 999px; }
 .menu .item strong, .product > .label, footer.site .column > span { display: inline-flex; align-items: center; gap: 8px; }
 .menu .item small { color: var(--muted); font-size: 13px; line-height: 1.5; }
 .menu .item.off { opacity: .7; }
-@media (max-width: 640px) { header.site .links { order: 3; flex-basis: 100%; } header.site h1 { flex: 1; } }
+/* On a phone the menu gives its place to the login button (owner, 2026-11-18). */
+@media (max-width: 640px) { header.site .links { order: 3; flex-basis: 100%; } header.site h1 { flex: 1; } header.site .menu { display: none; } }
 
 /* Layout */
 .page { gap: var(--space-xl); }
