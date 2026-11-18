@@ -4,6 +4,8 @@
 # deploy/install.sh copies this folder and the Caddy binary to the server and runs it.
 #
 # Usage: setup.sh <site domain> <api domain> <deploy public key file>
+# Optional settings.env next to this script (install.sh writes it): ADMIN_PHONES, SMS (log or kavenegar), KAVENEGAR_KEY.
+#   They are written into dalan.env, each run. SMS=log sends login codes only to ADMIN_PHONES, into the log.
 # Settings (environment):
 #   SWAP_MB      default 2048. A server with less memory than this and no swap gets a swap file of this size.
 #   DALAN_ROOT   for tests only (default empty, the real /); MEMINFO for tests only (default /proc/meminfo)
@@ -73,10 +75,12 @@ ConnectionStrings__Dalan=Host=localhost;Database=dalan;Username=dalan;Password=$
 Identity__SigningKey=$signing_key
 Notification__Push__PublicKey=$push_public
 Notification__Push__PrivateKey=$push_private
-# Fill in, then: sudo systemctl restart dalan
+# After a change by hand: sudo systemctl restart dalan
+# SMS and admin phones: install.sh sets them (ADMIN_PHONES, SMS, KAVENEGAR_KEY), or by hand:
 # Notification__SmsProvider=kavenegar
 # Notification__Kavenegar__ApiKey=
 # Identity__AdminPhones=
+# Email login, by hand:
 # Notification__EmailProvider=smtp
 # Notification__Smtp__Host=
 # Notification__Smtp__UserName=
@@ -88,6 +92,27 @@ fi
 chown root:dalan "$env_file"
 chmod 640 "$env_file"
 
+# Replace the line "$1=..." in dalan.env (or add it); with no $2, only remove it. Keeps the file's owner and mode.
+set_env() {
+  local lines
+  lines=$(grep -v "^$1=" "$env_file" || true)
+  { printf '%s\n' "$lines"; [ $# -lt 2 ] || printf '%s=%s\n' "$1" "$2"; } > "$env_file"
+}
+if [ -f "$here/settings.env" ]; then
+  echo "Settings from install.sh"
+  . "$here/settings.env"
+  [ -z "${ADMIN_PHONES:-}" ] || set_env Identity__AdminPhones "$ADMIN_PHONES"
+  [ -z "${KAVENEGAR_KEY:-}" ] || set_env Notification__Kavenegar__ApiKey "$KAVENEGAR_KEY"
+  case "${SMS:-}" in
+    "") ;;
+    log) set_env Notification__SmsProvider log
+         set_env Notification__LogSmsPhones "${ADMIN_PHONES:?SMS=log needs ADMIN_PHONES}" ;;
+    kavenegar) set_env Notification__SmsProvider kavenegar
+               set_env Notification__LogSmsPhones ;;
+    *) echo "SMS must be log or kavenegar, not '$SMS'" >&2; exit 2 ;;
+  esac
+fi
+
 echo "Database"
 if [ -z "$(sql "SELECT 1 FROM pg_database WHERE datname = 'dalan'")" ]; then
   sql "CREATE DATABASE dalan OWNER dalan"
@@ -97,8 +122,11 @@ echo "Caddy and units"
 install -m 755 "$here/caddy" "$root/usr/local/bin/caddy"
 install -d -m 755 "$root/etc/caddy"
 install -m 644 "$here/Caddyfile" "$root/etc/caddy/Caddyfile"
-printf 'DALAN_SITE_DOMAIN=%s\nDALAN_API_DOMAIN=%s\n' "$site" "$api" > "$root/etc/dalan/caddy.env"
-chmod 644 "$root/etc/dalan/caddy.env"
+# Domains for Caddy and for the links the server makes; written each run, so a new domain needs only a new run.
+printf 'DALAN_SITE_DOMAIN=%s\nDALAN_API_DOMAIN=%s\nAdmin__SiteUrl=https://%s\nAdmin__BotApiUrl=https://%s\nNotification__Push__Subject=https://%s\n' \
+  "$site" "$api" "$site" "$api" "$site" > "$root/etc/dalan/domains.env"
+chmod 644 "$root/etc/dalan/domains.env"
+rm -f "$root/etc/dalan/caddy.env"
 install -d -m 755 "$root/opt/dalan/tools"
 install -m 755 "$here/backup.sh" "$here/drill.sh" "$root/opt/dalan/tools/"
 for unit in dalan.service caddy.service dalan-backup.service dalan-backup.timer; do
@@ -109,5 +137,7 @@ systemctl enable dalan.service
 systemctl enable --now dalan-backup.timer
 systemctl enable caddy.service
 systemctl restart caddy.service
+# Reads new settings and domains; does nothing before the first deploy.
+systemctl try-restart dalan.service
 
-echo "Done. Next: fill in $env_file, then run the deploy from CI."
+echo "Done. Next: run the deploy from CI (the first time), and see $env_file for the SMS provider."

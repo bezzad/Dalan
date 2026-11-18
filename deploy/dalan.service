@@ -28,6 +28,8 @@ Environment=Relay__FileFolder=/var/lib/dalan/files
 # If a proxy or load balancer other than Caddy on this machine is in front, it must hold (else every client is recorded with
 # the proxy's address): Dalan__TrustedProxies=127.0.0.1,::1,<address or CIDR range>
 EnvironmentFile=/etc/dalan/dalan.env
+# Written by setup.sh from the domains: Admin__SiteUrl, Admin__BotApiUrl, Notification__Push__Subject.
+EnvironmentFile=/etc/dalan/domains.env
 # Written by deploy.sh: Dalan__Version=<git commit>
 EnvironmentFile=-/opt/dalan/current/version.env
 Restart=on-failure
