@@ -4,7 +4,9 @@
 # deploy/install.sh copies this folder and the Caddy binary to the server and runs it.
 #
 # Usage: setup.sh <site domain> <api domain> <deploy public key file>
-# Settings (environment, for tests): DALAN_ROOT (default empty, the real /)
+# Settings (environment):
+#   SWAP_MB      default 2048. A server with less memory than this and no swap gets a swap file of this size.
+#   DALAN_ROOT   for tests only (default empty, the real /); MEMINFO for tests only (default /proc/meminfo)
 set -euo pipefail
 
 site="${1:?site domain is required, for example dalanet.ir}"
@@ -15,6 +17,17 @@ root="${DALAN_ROOT:-}"
 
 echo "Packages (from the Ubuntu mirror)"
 DEBIAN_FRONTEND=noninteractive apt-get install -y -q postgresql curl nftables openssl
+
+swap_mb="${SWAP_MB:-2048}"
+memory_mb=$(awk '/^MemTotal:/ { print int($2 / 1024) }' "${MEMINFO:-/proc/meminfo}")
+if [ "$memory_mb" -lt "$swap_mb" ] && [ -z "$(swapon --show --noheadings)" ] && [ ! -f "$root/swapfile" ]; then
+  echo "Swap file of $swap_mb MB (the server has $memory_mb MB of memory)"
+  fallocate -l "${swap_mb}M" "$root/swapfile"
+  chmod 600 "$root/swapfile"
+  mkswap "$root/swapfile" >/dev/null
+  swapon "$root/swapfile"
+  echo '/swapfile none swap sw 0 0' >> "$root/etc/fstab"
+fi
 
 echo "Users"
 id dalan >/dev/null 2>&1 || useradd --system --home-dir /var/lib/dalan --shell /usr/sbin/nologin dalan

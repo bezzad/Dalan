@@ -15,6 +15,9 @@ echo 'ssh-ed25519 AAAA ci-deploy' > "$src/deploy.pub"
 
 log() { printf '#!/bin/sh\necho "%s $*" >> %s/commands.log\n%s\n' "$1" "$state" "${2:-}" > "$bin/$1"; }
 log apt-get
+log swapon
+log fallocate 'touch "$3"'
+log mkswap
 log systemctl
 log chown
 log useradd 'eval "name=\${$#}"; touch '"$state"'/user-$name'
@@ -39,7 +42,8 @@ exit 0
 SH
 for tool in curl wget git scp ssh; do printf '#!/bin/sh\necho %s >> %s/forbidden.log\nexit 1\n' "$tool" "$state" > "$bin/$tool"; done
 chmod +x "$bin"/*
-export PATH="$bin:$PATH" DALAN_ROOT="$root"
+printf 'MemTotal:        1000000 kB\n' > "$tmp/meminfo"
+export PATH="$bin:$PATH" DALAN_ROOT="$root" MEMINFO="$tmp/meminfo"
 env_file="$root/etc/dalan/dalan.env"
 
 # Rule: OPS-09 fresh server
@@ -59,6 +63,11 @@ cmp -s "$src/deploy.pub" "$root/home/deploy/.ssh/authorized_keys" || fail "deplo
 grep -q 'CREATE DATABASE dalan OWNER dalan' "$state/commands.log" || fail "database not made"
 [ -f "$state/forbidden.log" ] && fail "setup called: $(cat "$state/forbidden.log")"
 echo "PASS OPS-09 fresh server"
+
+# Rule: OPS-09 small server gets swap once
+grep -qF 'fallocate -l 2048M' "$state/commands.log" || fail "no swap file on a 1 GB server"
+grep -qx '/swapfile none swap sw 0 0' "$root/etc/fstab" || fail "swap not in fstab"
+echo "PASS OPS-09 small server gets swap"
 
 # Rule: OPS-09 deploy user rights
 [ "$(cat "$root/etc/sudoers.d/dalan-deploy")" = 'deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart dalan' ] \
@@ -87,7 +96,7 @@ before=$(sha256sum < "$env_file")
 : > "$state/commands.log"
 bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out2" || { cat "$tmp/out2"; fail "second run failed"; }
 [ "$(sha256sum < "$env_file")" = "$before" ] || fail "dalan.env changed"
-grep -qE 'CREATE|ALTER|useradd' "$state/commands.log" && fail "second run made things again: $(grep -E 'CREATE|ALTER|useradd' "$state/commands.log")"
+grep -qE 'CREATE|ALTER|useradd|fallocate' "$state/commands.log" && fail "second run made things again: $(grep -E 'CREATE|ALTER|useradd' "$state/commands.log")"
 echo "PASS OPS-10 second run keeps dalan.env"
 
 # Rule: OPS-09 install.sh downloads Caddy on the owner's machine (the CI version, checked) and runs setup over SSH
@@ -106,8 +115,8 @@ printf '#!/bin/bash\necho "scp $*" >> %s/remote.log\ncp -r "${@: -2:1}" %s/copie
 printf '#!/bin/bash\necho "ssh $*" >> %s/remote.log\n' "$inst" > "$inst/bin/ssh"
 chmod +x "$inst/bin"/*
 mkdir "$inst/pkg" && printf '#!/bin/sh\n' > "$inst/pkg/caddy" && tar -czf "$inst/caddy_${ci_version}_linux_amd64.tar.gz" -C "$inst/pkg" caddy
-PATH="$inst/bin:$PATH" bash "$deploy/install.sh" root@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null || fail "install.sh failed"
+PATH="$inst/bin:$PATH" bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null || fail "install.sh failed"
 grep -q "releases/download/v${ci_version}/caddy_${ci_version}_linux_amd64.tar.gz" "$inst/urls.log" || fail "install.sh did not fetch Caddy $ci_version"
 for f in caddy setup.sh drill.sh backup.sh Caddyfile caddy.service deploy.pub; do [ -f "$inst/copied/$f" ] || fail "$f not copied"; done
-grep -q "ssh root@server bash /root/dalan-setup/setup.sh 'dalanet.ir' 'api.dalanet.ir' /root/dalan-setup/deploy.pub" "$inst/remote.log" || fail "setup not run: $(cat "$inst/remote.log")"
+grep -q "ssh -t admin@server sudo bash /tmp/dalan-setup/setup.sh 'dalanet.ir' 'api.dalanet.ir' /tmp/dalan-setup/deploy.pub" "$inst/remote.log" || fail "setup not run: $(cat "$inst/remote.log")"
 echo "PASS OPS-09 install.sh copies Caddy and runs setup"

@@ -3,12 +3,13 @@
 # Downloads Caddy here, copies it with deploy/ to the server, and runs setup.sh there as root.
 # The server downloads nothing from abroad.
 #
-# Usage: deploy/install.sh <root@server> <site domain> <api domain> <deploy public key file>
+# Usage: deploy/install.sh <user@server> <site domain> <api domain> <deploy public key file>
+# The user is root, or a user who may use sudo (it may ask for the password).
 # Example: deploy/install.sh root@203.0.113.10 dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
 # Settings (environment): CADDY_VERSION (default: the version CI tests)
 set -euo pipefail
 
-target="${1:?root@server is required}"
+target="${1:?user@server is required}"
 site="${2:?site domain is required}"
 api="${3:?api domain is required}"
 key="${4:?public key file of the CI deploy user is required}"
@@ -29,5 +30,6 @@ cp "$here"/{setup.sh,backup.sh,drill.sh,Caddyfile,dalan.service,caddy.service,da
 cp "$key" "$work/dalan-setup/deploy.pub"
 
 echo "Copying to $target"
-scp -q -r "$work/dalan-setup" "$target:/root/"
-ssh "$target" "bash /root/dalan-setup/setup.sh '$site' '$api' /root/dalan-setup/deploy.pub && rm -rf /root/dalan-setup"
+ssh "$target" "rm -rf /tmp/dalan-setup"
+scp -q -r "$work/dalan-setup" "$target:/tmp/"
+ssh -t "$target" "sudo bash /tmp/dalan-setup/setup.sh '$site' '$api' /tmp/dalan-setup/deploy.pub; code=\$?; rm -rf /tmp/dalan-setup; exit \$code"

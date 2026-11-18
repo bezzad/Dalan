@@ -17,7 +17,7 @@ Milestones 1 to 10 are merged. `deploy/deploy.sh` copies a release over SSH, swi
 
 ## Decisions
 
-1. **Two scripts: `install.sh` on the owner's machine, `setup.sh` on the server.** `install.sh <root@host>` downloads Caddy (pinned version, checksum checked, same version as CI), copies `deploy/` and the binary with `scp`, and runs `setup.sh` as root over `ssh`. It works from Linux, macOS, WSL or Git Bash. The server never needs GitHub.
+1. **Two scripts: `install.sh` on the owner's machine, `setup.sh` on the server.** `install.sh <user@host>` (root, or a user with sudo) downloads Caddy (pinned version, checksum checked, same version as CI), copies `deploy/` and the binary with `scp`, and runs `setup.sh` with `sudo` over `ssh`. A server with less memory than `SWAP_MB` and no swap gets a swap file (the first test runs on a 1 GB US server). It works from Linux, macOS, WSL or Git Bash. The server never needs GitHub.
 2. **`setup.sh` is idempotent.** Every step checks first: users, folders, database role, files. Users: `dalan` (runs the service, no login) and `deploy` (CI logs in; owns `/opt/dalan`; may only run `sudo systemctl restart dalan`, one sudoers line). PostgreSQL comes from the Ubuntu packages (domestic mirrors work in a shutdown; the PostgreSQL apt site is abroad).
 3. **Secrets are made on the server, once.** If `/etc/dalan/dalan.env` does not exist, `setup.sh` writes it with a random database password, `Identity__SigningKey` (P-256, like the unit file says) and a VAPID pair, all made with `openssl`. Kavenegar and admin phones are commented lines the owner fills in. If the file exists it is never touched. Mode `640`, owner `root:dalan`. Domains go to `/etc/dalan/caddy.env`, written each run.
 4. **Caddy runs under systemd** with `DynamicUser`, state in `/var/lib/caddy`, the bind capability only, and `/etc/dalan/caddy.env`. The repository `Caddyfile` is copied as is.
@@ -32,6 +32,7 @@ Milestones 1 to 10 are merged. `deploy/deploy.sh` copies a release over SSH, swi
 | `BACKUP_KEEP_DAYS` (`/etc/dalan/backup.env`) | 14 | Assumed |
 | `DRILL_MINUTES` (`/etc/dalan/drill.env`) | 60 | Assumed |
 | `CADDY_VERSION` (`install.sh`) | same as CI | Rule 10 |
+| `SWAP_MB` (`setup.sh`) | 2048 | Assumed (the US test server has 1 GB) |
 
 ## Risks / Trade-offs
 
