@@ -16,7 +16,8 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # On main a newer run waits: cancelling one could stop a deploy half way.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
@@ -92,9 +93,13 @@ jobs:
 
   deploy:
     needs: ci
-    if: github.event_name == 'workflow_dispatch' && inputs.deploy
+    # Every merge to main deploys; a manual run deploys when "Deploy" is ticked.
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
     runs-on: ubuntu-24.04
     environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
