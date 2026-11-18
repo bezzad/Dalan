@@ -426,7 +426,7 @@ A user with no phone (AUTH-04 `has_phone` false) SHALL see a card in the account
 - **WHEN** a user with `has_phone` false opens the account screen
 - **THEN** the "verify your mobile" card is shown; with `has_phone` true it is not
 
-### Requirement: CLI-35 What you get
+### Requirement: CLI-37 What you get
 The landing page SHALL have a "What you get" section after the product cards: four groups in order (bot relay, users and safety, tools for builders, sites and gateway), each with a title, a short text and a list. The first three SHALL list only built things; every item of the fourth SHALL be marked "soon". One line SHALL say what Dalan does not offer. No text SHALL say "tunnel".
 
 #### Scenario: Ready and soon

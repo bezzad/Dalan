@@ -6,7 +6,7 @@ The owner asked to look at ngrok's Gateway page and use it to tell customers cle
 
 ## What Changes
 
-- A new "What you get" section on the landing page, right after the product cards (CLI-35). Four groups, each a card with an icon and a checklist:
+- A new "What you get" section on the landing page, right after the product cards (CLI-37). Four groups, each a card with an icon and a checklist:
   - **Bot relay** (ready): Telegram-compatible Bot API, outgoing-only long polling, buttons/commands/files, bot status and "not delivered", Web Push, showcase.
   - **Users and safety** (ready): verified users, no phone number for bots, rate limits and proof of work, hashed tokens and keys, access log.
   - **Tools for builders** (ready): CLI, MCP server, access keys, llms.txt.
@@ -21,7 +21,7 @@ Out of scope: light theme and alignment (other work), login, pricing, customer l
 
 ### New Capabilities
 
-- `client`: CLI-35 (What you get).
+- `client`: CLI-37 (What you get).
 
 ## Impact
 

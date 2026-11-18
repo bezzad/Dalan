@@ -118,7 +118,7 @@ export const products: Record<Lang, Product[]> = {
 
 export interface OfferGroup { title: string; text: string; items: { text: string; soon?: boolean }[] }
 
-/** CLI-35: what you get. The first three groups are built today; every item of the last one is Layer 2 and says "soon". */
+/** CLI-37: what you get. The first three groups are built today; every item of the last one is Layer 2 and says "soon". */
 export const offers: Record<Lang, OfferGroup[]> = {
   fa: [
     { title: "رله‌ی بات", text: "پیام‌ها بین کاربران و بات روی کامپیوتر شما.", items: [
@@ -188,7 +188,7 @@ export const offers: Record<Lang, OfferGroup[]> = {
   ],
 };
 
-/** CLI-35: what Dalan does not offer, said plainly. */
+/** CLI-37: what Dalan does not offer, said plainly. */
 export const notOffered: Record<Lang, string> = {
   fa: "چیزهایی که نداریم: پورت TCP خام، SSH یا دسکتاپ از راه دور، و درگاه هوش مصنوعی.",
   en: "What we do not offer: raw TCP ports, SSH or remote desktop, and an AI gateway.",

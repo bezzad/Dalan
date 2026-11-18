@@ -1,4 +1,4 @@
-// Rules: CLI-26, CLI-27, CLI-28, CLI-29, CLI-30, CLI-35
+// Rules: CLI-26, CLI-27, CLI-28, CLI-29, CLI-30, CLI-37
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { categoryName, faqItems, initial, installCommands, landing, notOffered, offers, problems, products, security, steps, pageFor, privacyPoints, readyPrompt, showcaseStateName, type PublicNumbers } from "../src/pages.ts";
@@ -58,7 +58,7 @@ test("CLI-26 only real things are offered: what is not built says soon", () => {
   }
 });
 
-test("CLI-35 what you get: three ready groups, then sites and gateway, all soon", () => {
+test("CLI-37 what you get: three ready groups, then sites and gateway, all soon", () => {
   for (const lang of ["fa", "en"] as const) {
     const groups = offers[lang];
     assert.equal(groups.length, 4);
@@ -72,7 +72,7 @@ test("CLI-35 what you get: three ready groups, then sites and gateway, all soon"
   assert.match(offers.en[3]!.title, /Sites/);
 });
 
-test("CLI-35 says what Dalan does not offer and never says tunnel", () => {
+test("CLI-37 says what Dalan does not offer and never says tunnel", () => {
   for (const lang of ["fa", "en"] as const) {
     assert.match(notOffered[lang], /TCP/);
     assert.match(notOffered[lang], /SSH/);
