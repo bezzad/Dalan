@@ -1,4 +1,5 @@
 using Dalan.Admin.Contracts;
+using Dalan.Identity.Codes;
 using Dalan.Identity.Data;
 using Dalan.Identity.Sessions;
 using Dalan.Identity.Users;
@@ -11,35 +12,24 @@ using Microsoft.Extensions.Options;
 
 namespace Dalan.Identity.SmsLogin;
 
-/// <summary>Login by SMS code: challenge (SEC-06), code (AUTH-11), check (AUTH-12).</summary>
+/// <summary>Login by SMS code: code (AUTH-11), check (AUTH-12). The challenge (SEC-06) is in <see cref="ChallengeEndpoint"/>.</summary>
 internal static class SmsLoginEndpoints
 {
-    private sealed record ChallengeRequest(string? Phone);
-
     private sealed record SmsRequest(string? Phone, string? Challenge, string? Nonce);
 
     private sealed record VerifyRequest(string? Phone, string? Code, string? Name);
 
     public static void MapSmsLogin(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/auth/challenge", ChallengeAsync);
         endpoints.MapPost("/api/auth/sms", SendAsync);
         endpoints.MapPost("/api/auth/sms/verify", VerifyAsync);
     }
 
-    private static IResult BadPhone() => AuthJson.BadRequest("bad_phone",
+    public static IResult BadPhone() => AuthJson.BadRequest("bad_phone",
         """Send JSON with "phone": an Iranian mobile number like 09121234567.""");
 
-    private static IResult WrongCode() => AuthJson.BadRequest("wrong_code",
+    public static IResult WrongCode() => AuthJson.BadRequest("wrong_code",
         "The code is wrong, too old, already used, or had too many tries. Ask for a new code.");
-
-    private static async Task<IResult> ChallengeAsync(HttpContext http, ProofOfWork proofOfWork)
-    {
-        var request = await AuthJson.ReadAsync<ChallengeRequest>(http);
-        return PhoneNumber.Normalize(request?.Phone) is { } phone
-            ? AuthJson.Ok(new { Challenge = proofOfWork.NewChallenge(phone), proofOfWork.Difficulty })
-            : BadPhone();
-    }
 
     private static async Task<IResult> SendAsync(
         HttpContext http, ProofOfWork proofOfWork, SmsCodes codes, ISmsSender sender, IAccessLog accessLog,
@@ -48,11 +38,7 @@ internal static class SmsLoginEndpoints
         var request = await AuthJson.ReadAsync<SmsRequest>(http);
         if (PhoneNumber.Normalize(request?.Phone) is not { } phone) return BadPhone();
 
-        if (!proofOfWork.Check(phone, request!.Challenge, request.Nonce))
-        {
-            return AuthJson.BadRequest("bad_proof",
-                "The proof of work is missing, wrong or too old. Get a new challenge from POST /api/auth/challenge and solve it.");
-        }
+        if (!proofOfWork.Check(phone, request!.Challenge, request.Nonce)) return AuthJson.BadProof();
 
         // AUTH-20: no SMS for a suspended user; it would cost money and lead nowhere.
         await using (var db = await dbFactory.CreateDbContextAsync(http.RequestAborted))
@@ -62,24 +48,25 @@ internal static class SmsLoginEndpoints
         }
 
         var ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        var (outcome, wait) = await codes.SendAsync(phone, ip, sender, http.RequestAborted);
+        var (outcome, wait) = await codes.SendAsync(
+            phone, ip, (code, cancellationToken) => sender.SendLoginCodeAsync(phone, code, cancellationToken), http.RequestAborted);
 
         // ADM-04: the person who gets the SMS may not be the one who asked for it.
-        if (outcome == SmsOutcome.Sent)
+        if (outcome == CodeOutcome.Sent)
             await accessLog.RecordSmsAsync(phone, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
 
         var settings = options.CurrentValue;
         return outcome switch
         {
-            SmsOutcome.Sent => AuthJson.Ok(new
+            CodeOutcome.Sent => AuthJson.Ok(new
             {
                 ExpiresIn = settings.SmsCodeSeconds,
                 RetryIn = settings.SmsWaitSeconds,
                 CodeDigits = settings.SmsCodeDigits,
             }),
-            SmsOutcome.Wait => AuthJson.TooManyRequests(http, "sms_wait", wait,
+            CodeOutcome.Wait => AuthJson.TooManyRequests(http, "sms_wait", wait,
                 $"A code was just sent to this number. Wait {AuthJson.Seconds(wait)} second(s) before asking again."),
-            SmsOutcome.Limit => AuthJson.Error(StatusCodes.Status429TooManyRequests, "sms_limit",
+            CodeOutcome.Limit => AuthJson.Error(StatusCodes.Status429TooManyRequests, "sms_limit",
                 "Too many codes were sent today. Log in with your password, or try again tomorrow."),
             _ => AuthJson.Error(StatusCodes.Status503ServiceUnavailable, "sms_unavailable",
                 "The SMS could not be sent now. Try again in a few minutes, or log in with your password."),

@@ -1,4 +1,4 @@
-// Rules: CLI-23, CLI-24, CLI-25
+// Rules: CLI-23, CLI-24, CLI-25, CLI-33, CLI-34
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ApiError } from "../src/caller.ts";
@@ -7,10 +7,28 @@ import { texts } from "../src/i18n.ts";
 import { BuilderList, builderView, cleanValue, groupSettings, utc, type Setting } from "../src/panels.ts";
 
 test("CLI-23 the account screen shows the request button, the waiting note or the bots button", () => {
-  assert.equal(builderView({ builder: "none", admin: false }), "request");
-  assert.equal(builderView({ builder: "requested", admin: false }), "waiting");
-  assert.equal(builderView({ builder: "approved", admin: false }), "bots");
-  assert.equal(builderView({ builder: "none", admin: true }), "bots");
+  assert.equal(builderView({ builder: "none", admin: false, has_phone: true }), "request");
+  assert.equal(builderView({ builder: "requested", admin: false, has_phone: true }), "waiting");
+  assert.equal(builderView({ builder: "approved", admin: false, has_phone: true }), "bots");
+  assert.equal(builderView({ builder: "none", admin: true, has_phone: true }), "bots");
+});
+
+test("CLI-34 a user with no phone is asked to verify one before the builder request", () => {
+  assert.equal(builderView({ builder: "none", admin: false, has_phone: false }), "phone");
+  assert.equal(texts.fa.verifyPhone.length > 0 && texts.en.verifyPhone.length > 0, true);
+});
+
+test("CLI-33 email and phone errors have their own texts in both languages", () => {
+  for (const code of ["bad_email", "email_wait", "email_limit", "email_unavailable", "phone_required", "phone_taken", "has_phone"]) {
+    const key = errorText(new ApiError(400, code));
+    assert.notEqual(key, "failed", code);
+    assert.notEqual(texts.fa[key], texts.en[key]);
+  }
+});
+
+test("CLI-33 the email code note tells to check the spam folder", () => {
+  assert.match(texts.fa.emailCodeSent, /اسپم/);
+  assert.match(texts.en.emailCodeSent, /spam/);
 });
 
 test("CLI-24 a new token is shown once and never kept in the list", () => {

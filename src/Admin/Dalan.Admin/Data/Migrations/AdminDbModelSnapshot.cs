@@ -51,6 +51,10 @@ namespace Dalan.Admin.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("at");
 
+                    b.Property<string>("Email")
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
                     b.Property<string>("Phone")
                         .HasColumnType("text")
                         .HasColumnName("phone");
@@ -67,6 +71,10 @@ namespace Dalan.Admin.Data.Migrations
 
                     b.HasIndex("At")
                         .HasDatabaseName("ix_access_log_at");
+
+                    b.HasIndex("Email")
+                        .HasDatabaseName("ix_access_log_email")
+                        .HasFilter("email IS NOT NULL");
 
                     b.HasIndex("Phone")
                         .HasDatabaseName("ix_access_log_phone")

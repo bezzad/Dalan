@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Dalan.Host;
 using Dalan.Identity.Data;
-using Dalan.Identity.SmsLogin;
+using Dalan.Identity.Codes;
 using Dalan.Identity.Users;
 using Microsoft.AspNetCore.Builder;
 using Dalan.Notification.Contracts;
@@ -35,18 +35,24 @@ public sealed class DalanApp(
     /// <summary>True keeps the sender that the settings choose (for the tests of the senders themselves).</summary>
     public bool RealSms { get; init; }
 
+    /// <summary>The login emails that the server "sent". Not used when <see cref="RealEmail"/> is set.</summary>
+    public FakeEmailSender Email { get; } = new();
+
+    /// <summary>True keeps the email sender that the settings choose.</summary>
+    public bool RealEmail { get; init; }
+
     public LogCollector Logs { get; } = new();
 
     /// <summary>The folder of this server's files (Relay:FileFolder): a new temporary one, so tests never share files.</summary>
     public string FileFolder { get; } = Path.Combine(Path.GetTempPath(), "dalan-tests", Guid.NewGuid().ToString("N"));
 
     /// <summary>Waits until the start-up work (migrations, queue reload) is done.</summary>
-    /// <summary>The access log rows as "actor id-or-phone address port", oldest first. Port is empty when unknown.</summary>
+    /// <summary>The access log rows as "actor id-or-phone-or-email address port", oldest first. Port is empty when unknown.</summary>
     public async Task<string[]> AccessLogAsync()
     {
         var rows = await PostgresServer.ScalarAsync<string[]>(connectionString,
             """
-            SELECT coalesce(array_agg(actor || ' ' || coalesce(phone, actor_id::text) || ' ' || host(address) || ' ' || coalesce(port::text, '') ORDER BY id), '{}')
+            SELECT coalesce(array_agg(actor || ' ' || coalesce(phone, email, actor_id::text) || ' ' || host(address) || ' ' || coalesce(port::text, '') ORDER BY id), '{}')
             FROM admin.access_log
             """);
         return [.. rows.Select(row => row.TrimEnd())];
@@ -169,6 +175,29 @@ public sealed class DalanApp(
         return await browser.PostAsJsonAsync("/api/auth/sms", new { phone, challenge, nonce }, cancel);
     }
 
+    /// <summary>Does the proof of work and asks for an email code, like the login screen (SEC-06, AUTH-24).</summary>
+    public static async Task<HttpResponseMessage> AskEmailCodeAsync(HttpClient browser, string email)
+    {
+        var cancel = TestContext.Current.CancellationToken;
+        var answer = await browser.PostAsJsonAsync("/api/auth/challenge", new { email }, cancel);
+        answer.EnsureSuccessStatusCode();
+        var json = await answer.Content.ReadFromJsonAsync<JsonElement>(cancel);
+        var challenge = json.GetProperty("challenge").GetString()!;
+        var nonce = Solve(challenge, json.GetProperty("difficulty").GetInt32());
+        return await browser.PostAsJsonAsync("/api/auth/email", new { email, challenge, nonce }, cancel);
+    }
+
+    /// <summary>Logs a person in with a real email code (level 1) and returns their browser.</summary>
+    public async Task<HttpClient> LoginByEmailAsync(string email, string name = "Sara")
+    {
+        var browser = Browser();
+        (await AskEmailCodeAsync(browser, email)).EnsureSuccessStatusCode();
+        var response = await browser.PostAsJsonAsync(
+            "/api/auth/email/verify", new { email, code = Email.Sent[^1].Code, name }, TestContext.Current.CancellationToken);
+        response.EnsureSuccessStatusCode();
+        return browser;
+    }
+
     /// <summary>Finds a nonce for a challenge by trying 0, 1, 2, ...</summary>
     public static string Solve(string challenge, int difficulty)
     {
@@ -224,6 +253,7 @@ public sealed class DalanApp(
             services.AddHostedService(provider => provider.GetRequiredService<RequestDrain>());
             services.AddSingleton<ILoggerProvider>(Logs);
             if (!RealSms) services.AddSingleton<ISmsSender>(Sms);
+            if (!RealEmail) services.AddSingleton<IEmailSender>(Email);
         });
         configure?.Invoke(builder);
     }

@@ -76,14 +76,20 @@ body.offline::before {
 
 [hidden] { display: none !important; }
 
+/* Scrollbars stay on the right edge of the window, also in Persian (owner, 2026-11-18): the root is left to right for
+   the browser, and the page inside it follows the language. */
+html[dir="rtl"] { direction: ltr; }
+html[dir="rtl"] body { direction: rtl; }
+
+/* App screens: a 608px column, but the main is as wide as the window, so the scroller (and its scrollbar) reaches the edge. */
 main {
+  /* vw, not %: the value is used again by the children, where % would mean something else. */
+  --gutter: max(16px, calc((100vw - 608px) / 2));
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 640px;
   height: 100dvh;
-  margin: 0 auto;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  padding: 12px var(--gutter) calc(12px + env(safe-area-inset-bottom));
 }
 
 body.offline main { height: calc(100dvh - 28px); }
@@ -167,6 +173,11 @@ button.link { min-height: 0; padding: 4px 6px; border: 0; background: none; colo
 
 /* Chat */
 .scroller { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+/* A list that scrolls under the column reaches the window edges, so its scrollbar sits at the right edge.
+   It is left to right only for its scrollbar; what is inside follows the language. */
+main > .scroller, main > .bots { margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); }
+[dir="rtl"] main > .scroller, [dir="rtl"] main > .bots { direction: ltr; }
+[dir="rtl"] main > .scroller > *, [dir="rtl"] main > .bots > * { direction: rtl; }
 .messages { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .messages li {
   align-self: flex-start;
@@ -271,7 +282,11 @@ main.public.dark {
 }
 :lang(fa) main.public { --mono: Vazirmatn, system-ui, sans-serif; --tracking: 0; }
 body:has(main.public.dark) { background: #141716; }
-main.public { max-width: var(--page-width); padding-block-end: 0; }
+/* Public pages: the document itself scrolls; the header stays on top. */
+main.public { --gutter: max(16px, calc((100vw - var(--page-width)) / 2)); height: auto; min-height: 100dvh; padding-block-end: 0; overflow-x: clip; }
+body.offline main.public { height: auto; }
+main.public > .scroller { flex: none; overflow: visible; }
+main.public > header.site { position: sticky; top: 0; margin-block-start: -12px; padding-block: 12px; background: var(--bg); }
 .label { font: 600 12px/1.6 var(--mono); letter-spacing: var(--tracking); text-transform: uppercase; color: var(--muted); }
 .soon { padding: 0 6px; border-radius: 6px; background: rgb(242 180 90 / .15); color: var(--accent); font: 600 11px/1.7 var(--mono); letter-spacing: 0; }
 :lang(en) .public h2 { font-family: ui-serif, Georgia, "Times New Roman", serif; font-weight: 500; letter-spacing: -.01em; }

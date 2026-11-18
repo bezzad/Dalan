@@ -2,7 +2,7 @@ using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Dalan.Identity.SmsLogin;
+namespace Dalan.Identity.Codes;
 
 /// <summary>SEC-06: the work itself. The client does the same counting (client/src/pow.ts).</summary>
 public static class Proof

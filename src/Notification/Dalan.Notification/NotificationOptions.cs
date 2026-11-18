@@ -11,6 +11,14 @@ public sealed class NotificationOptions
 
     public KavenegarOptions Kavenegar { get; set; } = new();
 
+    /// <summary>"smtp", "log" or empty: no email can be sent (NTF-10).</summary>
+    public string? EmailProvider { get; set; }
+
+    /// <summary>NTF-10: outside Development the "log" sender works only for these addresses (comma separated).</summary>
+    public string? LogEmailAddresses { get; set; }
+
+    public SmtpOptions Smtp { get; set; } = new();
+
     public PushOptions Push { get; set; } = new();
 }
 
@@ -23,6 +31,23 @@ public sealed class KavenegarOptions
 
     /// <summary>Name of the OTP template in the Kavenegar panel. It has one token: the code.</summary>
     public string Template { get; set; } = "";
+
+    public int TimeoutSeconds { get; set; }
+}
+
+/// <summary>NTF-11: the SMTP server that sends the login emails.</summary>
+public sealed class SmtpOptions
+{
+    public string Host { get; set; } = "";
+    public int Port { get; set; }
+    public bool StartTls { get; set; }
+    public string UserName { get; set; } = "";
+
+    /// <summary>A secret: it lives only in the server's environment.</summary>
+    public string Password { get; set; } = "";
+
+    /// <summary>The sender address, like "Dalan &lt;no-reply@dalanet.ir&gt;".</summary>
+    public string From { get; set; } = "";
 
     public int TimeoutSeconds { get; set; }
 }

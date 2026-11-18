@@ -199,13 +199,16 @@ The client is one PWA at `dalanet.ir`, served by the same server. Persian (right
 
 ## 9. Auth and identity
 
-Every account starts with an SMS code to an Iranian mobile number, so builders and apps can trust that a user is real and unique.
+Two levels (owner, 2026-11-18):
+
+- **Level 1:** login with a one-time code sent by email. The user can use bots. The login screen says to check the spam folder too.
+- **Level 2:** a verified Iranian mobile number (SMS code), at sign-up or later from the account screen. Only level 2 can ask to become a builder, because by law the owner of a bot or site must be known by phone.
 
 **Login flow:**
 
-1. First time: phone number, then SMS OTP.
-2. The user sets a username and password, so later logins need no SMS.
-3. Optional: an email as a second login and recovery path.
+1. First time: email code (level 1) or phone number and SMS OTP (level 2).
+2. The user sets a username and password, so later logins need no code.
+3. A level 1 user adds a phone number with an SMS code to reach level 2.
 4. Optional two-step login: a TOTP app (works offline, for example Google Authenticator) or an SMS code on every login.
 
 **SMS protection.** SMS costs money, so it is the main abuse target.
@@ -217,7 +220,7 @@ Every account starts with an SMS code to an Iranian mobile number, so builders a
 - The SMS provider must be inside Iran.
 - SMS sending sits behind one small interface, so the provider can be changed, or a second one added as a fallback, by writing one class.
 
-**Becoming a builder.** A user verifies an email (a work email is fine) and the admin approves. Only then can the user create bots. Until email exists, admin approval alone is enough (milestone 8).
+**Becoming a builder.** A user with a verified phone (level 2) asks, and the admin approves. Only then can the user create bots.
 
 **What a bot learns about a user:** the stable numeric id, display name and username. It never gets the phone number unless the user chooses to share it. This protects users, and it stops anyone from building a bot only to collect phone numbers.
 
@@ -225,7 +228,9 @@ Every account starts with an SMS code to an Iranian mobile number, so builders a
 
 **Built in milestone 4:** steps 1 and 2 and the SMS protection. Steps 3 and 4 (email, two-step login with TOTP or SMS) are not built yet.
 
-**Built in milestone 8:** builder request and admin approval (no email yet), admins by phone number (`Identity:AdminPhones`), suspend for users and bots.
+**Built in milestone 8:** builder request and admin approval, admins by phone number (`Identity:AdminPhones`), suspend for users and bots.
+
+**Built with email login (2026-11-18):** level 1 email login, level 2 phone step, password login by email. Email goes through `IEmailSender` (SMTP).
 
 **Layer 2: "Login with Dalan".** An app on its own domain cannot read Dalan's cookie. It sends the user to Dalan's login page and gets a token back. This is OAuth 2 with PKCE (OpenID Connect).
 
@@ -250,7 +255,7 @@ Every limit is a setting the admin can change from the dashboard, globally, per 
 
 **Abuse protection from day one:**
 
-- Creating a bot needs a verified email and admin approval.
+- Creating a bot needs a verified phone and admin approval.
 - Rate limits per user, per bot and per IP on every public endpoint.
 - The admin can suspend any user or bot at once.
 - Showcase entries are reviewed before they are listed.

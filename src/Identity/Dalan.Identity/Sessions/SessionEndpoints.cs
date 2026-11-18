@@ -1,4 +1,5 @@
 using Dalan.Identity.Users;
+using Dalan.Notification.Contracts;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -35,10 +36,12 @@ internal static class SessionEndpoints
         await sessions.RefreshAsync(http) ? Results.NoContent() : AuthJson.Unauthorized();
 
     /// <summary>AUTH-16: what the login screens must know before anyone is logged in.</summary>
-    private static IResult Settings(IOptionsMonitor<IdentityOptions> options, IHostEnvironment environment) => AuthJson.Ok(new
-    {
-        DevLogin = options.CurrentValue.DevLogin && environment.IsDevelopment(),
-        options.CurrentValue.PasswordMinLength,
-        NameMaxLength = options.CurrentValue.MaxNameLength,
-    });
+    private static IResult Settings(IOptionsMonitor<IdentityOptions> options, IHostEnvironment environment, IEmailSender email) =>
+        AuthJson.Ok(new
+        {
+            DevLogin = options.CurrentValue.DevLogin && environment.IsDevelopment(),
+            EmailLogin = email.IsOn,
+            options.CurrentValue.PasswordMinLength,
+            NameMaxLength = options.CurrentValue.MaxNameLength,
+        });
 }

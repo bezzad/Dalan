@@ -276,7 +276,7 @@ public class PasswordTests(PostgresServer postgres)
     {
         await using var app = await StartAsync(postgres);
 
-        var response = await app.Browser().PostAsJsonAsync("/api/auth/password", new { login = new string('a', 65), password = Good }, Cancel);
+        var response = await app.Browser().PostAsJsonAsync("/api/auth/password", new { login = new string('a', 255), password = Good }, Cancel);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

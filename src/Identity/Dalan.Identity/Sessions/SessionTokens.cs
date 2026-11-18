@@ -33,10 +33,11 @@ internal sealed class SessionTokens(
     /// <summary>The claim that holds the user id.</summary>
     public const string UserIdClaim = "sub";
 
-    /// <summary>The claim that says how the session started: "sms", "pwd" or "dev".</summary>
+    /// <summary>The claim that says how the session started: "sms", "email", "pwd" or "dev".</summary>
     public const string MethodClaim = "amr";
 
     public const string BySms = "sms";
+    public const string ByEmail = "email";
     public const string ByPassword = "pwd";
     public const string ByDevLogin = "dev";
 

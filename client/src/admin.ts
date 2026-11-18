@@ -80,7 +80,7 @@ export function adminScreen(app: App): Screen {
     const redraw = (next: AdminUser) => card.replaceWith(userCard(next));
     card.append(
       h("strong", { dir: "auto" }, `${user.name} (#${user.id})`),
-      h("span", { dir: "ltr" }, [user.phone, user.username ? `@${user.username}` : ""].filter(Boolean).join(" · ")),
+      h("span", { dir: "ltr" }, [user.phone, user.email, user.username ? `@${user.username}` : ""].filter(Boolean).join(" · ")),
       h("span", { class: "note" }, `${t("builderState")}: ${t(user.builder === "approved" ? "approved" : user.builder === "requested" ? "requested" : "none")}`
         + (user.suspended ? ` · ${t("suspended")}` : "")),
       h("div", { class: "row wrap" },
@@ -154,16 +154,17 @@ export function adminScreen(app: App): Screen {
 
   // ---- access log (ADM-10) ----
   function accessLine(row: AccessRow): HTMLElement {
-    const who = row.actor === "phone" ? row.phone ?? "" : `${t(row.actor === "bot" ? "botWord" : "userWord")} #${row.actor_id}`;
+    const who = row.actor === "phone" ? row.phone ?? "" : row.actor === "email" ? row.email ?? ""
+      : `${t(row.actor === "bot" ? "botWord" : "userWord")} #${row.actor_id}`;
     return h("li", { dir: "ltr" },
       h("code", {}, row.port ? `${row.address}:${row.port}` : row.address), ` ${who} · ${local(row.at)}`);
   }
 
-  function showAccess(filter: "user" | "bot" | "phone" | "address" = "address", value = ""): void {
+  function showAccess(filter: "user" | "bot" | "phone" | "email" | "address" = "address", value = ""): void {
     select("access", false);
     const kind = h("select", { "aria-label": t("tabAccess") },
-      ...(["user", "bot", "phone", "address"] as const).map(name =>
-        h("option", { value: name }, t(name === "user" ? "userWord" : name === "bot" ? "botWord" : name === "phone" ? "phone" : "address"))));
+      ...(["user", "bot", "phone", "email", "address"] as const).map(name =>
+        h("option", { value: name }, t(name === "user" ? "userWord" : name === "bot" ? "botWord" : name))));
     kind.value = filter;
     let before: number | undefined;
     const list = h("ul", { class: "log" });
