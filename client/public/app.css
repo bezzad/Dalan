@@ -6,23 +6,26 @@
   font-display: swap;
 }
 
+/* CLI-35: light by default in this file; dark when the device asks for it, or when the visitor chose it (data-theme on <html>).
+   Neutral greys and one green, after ngrok (owner, 2026-11-18). */
 :root {
-  color-scheme: light dark;
-  --bg: #f4f6f5;
+  color-scheme: light;
+  --bg: #fafafa;
   --surface: #fff;
-  --text: #17201d;
-  --muted: #5d6b66;
-  --line: #d9dfdc;
-  --brand: #0f6e5c;
+  --text: #16181d;
+  --muted: #5b6470;
+  --line: #e2e5e9;
+  --brand: #0b7a61;
   --on-brand: #fff;
-  --mine: #dff3ec;
+  --mine: #dcf2ea;
   --danger: #b3261e;
-  /* Design tokens (public pages first; app screens may adopt them). */
-  --accent: #d98a1c;
-  --brand-soft: #e3f2ed;
-  --code-bg: #0f1a17;
+  --accent: #a8620a;
+  --brand-soft: #e0f3ec;
+  --code-bg: #14181a;
   --code-text: #d7f5ea;
-  --shadow: 0 1px 2px rgb(0 0 0 / .05), 0 8px 24px rgb(15 110 92 / .08);
+  --shadow: 0 1px 2px rgb(0 0 0 / .05), 0 8px 24px rgb(0 0 0 / .06);
+  --rainbow: #6aa514, #0b9a78, #2f7fd0, #8a5bd6, #d0558c;
+  --glow: .16;
   --radius-s: 10px;
   --radius-m: 16px;
   --radius-l: 24px;
@@ -33,24 +36,49 @@
   --text-hero: clamp(28px, 5vw, 46px);
   --text-title: clamp(22px, 3.2vw, 30px);
   --page-width: 1080px;
+  --mono: ui-monospace, monospace;
+  --tracking: .12em;
 }
+:lang(fa) { --mono: Vazirmatn, system-ui, sans-serif; --tracking: 0; }
 
+/* The same dark values twice: once for "like the device", once for the visitor's choice. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #101513;
-    --surface: #1a211f;
-    --text: #e8eeeb;
-    --muted: #9aa8a3;
-    --line: #2c3633;
-    --brand: #3fb79e;
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #141716;
+    --surface: #1c201f;
+    --text: #f1f4f2;
+    --muted: #a3aeaa;
+    --line: #2f3533;
+    --brand: #3fd0a8;
     --on-brand: #06231c;
     --mine: #1f4037;
     --danger: #ff8a80;
     --accent: #f2b45a;
     --brand-soft: #173a31;
-    --code-bg: #0a100e;
-    --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px rgb(0 0 0 / .3);
+    --code-bg: #0e1110;
+    --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 12px 32px rgb(0 0 0 / .35);
+    --rainbow: #c6e05a, #3fd0a8, #5aa9f2, #b78af2, #f28ab2;
+    --glow: .28;
   }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141716;
+  --surface: #1c201f;
+  --text: #f1f4f2;
+  --muted: #a3aeaa;
+  --line: #2f3533;
+  --brand: #3fd0a8;
+  --on-brand: #06231c;
+  --mine: #1f4037;
+  --danger: #ff8a80;
+  --accent: #f2b45a;
+  --brand-soft: #173a31;
+  --code-bg: #0e1110;
+  --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 12px 32px rgb(0 0 0 / .35);
+  --rainbow: #c6e05a, #3fd0a8, #5aa9f2, #b78af2, #f28ab2;
+  --glow: .28;
 }
 
 * { box-sizing: border-box; }
@@ -232,6 +260,7 @@ form.row > button:not(.primary) { padding: 8px 10px; }
 
 /* Presence and push (CLI-18 to CLI-21) */
 .bots strong { flex: 1; }
+.bots a { align-items: center; }
 .bots .badge {
   min-width: 24px;
   padding: 0 8px;
@@ -241,6 +270,9 @@ form.row > button:not(.primary) { padding: 8px 10px; }
   font-size: 13px;
   line-height: 24px;
   text-align: center;
+  display: inline-grid;
+  place-items: center;
+  height: 24px;
 }
 .chat .status { margin-block-start: -10px; }
 
@@ -261,28 +293,8 @@ form.row > button:not(.primary) { padding: 8px 10px; }
 .card .setting button { flex: none; margin: 0; min-height: 36px; padding: 4px 10px; }
 .log { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 select { font: inherit; color: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: transparent; }
-/* Public pages (CLI-26 to CLI-28) and the showcase parts (CLI-29). Dark for every visitor (CLI-26). */
-main.public.dark {
-  --bg: #141716;
-  --surface: #1c201f;
-  --text: #f1f4f2;
-  --muted: #a3aeaa;
-  --line: #2f3533;
-  --brand: #3fd0a8;
-  --on-brand: #06231c;
-  --brand-soft: #173a31;
-  --accent: #f2b45a;
-  --code-bg: #0e1110;
-  --code-text: #d7f5ea;
-  --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 12px 32px rgb(0 0 0 / .35);
-  color-scheme: dark;
-  --mono: ui-monospace, monospace;
-  --tracking: .12em;
-  color: var(--text);
-}
-:lang(fa) main.public { --mono: Vazirmatn, system-ui, sans-serif; --tracking: 0; }
-body:has(main.public.dark) { background: #141716; }
-/* Public pages: the document itself scrolls; the header stays on top. */
+/* Public pages (CLI-26 to CLI-28) and the showcase parts (CLI-29) follow the theme (CLI-35).
+   The document itself scrolls; the header stays on top. */
 main.public { --gutter: max(16px, calc((100vw - var(--page-width)) / 2)); height: auto; min-height: 100dvh; padding-block-end: 0; overflow-x: clip; }
 body.offline main.public { height: auto; }
 main.public > .scroller { flex: none; overflow: visible; }
@@ -296,15 +308,21 @@ main.public > header.site { position: sticky; top: 0; margin-block-start: -12px;
 header.site { position: relative; z-index: 2; flex-wrap: wrap; gap: var(--space-s) var(--space-m); }
 header.site h1 { flex: 0 0 auto; font-size: 22px; overflow: visible; }
 header.site h1 a { display: inline-flex; align-items: center; gap: var(--space-s); color: var(--text); text-decoration: none; }
-header.site .links { flex: 1; justify-content: flex-start; }
+header.site .links { flex: 1; align-items: center; justify-content: flex-start; gap: 2px; }
+/* Every item of the top bar has the same box, so the words sit on one line (owner, 2026-11-18: "the texts are not aligned"). */
+header.site .links a, header.site .links button.link, .menu summary {
+  display: inline-flex; align-items: center; min-height: 36px; padding: 0 10px; border-radius: 8px; font-size: 14px; line-height: 1;
+}
+header.site .links a:hover, header.site .links button.link:hover, .menu summary:hover { background: var(--surface); }
 header.site > button.primary { border-radius: 999px; }
 .links a, .links button.link { color: var(--muted); text-decoration: none; font-size: 14px; }
 .links a:hover, .links button.link:hover { color: var(--text); }
 .mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--radius-s); background: var(--brand); color: var(--on-brand); }
 .mark .icon { width: 22px; height: 22px; }
 .icon { width: 24px; height: 24px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.menu summary { cursor: pointer; color: var(--muted); font-size: 14px; list-style: none; }
-.menu summary::after { content: " ▾"; }
+.menu summary { cursor: pointer; color: var(--muted); list-style: none; }
+.menu summary::-webkit-details-marker { display: none; }
+.menu summary::after { content: "▾"; margin-inline-start: 6px; font-size: 11px; }
 .menu[open] summary { color: var(--text); }
 .menu .panel {
   position: absolute;
@@ -352,15 +370,15 @@ a.button:hover, .public button:hover { border-color: var(--brand); }
   border-radius: 50%;
   background: conic-gradient(from 90deg, #3fd0a8, #5aa9f2, #b78af2, #f28ab2, #f2b45a, #c6e05a, #3fd0a8);
   filter: blur(90px);
-  opacity: .28;
+  opacity: var(--glow);
 }
 .rainbow {
-  background: linear-gradient(90deg, #c6e05a, #3fd0a8, #5aa9f2, #b78af2, #f28ab2);
+  background: linear-gradient(90deg, var(--rainbow));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
-:lang(fa) .rainbow { background-image: linear-gradient(270deg, #c6e05a, #3fd0a8, #5aa9f2, #b78af2, #f28ab2); }
+:lang(fa) .rainbow { background-image: linear-gradient(270deg, var(--rainbow)); }
 
 /* Hero */
 .hero { display: flex; flex-direction: column; align-items: center; gap: var(--space-m); padding-block: var(--space-xl) var(--space-l); text-align: center; }
@@ -406,7 +424,8 @@ a.button:hover, .public button:hover { border-color: var(--brand); }
 .hub { grid-column: 2; display: grid; place-items: center; width: 72px; height: 72px; border: 1px solid var(--line); border-radius: 50%; background: var(--bg); color: var(--text); box-shadow: 0 0 0 6px var(--brand-soft); }
 .hub .icon { width: 34px; height: 34px; }
 .guards { grid-column: 3; display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; font: 12px/1.5 var(--mono); color: var(--muted); text-align: start; }
-.guards li { display: flex; align-items: center; gap: 6px; }
+.guards li { display: flex; align-items: flex-start; gap: 6px; }
+.guards li .icon { margin-block-start: 2px; }
 .guards .icon { width: 14px; height: 14px; color: var(--brand); }
 .soon-card .guards .icon { color: var(--accent); }
 .box { display: flex; align-items: center; gap: var(--space-s); padding: 10px 16px; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--bg); font: 13px/1.6 var(--mono); }
@@ -442,8 +461,8 @@ ol.steps { display: grid; gap: var(--space-m); margin: 0; padding: 0; list-style
 /* Security list */
 .security { display: flex; flex-direction: column; align-items: center; gap: var(--space-m); text-align: center; }
 .security ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px var(--space-l); width: 100%; margin: 0; padding: 0; list-style: none; text-align: start; }
-.security li { display: flex; align-items: center; gap: var(--space-s); }
-.security li .icon { width: 20px; height: 20px; color: var(--brand); }
+.security li { display: flex; align-items: flex-start; gap: var(--space-s); line-height: 1.5; }
+.security li .icon { width: 20px; height: 20px; margin-block-start: 2px; color: var(--brand); }
 .security a.more { color: var(--brand); font: 600 13px/1.6 var(--mono); letter-spacing: var(--tracking); text-transform: uppercase; text-decoration: none; }
 
 /* Closing call and footer */
@@ -455,7 +474,7 @@ footer.site .column { gap: 6px; font: 14px/1.8 var(--mono); color: var(--muted);
 footer.site .column .label { color: var(--text); margin-block-end: 4px; }
 footer.site a { color: var(--muted); text-decoration: none; }
 footer.site a:hover { color: var(--text); }
-.wordmark { margin-block-end: -.32em; font-size: clamp(90px, 22vw, 240px); font-weight: 900; line-height: 1; color: var(--surface); text-align: end; user-select: none; }
+.wordmark { margin-block-end: -.32em; font-size: clamp(90px, 22vw, 240px); font-weight: 900; line-height: 1; color: color-mix(in srgb, var(--text) 6%, var(--bg)); text-align: end; user-select: none; }
 .avatar {
   flex: none;
   display: grid;
@@ -477,3 +496,10 @@ footer.site a:hover { color: var(--text); }
 .showcase-form summary { cursor: pointer; color: var(--brand); font-size: 14px; }
 .scroller > .bots { flex: none; overflow: visible; }
 :lang(fa) .page ol:not(.steps) { list-style-type: persian; }
+
+/* CLI-35: the theme button, round, in the top bar of the site and of the bot list. */
+button.theme { display: grid; place-items: center; flex: none; width: 36px; min-height: 36px; height: 36px; padding: 0; border-radius: 50%; background: transparent; color: var(--muted); }
+button.theme:hover { color: var(--text); border-color: var(--brand); }
+button.theme .icon { width: 18px; height: 18px; }
+/* The menu and the links read as one row: the same space between all of them. */
+@media (min-width: 641px) { header.site .menu + .links { margin-inline-start: calc(2px - var(--space-m)); } }
