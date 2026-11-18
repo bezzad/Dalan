@@ -37,8 +37,11 @@ id dalan >/dev/null 2>&1 || useradd --system --home-dir /var/lib/dalan --shell /
 id deploy >/dev/null 2>&1 || useradd --create-home --shell /bin/bash deploy
 install -d -m 700 -o deploy -g deploy "$root/home/deploy/.ssh"
 install -m 600 -o deploy -g deploy "$key_file" "$root/home/deploy/.ssh/authorized_keys"
-# deploy.sh needs only this one command with root rights.
-echo 'deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart dalan' | install -m 440 /dev/stdin "$root/etc/sudoers.d/dalan-deploy"
+# deploy.sh needs only this one command with root rights. Not "install /dev/stdin": install on Ubuntu 26.04 cannot read it.
+sudoers="$root/etc/sudoers.d/dalan-deploy"
+rm -f "$sudoers"
+echo 'deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart dalan' > "$sudoers"
+chmod 440 "$sudoers"
 
 echo "Folders"
 install -d -m 755 -o deploy -g deploy "$root/opt/dalan" "$root/opt/dalan/releases"

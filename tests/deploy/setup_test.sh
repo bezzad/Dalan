@@ -23,10 +23,10 @@ log systemctl
 log chown
 log useradd 'eval "name=\${$#}"; touch '"$state"'/user-$name'
 log id '[ -f '"$state"'/user-$1 ]'
-# Real install, without owners (the test is not root).
+# Real install, without owners (the test is not root). Like install on Ubuntu 26.04 (uutils), it cannot read /dev/stdin.
 cat > "$bin/install" <<SH
 #!/bin/bash
-args=(); while [ \$# -gt 0 ]; do case "\$1" in -o|-g) shift 2;; *) args+=("\$1"); shift;; esac; done
+args=(); while [ \$# -gt 0 ]; do case "\$1" in -o|-g) shift 2;; /dev/stdin) echo "install: No such file or directory" >&2; exit 1;; *) args+=("\$1"); shift;; esac; done
 exec /usr/bin/install "\${args[@]}"
 SH
 # Fake sudo -u postgres psql -Atq -c "<sql>": remembers roles and databases.
