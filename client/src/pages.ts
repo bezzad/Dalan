@@ -116,6 +116,84 @@ export const products: Record<Lang, Product[]> = {
   ],
 };
 
+export interface OfferGroup { title: string; text: string; items: { text: string; soon?: boolean }[] }
+
+/** CLI-37: what you get. The first three groups are built today; every item of the last one is Layer 2 and says "soon". */
+export const offers: Record<Lang, OfferGroup[]> = {
+  fa: [
+    { title: "رله‌ی بات", text: "پیام‌ها بین کاربران و بات روی کامپیوتر شما.", items: [
+      { text: "Bot API سازگار با تلگرام: فقط آدرس سرور عوض می‌شود" },
+      { text: "دریافت پیام با getUpdates؛ کامپیوتر شما فقط اتصال خروجی دارد" },
+      { text: "دکمه، منوی دستورها، فایل، پیام سنجاق‌شده و ویرایش‌شده" },
+      { text: "وضعیت روشن بودن بات و نشان «نرسید»" },
+      { text: "اعلان (Web Push) برای کاربران" },
+      { text: "ویترین، تا کاربران تازه بات شما را پیدا کنند" },
+    ] },
+    { title: "کاربران و امنیت", text: "کاربر واقعی، بدون این‌که خودتان ورود بسازید.", items: [
+      { text: "کاربران تأییدشده با گیت‌هاب، ایمیل یا کد پیامک" },
+      { text: "بات هرگز شماره موبایل کاربر را نمی‌بیند" },
+      { text: "محدودیت سرعت روی هر در و گواه کار پیش از هر پیامک" },
+      { text: "توکن بات و کلید دسترسی به شکل hash" },
+      { text: "ثبت IP، پورت و زمان هر اتصال، طبق قانون" },
+    ] },
+    { title: "ابزار سازنده", text: "بات بسازید و مدیریت کنید، با دست یا با هوش مصنوعی.", items: [
+      { text: "ابزار خط فرمان dalan.mjs" },
+      { text: "سرور MCP برای دستیارهای هوش مصنوعی" },
+      { text: "کلید دسترسی که هر وقت بخواهید پاک می‌شود" },
+      { text: "صفحه‌ی llms.txt که دالان را به هوش مصنوعی معرفی می‌کند" },
+    ] },
+    { title: "سایت‌ها و درگاه", text: "سایت یا API روی کامپیوتر شما، با یک آدرس عمومی.", items: [
+      { text: "سایت محلی با زیردامنه‌ی ثابت دالان", soon: true },
+      { text: "دامنه‌ی خودتان", soon: true },
+      { text: "لینک پیش‌نمایش برای نشان دادن کار", soon: true },
+      { text: "دیدن و دوباره فرستادن وب‌هوک‌ها", soon: true },
+      { text: "بررسی امضای وب‌هوک پیش از رسیدن به شما", soon: true },
+      { text: "رمز ورود و فهرست IP مجاز جلوی سایت", soon: true },
+      { text: "کلید و محدودیت سرعت جلوی API شما", soon: true },
+      { text: "سرور MCP محلی شما، در دسترس دستیارهای هوش مصنوعی", soon: true },
+    ] },
+  ],
+  en: [
+    { title: "Bot relay", text: "Messages between users and the bot on your computer.", items: [
+      { text: "Telegram-compatible Bot API: change only the server address" },
+      { text: "Messages with getUpdates; your computer only calls out" },
+      { text: "Buttons, command menu, files, pinned and edited messages" },
+      { text: "Bot online status and a \"not delivered\" mark" },
+      { text: "Notifications for users (Web Push)" },
+      { text: "Showcase, so new users find your bot" },
+    ] },
+    { title: "Users and safety", text: "Real users, without building login yourself.", items: [
+      { text: "Users verified by GitHub, email or SMS code" },
+      { text: "Bots never see a user's mobile number" },
+      { text: "Rate limits on every door, proof of work before each SMS" },
+      { text: "Bot tokens and access keys stored hashed" },
+      { text: "IP, port and time of every connection logged, as the law asks" },
+    ] },
+    { title: "Builder tools", text: "Make and manage bots by hand or with AI.", items: [
+      { text: "Command line tool dalan.mjs" },
+      { text: "MCP server for AI assistants" },
+      { text: "Access keys you can delete any time" },
+      { text: "An llms.txt page that explains Dalan to AI" },
+    ] },
+    { title: "Sites and gateway", text: "A site or API on your computer, at a public address.", items: [
+      { text: "A local site at a fixed Dalan subdomain", soon: true },
+      { text: "Your own domain", soon: true },
+      { text: "Preview links to show your work", soon: true },
+      { text: "See webhooks and send them again", soon: true },
+      { text: "Webhook signatures checked before they reach you", soon: true },
+      { text: "Password and IP allowlist in front of a site", soon: true },
+      { text: "Keys and rate limits in front of your API", soon: true },
+      { text: "Your local MCP server, reachable by AI assistants", soon: true },
+    ] },
+  ],
+};
+
+/** CLI-37: what Dalan does not offer, said plainly. */
+export const notOffered: Record<Lang, string> = {
+  fa: "چیزهایی که نداریم: پورت TCP خام، SSH یا دسکتاپ از راه دور، و درگاه هوش مصنوعی.",
+  en: "What we do not offer: raw TCP ports, SSH or remote desktop, and an AI gateway.",
+};
+
 /** CLI-26: "Try it right now". Real commands only: get the CLI (CLI-31) from the site and make a bot. */
 export function installCommands(numbers: PublicNumbers): { os: string; code: string }[] {
   const site = numbers.site_url;
@@ -160,10 +238,10 @@ export const closing: Record<Lang, { title: string; glow: string; text: string }
 };
 
 /** CLI-26: the small labels above the landing sections and the words of the footer. */
-export const labels: Record<Lang, Record<"products" | "try" | "tryTitle" | "tryNote" | "security" | "problems" | "soon" | "resources" | "product" | "start", string>> = {
-  fa: { products: "محصولات ما", try: "همین الان", tryTitle: "همین الان یک بات بسازید.", tryNote: "کد بات شما با هر زبانی کار می‌کند: هر کتابخانه‌ی بات تلگرام، فقط با عوض کردن آدرس سرور.",
+export const labels: Record<Lang, Record<"products" | "offers" | "offersTitle" | "try" | "tryTitle" | "tryNote" | "security" | "problems" | "soon" | "resources" | "product" | "start", string>> = {
+  fa: { products: "محصولات ما", offers: "چه چیزی می‌گیرید", offersTitle: "هر چه بین کاربران و کامپیوتر شما لازم است.", try: "همین الان", tryTitle: "همین الان یک بات بسازید.", tryNote: "کد بات شما با هر زبانی کار می‌کند: هر کتابخانه‌ی بات تلگرام، فقط با عوض کردن آدرس سرور.",
     security: "امنیت از روز اول.", problems: "چه مشکلی را حل می‌کنیم", soon: "به‌زودی", resources: "منابع", product: "محصول", start: "آزمایش کنید (رایگان)" },
-  en: { products: "Our products", try: "Right now", tryTitle: "Make a bot right now.", tryNote: "Your bot code works in any language: any Telegram bot library, after changing only the server address.",
+  en: { products: "Our products", offers: "What you get", offersTitle: "Everything between your users and your computer.", try: "Right now", tryTitle: "Make a bot right now.", tryNote: "Your bot code works in any language: any Telegram bot library, after changing only the server address.",
     security: "Security from day one.", problems: "Problems we solve", soon: "Soon", resources: "Resources", product: "Product", start: "Try it (free)" },
 };
 

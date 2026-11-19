@@ -444,6 +444,17 @@ a.button:hover, .public button:hover { border-color: var(--brand); }
 /* "Try it right now" with tabs per system */
 .framed { position: relative; }
 .try { display: flex; flex-direction: column; align-items: center; gap: var(--space-m); text-align: center; }
+.offers { display: flex; flex-direction: column; align-items: center; gap: var(--space-m); text-align: center; }
+.offers > .label { color: var(--brand); }
+.offers h2 { font-size: var(--text-title); }
+.offers .groups { display: grid; gap: var(--space-m); width: 100%; text-align: start; }
+@media (min-width: 880px) { .offers .groups { grid-template-columns: 1fr 1fr; } }
+.offers article { display: flex; flex-direction: column; gap: var(--space-s); padding: 20px; border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--surface); }
+.offers ul { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.offers li { display: flex; align-items: flex-start; gap: var(--space-s); }
+.offers li .icon { flex: none; width: 20px; height: 20px; color: var(--brand); }
+.offers .soon-card li .icon { color: var(--accent); }
+.offers li .soon { margin-inline-start: auto; flex: none; align-self: center; }
 .try h2, .band h2, .security h2 { font-size: var(--text-title); }
 .try > .label { color: var(--brand); }
 .os-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
