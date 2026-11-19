@@ -171,7 +171,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
       h("section", { id: "offers", class: "offers" },
         label(labels[lang].offers),
         h("h2", {}, labels[lang].offersTitle),
-        h("div", { class: "groups" }, ...offers[lang].map((group, i) => h("article", { class: i === 3 ? "soon-card" : "" },
+        h("div", { class: "groups" }, ...offers[lang].map((group, i) => h("article", { class: group.items.every(item => item.soon) ? "soon-card" : "" },
           h("span", { class: "badge-icon" }, icon(offerIcons[i]!)),
           h("h3", {}, group.title),
           h("p", {}, group.text),
