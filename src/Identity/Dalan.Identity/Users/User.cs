@@ -11,6 +11,9 @@ public sealed class User
     /// <summary>In lower case. Null for a user who logged in only by SMS (AUTH-24).</summary>
     public string? Email { get; set; }
 
+    /// <summary>The id of the user's GitHub account, set by the first GitHub login (AUTH-28).</summary>
+    public long? GithubId { get; set; }
+
     public required string DisplayName { get; set; }
     public string? Username { get; set; }
 

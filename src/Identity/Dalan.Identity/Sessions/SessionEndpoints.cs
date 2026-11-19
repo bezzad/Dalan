@@ -41,6 +41,7 @@ internal static class SessionEndpoints
         {
             DevLogin = options.CurrentValue.DevLogin && environment.IsDevelopment(),
             EmailLogin = email.IsOn,
+            GithubLogin = options.CurrentValue.GitHub.IsOn,
             options.CurrentValue.PasswordMinLength,
             NameMaxLength = options.CurrentValue.MaxNameLength,
         });

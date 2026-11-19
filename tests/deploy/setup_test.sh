@@ -31,10 +31,10 @@ printf 'dalan._domainkey\tIN\tTXT\t( "v=DKIM1; h=sha256; k=rsa; "\n\t  "p=MIIBIj
 SH
 log useradd 'eval "name=\${$#}"; touch '"$state"'/user-$name'
 log id '[ -f '"$state"'/user-$1 ]'
-# Real install, without owners (the test is not root).
+# Real install, without owners (the test is not root). Like install on Ubuntu 26.04 (uutils), it cannot read /dev/stdin.
 cat > "$bin/install" <<SH
 #!/bin/bash
-args=(); while [ \$# -gt 0 ]; do case "\$1" in -o|-g) shift 2;; *) args+=("\$1"); shift;; esac; done
+args=(); while [ \$# -gt 0 ]; do case "\$1" in -o|-g) shift 2;; /dev/stdin) echo "install: No such file or directory" >&2; exit 1;; *) args+=("\$1"); shift;; esac; done
 exec /usr/bin/install "\${args[@]}"
 SH
 # Fake sudo -u postgres psql -Atq -c "<sql>": remembers roles and databases.
@@ -65,8 +65,15 @@ for cmd in 'systemctl enable dalan.service' 'systemctl enable caddy.service' 'sy
 done
 grep -qx 'apt-get update -q' "$state/commands.log" || fail "package lists not updated"
 grep -q 'apt-get install .*postgresql.* libicu76 ' "$state/commands.log" || fail "PostgreSQL and the newest ICU not installed: $(grep apt-get "$state/commands.log")"
-grep -qx 'DALAN_SITE_DOMAIN=dalanet.ir' "$root/etc/dalan/caddy.env" || fail "site domain not set for Caddy"
-grep -qx 'DALAN_API_DOMAIN=api.dalanet.ir' "$root/etc/dalan/caddy.env" || fail "api domain not set for Caddy"
+domains="$root/etc/dalan/domains.env"
+grep -qx 'DALAN_SITE_DOMAIN=dalanet.ir' "$domains" || fail "site domain not set for Caddy"
+grep -qx 'DALAN_API_DOMAIN=api.dalanet.ir' "$domains" || fail "api domain not set for Caddy"
+grep -qx 'Admin__SiteUrl=https://dalanet.ir' "$domains" || fail "site address not set for the server"
+grep -qx 'Admin__BotApiUrl=https://api.dalanet.ir' "$domains" || fail "Bot API address not set for the server"
+grep -qx 'Notification__Push__Subject=https://dalanet.ir' "$domains" || fail "push subject not set"
+grep -q '^EnvironmentFile=/etc/dalan/domains.env' "$root/etc/systemd/system/dalan.service" || fail "dalan does not read the domains"
+grep -q '^EnvironmentFile=/etc/dalan/domains.env' "$root/etc/systemd/system/caddy.service" || fail "caddy does not read the domains"
+grep -qx 'systemctl try-restart dalan.service' "$state/commands.log" || fail "dalan not restarted for new settings"
 [ -x "$root/usr/local/bin/caddy" ] || fail "caddy not installed"
 [ -x "$root/opt/dalan/tools/backup.sh" ] && [ -x "$root/opt/dalan/tools/drill.sh" ] || fail "tools not installed"
 cmp -s "$src/deploy.pub" "$root/home/deploy/.ssh/authorized_keys" || fail "deploy key not installed"
@@ -148,6 +155,51 @@ bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || 
 [ "$(sha256sum < "$env_file")" = "$added" ] || fail "mail lines added twice"
 echo "PASS OPS-13 server made before own mail"
 
+# Rule: OPS-09 a new domain needs only a new run
+before=$(sha256sum < "$env_file")
+bash "$src/setup.sh" example.ir api.example.ir "$src/deploy.pub" > /dev/null || fail "run with a new domain failed"
+grep -qx 'Admin__SiteUrl=https://example.ir' "$root/etc/dalan/domains.env" || fail "new domain not written"
+grep -qx 'DALAN_API_DOMAIN=api.example.ir' "$root/etc/dalan/domains.env" || fail "new api domain not written"
+[ "$(sha256sum < "$env_file")" = "$before" ] || fail "dalan.env changed by a new domain"
+echo "PASS OPS-09 a new domain needs only a new run"
+
+# Rule: OPS-10 settings from install.sh
+printf 'ADMIN_PHONES=09121234567\nSMS=log\n' > "$src/settings.env"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || fail "run with settings failed"
+for line in Identity__AdminPhones=09121234567 Notification__SmsProvider=log Notification__LogSmsPhones=09121234567 \
+            Notification__Kavenegar__ApiKey=owner-key "Identity__SigningKey=$signing"; do
+  [ "$(grep -cx "$line" "$env_file")" = 1 ] || fail "dalan.env should have $line once: $(grep -v -i 'password\|key=' "$env_file")"
+done
+printf 'SMS=kavenegar\nKAVENEGAR_KEY=new-key\n' > "$src/settings.env"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || fail "run with kavenegar failed"
+for line in Notification__SmsProvider=kavenegar Notification__Kavenegar__ApiKey=new-key Identity__AdminPhones=09121234567; do
+  [ "$(grep -cx "$line" "$env_file")" = 1 ] || fail "dalan.env should have $line once"
+done
+grep -q '^Notification__LogSmsPhones=' "$env_file" && fail "log sender numbers kept with kavenegar"
+[ "$(stat -c %a "$env_file")" = 640 ] || fail "dalan.env mode changed"
+printf 'SMS=pigeon\n' > "$src/settings.env"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null 2>&1 && fail "unknown SMS provider accepted"
+rm "$src/settings.env"
+echo "PASS OPS-10 settings from install.sh"
+
+# Rule: OPS-10 secrets can be made again
+old_secrets=$(grep -E '^(ConnectionStrings__Dalan|Identity__SigningKey|Notification__Push__(Public|Private)Key)=' "$env_file")
+printf 'ROTATE_SECRETS=1\n' > "$src/settings.env"
+: > "$state/commands.log"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || fail "run with ROTATE_SECRETS failed"
+rm "$src/settings.env"
+for key in ConnectionStrings__Dalan Identity__SigningKey Notification__Push__PublicKey Notification__Push__PrivateKey; do
+  [ "$(grep -c "^$key=" "$env_file")" = 1 ] || fail "$key should be in dalan.env once"
+  printf '%s\n' "$old_secrets" | grep -qxF "$(grep "^$key=" "$env_file")" && fail "$key not made again"
+done
+password=$(sed -nE 's/.*Password=(.*)/\1/p' "$env_file")
+grep -qF "ALTER ROLE dalan LOGIN PASSWORD '$password'" "$state/commands.log" || fail "database password not changed"
+signing=$(sed -nE 's/^Identity__SigningKey=(.*)/\1/p' "$env_file")
+echo "$signing" | base64 -d | openssl pkey -inform DER -noout 2>/dev/null || fail "new signing key is not a key"
+grep -qx 'Notification__Kavenegar__ApiKey=new-key' "$env_file" || fail "other settings lost"
+[ "$(stat -c %a "$env_file")" = 640 ] || fail "dalan.env mode changed"
+echo "PASS OPS-10 secrets can be made again"
+
 # Rule: OPS-09 install.sh downloads Caddy on the owner's machine (the CI version, checked) and runs setup over SSH
 inst="$tmp/inst"; mkdir -p "$inst/bin"
 ci_version=$(sed -nE 's/^ *CADDY_VERSION: "(.*)"/\1/p' "$deploy/../.github/workflows/ci.yml")
@@ -168,4 +220,41 @@ PATH="$inst/bin:$PATH" bash "$deploy/install.sh" admin@server dalanet.ir api.dal
 grep -q "releases/download/v${ci_version}/caddy_${ci_version}_linux_amd64.tar.gz" "$inst/urls.log" || fail "install.sh did not fetch Caddy $ci_version"
 for f in caddy setup.sh drill.sh backup.sh Caddyfile caddy.service deploy.pub; do [ -f "$inst/copied/$f" ] || fail "$f not copied"; done
 grep -q "ssh -t admin@server sudo bash /tmp/dalan-setup/setup.sh 'dalanet.ir' 'api.dalanet.ir' /tmp/dalan-setup/deploy.pub" "$inst/remote.log" || fail "setup not run: $(cat "$inst/remote.log")"
+[ -f "$inst/copied/settings.env" ] && [ ! -s "$inst/copied/settings.env" ] || fail "settings.env should be empty without settings"
+rm -rf "$inst/copied" "$inst/remote.log"
+ADMIN_PHONES=09121234567 SMS=log KAVENEGAR_KEY='a b' PATH="$inst/bin:$PATH" \
+  bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null || fail "install.sh with settings failed"
+( . "$inst/copied/settings.env" && [ "$ADMIN_PHONES" = 09121234567 ] && [ "$SMS" = log ] && [ "$KAVENEGAR_KEY" = 'a b' ] ) \
+  || fail "settings not passed: $(cat "$inst/copied/settings.env")"
+grep -q 'KAVENEGAR\|0912' "$inst/remote.log" && fail "settings on the command line"
 echo "PASS OPS-09 install.sh copies Caddy and runs setup"
+
+# Rule: OPS-14 GitHub settings set the GitHub lines and keep the rest
+cp "$env_file" "$tmp/env-before"
+printf 'GITHUB_CLIENT_ID=abc\nGITHUB_CLIENT_SECRET=s3\n' > "$src/settings.env"
+: > "$state/commands.log"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out3" || { cat "$tmp/out3"; fail "run with GitHub failed"; }
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out3" || { cat "$tmp/out3"; fail "second run with GitHub failed"; }
+[ "$(grep -c '^Identity__GitHub__ClientId=abc$' "$env_file")" = 1 ] || fail "client id: $(grep GitHub "$env_file")"
+[ "$(grep -c '^Identity__GitHub__ClientSecret=s3$' "$env_file")" = 1 ] || fail "client secret"
+[ "$(grep -c '^Identity__GitHub__CallbackUrl=https://dalanet.ir/api/auth/github/callback$' "$env_file")" = 1 ] || fail "callback url"
+diff <(grep -v '^Identity__GitHub__' "$env_file") <(grep -v '^Identity__GitHub__' "$tmp/env-before") > /dev/null || fail "other lines changed"
+[ "$(stat -c %a "$env_file")" = 640 ] || fail "dalan.env mode is $(stat -c %a "$env_file")"
+grep -qF 'systemctl try-restart dalan.service' "$state/commands.log" || fail "dalan not restarted"
+echo "PASS OPS-14 GitHub settings set the GitHub lines"
+
+# Rule: OPS-14 without GitHub settings dalan.env does not change
+rm "$src/settings.env"
+before=$(sha256sum < "$env_file")
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out4" || { cat "$tmp/out4"; fail "run without GitHub failed"; }
+[ "$(sha256sum < "$env_file")" = "$before" ] || fail "dalan.env changed without GitHub settings"
+echo "PASS OPS-14 no GitHub settings keep dalan.env"
+
+# Rule: OPS-14 install.sh sends the secret in a file, never on a command line
+rm -rf "$inst/copied" "$inst/remote.log"
+GITHUB_CLIENT_ID=abc GITHUB_CLIENT_SECRET=very-secret PATH="$inst/bin:$PATH" \
+  bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null || fail "install.sh with GitHub failed"
+grep -q 'very-secret' "$inst/remote.log" && fail "secret on a command line"
+( . "$inst/copied/settings.env" && [ "$GITHUB_CLIENT_ID" = abc ] && [ "$GITHUB_CLIENT_SECRET" = very-secret ] ) || fail "GitHub settings not sent"
+[ "$(stat -c %a "$inst/copied/settings.env")" = 600 ] || fail "settings.env mode is $(stat -c %a "$inst/copied/settings.env")"
+echo "PASS OPS-14 install.sh sends the GitHub secret in a file"

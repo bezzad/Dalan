@@ -2,9 +2,11 @@
 import { ApiError, type AuthSettings, type User } from "./api.ts";
 import type { Language, TextKey } from "./i18n.ts";
 import type { Chats } from "./messages.ts";
+import type { Theme } from "./theme.ts";
 
 export interface App {
   language: Language;
+  theme: Theme;
   user: User;
   auth: AuthSettings;
   chats: Chats;
@@ -33,6 +35,12 @@ export interface Screen {
 }
 
 /** The text to show for a failed call. */
+/** CLI-36: the error the GitHub login sent back in the address ("?login_error=..."), or null. */
+export function loginErrorText(search: string): TextKey | null {
+  const code = new URLSearchParams(search).get("login_error");
+  return code ? errorText(new ApiError(0, code)) : null;
+}
+
 export function errorText(error: unknown): TextKey {
   if (!(error instanceof ApiError)) return "failed";
   switch (error.code) {
@@ -62,6 +70,10 @@ export function errorText(error: unknown): TextKey {
     case "username_taken": return "usernameTaken";
     case "bot_suspended": return "botSuspended";
     case "suspended": return "accountSuspended";
+    case "github_state": return "githubState";
+    case "github_denied": return "githubDenied";
+    case "github_no_email": return "githubNoEmail";
+    case "github_unavailable": return "githubUnavailable";
     case "not_builder": return "notBuilder";
     case "bot_limit": return "botLimit";
     case "bad_value": return "badValue";

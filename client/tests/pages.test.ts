@@ -10,7 +10,7 @@ const english = (value: number) => String(value);
 
 test("CLI-26 the landing page has the three messages in order and never says tunnel", () => {
   assert.match(landing.en[0]!.title, /own computer/);
-  assert.match(landing.en[1]!.title, /verified by mobile number/);
+  assert.match(landing.en[1]!.title, /verified by email or SMS/);
   assert.match(landing.en[2]!.title, /international internet is cut/);
   assert.equal(landing.fa.length, 3);
   for (const message of [...landing.fa, ...landing.en]) {

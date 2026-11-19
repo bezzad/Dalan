@@ -28,12 +28,12 @@ export function pageFor(path: string, loggedIn: boolean): Page {
 export const landing: Record<Lang, { title: string; text: string }[]> = {
   fa: [
     { title: "برنامه‌تان را از کامپیوتر خودتان اجرا کنید.", text: "سرور نخرید. بات یا برنامه روی کامپیوتر خانه یا محل کارتان می‌ماند و فقط به دالان وصل می‌شود. IP عمومی لازم نیست." },
-    { title: "کاربر واقعی، با شماره موبایل تأییدشده.", text: "هر کاربر دالان یک بار با پیامک تأیید شده است. لازم نیست خودتان ورود پیامکی بسازید." },
+    { title: "کاربر واقعی، تأییدشده با ایمیل یا پیامک.", text: "هر کاربر دالان با ایمیل یا پیامک تأیید شده است. لازم نیست خودتان سیستم ورود بسازید." },
     { title: "وقتی اینترنت بین‌الملل قطع است، کار می‌کند.", text: "دالان در ایران است. بات شما و کاربرانش بدون اینترنت بین‌الملل هم به هم می‌رسند." },
   ],
   en: [
     { title: "Run your app from your own computer.", text: "Do not buy a server. Your bot or app stays on your home or office computer and only connects out to Dalan. No public IP is needed." },
-    { title: "Get real users, verified by mobile number.", text: "Every Dalan user is verified once by SMS. You do not need to build SMS login." },
+    { title: "Get real users, verified by email or SMS.", text: "Every Dalan user is verified by email or SMS. You do not need to build a login." },
     { title: "Keep working when international internet is cut.", text: "Dalan runs inside Iran. Your bot and its users reach each other without international internet." },
   ],
 };
@@ -65,7 +65,7 @@ export const problems: Record<Lang, { group: string; items: MenuItem[] }[]> = {
       { title: "دستیار هوش مصنوعی", text: "ساخت و مدیریت بات با CLI و MCP", href: "/llms.txt" },
     ] },
     { group: "رساندن به کاربر", items: [
-      { title: "کاربر واقعی", text: "همه‌ی کاربران با پیامک تأیید شده‌اند", href: "#features" },
+      { title: "کاربر واقعی", text: "همه‌ی کاربران با ایمیل یا پیامک تأیید شده‌اند", href: "#features" },
       { title: "وقتی اینترنت بین‌الملل قطع است", text: "دالان در ایران است", href: "#features" },
       { title: "ویترین بات‌ها", text: "کاربران تازه بات شما را پیدا می‌کنند", href: "/showcase" },
     ] },
@@ -82,7 +82,7 @@ export const problems: Record<Lang, { group: string; items: MenuItem[] }[]> = {
       { title: "AI assistants", text: "Make and manage bots with the CLI and MCP", href: "/llms.txt" },
     ] },
     { group: "Reach users", items: [
-      { title: "Real users", text: "Every user is verified by SMS", href: "#features" },
+      { title: "Real users", text: "Every user is verified by email or SMS", href: "#features" },
       { title: "When international internet is cut", text: "Dalan runs inside Iran", href: "#features" },
       { title: "Bot showcase", text: "New users find your bot", href: "/showcase" },
     ] },
@@ -130,7 +130,7 @@ export const offers: Record<Lang, OfferGroup[]> = {
       { text: "ویترین، تا کاربران تازه بات شما را پیدا کنند" },
     ] },
     { title: "کاربران و امنیت", text: "کاربر واقعی، بدون این‌که خودتان ورود بسازید.", items: [
-      { text: "کاربران تأییدشده با کد پیامک یا ایمیل" },
+      { text: "کاربران تأییدشده با گیت‌هاب، ایمیل یا کد پیامک" },
       { text: "بات هرگز شماره موبایل کاربر را نمی‌بیند" },
       { text: "محدودیت سرعت روی هر در و گواه کار پیش از هر پیامک" },
       { text: "توکن بات و کلید دسترسی به شکل hash" },
@@ -163,7 +163,7 @@ export const offers: Record<Lang, OfferGroup[]> = {
       { text: "Showcase, so new users find your bot" },
     ] },
     { title: "Users and safety", text: "Real users, without building login yourself.", items: [
-      { text: "Users verified with an SMS or email code" },
+      { text: "Users verified by GitHub, email or SMS code" },
       { text: "Bots never see a user's mobile number" },
       { text: "Rate limits on every door, proof of work before each SMS" },
       { text: "Bot tokens and access keys stored hashed" },
@@ -208,9 +208,9 @@ export function installCommands(numbers: PublicNumbers): { os: string; code: str
 
 /** CLI-26: what Dalan really does for safety (CLAUDE.md rules 5, 7, 8 and 13). */
 export const security: Record<Lang, string[]> = {
-  fa: ["کاربران تأییدشده با پیامک", "بات هرگز شماره نمی‌بیند", "توکن بات به شکل hash", "رمز با hash کند", "محدودیت سرعت روی هر در",
+  fa: ["کاربران تأییدشده با ایمیل یا پیامک", "بات هرگز شماره نمی‌بیند", "توکن بات به شکل hash", "رمز با hash کند", "محدودیت سرعت روی هر در",
     "گواه کار پیش از هر پیامک", "گزارش کارهای ادمین", "سرور در ایران", "بدون اسکریپت و فونت خارجی", "فقط HTTPS"],
-  en: ["SMS-verified users", "Bots never see phone numbers", "Hashed bot tokens", "Slow password hashing", "Rate limits on every door",
+  en: ["Users verified by email or SMS", "Bots never see phone numbers", "Hashed bot tokens", "Slow password hashing", "Rate limits on every door",
     "Proof of work before each SMS", "Admin audit log", "Servers in Iran", "No foreign scripts or fonts", "HTTPS only"],
 };
 

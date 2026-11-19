@@ -122,6 +122,24 @@ public class AdapterTests(PostgresServer postgres)
     }
 
     [Fact]
+    [Trait("Rule", "TG-09")]
+    public async Task TG09_commands_menu_button_answers_true_and_web_app_is_a_clear_400()
+    {
+        var (app, bot, _, _) = await TelegramBot.StartAsync(postgres);
+        await using var _1 = app;
+
+        var commands = await bot.PostJsonAsync("setChatMenuButton", new { chat_id = 1, menu_button = new { type = "commands" } });
+        var none = await bot.PostJsonAsync("setChatMenuButton", new { });
+        var webApp = await bot.PostJsonAsync("setChatMenuButton",
+            new { menu_button = new { type = "web_app", text = "Open", web_app = new { url = "https://example.com" } } });
+
+        commands.IsOk();
+        Assert.True(commands.Result.GetBoolean());
+        none.IsOk();
+        webApp.IsError(400, "Bad Request: web_app menu button is not supported by Dalan");
+    }
+
+    [Fact]
     [Trait("Rule", "TG-10")]
     public async Task TG10_token_is_never_written_to_the_log()
     {

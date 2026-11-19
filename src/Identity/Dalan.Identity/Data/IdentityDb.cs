@@ -23,6 +23,7 @@ public sealed class IdentityDb(DbContextOptions<IdentityDb> options) : DbContext
         {
             user.HasIndex(u => u.Phone).IsUnique();
             user.HasIndex(u => u.Email).IsUnique();
+            user.HasIndex(u => u.GithubId).IsUnique();
             user.ToTable(table => table.HasCheckConstraint("ck_users_phone_or_email", "phone IS NOT NULL OR email IS NOT NULL"));
             // Username is unique without regard to case: see the index on lower(username) in the first migration.
         });

@@ -7,6 +7,7 @@ using Dalan.Identity.Passwords;
 using Dalan.Identity.Sessions;
 using Dalan.Identity.Codes;
 using Dalan.Identity.EmailLogin;
+using Dalan.Identity.GitHubLogin;
 using Dalan.Identity.SmsLogin;
 using Dalan.Identity.Users;
 using Microsoft.AspNetCore.Authentication;
@@ -16,6 +17,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Dalan.Identity;
 
@@ -44,6 +46,12 @@ public static class IdentityService
         services.AddSingleton<EmailCodes>();
         services.AddSingleton<PasswordHasher>();
         services.AddSingleton<PasswordTries>();
+        services.AddHttpClient<GitHubClient>((provider, client) =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(provider.GetRequiredService<IOptionsMonitor<IdentityOptions>>().CurrentValue.GitHub.TimeoutSeconds);
+            // GitHub refuses API calls without a User-Agent.
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Dalan");
+        }).RemoveAllLoggers();
 
         // The session is checked by the standard JWT handler. Other services only ask ASP.NET Core who the user is.
         // AUTH-22: access keys are a second scheme that only the builder doors ask for.
@@ -64,6 +72,7 @@ public static class IdentityService
         endpoints.MapChallenge();
         endpoints.MapSmsLogin();
         endpoints.MapEmailLogin();
+        endpoints.MapGitHubLogin();
         endpoints.MapPasswordLogin();
         endpoints.MapAccount();
         endpoints.MapAccessKeys();

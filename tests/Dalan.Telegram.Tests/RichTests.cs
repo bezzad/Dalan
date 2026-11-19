@@ -181,6 +181,58 @@ public class RichTests(PostgresServer postgres)
     }
 
     [Fact]
+    [Trait("Rule", "TG-17")]
+    public async Task TG17_delete_several_messages_skips_missing_ones()
+    {
+        var (app, bot, _, user) = await StartedAsync();
+        await using var _1 = app;
+        var first = await SendAsync(bot, user, "one");
+        var second = await SendAsync(bot, user, "two");
+        var kept = await SendAsync(bot, user, "three");
+
+        var answer = await bot.PostJsonAsync("deleteMessages", new { chat_id = user, message_ids = new[] { first, second, 99 } });
+
+        answer.IsOk();
+        Assert.True(answer.Result.GetBoolean());
+        var messages = await app.MessagesAsync();
+        Assert.All(messages.Where(m => m.Seq == first || m.Seq == second), m => Assert.True(m.Deleted));
+        Assert.False(messages.Single(m => m.Seq == kept).Deleted);
+    }
+
+    [Theory]
+    [Trait("Rule", "TG-17")]
+    [InlineData("[]")]
+    [InlineData("[\"a\"]")]
+    [InlineData("null")]
+    public async Task TG17_delete_messages_with_a_bad_list_is_a_400(string ids)
+    {
+        var (app, bot, _, user) = await StartedAsync();
+        await using var _1 = app;
+        var id = await SendAsync(bot, user, "keep");
+
+        var answer = await bot.PostJsonAsync("deleteMessages",
+            JsonElement.Parse($"{{\"chat_id\":{user},\"message_ids\":{ids}}}"));
+
+        answer.IsError(400, "Bad Request");
+        Assert.False((await app.MessagesAsync()).Single(m => m.Seq == id).Deleted);
+    }
+
+    [Fact]
+    [Trait("Rule", "TG-17")]
+    public async Task TG17_delete_messages_with_more_than_100_ids_is_a_400()
+    {
+        var (app, bot, _, user) = await StartedAsync();
+        await using var _1 = app;
+        var id = await SendAsync(bot, user, "keep");
+
+        var answer = await bot.PostJsonAsync("deleteMessages",
+            new { chat_id = user, message_ids = Enumerable.Repeat(id, 101).ToArray() });
+
+        answer.IsError(400, "Bad Request");
+        Assert.False((await app.MessagesAsync()).Single(m => m.Seq == id).Deleted);
+    }
+
+    [Fact]
     [Trait("Rule", "TG-18")]
     public async Task TG18_pin_and_unpin_all()
     {

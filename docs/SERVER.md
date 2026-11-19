@@ -37,22 +37,23 @@ bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-depl
 
 The user is root or has sudo. It downloads Caddy here, copies it with `deploy/` to the server and runs `deploy/setup.sh` with sudo. A server with less than 2 GB of memory and no swap gets a 2 GB swap file (`SWAP_MB`). The server downloads only Ubuntu packages from its mirror. It is safe to run again.
 
-Result: users `dalan` (service) and `deploy` (CI; may only `sudo systemctl restart dalan`), PostgreSQL with database `dalan`, Caddy, the units `dalan`, `caddy`, `dalan-backup.timer`, Postfix and OpenDKIM for the login emails, and `/etc/dalan/dalan.env` with a new database password, signing key and push keys. That file is made once and never overwritten; setup only adds the email lines at the end when it has no `Notification__Smtp__Host` line.
+Result: users `dalan` (service) and `deploy` (CI; may only `sudo systemctl restart dalan`), PostgreSQL with database `dalan`, Caddy, the units `dalan`, `caddy`, `dalan-backup.timer`, Postfix and OpenDKIM for the login emails, `/etc/dalan/domains.env` (the domains; written each run) and `/etc/dalan/dalan.env` with a new database password, signing key and push keys. The secrets are made once and never overwritten; setup only adds the email lines at the end when it has no `Notification__Smtp__Host` line.
 
-Then on the server, fill in the rest of the secrets:
+Admin phone and SMS go in as settings of the same command. Run it again to change them, or to move to new domains; it restarts the server by itself:
 
 ```bash
-sudo nano /etc/dalan/dalan.env
-#   Notification__SmsProvider=kavenegar
-#   Notification__Kavenegar__ApiKey=<from the Kavenegar panel; template dalan-login>
-#   Identity__AdminPhones=<your mobile number; several are comma separated>
-# Only when the domains are not dalanet.ir and api.dalanet.ir (for example sslip.io names):
-#   Admin__SiteUrl=https://<site domain>
-#   Admin__BotApiUrl=https://<api domain>
-#   Notification__Push__Subject=https://<site domain>
+# Before Kavenegar is ready: login codes go to the server log, only for ADMIN_PHONES.
+ADMIN_PHONES=<your mobile; several are comma separated> SMS=log bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
+# Read a code on the server:
+journalctl -u dalan | grep "login code"
+# When Kavenegar is ready (template dalan-login). read -s keeps the key out of the shell history:
+read -rs KAVENEGAR_KEY && export KAVENEGAR_KEY
+SMS=kavenegar bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
 ```
 
-Without the SMS provider nobody can log in: the first login is always by SMS. Before Kavenegar is ready, test with the log sender: `Notification__SmsProvider=log` and `Notification__LogSmsPhones=<your number>` (only listed numbers get a code), then read the code with `journalctl -u dalan | grep "login code"`. Remove both lines when Kavenegar works.
+Without an SMS provider nobody can log in: the first login is always by SMS.
+
+If the secrets in `dalan.env` were seen by someone else (for example pasted in a chat), make new ones: `ROTATE_SECRETS=1 bash deploy/install.sh ...` (same arguments). Everyone must log in again and browsers subscribe to push again.
 
 ### Login emails (own mail)
 
@@ -84,6 +85,20 @@ journalctl -u postfix -n 30                                                     
 
 Then log in with your Gmail address on the site; in Gmail, "Show original" should say SPF, DKIM and DMARC: PASS. Mail from a new address often lands in spam; the login screen tells people to look there. When the international internet is cut, foreign mailboxes cannot be reached, so email login stops and SMS login keeps working. To test without mail: `Notification__EmailProvider=log` and `Notification__LogEmailAddresses=<your email>` at the end of `dalan.env`, then `journalctl -u dalan | grep "login code"`. An email user (level 1) can use bots; to build bots the user must verify a mobile number in the account screen (level 2).
 
+### Log in with GitHub (optional)
+
+1. On GitHub: Settings, Developer settings, OAuth Apps, **New OAuth App** (direct link: https://github.com/settings/applications/new).
+2. Application name `Dalan`; Homepage URL `https://dalanet.ir`; Authorization callback URL `https://dalanet.ir/api/auth/github/callback` (your site domain). Leave "Enable Device Flow" off. **Register application**.
+3. Copy the **Client ID**. Press **Generate a new client secret** and copy it (GitHub shows it once).
+4. On your own machine, run `install.sh` again with the two values. It writes them into `dalan.env` and restarts Dalan; nothing else changes:
+
+   ```bash
+   GITHUB_CLIENT_ID=<client id> GITHUB_CLIENT_SECRET=<client secret> \
+     bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
+   ```
+
+The login card then shows "Log in with GitHub" first. GitHub users are level 1, like email users. When the international internet is cut, GitHub cannot be reached and the card says to use email or SMS.
+
 ## 3. Deploy
 
 GitHub, repository Settings, Environments, `production` (create it if missing), secrets:
@@ -94,13 +109,14 @@ GitHub, repository Settings, Environments, `production` (create it if missing), 
 | `DEPLOY_SSH_KEY` | the private key: the whole output of `cat ~/.ssh/dalan-deploy` |
 | `DEPLOY_KNOWN_HOSTS` | the output of `ssh-keyscan <server>` |
 
-Actions, workflow `ci`, "Run workflow", tick "Deploy". After all gates pass it uploads the release and rolls back by itself if `/ready` fails. A later change of `dalan.env` needs `sudo systemctl restart dalan`.
+Every merge to `main` deploys by itself after all gates pass: it uploads the release and rolls back by itself if `/ready` fails. The first deploy, or a deploy again, by hand: Actions, workflow `ci`, "Run workflow" on `main`, tick "Deploy". A change of `dalan.env` by hand needs `sudo systemctl restart dalan`.
 
 Check: `https://dalanet.ir` opens, SMS login works, your number sees the admin area. Logs: `journalctl -u dalan -f`.
 
-If the deploy says "not ready", read the error on the server:
+If the deploy says "not ready", read the error on the server (the first line is for an error at start, the second for one in the JSON log):
 
 ```bash
+journalctl -u dalan -n 200 -o cat --no-pager | grep -v '^{"Timestamp' | tail -n 25
 journalctl -u dalan -o cat -n 300 | grep -m1 '"Exception"' | python3 -c 'import json,sys; print(json.loads(sys.stdin.read())["Exception"][:1500])'
 ```
 

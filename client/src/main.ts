@@ -2,20 +2,22 @@
 import { accountScreen } from "./account.ts";
 import { ApiError, api, type AuthSettings, type User } from "./api.ts";
 import { adminScreen } from "./admin.ts";
-import type { App, Panel, Screen } from "./app.ts";
+import { loginErrorText, type App, type Panel, type Screen } from "./app.ts";
 import { Backoff } from "./backoff.ts";
 import { botsScreen } from "./bots.ts";
 import { builderScreen } from "./builder.ts";
 import { chatScreen } from "./chat.ts";
-import { Language } from "./i18n.ts";
+import { Language, type TextKey } from "./i18n.ts";
 import { Live } from "./live.ts";
 import { loginScreen } from "./login.ts";
 import { pageFor } from "./pages.ts";
 import { publicScreen, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
 import { Chats } from "./messages.ts";
+import { Theme } from "./theme.ts";
 
 const language = new Language(document.documentElement, localStorage);
+const theme = new Theme(document.documentElement, localStorage);
 let app: App | null = null;
 let live: Live | null = null;
 let screen: Screen | null = null;
@@ -34,14 +36,14 @@ function show(element: HTMLElement): void {
   document.body.replaceChildren(element);
 }
 
-function showLogin(): void {
+function showLogin(error: TextKey | null = null): void {
   live?.stop();
   app = live = screen = null;
   panel = null;
   authSettings().then(settings => show(loginScreen(language, settings, user => void enter(user).catch(fail), () => {
     language.toggle();
     showLogin();
-  }, () => navigate("/"))), () => document.body.classList.add("offline"));
+  }, () => navigate("/"), error)), () => document.body.classList.add("offline"));
 }
 
 /** Goes to an address of the site without a page load. */
@@ -58,6 +60,12 @@ function render(): void {
 
 /** CLI-26: a visitor gets the public pages; a bot address asks for login first and opens that chat after it. */
 function guest(): void {
+  // CLI-36: the GitHub login came back with an error. Show it once, and clean the address.
+  const error = loginErrorText(location.search);
+  if (error) {
+    history.replaceState(null, "", location.pathname);
+    return showLogin(error);
+  }
   const page = pageFor(location.pathname, false);
   if (page === "login") return showLogin();
   show(publicPage(page as PublicPage, false));
@@ -66,6 +74,7 @@ function guest(): void {
 function publicPage(page: PublicPage, loggedIn: boolean): HTMLElement {
   return publicScreen(page, {
     language,
+    theme,
     loggedIn,
     go: navigate,
     enter: loggedIn ? () => navigate("/") : showLogin,
@@ -97,6 +106,7 @@ async function enter(user: User): Promise<void> {
   const settings = await api.settings();
   app = {
     language,
+    theme,
     user,
     auth: await authSettings(),
     chats: new Chats(api.messages, settings.sync_page_size),
