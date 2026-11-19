@@ -25,9 +25,10 @@ env:
   CADDY_VERSION: "2.11.9"
 
 jobs:
-  ci:
+  # Builds once. The tests and the deploy use these files; nothing builds again.
+  build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -47,8 +48,67 @@ jobs:
       - name: Build
         run: dotnet build Dalan.slnx -c Release
 
-      - name: Test
-        run: dotnet test -c Release --no-build
+      - name: Publish release
+        run: bash scripts/publish.sh out
+
+      - name: Release smoke test
+        run: bash tests/delivery/release_smoke_test.sh out
+
+      # tar keeps the file modes (the release must stay executable). ProcessTests run the host build.
+      - name: Pack
+        run: |
+          tar -cf release.tar -C out .
+          tar -cf tests.tar tests/*/bin/Release src/Dalan.Host/bin/Release
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release
+          path: release.tar
+          retention-days: 3
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tests
+          path: tests.tar
+          retention-days: 1
+
+  # Each test project on its own machine, all at the same time.
+  # tests/delivery/ci_workflow_test.sh fails when a test project is missing here.
+  test:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - Dalan.Admin.Tests
+          - Dalan.Architecture.Tests
+          - Dalan.Host.Tests
+          - Dalan.Identity.Tests
+          - Dalan.Relay.Tests
+          - Dalan.Telegram.Tests
+    name: test (${{ matrix.project }})
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@v8
+        with:
+          name: tests
+      - name: dotnet test (built once by the build job)
+        run: |
+          tar -xf tests.tar
+          dotnet "tests/${{ matrix.project }}/bin/Release/net11.0/${{ matrix.project }}.dll"
+
+  # The checks that need no .NET build run next to the build.
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
 
       - name: Specs are valid
         run: npx --yes @fission-ai/openspec@2.1.0 validate --all --strict
@@ -78,12 +138,12 @@ jobs:
       - name: Proxy test
         run: bash tests/proxy/caddy_test.sh
 
-      - name: Publish release
-        run: bash scripts/publish.sh out
-
-      - name: Release smoke test
-        run: bash tests/delivery/release_smoke_test.sh out
-
+  # The image for local runs and container platforms; production does not use it.
+  docker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
       - name: Docker image
         run: |
           docker build -t dalan .
@@ -92,7 +152,7 @@ jobs:
           curl -fs http://127.0.0.1:18095/health
 
   deploy:
-    needs: ci
+    needs: [build, test, checks, docker]
     # Every merge to main deploys; a manual run deploys when "Deploy" is ticked.
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
     runs-on: ubuntu-24.04
@@ -102,14 +162,9 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/download-artifact@v8
         with:
-          global-json-file: global.json
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-          cache: npm
-          cache-dependency-path: client/package-lock.json
+          name: release
 
       - name: SSH key
         env:
@@ -121,10 +176,10 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/id_ed25519
 
+      # The same files the tests passed with; rsync sends only what changed.
       - name: Deploy
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
-          bash scripts/publish.sh out
-          tar -czf release.tar.gz -C out .
-          bash deploy/deploy.sh release.tar.gz "${GITHUB_SHA::12}"
+          mkdir out && tar -xf release.tar -C out
+          bash deploy/deploy.sh out "${GITHUB_SHA::12}"

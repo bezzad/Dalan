@@ -14,4 +14,8 @@ for gate in 'dotnet build' 'dotnet test' 'npm run check' 'npm run build' 'npm te
   grep -qF "$gate" "$ci" || fail "CI does not run: $gate"
 done
 grep -q 'continue-on-error' "$ci" && fail "a CI step may not ignore its failure"
+# The test jobs run one project each: a new test project must be in the list.
+for project in "$(dirname "$ci")"/../../tests/Dalan.*.Tests; do
+  grep -qE "^          - $(basename "$project")\$" "$ci" || fail "CI does not test $(basename "$project")"
+done
 echo "PASS DEL-01 CI runs every gate"

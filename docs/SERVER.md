@@ -37,7 +37,7 @@ bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-depl
 
 The user is root or has sudo. It downloads Caddy here, copies it with `deploy/` to the server and runs `deploy/setup.sh` with sudo. A server with less than 2 GB of memory and no swap gets a 2 GB swap file (`SWAP_MB`). The server downloads only Ubuntu packages from its mirror. It is safe to run again.
 
-Result: users `dalan` (service) and `deploy` (CI; may only `sudo systemctl restart dalan`), PostgreSQL with database `dalan`, Caddy, the units `dalan`, `caddy`, `dalan-backup.timer`, Postfix and OpenDKIM for the login emails, `/etc/dalan/domains.env` (the domains; written each run) and `/etc/dalan/dalan.env` with a new database password, signing key and push keys. The secrets are made once and never overwritten; setup only adds the email lines at the end when it has no `Notification__Smtp__Host` line.
+Result: users `dalan` (service) and `deploy` (CI; may only `sudo systemctl restart dalan`), PostgreSQL with database `dalan`, Caddy, `rsync` (the deploy needs it), the units `dalan`, `caddy`, `dalan-backup.timer`, Postfix and OpenDKIM for the login emails, `/etc/dalan/domains.env` (the domains; written each run) and `/etc/dalan/dalan.env` with a new database password, signing key and push keys. The secrets are made once and never overwritten; setup only adds the email lines at the end when it has no `Notification__Smtp__Host` line.
 
 Admin phone and SMS go in as settings of the same command. Run it again to change them, or to move to new domains; it restarts the server by itself:
 
@@ -109,7 +109,7 @@ GitHub, repository Settings, Environments, `production` (create it if missing), 
 | `DEPLOY_SSH_KEY` | the private key: the whole output of `cat ~/.ssh/dalan-deploy` |
 | `DEPLOY_KNOWN_HOSTS` | the output of `ssh-keyscan <server>` |
 
-Every merge to `main` deploys by itself after all gates pass: it uploads the release and rolls back by itself if `/ready` fails. The first deploy, or a deploy again, by hand: Actions, workflow `ci`, "Run workflow" on `main`, tick "Deploy". A change of `dalan.env` by hand needs `sudo systemctl restart dalan`.
+Every merge to `main` deploys by itself after all gates pass. CI builds once (job `build`), runs each test project on its own machine at the same time, and the deploy uses the same release the tests passed with. `deploy/deploy.sh` sends it with `rsync` to a new folder: only the parts that differ from the current release go over the network. It rolls back by itself if `/ready` fails. A server set up before 2026-11-19 may not have `rsync`: run `install.sh` again, or `sudo apt-get install rsync`. The first deploy, or a deploy again, by hand: Actions, workflow `ci`, "Run workflow" on `main`, tick "Deploy". A change of `dalan.env` by hand needs `sudo systemctl restart dalan`.
 
 Check: `https://dalanet.ir` opens, SMS login works, your number sees the admin area. Logs: `journalctl -u dalan -f`.
 

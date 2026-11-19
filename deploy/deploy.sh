@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Deploy one release to the server and roll back if it is not ready (DEL-04, DEL-05, DEL-06).
-# CI pushes over SSH; the server never pulls.
+# CI pushes over SSH; the server never pulls. rsync sends only the parts that changed since the current release.
 #
-# Usage: deploy/deploy.sh <release.tar.gz> <version>
+# Usage: deploy/deploy.sh <release folder> <version>
 #
 # Settings (environment):
 #   DEPLOY_HOST          user@host, or "local" to run on this machine (used by tests)
@@ -13,7 +13,7 @@
 #   SYSTEMCTL            default "sudo systemctl"
 set -euo pipefail
 
-archive="$1"
+source="${1%/}"
 version="$2"
 host="${DEPLOY_HOST:?DEPLOY_HOST is required}"
 dir="${DEPLOY_DIR:-/opt/dalan}"
@@ -24,7 +24,12 @@ systemctl="${SYSTEMCTL:-sudo systemctl}"
 
 # Every server command goes through these two functions.
 remote() { if [ "$host" = local ]; then bash -c "$1"; else ssh "$host" "$1"; fi; }
-upload() { if [ "$host" = local ]; then cp "$1" "$2"; else scp -q "$1" "$host:$2"; fi; }
+# upload <folder> <server folder> <basis folder>: rsync sends only the parts of each file that differ from the basis.
+# A file equal to the basis (content and time) becomes a hard link. --checksum: never trust size and time alone.
+upload() {
+  local target="$2"; [ "$host" = local ] || target="$host:$2"
+  rsync -a --checksum --compress ${3:+--link-dest="$3"} "$1/" "$target/"
+}
 
 release="$dir/releases/$version"
 
@@ -38,12 +43,12 @@ is_ready() {
   return 1
 }
 
+previous=$(remote "readlink '$dir/current' || true")
+
 echo "Uploading $version"
 remote "mkdir -p '$release'"
-upload "$archive" "$release/release.tar.gz"
-remote "tar -xzf '$release/release.tar.gz' -C '$release' && rm '$release/release.tar.gz' && echo 'Dalan__Version=$version' > '$release/version.env'"
-
-previous=$(remote "readlink '$dir/current' || true")
+upload "$source" "$release" "$previous"
+remote "echo 'Dalan__Version=$version' > '$release/version.env'"
 
 echo "Switching to $version"
 switch_to "$release"
