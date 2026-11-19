@@ -24,7 +24,7 @@ apt-get update -q
 icu=$(apt-cache search --names-only '^libicu[0-9]+$' | awk '{ print $1 }' | sort -V | tail -n 1)
 # Postfix asks questions while it installs; these are the answers.
 printf 'postfix postfix/main_mailer_type select Internet Site\npostfix postfix/mailname string %s\n' "$site" | debconf-set-selections
-DEBIAN_FRONTEND=noninteractive apt-get install -y -q postgresql curl nftables openssl $icu postfix opendkim opendkim-tools
+DEBIAN_FRONTEND=noninteractive apt-get install -y -q postgresql curl rsync nftables openssl $icu postfix opendkim opendkim-tools
 
 swap_mb="${SWAP_MB:-2048}"
 memory_mb=$(awk '/^MemTotal:/ { print int($2 / 1024) }' "${MEMINFO:-/proc/meminfo}")

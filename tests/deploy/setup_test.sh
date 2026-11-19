@@ -65,6 +65,7 @@ for cmd in 'systemctl enable dalan.service' 'systemctl enable caddy.service' 'sy
 done
 grep -qx 'apt-get update -q' "$state/commands.log" || fail "package lists not updated"
 grep -q 'apt-get install .*postgresql.* libicu76 ' "$state/commands.log" || fail "PostgreSQL and the newest ICU not installed: $(grep apt-get "$state/commands.log")"
+grep -q 'apt-get install .* rsync ' "$state/commands.log" || fail "rsync not installed (deploy.sh sends the release with it)"
 domains="$root/etc/dalan/domains.env"
 grep -qx 'DALAN_SITE_DOMAIN=dalanet.ir' "$domains" || fail "site domain not set for Caddy"
 grep -qx 'DALAN_API_DOMAIN=api.dalanet.ir' "$domains" || fail "api domain not set for Caddy"

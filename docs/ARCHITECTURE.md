@@ -201,6 +201,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 56 | 2026-11-18 | Two levels: email code login (level 1, use bots) and a verified phone (level 2, may become a builder). SMTP through `System.Net.Mail` (no package); replaces decision 46 |
 | 57 | 2026-11-18 | Login emails from our own server: Postfix (send only, loopback only) plus OpenDKIM, set up by `setup.sh`; no outside mail service |
 | 58 | 2026-11-18 | "Log in with GitHub" (OAuth web flow, no package) on a one-card login screen like ngrok; a verified GitHub email is needed and the same email is the same user. No Google for now |
+| 59 | 2026-11-19 | Faster CI and deploy: one build job keeps the release and the built tests as run files; each test project runs on its own machine in parallel; the deploy reuses that release and sends only the changes with rsync |
 
 ## 11. Client address and access log
 
