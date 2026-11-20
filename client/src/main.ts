@@ -12,6 +12,7 @@ import { Live } from "./live.ts";
 import { loginScreen } from "./login.ts";
 import { pageFor } from "./pages.ts";
 import { h } from "./dom.ts";
+import { builderView } from "./panels.ts";
 import { toastRegion } from "./toast.ts";
 import { publicScreen, siteBrand, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
@@ -82,7 +83,10 @@ function userArea(): HTMLElement {
   return h("details", { class: "menu user" },
     h("summary", {}, h("bdi", {}, current.user.name)),
     h("div", { class: "panel" },
-      item(t("myBots"), () => navigate("/bots")),
+      // "My bots" are the bots this user built; "Chats" the bots they talk to (owner, 2026-11-20).
+      item(t("myBots"), () => current.showPanel(builderView(current.user) === "bots" ? "builder" : "account")),
+      item(t("chats"), () => navigate("/bots")),
+      h("span", { class: "item off" }, t("myApps"), h("span", { class: "soon" }, t("soon"))),
       item(t("account"), () => current.showPanel("account")),
       ...(current.user.admin ? [item(t("adminScreen"), () => current.showPanel("admin"))] : []),
       item(t("logout"), () => current.logout())));

@@ -82,7 +82,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
     h("button", { type: "button", class: "link", onclick: context.onLanguage }, t("language")));
 
   /** Opens the login screen (or the bot list). In the page body a visitor sees "Try it (free)" (owner, 2026-11-18). */
-  const enterButton = (label = t("enter")) => h("button", { type: "button", class: "primary", onclick: context.enter }, context.loggedIn ? t("myBots") : label);
+  const enterButton = (label = t("enter")) => h("button", { type: "button", class: "primary", onclick: context.enter }, context.loggedIn ? t("chats") : label);
 
   // CLI-26: "Problems we solve". A <details> panel; choosing an item closes it.
   const menu = h("details", { class: "menu" },
