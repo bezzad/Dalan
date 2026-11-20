@@ -203,6 +203,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 58 | 2026-11-18 | "Log in with GitHub" (OAuth web flow, no package) on a one-card login screen like ngrok; a verified GitHub email is needed and the same email is the same user. No Google for now |
 | 59 | 2026-11-19 | Faster CI and deploy: one build job keeps the release and the built tests as run files; each test project runs on its own machine in parallel; the deploy reuses that release and sends only the changes with rsync |
 | 60 | 2026-11-20 | The Layer 2 site Agent is written in C# with Native AOT: one file per OS, no .NET install, the same language as the server (owner chose it over Go and Rust) |
+| 61 | 2026-11-20 | The site Agent talks to the server over WebSocket first and falls back to long polling by itself when WebSocket does not work (like SignalR). User sites live on their own registered domain, not under `dalanet.ir` (filtering of one site must not block Dalan; cookies; phishing) |
 
 ## 11. Client address and access log
 
