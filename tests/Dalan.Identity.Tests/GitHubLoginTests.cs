@@ -22,6 +22,9 @@ public class GitHubLoginTests(PostgresServer postgres)
         public string User { get; set; } = """{"id":42,"login":"sara","name":"Sara Rad"}""";
         public string Emails { get; set; } = """[{"email":"old@example.com","primary":false,"verified":true},{"email":"Sara@Example.com","primary":true,"verified":true}]""";
         public Exception? Down { get; set; }
+
+        /// <summary>The next calls that get no answer, as when the link from Iran stalls.</summary>
+        public int StallCalls { get; set; }
         public List<string> Calls { get; } = [];
         public string TokenRequest { get; private set; } = "";
 
@@ -30,6 +33,12 @@ public class GitHubLoginTests(PostgresServer postgres)
             var url = request.RequestUri!;
             Calls.Add($"{url.Host}{url.AbsolutePath}");
             if (Down is not null) throw Down;
+            if (StallCalls > 0)
+            {
+                StallCalls--;
+                throw new TaskCanceledException("no answer in time");
+            }
+
             string body;
             switch (url.AbsolutePath)
             {
@@ -361,6 +370,39 @@ public class GitHubLoginTests(PostgresServer postgres)
 
         Assert.Equal("/?login_error=github_unavailable", Location(response));
         Assert.Null(SetCookie(response, SessionCookie));
+    }
+
+    [Fact]
+    [Trait("Rule", "AUTH-29")]
+    public async Task AUTH29_a_call_with_no_answer_is_sent_again()
+    {
+        var (app, github) = await StartAsync();
+        await using var _app = app;
+        github.StallCalls = 2;
+
+        var response = await LoginAsync(Browser(app));
+
+        Assert.Equal("/", Location(response));
+        Assert.NotNull(SetCookie(response, SessionCookie));
+        Assert.Equal(3, github.Calls.Count(c => c.EndsWith("/login/oauth/access_token", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    [Trait("Rule", "AUTH-29")]
+    public async Task AUTH29_gives_up_after_the_tries_and_an_answer_is_not_sent_again()
+    {
+        var (app, github) = await StartAsync();
+        await using var _app = app;
+        github.StallCalls = 3;
+
+        var stalled = await LoginAsync(Browser(app));
+        github.Calls.Clear();
+        github.Token = """{"error":"bad_verification_code"}""";
+        var refused = await LoginAsync(Browser(app));
+
+        Assert.Equal("/?login_error=github_unavailable", Location(stalled));
+        Assert.Equal("/?login_error=github_unavailable", Location(refused));
+        Assert.Single(github.Calls, c => c.EndsWith("/login/oauth/access_token", StringComparison.Ordinal));
     }
 
     [Fact]

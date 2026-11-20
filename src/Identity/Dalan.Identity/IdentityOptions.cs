@@ -113,5 +113,8 @@ public sealed class GitHubOptions
     /// <summary>Wait for each call to GitHub. Short: GitHub may be cut off from Iran.</summary>
     public int TimeoutSeconds { get; set; }
 
+    /// <summary>Tries of each call when GitHub does not answer: the link from Iran to github.com stalls now and then.</summary>
+    public int Tries { get; set; }
+
     public bool IsOn => !string.IsNullOrEmpty(ClientId) && !string.IsNullOrEmpty(ClientSecret);
 }
