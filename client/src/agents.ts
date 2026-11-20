@@ -2,6 +2,7 @@
 import { ApiError, api, type AccessKey } from "./api.ts";
 import { errorText, type App } from "./app.ts";
 import { h } from "./dom.ts";
+import { toast } from "./toast.ts";
 import { readyPrompt } from "./pages.ts";
 
 export function agentsPart(app: App): HTMLElement {
@@ -13,19 +14,17 @@ export function agentsPart(app: App): HTMLElement {
   const prompt = h("textarea", { dir: "auto", readonly: true, "aria-label": t("readyPrompt") });
 
   const failed = (failure: unknown) => {
-    error.textContent = failure instanceof ApiError && failure.code === "key_limit" ? t("keyLimit") : t(errorText(failure));
+    toast(failure instanceof ApiError && failure.code === "key_limit" ? t("keyLimit") : t(errorText(failure)), "error");
   };
 
   const copyButton = (text: () => string) => {
-    const copied = h("span", { class: "note", role: "status" });
     return h("div", { class: "row" },
       h("button", {
         type: "button", onclick: async () => {
           await navigator.clipboard.writeText(text());
-          copied.textContent = t("copied");
+          toast(t("copied"));
         },
-      }, t("copy")),
-      copied);
+      }, t("copy")));
   };
 
   function draw(): void {

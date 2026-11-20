@@ -57,11 +57,9 @@ export function botsScreen(app: App, onLanguage: () => void): Screen {
 
   const element = h("main", {},
     h("header", {},
-      h("h1", {}, t("myBots")),
-      h("button", { type: "button", class: "link", onclick: () => app.showPanel("account") }, t("account")),
+      h("h1", {}, t("chats")),
       h("button", { type: "button", class: "link", onclick: onLanguage }, t("language")),
-      themeButton(app.theme, t),
-      h("button", { type: "button", class: "link", onclick: () => app.logout() }, t("logout"))),
+      themeButton(app.theme, t)),
     h("p", { class: "note" }, h("bdi", {}, app.user.name)),
     ...(app.user.has_password ? [] : [h("p", { class: "note" }, t("noPasswordYet"))]),
     open,

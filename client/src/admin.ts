@@ -2,6 +2,7 @@
 import { ApiError, api, type AccessRow, type AdminBot, type AdminUser, type ShowcaseRequest } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { h } from "./dom.ts";
+import { toast } from "./toast.ts";
 import type { TextKey } from "./i18n.ts";
 import { categoryName, initial } from "./pages.ts";
 import { cleanValue, groupSettings, utc, type Setting } from "./panels.ts";
@@ -17,7 +18,7 @@ export function adminScreen(app: App): Screen {
   const body = h("div", { class: "scroller" });
   const error = h("p", { class: "error", role: "alert" });
   const failed = (failure: unknown) => {
-    error.textContent = failure instanceof ApiError && failure.code === "bad_request" ? t("badSearch") : t(errorText(failure));
+    toast(failure instanceof ApiError && failure.code === "bad_request" ? t("badSearch") : t(errorText(failure)), "error");
   };
   const local = (iso: string | null) => iso ? `${utc(iso)} · ${new Date(iso).toLocaleString(app.language.current === "fa" ? "fa-IR" : "en-GB")}` : "";
 
@@ -38,7 +39,7 @@ export function adminScreen(app: App): Screen {
   }
 
   const action = (label: TextKey, run: () => Promise<void>) =>
-    h("button", { type: "button", onclick: () => { error.textContent = ""; run().catch(failed); } }, t(label));
+    h("button", { type: "button", onclick: () => { run().then(() => toast(t("saved")), failed); } }, t(label));
 
   // ---- settings ----
   function settingRow(setting: Setting): HTMLElement {

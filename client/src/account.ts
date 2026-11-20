@@ -4,6 +4,7 @@ import { api } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { latinDigits } from "./digits.ts";
 import { h } from "./dom.ts";
+import { toast } from "./toast.ts";
 import type { TextKey } from "./i18n.ts";
 import { builderView } from "./panels.ts";
 import { solve } from "./pow.ts";
@@ -12,25 +13,22 @@ import { currentPushState, turnOff, turnOn, type PushState } from "./push.ts";
 export function accountScreen(app: App): Screen {
   const t = app.language.t.bind(app.language);
 
-  /** A small form with its own status line ("saved", or the text the action returns) and error line. */
+  /** A small form. The result ("saved", or the text the action returns) or the error is a toast. */
   function form(fields: (Node | string)[], action: () => Promise<TextKey | void>): HTMLFormElement {
-    const status = h("p", { class: "note", role: "status" });
-    const error = h("p", { class: "error", role: "alert" });
     const submit = h("button", { type: "submit", class: "primary" }, t("save"));
     return h("form", {
       class: "card",
       onsubmit: async event => {
         event.preventDefault();
         submit.disabled = true;
-        status.textContent = error.textContent = "";
         try {
-          status.textContent = t((await action()) ?? "saved");
+          toast(t((await action()) ?? "saved"));
         } catch (failure) {
-          error.textContent = t(errorText(failure));
+          toast(t(errorText(failure)), "error");
         }
         submit.disabled = false;
       },
-    }, ...fields, status, error, submit);
+    }, ...fields, submit);
   }
 
   const username = h("input", {
@@ -65,10 +63,9 @@ export function accountScreen(app: App): Screen {
 
   // CLI-21: hidden until the server says it has a push key.
   const pushNote = h("p", { class: "note" });
-  const pushError = h("p", { class: "error", role: "alert" });
   const pushButton = h("button", { type: "button", class: "primary", hidden: true });
   const pushCard = h("section", { class: "card", hidden: true },
-    h("h2", {}, t("notifications")), pushNote, pushError, pushButton);
+    h("h2", {}, t("notifications")), pushNote, pushButton);
   let pushKey: string | null = null;
   let pushNow: PushState = "hidden";
 
@@ -83,7 +80,6 @@ export function accountScreen(app: App): Screen {
 
   pushButton.addEventListener("click", async () => {
     pushButton.disabled = true;
-    pushError.textContent = "";
     try {
       if (pushNow === "on") {
         await turnOff();
@@ -92,7 +88,7 @@ export function accountScreen(app: App): Screen {
         showPush(await turnOn(pushKey!));
       }
     } catch (failure) {
-      pushError.textContent = t(errorText(failure));
+      toast(t(errorText(failure)), "error");
     }
     pushButton.disabled = false;
   });
@@ -134,7 +130,6 @@ export function accountScreen(app: App): Screen {
   phoneForm.hidden = app.user.has_phone;
 
   // CLI-23: ask to become a builder, wait for the admin, or open "My bots". Admins also open the admin screen.
-  const builderError = h("p", { class: "error", role: "alert" });
   const builderBody = h("div", { class: "column" });
   function showBuilder(): void {
     const view = builderView(app.user);
@@ -142,12 +137,11 @@ export function accountScreen(app: App): Screen {
       view === "request"
         ? h("button", {
           type: "button", class: "primary", onclick: async () => {
-            builderError.textContent = "";
             try {
               app.user = await api.askBuilder();
               showBuilder();
             } catch (failure) {
-              builderError.textContent = t(errorText(failure));
+              toast(t(errorText(failure)), "error");
             }
           },
         }, t("askBuilder"))
@@ -160,9 +154,9 @@ export function accountScreen(app: App): Screen {
   }
   showBuilder();
   const builderCard = h("section", { class: "card" },
-    h("h2", {}, t("building")), h("p", { class: "note" }, t("buildingNote")), builderBody, builderError);
+    h("h2", {}, t("building")), h("p", { class: "note" }, t("buildingNote")), builderBody);
 
-  const element = h("main", {},
+  const element = h("main", { class: "wide cols" },
     h("header", {},
       h("button", { type: "button", class: "link", onclick: () => app.showPanel(null) }, t("back")),
       h("h1", {}, t("account"))),

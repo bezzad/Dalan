@@ -12,6 +12,8 @@ import { Live } from "./live.ts";
 import { loginScreen } from "./login.ts";
 import { pageFor } from "./pages.ts";
 import { h } from "./dom.ts";
+import { builderView } from "./panels.ts";
+import { toastRegion } from "./toast.ts";
 import { publicScreen, siteBrand, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
 import { Chats } from "./messages.ts";
@@ -34,7 +36,7 @@ function show(element: HTMLElement): void {
   document.title = language.t("appName");
   // Shown by the style sheet while the server cannot be reached.
   document.body.dataset["connecting"] = language.t("connecting");
-  document.body.replaceChildren(element);
+  document.body.replaceChildren(element, toastRegion());
 }
 
 function showLogin(error: TextKey | null = null): void {
@@ -72,8 +74,27 @@ function guest(): void {
   show(publicPage(page as PublicPage, false));
 }
 
+/** The end of the site header on every page: "Log in" for a visitor, the user menu after login (owner, 2026-11-20). */
+function userArea(): HTMLElement {
+  const t = language.t.bind(language);
+  if (!app) return h("button", { type: "button", class: "primary", onclick: () => showLogin() }, t("enter"));
+  const current = app;
+  const item = (label: string, onclick: () => void) => h("button", { type: "button", class: "item", onclick }, label);
+  return h("details", { class: "menu user" },
+    h("summary", {}, h("bdi", {}, current.user.name)),
+    h("div", { class: "panel" },
+      // "My bots" are the bots this user built; "Chats" the bots they talk to (owner, 2026-11-20).
+      item(t("myBots"), () => current.showPanel(builderView(current.user) === "bots" ? "builder" : "account")),
+      item(t("chats"), () => navigate("/bots")),
+      h("span", { class: "item off" }, t("myApps"), h("span", { class: "soon" }, t("soon"))),
+      item(t("account"), () => current.showPanel("account")),
+      ...(current.user.admin ? [item(t("adminScreen"), () => current.showPanel("admin"))] : []),
+      item(t("logout"), () => current.logout())));
+}
+
 function publicPage(page: PublicPage, loggedIn: boolean): HTMLElement {
   return publicScreen(page, {
+    userArea: userArea(),
     language,
     theme,
     loggedIn,
@@ -102,7 +123,7 @@ function route(): void {
     });
   // The public pages have the site header; the app screens get the same logo and name on top.
   if (!screen.element.classList.contains("public")) {
-    screen.element.prepend(h("header", { class: "site" }, siteBrand(language.t("appName"), navigate)));
+    screen.element.prepend(h("header", { class: "site" }, siteBrand(language.t("appName"), navigate), userArea()));
   }
   show(screen.element);
 }
@@ -120,6 +141,8 @@ async function enter(user: User): Promise<void> {
     statusRefreshSeconds: settings.status_refresh_seconds,
     go: navigate,
     showPanel(next) {
+      // The panels live on the bot list address, so the menu can open them from any page.
+      if (location.pathname !== "/bots") history.pushState(null, "", "/bots");
       panel = next;
       route();
     },
