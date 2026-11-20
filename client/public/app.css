@@ -523,5 +523,7 @@ footer.site a:hover { color: var(--text); }
 button.theme { display: grid; place-items: center; flex: none; width: 36px; min-height: 36px; height: 36px; padding: 0; border-radius: 50%; background: transparent; color: var(--muted); }
 button.theme:hover { color: var(--text); border-color: var(--brand); }
 button.theme .icon { width: 18px; height: 18px; }
+/* The theme wave (theme.ts): no cross-fade, the new page is uncovered by a growing circle. */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
 /* The menu and the links read as one row: the same space between all of them. */
 @media (min-width: 641px) { header.site .menu + .links { margin-inline-start: calc(2px - var(--space-m)); } }

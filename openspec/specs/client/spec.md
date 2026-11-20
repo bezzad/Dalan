@@ -427,15 +427,15 @@ A user with no phone (AUTH-04 `has_phone` false) SHALL see a card in the account
 - **THEN** the "verify your mobile" card is shown; with `has_phone` true it is not
 
 ### Requirement: CLI-35 Light and dark theme
-The client SHALL have a light and a dark theme. With no choice it SHALL follow the device's theme. The public pages and the bot list SHALL have a theme button that moves system, light, dark and back to system; the choice SHALL be kept on this device and used on the next open. Code blocks SHALL stay dark in both themes.
+The client SHALL have a light and a dark theme. On the first open it SHALL follow the device's theme. The public pages and the bot list SHALL have a theme button that switches only between light and dark; the choice SHALL be kept on this device and used on the next open, whatever the device says. The switch SHALL show the new theme as a circle that grows from the button, and SHALL change at once when the visitor asks for reduced motion. Code blocks SHALL stay dark in both themes.
 
 #### Scenario: First open follows the device
-- **WHEN** a visitor opens the site for the first time
-- **THEN** the theme is "system": the page has no `data-theme`, and the style sheet gives dark colours when the device asks for dark
+- **WHEN** a visitor opens the site for the first time on a device that asks for dark
+- **THEN** the theme is dark (`data-theme="dark"`), and nothing is kept yet
 
 #### Scenario: Choice is kept
-- **WHEN** the visitor presses the theme button twice
-- **THEN** the theme is light, then dark (`data-theme="dark"`), and the next open is dark; a third press goes back to system
+- **WHEN** the visitor presses the theme button twice, starting from light
+- **THEN** the theme is dark, then light; there is no third state, and the next open uses the kept choice
 
 ### Requirement: CLI-36 One simple login card
 The login screen SHALL be one card, like ngrok: a "Log in with GitHub" button that opens `/api/auth/github` (only when `github_login` is on), a line "or", then the email form (or the SMS form when `email_login` is off), and at the bottom small links to the other ways. When the address has `login_error` (AUTH-29) the card SHALL show its text and remove it from the address. The GitHub mark SHALL be inline.

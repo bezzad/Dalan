@@ -1,10 +1,9 @@
-// CLI-35: the colour theme. "system" follows the device; "light" and "dark" are the visitor's choice, kept on this device.
+// CLI-35: the colour theme, light or dark. The first open follows the device; after a press the choice is kept on this device.
 import type { LangStorage } from "./i18n.ts";
 
-export type ThemeName = "system" | "light" | "dark";
+export type ThemeName = "light" | "dark";
 
 const StorageKey = "dalan.theme";
-const order: ThemeName[] = ["system", "light", "dark"];
 
 /** The part of `document.documentElement` that is used: the style sheet reads `data-theme`. */
 export interface ThemeRoot {
@@ -16,36 +15,35 @@ export class Theme {
   private readonly storage: LangStorage;
   current: ThemeName;
 
-  constructor(root: ThemeRoot, storage: LangStorage) {
+  /** `deviceDark`: the device asks for dark. Used only while the visitor has made no choice. */
+  constructor(root: ThemeRoot, storage: LangStorage, deviceDark: boolean) {
     this.root = root;
     this.storage = storage;
     const saved = storage.getItem(StorageKey);
-    this.current = saved === "light" || saved === "dark" ? saved : "system";
+    this.current = saved === "light" || saved === "dark" ? saved : deviceDark ? "dark" : "light";
     this.apply();
   }
 
-  /** The next theme: system, light, dark, then system again. */
+  /** Light to dark, or dark to light. The choice is kept. */
   toggle(): void {
-    this.current = order[(order.indexOf(this.current) + 1) % order.length]!;
+    this.current = this.current === "light" ? "dark" : "light";
     this.storage.setItem(StorageKey, this.current);
     this.apply();
   }
 
   private apply(): void {
-    if (this.current === "system") delete this.root.dataset["theme"];
-    else this.root.dataset["theme"] = this.current;
+    this.root.dataset["theme"] = this.current;
   }
 }
 
-const labels = { system: "themeSystem", light: "themeLight", dark: "themeDark" } as const;
-// Line icons on a 24 by 24 grid, drawn in the page (rule 7): half circle, sun, moon.
+const labels = { light: "themeLight", dark: "themeDark" } as const;
+// Line icons on a 24 by 24 grid, drawn in the page (rule 7): sun, moon.
 const icons: Record<ThemeName, string[]> = {
-  system: ["M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z", "M12 3v18", "M12 7h4", "M12 11h6", "M12 15h5"],
   light: ["M12 8a4 4 0 1 0 0 8a4 4 0 0 0 0-8z", "M12 2v2", "M12 20v2", "M4.9 4.9l1.4 1.4", "M17.7 17.7l1.4 1.4", "M2 12h2", "M20 12h2", "M4.9 19.1l1.4-1.4", "M17.7 6.3l1.4-1.4"],
   dark: ["M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"],
 };
 
-/** A round button that moves to the next theme. It shows the current theme as an icon, and its name to screen readers. */
+/** A round button that switches light and dark. It shows the current theme as an icon, and its name to screen readers. */
 export function themeButton(theme: Theme, t: (key: (typeof labels)[ThemeName]) => string): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
@@ -65,9 +63,21 @@ export function themeButton(theme: Theme, t: (key: (typeof labels)[ThemeName]) =
     button.title = t(labels[theme.current]);
     button.setAttribute("aria-label", button.title);
   };
-  button.addEventListener("click", () => {
+  const change = () => {
     theme.toggle();
     draw();
+  };
+  button.addEventListener("click", () => {
+    // A wave of the new colours grows from the button. The browser draws it on the GPU; without support, or when the
+    // visitor asks for reduced motion, the colours change at once.
+    if (!document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return change();
+    const box = button.getBoundingClientRect();
+    const x = box.left + box.width / 2;
+    const y = box.top + box.height / 2;
+    const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    document.startViewTransition(change).ready.then(() => document.documentElement.animate(
+      { clipPath: [`circle(0 at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+      { duration: 500, easing: "ease-in-out", pseudoElement: "::view-transition-new(root)" }));
   });
   draw();
   return button;

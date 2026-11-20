@@ -17,7 +17,7 @@ import { Chats } from "./messages.ts";
 import { Theme } from "./theme.ts";
 
 const language = new Language(document.documentElement, localStorage);
-const theme = new Theme(document.documentElement, localStorage);
+const theme = new Theme(document.documentElement, localStorage, matchMedia("(prefers-color-scheme: dark)").matches);
 let app: App | null = null;
 let live: Live | null = null;
 let screen: Screen | null = null;
