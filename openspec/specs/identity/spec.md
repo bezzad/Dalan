@@ -599,7 +599,7 @@ When GitHub login is on (AUTH-16), `GET /api/auth/github` SHALL set the cookie `
 - **THEN** the access log has a row for that user with `203.0.113.7` and `51000`
 
 ### Requirement: AUTH-29 GitHub login failures
-The callback SHALL delete the state cookie on every call. Each failure SHALL answer 302 to `/?login_error=<code>` and set no session: `github_state` (no state, or not equal to the cookie), `github_denied` (the person said no at GitHub), `github_no_email` (no primary verified email), `github_unavailable` (no answer in `Identity:GitHub:TimeoutSeconds`, start 10, or the code was refused), `suspended`.
+The callback SHALL delete the state cookie on every call. Each failure SHALL answer 302 to `/?login_error=<code>` and set no session: `github_state` (no state, or not equal to the cookie), `github_denied` (the person said no at GitHub), `github_no_email` (no primary verified email), `github_unavailable` (no answer after `Identity:GitHub:Tries` tries, start 3, of `Identity:GitHub:TimeoutSeconds` each, start 10, or the code was refused), `suspended`.
 
 #### Scenario: Wrong state
 - **WHEN** the browser comes back with a state that is not the cookie's, or with no cookie
@@ -623,3 +623,13 @@ The callback SHALL delete the state cookie on every call. Each failure SHALL ans
 - **GIVEN** the user of GitHub account 42 is suspended
 - **WHEN** it comes back
 - **THEN** the answer is 302 to `/?login_error=suspended` and no session cookie is set
+
+#### Scenario: The link stalls once
+- **GIVEN** the first call to GitHub gets no answer and the next one does
+- **WHEN** the browser comes back
+- **THEN** the user is logged in
+
+#### Scenario: GitHub answers with an error
+- **GIVEN** GitHub refuses the code
+- **WHEN** the browser comes back
+- **THEN** GitHub is called once for the token and the answer is 302 to `/?login_error=github_unavailable`
