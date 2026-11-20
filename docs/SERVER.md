@@ -1,6 +1,6 @@
 # Dalan — Iran server runbook
 
-How to set up the production server, deploy, back up and run the shutdown drill. Rules: `OPS-09` to `OPS-12`, `DEL-04` to `DEL-06`. Facts behind it: `docs/DESIGN.md` section 14.
+How to set up the production server, deploy, back up and run the shutdown drill. Rules: `OPS-09` to `OPS-12`, `DEL-04` to `DEL-07`. Facts behind it: `docs/DESIGN.md` section 14.
 
 ## 1. Before the server
 
@@ -120,7 +120,7 @@ GitHub, repository Settings, Environments, `production` (create it if missing), 
 | `DEPLOY_SSH_KEY` | the private key: the whole output of `cat ~/.ssh/dalan-deploy` |
 | `DEPLOY_KNOWN_HOSTS` | the output of `ssh-keyscan <server>` |
 
-Every merge to `main` deploys by itself after all gates pass. CI builds once (job `build`), runs each test project on its own machine at the same time, and the deploy uses the same release the tests passed with. `deploy/deploy.sh` sends it with `rsync` to a new folder: only the parts that differ from the current release go over the network. It rolls back by itself if `/ready` fails. A server set up before 2026-11-19 may not have `rsync`: run `install.sh` again, or `sudo apt-get install rsync`. The first deploy, or a deploy again, by hand: Actions, workflow `ci`, "Run workflow" on `main`, tick "Deploy". A change of `dalan.env` by hand needs `sudo systemctl restart dalan`.
+Every merge to `main` deploys by itself after all gates pass. CI builds once (job `build`), runs each test project on its own machine at the same time, and the deploy uses the same release the tests passed with. `deploy/deploy.sh` sends it with `rsync` to a new folder: only the parts that differ from the current release go over the network. It rolls back by itself if `/ready` fails. It opens one SSH connection for the whole deploy, with up to 5 tries of 30 seconds (`SSH_TRIES`, `SSH_TIMEOUT`), because the link from GitHub to Iran stalls now and then. "Connection closed by <server> port 22" or "No SSH connection" in the deploy log is such a stall: run the deploy again. On the server, `journalctl -u ssh | grep 'Timeout before authentication'` shows it. A server set up before 2026-11-19 may not have `rsync`: run `install.sh` again, or `sudo apt-get install rsync`. The first deploy, or a deploy again, by hand: Actions, workflow `ci`, "Run workflow" on `main`, tick "Deploy". A change of `dalan.env` by hand needs `sudo systemctl restart dalan`.
 
 Check: `https://dalanet.ir` opens, SMS login works, your number sees the admin area. Logs: `journalctl -u dalan -f`.
 

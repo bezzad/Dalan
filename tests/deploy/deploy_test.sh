@@ -21,7 +21,7 @@ SH
   for tool in git wget ssh scp; do printf '#!/bin/sh\necho %s >> %s/forbidden.log\nexit 1\n' "$tool" "$tmp" > "$tmp/bin/$tool"; done
   chmod +x "$tmp/bin/"*
   export PATH="$tmp/bin:$PATH" DEPLOY_HOST=local DEPLOY_DIR="$tmp/server" SYSTEMCTL="$tmp/bin/systemctl" \
-         READY_WAIT_SECONDS=2 READY_URL=http://127.0.0.1:5000/ready KEEP_RELEASES=5
+         READY_WAIT_SECONDS=2 READY_URL=http://127.0.0.1:5000/ready KEEP_RELEASES=5 SSH_WAIT=0
 }
 
 current() { readlink "$tmp/server/current"; }
@@ -74,3 +74,33 @@ echo "PASS DEL-05 current release is kept"
 [ ! -f "$tmp/forbidden.log" ] || fail "forbidden tools called: $(cat "$tmp/forbidden.log")"
 [ "$(sort -u "$tmp/curl.log")" = "http://127.0.0.1:5000/ready" ] || fail "curl called: $(sort -u "$tmp/curl.log")"
 echo "PASS DEL-06 no pull from outside"
+
+# Rule: DEL-07 the SSH connection is tried again when the link stalls, then every call reuses it
+setup
+touch "$tmp/ready"
+# Fake ssh: the first two connection tries fail; after that it runs the command here, as the server would.
+cat > "$tmp/bin/ssh" <<SH
+#!/bin/bash
+echo "\$*" >> "$tmp/ssh.log"
+while [ \$# -gt 0 ]; do case "\$1" in -o|-l|-p) shift 2;; -O) exit 0;; -*) shift;; *) break;; esac; done
+shift
+if [ "\$*" = true ]; then
+  n=\$(cat "$tmp/tries" 2>/dev/null || echo 0); echo \$((n + 1)) > "$tmp/tries"
+  [ "\$n" -ge 2 ] || exit 255
+fi
+exec bash -c "\$*"
+SH
+chmod +x "$tmp/bin/ssh"
+DEPLOY_HOST=deploy@server bash "$deploy" "$tmp/pkg" v1 >"$tmp/out" 2>&1 || fail "deploy failed after two stalled tries: $(tail -5 "$tmp/out")"
+[ "$(current)" = "$tmp/server/releases/v1" ] || fail "current is $(current), want v1"
+[ "$(cat "$tmp/tries")" -eq 3 ] || fail "want 3 connection tries, got $(cat "$tmp/tries")"
+if grep -v -q 'ControlPath=' "$tmp/ssh.log"; then fail "an ssh call did not reuse the connection"; fi
+echo "PASS DEL-07 SSH connection is tried again"
+
+# Rule: DEL-07 the deploy stops when no try connects
+setup
+printf '#!/bin/sh\nexit 255\n' > "$tmp/bin/ssh"
+chmod +x "$tmp/bin/ssh"
+if DEPLOY_HOST=deploy@server SSH_TRIES=2 bash "$deploy" "$tmp/pkg" v1 >/dev/null 2>&1; then fail "deploy without SSH exited with success"; fi
+[ ! -e "$tmp/server/current" ] || fail "current link changed without SSH"
+echo "PASS DEL-07 no connection, no deploy"
