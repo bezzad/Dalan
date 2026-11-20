@@ -99,6 +99,23 @@ Then log in with your Gmail address on the site; in Gmail, "Show original" shoul
 
 The login card then shows "Log in with GitHub" first. GitHub users are level 1, like email users. When the international internet is cut, GitHub cannot be reached and the card says to use email or SMS.
 
+### Sites (Layer 2, optional)
+
+Users' sites live on their own registered domain (for example `dalancloud.ir`), never under the site domain (SITE-13). The site agents connect to the tunnel host, `tunnel.<site domain>` unless `TUNNEL_DOMAIN` says another.
+
+1. DNS: an `A` record `tunnel` in the site domain, and in the sites domain an `A` record `*` (and `@` if you like), all to the server address with the CDN proxy **off**.
+2. Run `install.sh` again with the sites domain. Give `SITES_DOMAIN` (and `TUNNEL_DOMAIN`, if not the default) on **every** later run too: without it, sites are off again.
+
+   ```bash
+   SITES_DOMAIN=dalancloud.ir bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
+   ```
+
+3. Check: `curl -fsSL https://dalanet.ir/install.sh | head -3`, then on any computer install the agent, make a key in "My apps" and run a site. Caddy gets each site's certificate on its first visit (a few seconds), only for names Dalan knows (SITE-17).
+
+Limit: Let's Encrypt gives about 50 new certificates per registered domain per week, so about 50 new site names a week. After buying the sites domain, ask for it on the Public Suffix List (https://github.com/publicsuffix/list), so a site cannot set cookies for the other sites. Before the domain is ready, test with sslip.io: `SITES_DOMAIN=203-0-113-10.sslip.io` gives `name.203-0-113-10.sslip.io` (it needs foreign DNS, so not for the drill).
+
+The agent files come with each deploy (`/opt/dalan/current/agent`, DEL-07); `/downloads/<file>` serves them.
+
 ### A new computer for the owner
 
 Only `install.sh` and SSH need your own computer; the deploy runs from CI. On the new computer (Linux):

@@ -72,6 +72,9 @@ grep -qx 'DALAN_API_DOMAIN=api.dalanet.ir' "$domains" || fail "api domain not se
 grep -qx 'Admin__SiteUrl=https://dalanet.ir' "$domains" || fail "site address not set for the server"
 grep -qx 'Admin__BotApiUrl=https://api.dalanet.ir' "$domains" || fail "Bot API address not set for the server"
 grep -qx 'Notification__Push__Subject=https://dalanet.ir' "$domains" || fail "push subject not set"
+grep -qx 'DALAN_TUNNEL_DOMAIN=tunnel.dalanet.ir' "$domains" || fail "tunnel domain not set for Caddy"
+grep -qx 'Sites__TunnelUrl=https://tunnel.dalanet.ir' "$domains" || fail "tunnel address not set for the server"
+grep -qx 'Sites__Domain=' "$domains" || fail "sites must be off when no sites domain is given"
 grep -q '^EnvironmentFile=/etc/dalan/domains.env' "$root/etc/systemd/system/dalan.service" || fail "dalan does not read the domains"
 grep -q '^EnvironmentFile=/etc/dalan/domains.env' "$root/etc/systemd/system/caddy.service" || fail "caddy does not read the domains"
 grep -qx 'systemctl try-restart dalan.service' "$state/commands.log" || fail "dalan not restarted for new settings"
@@ -182,6 +185,16 @@ printf 'SMS=pigeon\n' > "$src/settings.env"
 bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null 2>&1 && fail "unknown SMS provider accepted"
 rm "$src/settings.env"
 echo "PASS OPS-10 settings from install.sh"
+
+# Rule: OPS-15 the sites domain and the tunnel host from install.sh
+printf 'SITES_DOMAIN=dalancloud.ir\nTUNNEL_DOMAIN=t.dalanet.ir\n' > "$src/settings.env"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out-sites" || fail "run with a sites domain failed"
+for line in Sites__Domain=dalancloud.ir DALAN_TUNNEL_DOMAIN=t.dalanet.ir Sites__TunnelUrl=https://t.dalanet.ir; do
+  grep -qx "$line" "$root/etc/dalan/domains.env" || fail "domains.env should have $line"
+done
+grep -qF '*.dalancloud.ir' "$tmp/out-sites" || fail "setup does not print the DNS record of the sites"
+rm "$src/settings.env"
+echo "PASS OPS-15 sites domain and tunnel host from install.sh"
 
 # Rule: OPS-10 secrets can be made again
 old_secrets=$(grep -E '^(ConnectionStrings__Dalan|Identity__SigningKey|Notification__Push__(Public|Private)Key)=' "$env_file")

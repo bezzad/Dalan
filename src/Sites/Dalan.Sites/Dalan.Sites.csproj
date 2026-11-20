@@ -7,6 +7,9 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Downloads/install.sh;Downloads/install.ps1" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../../Admin/Dalan.Admin.Contracts/Dalan.Admin.Contracts.csproj" />
     <ProjectReference Include="../../Identity/Dalan.Identity.Contracts/Dalan.Identity.Contracts.csproj" />
   </ItemGroup>

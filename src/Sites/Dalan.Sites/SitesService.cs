@@ -1,4 +1,5 @@
 using Dalan.Sites.Data;
+using Dalan.Sites.Downloads;
 using Dalan.Sites.MySites;
 using Dalan.Sites.Names;
 using Dalan.Sites.Proxy;
@@ -53,6 +54,8 @@ public static class SitesService
     {
         endpoints.MapTunnel();
         endpoints.MapMySites();
+        endpoints.MapCertificateCheck();
+        endpoints.MapAgentDownloads();
         return endpoints;
     }
 

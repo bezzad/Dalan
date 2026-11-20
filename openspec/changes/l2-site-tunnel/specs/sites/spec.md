@@ -160,3 +160,15 @@ A user who is suspended or no longer a builder SHALL lose their tunnels: new cal
 #### Scenario: Not your site
 - **WHEN** builder B deletes a site of builder A
 - **THEN** the answer is 404 and the site stays
+
+### Requirement: SITE-17 Certificate only for a real site
+`GET /api/sites/tls?domain=<host>` SHALL answer 200 only when the host is `name.<Sites:Domain>` and the name is claimed, and only to a caller on the server itself (the front proxy asks before it gets a certificate, OPS-15). Every other call SHALL answer 404.
+
+#### Scenario: Claimed and unknown names
+- **GIVEN** the claimed site `levelwise`
+- **WHEN** the front proxy asks about `levelwise.<sites domain>`, then `nobody.<sites domain>`
+- **THEN** the answers are 200, then 404
+
+#### Scenario: From the internet
+- **WHEN** a client on the internet asks about `levelwise.<sites domain>`
+- **THEN** the answer is 404

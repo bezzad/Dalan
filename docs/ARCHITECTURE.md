@@ -215,6 +215,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 61 | 2026-11-20 | The site Agent talks to the server over WebSocket first and falls back to long polling by itself when WebSocket does not work (like SignalR). User sites live on their own registered domain, not under `dalanet.ir` (filtering of one site must not block Dalan; cookies; phishing) |
 | 62 | 2026-11-20 | Sites is its own service and schema. A site is a name the first builder claims; the agent opens one session for many sites (each its own local port); the newest session of a site wins |
 | 63 | 2026-11-20 | The agent logs in with an access key (builders only, like bots); a browser code login comes later. It shares no code with the server; end-to-end tests run it against the test server |
+| 64 | 2026-11-20 | Dalan serves the agent files and the one-line install scripts itself (users in Iran may have no GitHub). Caddy gets a certificate for each site name on its first visit, after Dalan says the name is real; no wildcard certificate yet (needs a DNS challenge) |
 
 ## 11. Client address and access log
 
