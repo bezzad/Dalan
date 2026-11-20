@@ -117,6 +117,22 @@ export interface Settings {
   status_refresh_seconds: number;
 }
 
+/** SITE-16: one site of "My apps". */
+export interface Site {
+  id: number;
+  name: string;
+  url: string;
+  online: boolean;
+}
+
+/** SITE-16: the sites, the sites domain (empty: sites are off) and the agent's server. */
+export interface MySites {
+  domain: string;
+  scheme: string;
+  tunnel_url: string;
+  sites: Site[];
+}
+
 /** AUTH-21: an access key; the key itself comes only once, from makeKey. */
 export interface AccessKey {
   id: number;
@@ -180,6 +196,8 @@ export const api = {
   askBuilder: () => call<User>("POST", "/api/account/builder"),
   builderBots: async () => (await call<{ bots: BuilderBot[] }>("GET", "/api/builder/bots")).bots,
   createBot: (username: string, name: string) => call<NewToken>("POST", "/api/builder/bots", { username, name }),
+  mySites: () => call<MySites>("GET", "/api/sites"),
+  deleteSite: (siteId: number) => call<null>("DELETE", `/api/sites/${siteId}`),
   accessKeys: async () => (await call<{ keys: AccessKey[] }>("GET", "/api/account/keys")).keys,
   makeKey: (name: string) => call<AccessKey & { key: string }>("POST", "/api/account/keys", { name }),
   deleteKey: (keyId: number) => call<null>("DELETE", `/api/account/keys/${keyId}`),

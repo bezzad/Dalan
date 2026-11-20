@@ -64,4 +64,19 @@ public class ArchitectureTests
     [Trait("Rule", "ARC-04")]
     [Trait("Rule", "ARC-05")]
     public void Real_solution_follows_all_rules() => Assert.Empty(ArchitectureRules.Check(ProjectGraph.Load()));
+
+    [Fact]
+    [Trait("Rule", "ARC-06")]
+    public void ARC06_agent_has_no_project_or_package_reference()
+    {
+        var agent = System.Xml.Linq.XDocument.Load(Path.Combine(ProjectGraph.RepoRoot(), "agent", "Dalan.Agent", "Dalan.Agent.csproj"));
+
+        Assert.Empty(agent.Descendants("ProjectReference"));
+        Assert.Empty(agent.Descendants("PackageReference"));
+    }
+
+    [Fact]
+    [Trait("Rule", "ARC-06")]
+    public void ARC06_no_server_project_references_the_agent() =>
+        Assert.DoesNotContain(ProjectGraph.Load(), p => p.References.Contains("Dalan.Agent"));
 }

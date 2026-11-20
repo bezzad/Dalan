@@ -4,6 +4,7 @@ using Dalan.Host;
 using Dalan.Identity;
 using Dalan.Notification;
 using Dalan.Relay;
+using Dalan.Sites;
 using Dalan.Telegram;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,7 +31,8 @@ builder.Services
     .AddIdentityService()
     .AddRelayService()
     .AddNotificationService()
-    .AddAdminService();
+    .AddAdminService()
+    .AddSitesService();
 
 builder.Services.AddSingleton<Startup>();
 builder.Services.AddHostedService(provider => provider.GetRequiredService<Startup>());
@@ -38,8 +40,15 @@ builder.Services.AddHostedService(provider => provider.GetRequiredService<Startu
 var app = builder.Build();
 
 app.UseClientAddress();
-app.UseSecurityHeaders();
 app.UseReadyGate();
+// SITE-08: a site host leaves here, before Dalan's own pages and security headers; the per-address limit still holds (SEC-02).
+app.UseSites(site => site.UseRateLimiter());
+app.UseSecurityHeaders();
+// SITE-05: the agent's WebSocket.
+app.UseWebSockets(new WebSocketOptions
+{
+    KeepAliveInterval = TimeSpan.FromSeconds(builder.Configuration.GetValue<int>("Sites:WebSocketPingSeconds")),
+});
 app.UseClientFiles();
 app.UseRateLimiter();
 app.UseAuthentication();
@@ -52,6 +61,7 @@ app.MapIdentityService();
 app.MapRelayService();
 app.MapNotificationService();
 app.MapAdminService();
+app.MapSitesService();
 app.MapTelegramAdapter();
 
 app.Run();

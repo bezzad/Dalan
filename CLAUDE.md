@@ -19,6 +19,8 @@ dotnet test -c Release                      # all .NET tests; needs Docker, or D
 docker compose up -d                        # local PostgreSQL for the next line
 dotnet run --project src/Dalan.Host         # run the server; open http://localhost:5000 (development login is on; SMS codes go to the log)
 node scripts/demo-bot.mjs 1                 # a small bot to chat with; see the top of the file
+bash tests/delivery/agent_smoke_test.sh out # the site agent as one Native AOT file (needs clang); then:
+out/dalan login <key> --server http://localhost:5000 && out/dalan http 3000 --name mysite   # open http://mysite.localhost:5000
 node client/public/dalan.mjs                # the builder CLI (needs DALAN_URL and DALAN_KEY); /llms.txt explains it
 bash scripts/check-rules.sh                 # every spec rule ID has a test
 bash tests/deploy/deploy_test.sh            # deploy script tests (also setup_test, backup_test, drill_test)
@@ -32,9 +34,10 @@ openspec validate --all --strict            # OpenSpec CLI 2.1.0
 
 ```
 src/Dalan.Host/                    the one process; wires services; /health, /ready; serves the embedded client; real client address; per-address rate limit
-src/<Service>/Dalan.<Service>      Identity, Relay (core), Notification, Admin
+src/<Service>/Dalan.<Service>      Identity, Relay (core), Notification, Admin, Sites (Layer 2)
 src/<Service>/Dalan.<Service>.Contracts   the only thing other services may reference
 src/Plugins/Dalan.Telegram         Telegram adapter plugin (no data, no domain)
+agent/Dalan.Agent                  the site agent on the home computer: Native AOT, no package, no Dalan project
 tests/                             one project or script folder per area
 client/                            PWA, plain TypeScript, no framework, no bundler; src, public, tests; built into dist
 deploy/                            deploy.sh, server setup (install.sh, setup.sh), units, Caddyfile, backup, shutdown drill; docs/SERVER.md

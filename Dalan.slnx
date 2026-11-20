@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/agent/">
+    <Project Path="agent/Dalan.Agent/Dalan.Agent.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Admin/Dalan.Admin.Contracts/Dalan.Admin.Contracts.csproj" />
     <Project Path="src/Admin/Dalan.Admin/Dalan.Admin.csproj" />
@@ -10,6 +13,7 @@
     <Project Path="src/Plugins/Dalan.Telegram/Dalan.Telegram.csproj" />
     <Project Path="src/Relay/Dalan.Relay.Contracts/Dalan.Relay.Contracts.csproj" />
     <Project Path="src/Relay/Dalan.Relay/Dalan.Relay.csproj" />
+    <Project Path="src/Sites/Dalan.Sites/Dalan.Sites.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Dalan.Admin.Tests/Dalan.Admin.Tests.csproj" />
@@ -17,6 +21,7 @@
     <Project Path="tests/Dalan.Host.Tests/Dalan.Host.Tests.csproj" />
     <Project Path="tests/Dalan.Identity.Tests/Dalan.Identity.Tests.csproj" />
     <Project Path="tests/Dalan.Relay.Tests/Dalan.Relay.Tests.csproj" />
+    <Project Path="tests/Dalan.Sites.Tests/Dalan.Sites.Tests.csproj" />
     <Project Path="tests/Dalan.Telegram.Tests/Dalan.Telegram.Tests.csproj" />
   </Folder>
 </Solution>

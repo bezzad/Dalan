@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <Compile Include="../Shared/*.cs" LinkBase="Shared" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Dalan.Host/Dalan.Host.csproj" />
+    <!-- The end-to-end tests run the real agent against the test server, so both sides of the tunnel stay the same. -->
+    <ProjectReference Include="../../agent/Dalan.Agent/Dalan.Agent.csproj" />
+  </ItemGroup>
+</Project>

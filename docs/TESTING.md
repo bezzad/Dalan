@@ -9,7 +9,7 @@ Dalan carries other people's messages, so tests must be many and exact. The spec
 - A .NET test names its rule with a trait: `[Trait("Rule", "Q-04")]`. A shell test has a line `# Rule: DEL-04`. A client test has `// Rule: CLI-04` and the ID in the test name.
 - `scripts/check-rules.sh` fails CI when an ID has no test (rule `DEL-02`).
 
-Areas: `OPS` operations, `ARC` architecture, `DEL` delivery, `Q` bot queue, `REL` relay, `AUTH` identity, `TG` Telegram adapter, `NTF` notification, `ADM` admin, `SEC` security, `LIVE` live updates, `CLI` client.
+Areas: `OPS` operations, `ARC` architecture, `DEL` delivery, `Q` bot queue, `REL` relay, `AUTH` identity, `TG` Telegram adapter, `NTF` notification, `ADM` admin, `SEC` security, `LIVE` live updates, `CLI` client, `SITE` sites, `AGT` agent.
 
 ## 2. Workflow (test first)
 
