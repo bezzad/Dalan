@@ -15,7 +15,7 @@ import { pageFor } from "./pages.ts";
 import { h } from "./dom.ts";
 import { builderView } from "./panels.ts";
 import { toastRegion } from "./toast.ts";
-import { publicScreen, siteBrand, type PublicPage } from "./public.ts";
+import { headerTools, publicScreen, siteBrand, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
 import { Chats } from "./messages.ts";
 import { Theme } from "./theme.ts";
@@ -93,18 +93,21 @@ function userArea(): HTMLElement {
       item(t("logout"), () => current.logout())));
 }
 
+/** Language, theme and the user area: the same end of the header on every page. */
+function tools(): HTMLElement {
+  return headerTools(language, theme, () => {
+    language.toggle();
+    render();
+  }, userArea());
+}
+
 function publicPage(page: PublicPage, loggedIn: boolean): HTMLElement {
   return publicScreen(page, {
-    userArea: userArea(),
+    tools: tools(),
     language,
-    theme,
     loggedIn,
     go: navigate,
     enter: loggedIn ? () => navigate("/bots") : showLogin,
-    onLanguage() {
-      language.toggle();
-      render();
-    },
   });
 }
 
@@ -113,19 +116,17 @@ function route(): void {
   if (!app) return;
   const page = pageFor(location.pathname, true);
   const username = /^\/@([^/]+)$/.exec(decodeURIComponent(location.pathname))?.[1];
-  screen = page === "landing" || page === "privacy" || page === "faq" || page === "showcase" || page === "guide" ? { element: publicPage(page, true) }
+  screen = page === "landing" || page === "privacy" || page === "faq" || page === "showcase" || page === "guide" || page === "notFound"
+    ? { element: publicPage(page, true) }
     : username ? chatScreen(app, username)
     : page === "apps" && panel === null ? appsScreen(app)
     : panel === "account" ? accountScreen(app)
     : panel === "builder" ? builderScreen(app)
     : panel === "admin" ? adminScreen(app)
-    : botsScreen(app, () => {
-      language.toggle();
-      route();
-    });
+    : botsScreen(app);
   // The public pages have the site header; the app screens get the same logo and name on top.
   if (!screen.element.classList.contains("public")) {
-    screen.element.prepend(h("header", { class: "site" }, siteBrand(language.t("appName"), navigate), userArea()));
+    screen.element.prepend(h("header", { class: "site" }, siteBrand(language.t("appName"), navigate), tools()));
   }
   show(screen.element);
 }

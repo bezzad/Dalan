@@ -16,14 +16,15 @@ export interface PublicNumbers {
 }
 
 /** CLI-26: which screen an address shows. Unknown addresses never reach the page: the server answers 404. */
-export type Page = "landing" | "privacy" | "faq" | "showcase" | "guide" | "login" | "bots" | "apps" | "chat";
+export type Page = "landing" | "privacy" | "faq" | "showcase" | "guide" | "login" | "bots" | "apps" | "chat" | "notFound";
 
 export function pageFor(path: string, loggedIn: boolean): Page {
   if (path === "/privacy" || path === "/faq" || path === "/showcase" || path === "/guide") return path.slice(1) as Page;
   if (path.startsWith("/@")) return loggedIn ? "chat" : "login";
   if (path === "/bots") return loggedIn ? "bots" : "login";
   if (path === "/apps") return loggedIn ? "apps" : "login";
-  return "landing";
+  // CLI-40: an address we do not know is a closed gate, not the landing page.
+  return path === "/" || path === "" ? "landing" : "notFound";
 }
 
 /** CLI-26: the three messages of DESIGN section 13, in this order. Never "free tunnel". */

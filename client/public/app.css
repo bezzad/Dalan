@@ -1,4 +1,13 @@
 /* One style sheet for both directions: only logical properties (inline-start, inline-end), no left or right. */
+/* Inter only for Latin letters, digits and punctuation; the joiners and direction marks (U+200C to U+200F) stay with
+   Vazirmatn, so Persian words join right. */
+@font-face {
+  font-family: Inter;
+  src: url("/fonts/inter.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-200B, U+2010-206F, U+20AC, U+2122, U+2212;
+}
 @font-face {
   font-family: Vazirmatn;
   src: url("/fonts/vazirmatn.woff2") format("woff2");
@@ -36,6 +45,7 @@
   --text-hero: clamp(28px, 5vw, 46px);
   --text-title: clamp(22px, 3.2vw, 30px);
   --page-width: 1080px;
+  --font: Inter, Vazirmatn, system-ui, sans-serif;
   --mono: ui-monospace, monospace;
   --tracking: .12em;
 }
@@ -89,7 +99,8 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 16px/1.7 Vazirmatn, system-ui, sans-serif;
+  font: 16px/1.6 var(--font);
+  -webkit-font-smoothing: antialiased;
 }
 
 body.offline::before {
@@ -149,12 +160,18 @@ input, textarea {
 
 textarea { resize: none; max-height: 30dvh; field-sizing: content; }
 
-button {
-  min-height: 44px;
-  padding: 8px 16px;
+/* docs/UI.md: every button has one height per size and its words in the middle, on both axes. */
+button, a.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--surface);
+  line-height: 1.2;
   cursor: pointer;
 }
 
@@ -180,7 +197,7 @@ button.link { min-height: 0; padding: 4px 6px; border: 0; background: none; colo
   border-radius: 16px;
   background: var(--surface);
 }
-.card button { margin-block-start: 8px; }
+.card > button, .card > form > button { margin-block-start: 8px; }
 .card button.link { align-self: flex-start; margin: 0; }
 .links { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; }
 /* CLI-36: one card like ngrok: the name above, GitHub, "or", the form, the other ways at the bottom. */
@@ -257,15 +274,7 @@ main > .scroller, main > .bots { margin-inline: calc(-1 * var(--gutter)); paddin
 .messages audio { max-width: 100%; }
 .messages a { color: var(--brand); overflow-wrap: anywhere; }
 .row.inline > button, .row.inline > a.button { flex: 1; min-width: 0; min-height: 36px; padding: 4px 8px; overflow-wrap: anywhere; }
-a.button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-  text-decoration: none;
-}
+a.button { text-decoration: none; }
 form.row > button:not(.primary) { padding: 8px 10px; }
 
 /* Presence and push (CLI-18 to CLI-21) */
@@ -312,12 +321,12 @@ main.public > .scroller { flex: 1 0 auto; overflow: visible; }
 main.public > header.site { position: sticky; top: 0; margin-block-start: -12px; padding-block: 12px; background: var(--bg); }
 .label { font: 600 12px/1.6 var(--mono); letter-spacing: var(--tracking); text-transform: uppercase; color: var(--muted); }
 .soon { padding: 0 6px; border-radius: 6px; background: rgb(242 180 90 / .15); color: var(--accent); font: 600 11px/1.7 var(--mono); letter-spacing: 0; }
-:lang(en) .public h2 { font-family: ui-serif, Georgia, "Times New Roman", serif; font-weight: 500; letter-spacing: -.01em; }
+:lang(en) .public h2 { font-weight: 600; letter-spacing: -.02em; }
 :lang(fa) .public h2 { font-weight: 800; }
 
 /* Header and the "Problems we solve" menu */
 header.site { position: relative; z-index: 2; flex-wrap: wrap; gap: var(--space-s) var(--space-m); }
-header.site h1 { flex: 0 0 auto; font-size: 22px; overflow: visible; }
+header.site h1 { flex: 0 0 auto; font-size: 22px; line-height: 1; overflow: visible; }
 header.site h1 a { display: inline-flex; align-items: center; gap: var(--space-s); color: var(--text); text-decoration: none; }
 header.site .links { flex: 1; align-items: center; justify-content: flex-start; gap: 2px; }
 /* Every item of the top bar has the same box, so the words sit on one line (owner, 2026-11-18: "the texts are not aligned"). */
@@ -329,7 +338,12 @@ header.site > button.primary { border-radius: 999px; }
 .links a, .links button.link { color: var(--muted); text-decoration: none; font-size: 14px; }
 .links a:hover, .links button.link:hover { color: var(--text); }
 .mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--radius-s); background: var(--brand); color: var(--on-brand); }
-.mark .icon { width: 22px; height: 22px; }
+.mark .gate { width: 36px; height: 36px; }
+/* The Dalan gate (logo.ts): an arch line around a softer door; a closed door is solid. */
+.gate .arch { fill: none; stroke: currentColor; stroke-width: 6; stroke-linecap: round; }
+.gate .door { fill: currentColor; opacity: .55; }
+.gate.closed .door { opacity: 1; }
+.gate .handle { fill: var(--brand); }
 .icon { width: 24px; height: 24px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .menu summary { cursor: pointer; color: var(--muted); list-style: none; }
 .menu summary::-webkit-details-marker { display: none; }
@@ -353,8 +367,11 @@ header.site > button.primary { border-radius: 999px; }
 .menu .item strong, .product > .label, footer.site .column > span { display: inline-flex; align-items: center; gap: 8px; }
 .menu .item small { color: var(--muted); font-size: 13px; line-height: 1.5; }
 /* The user menu at the end of the header: a small list under the name. */
-.menu.user { position: relative; margin-inline-start: auto; }
-.menu.user summary { display: inline-flex; align-items: center; min-height: 36px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--text); }
+.menu.user { position: relative; }
+/* The end of the header: language, theme, user area. */
+.tools { display: flex; align-items: center; gap: var(--space-s); margin-inline-start: auto; }
+.tools > button.primary { min-height: 36px; border-radius: 999px; }
+.menu.user summary { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--text); }
 .menu.user .panel { inset-inline: auto 0; min-width: 200px; display: flex; flex-direction: column; gap: 2px; padding: 6px; z-index: 3; }
 .menu.user .item { min-height: 0; border: 0; background: none; text-align: start; font: inherit; cursor: pointer; }
 .menu.user .item:hover { background: var(--bg); }
@@ -363,12 +380,12 @@ header.site > button.primary { border-radius: 999px; }
 /* Account on a wide screen: a wider page and cards in two columns, buttons as wide as their words (like ngrok). */
 /* docs/UI.md: inner pages are wide on a desktop. Buttons are as wide as their words; "cols" puts cards in two columns. */
 main.wide { --gutter: max(16px, calc((100vw - 960px) / 2)); }
-main.wide .card button:not(.link) { align-self: flex-start; }
+main.wide .card > button:not(.link), main.wide .card > form > button:not(.link) { align-self: flex-start; }
 main.wide .card .row { flex-wrap: wrap; }
 @media (min-width: 900px) {
   main.cols > .scroller { display: grid; grid-template-columns: 1fr 1fr; align-items: start; align-content: start; }
 }
-button.small { min-height: 32px; padding: 4px 12px; font-size: 14px; }
+button.small { min-height: 32px; padding: 0 12px; font-size: 14px; }
 button.danger { color: var(--danger); }
 .row.grow { flex: 1; }
 /* A list of rows inside one card, like ngrok's tables. */
@@ -403,7 +420,8 @@ button.danger { color: var(--danger); }
 .page ol { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 8px; }
 .page p { color: var(--muted); }
 .page h3 { margin: 0; font-size: 18px; }
-a.button { min-height: 44px; padding: 8px 18px; border-radius: 999px; color: var(--text); background: transparent; }
+a.button { padding: 0 18px; border-radius: 999px; color: var(--text); background: transparent; }
+.hero button, .hero a.button, .cta button, .cta a.button { min-height: 44px; }
 .public button.primary { border-radius: 999px; }
 a.button:hover, .public button:hover { border-color: var(--brand); }
 
@@ -556,9 +574,11 @@ footer.site a:hover { color: var(--text); }
 :lang(fa) .page ol:not(.steps) { list-style-type: persian; }
 
 /* CLI-35: the theme button, round, in the top bar of the site and of the bot list. */
-button.theme { display: grid; place-items: center; flex: none; width: 36px; min-height: 36px; height: 36px; padding: 0; border-radius: 50%; background: transparent; color: var(--muted); }
-button.theme:hover { color: var(--text); border-color: var(--brand); }
-button.theme .icon { width: 18px; height: 18px; }
+/* Round header buttons: theme (an icon) and language (a globe and the other language's code). */
+button.theme, button.round { flex: none; min-width: 36px; min-height: 36px; height: 36px; padding: 0; border-radius: 999px; background: transparent; color: var(--muted); }
+button.round.lang { gap: 4px; padding-inline: 8px 10px; font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+button.theme:hover, button.round:hover { color: var(--text); border-color: var(--brand); }
+button.theme .icon, button.round .icon { width: 18px; height: 18px; }
 /* The theme wave (theme.ts): no cross-fade, the new page is uncovered by a growing circle. */
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
 /* The menu and the links read as one row: the same space between all of them. */
@@ -576,3 +596,10 @@ button.theme .icon { width: 18px; height: 18px; }
 section.guide { display: flex; flex-direction: column; gap: var(--space-m); grid-column: 1 / -1; width: 100%; }
 section.guide > .card { max-width: none; width: 100%; }
 section.guide .code pre { max-height: none; }
+
+/* CLI-40: not found. The Dalan gate, drawn closed, big and quiet. */
+.not-found { grid-column: 1 / -1; width: 100%; display: flex; flex-direction: column; align-items: center; gap: var(--space-m); padding-block: var(--space-xl); text-align: center; }
+.not-found .gate { width: 160px; height: 160px; color: var(--muted); }
+.not-found .gate .handle { fill: var(--bg); }
+.not-found h2 { font-size: var(--text-title); }
+.not-found p { max-width: 420px; color: var(--muted); }

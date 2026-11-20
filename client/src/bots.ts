@@ -3,9 +3,8 @@ import { api } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { h } from "./dom.ts";
 import { builderView } from "./panels.ts";
-import { themeButton } from "./theme.ts";
 
-export function botsScreen(app: App, onLanguage: () => void): Screen {
+export function botsScreen(app: App): Screen {
   const t = app.language.t.bind(app.language);
   const list = h("ul", { class: "bots" });
   const error = h("p", { class: "error", role: "alert" });
@@ -57,9 +56,7 @@ export function botsScreen(app: App, onLanguage: () => void): Screen {
 
   const element = h("main", {},
     h("header", {},
-      h("h1", {}, t("chats")),
-      h("button", { type: "button", class: "link", onclick: onLanguage }, t("language")),
-      themeButton(app.theme, t)),
+      h("h1", {}, t("chats"))),
     h("p", { class: "note" }, h("bdi", {}, app.user.name)),
     ...(app.user.has_password ? [] : [h("p", { class: "note" }, t("noPasswordYet"))]),
     open,
