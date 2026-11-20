@@ -58,7 +58,7 @@ jobs:
       - name: Agent with Native AOT (linux-x64)
         run: |
           bash tests/delivery/agent_smoke_test.sh agent-out linux-x64
-          mkdir agent && mv agent-out/dalan agent/dalan-linux-x64
+          mkdir agent-dist && mv agent-out/dalan agent-dist/dalan-linux-x64
 
       # tar keeps the file modes (the release must stay executable). ProcessTests run the host build.
       - name: Pack
@@ -73,7 +73,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: agent-linux-x64
-          path: agent
+          path: agent-dist
           retention-days: 3
       - uses: actions/upload-artifact@v7
         with:
@@ -164,9 +164,10 @@ jobs:
           curl -fs http://127.0.0.1:18095/health
 
   # DEL-07: the agent for Windows and macOS, built on those systems (Native AOT does not cross systems).
-  # Only before a deploy: macOS and Windows machines cost more CI minutes; the linux-x64 build checks every pull request.
+  # Not on pull requests: macOS and Windows machines cost more CI minutes; the linux-x64 build checks every pull request.
+  # A manual run (with or without deploy) builds them, to try an agent change before the merge.
   agent:
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
+    if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -185,11 +186,11 @@ jobs:
         shell: bash
         run: |
           bash tests/delivery/agent_smoke_test.sh agent-out ${{ matrix.rid }} ${{ matrix.run }}
-          mkdir agent && mv agent-out/${{ matrix.from }} agent/${{ matrix.file }}
+          mkdir agent-dist && mv agent-out/${{ matrix.from }} agent-dist/${{ matrix.file }}
       - uses: actions/upload-artifact@v7
         with:
           name: agent-${{ matrix.rid }}
-          path: agent
+          path: agent-dist
           retention-days: 3
 
   deploy:
