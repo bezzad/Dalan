@@ -1,6 +1,6 @@
 # Dalan — Iran server runbook
 
-How to set up the production server, deploy, back up and run the shutdown drill. Rules: `OPS-09` to `OPS-12`, `DEL-04` to `DEL-07`. Facts behind it: `docs/DESIGN.md` section 14.
+How to set up the production server, deploy, back up and run the shutdown drill. Rules: `OPS-09` to `OPS-16`, `DEL-04` to `DEL-08`. Facts behind it: `docs/DESIGN.md` section 14.
 
 ## 1. Before the server
 
@@ -114,7 +114,7 @@ Users' sites live on their own registered domain (for example `dalancloud.ir`), 
 
 Limit: Let's Encrypt gives about 50 new certificates per registered domain per week, so about 50 new site names a week. After buying the sites domain, ask for it on the Public Suffix List (https://github.com/publicsuffix/list), so a site cannot set cookies for the other sites. Before the domain is ready, test with sslip.io: `SITES_DOMAIN=203-0-113-10.sslip.io` gives `name.203-0-113-10.sslip.io` (it needs foreign DNS, so not for the drill).
 
-The agent files come with each deploy (`/opt/dalan/current/agent`, DEL-07); `/downloads/<file>` serves them.
+The agent files come with each deploy (`/opt/dalan/current/agent`, DEL-08); `/downloads/<file>` serves them.
 
 ### A new computer for the owner
 
@@ -137,7 +137,7 @@ GitHub, repository Settings, Environments, `production` (create it if missing), 
 | `DEPLOY_SSH_KEY` | the private key: the whole output of `cat ~/.ssh/dalan-deploy` |
 | `DEPLOY_KNOWN_HOSTS` | the output of `ssh-keyscan <server>` |
 
-Every merge to `main` deploys by itself after all gates pass. CI builds once (job `build`), runs each test project on its own machine at the same time, and the deploy uses the same release the tests passed with. `deploy/deploy.sh` sends it with `rsync` to a new folder: only the parts that differ from the current release go over the network. It rolls back by itself if `/ready` fails. It opens one SSH connection for the whole deploy, with up to 5 tries of 30 seconds (`SSH_TRIES`, `SSH_TIMEOUT`), because the link from GitHub to Iran stalls now and then. "Connection closed by <server> port 22" or "No SSH connection" in the deploy log is such a stall: run the deploy again. On the server, `journalctl -u ssh | grep 'Timeout before authentication'` shows it. A server set up before 2026-11-19 may not have `rsync`: run `install.sh` again, or `sudo apt-get install rsync`. The first deploy, or a deploy again, by hand: Actions, workflow `ci`, "Run workflow" on `main`, tick "Deploy". A change of `dalan.env` by hand needs `sudo systemctl restart dalan`.
+Every merge to `main` deploys by itself after all gates pass. CI builds once (job `build`), runs the tests on two machines at the same time (a draft pull request runs no CI, to save minutes), and the deploy uses the same release the tests passed with. `deploy/deploy.sh` sends it with `rsync` to a new folder: only the parts that differ from the current release go over the network. It rolls back by itself if `/ready` fails. It opens one SSH connection for the whole deploy, with up to 5 tries of 30 seconds (`SSH_TRIES`, `SSH_TIMEOUT`), because the link from GitHub to Iran stalls now and then. "Connection closed by <server> port 22" or "No SSH connection" in the deploy log is such a stall: run the deploy again. On the server, `journalctl -u ssh | grep 'Timeout before authentication'` shows it. A server set up before 2026-11-19 may not have `rsync`: run `install.sh` again, or `sudo apt-get install rsync`. The first deploy, or a deploy again, by hand: Actions, workflow `ci`, "Run workflow" on `main`, tick "Deploy". A change of `dalan.env` by hand needs `sudo systemctl restart dalan`.
 
 Check: `https://dalanet.ir` opens, SMS login works, your number sees the admin area. Logs: `journalctl -u dalan -f`.
 
@@ -154,6 +154,16 @@ journalctl -u dalan -o cat -n 300 | grep -m1 '"Exception"' | python3 -c 'import 
 NEW=$(openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 | openssl pkcs8 -topk8 -nocrypt -outform DER | base64 -w0)
 sudo sed -i "s|^Identity__SigningKey=.*|Identity__SigningKey=$NEW|" /etc/dalan/dalan.env && sudo systemctl restart dalan
 ```
+
+### The server builds main itself (OPS-16)
+
+When GitHub Actions cannot run (for example its minutes ran out), the server can take `main` and build it. It needs GitHub, but nothing else from abroad after the first build (NuGet and npm packages stay in `/home/deploy`).
+
+1. On your computer: `PULL_DEPLOY=1 SITES_DOMAIN=<sites domain> bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub`. It downloads the .NET SDK and Node here (about 300 MB) and copies them; give `PULL_DEPLOY=1` again only to update them.
+2. Setup prints a key: GitHub, repository Settings, Deploy keys, **Add deploy key**, paste it, leave "Allow write access" off.
+3. `dalan-pull.timer` looks for a new `main` every 5 minutes and builds it (about 5 minutes, low priority), then deploys with the usual rollback. Watch: `journalctl -u dalan-pull -f`. Start a run now: `sudo systemctl start dalan-pull`.
+
+A failed build is not tried again (`/opt/dalan/pull-failed` holds its commit); push a fix to `main`. The full .NET tests do not run here (they need a test database server): only the client checks, the release smoke test and the agent build. The Windows agent file comes only from CI; a server build keeps the one it has. Without GitHub, deploy from your computer: build with `scripts/build-release.sh out`, then `DEPLOY_HOST=root@<server> SYSTEMCTL=systemctl bash deploy/deploy.sh out manual-<name>` and `ssh root@<server> chown -R deploy:deploy /opt/dalan/releases`.
 
 ## 4. Backups
 

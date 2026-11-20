@@ -196,6 +196,31 @@ grep -qF '*.dalancloud.ir' "$tmp/out-sites" || fail "setup does not print the DN
 rm "$src/settings.env"
 echo "PASS OPS-15 sites domain and tunnel host from install.sh"
 
+# Rule: OPS-16 the server builds main itself: tools, the GitHub key on port 443, the timer
+cp "$deploy"/{pull-deploy.sh,dalan-pull.service,dalan-pull.timer} "$src/"
+mkdir -p "$src/dotnet" "$src/node/bin" && touch "$src/dotnet/dotnet" "$src/node/bin/node"
+cat > "$bin/ssh-keygen" <<SH
+#!/bin/bash
+echo "ssh-keygen \$*" >> "$state/commands.log"
+for key; do :; done; echo 'ssh-ed25519 BBBB dalan-pull' > "\$key.pub"; touch "\$key"
+SH
+chmod +x "$bin/ssh-keygen"
+: > "$state/commands.log"
+printf 'PULL_DEPLOY=1\n' > "$src/settings.env"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out-pull" || { cat "$tmp/out-pull"; fail "run with PULL_DEPLOY failed"; }
+grep -q 'apt-get install .* git clang zlib1g-dev' "$state/commands.log" || fail "build packages not installed"
+for f in opt/dalan/tools/dotnet/dotnet opt/dalan/tools/node/bin/node opt/dalan/tools/pull-deploy.sh \
+         etc/systemd/system/dalan-pull.service etc/systemd/system/dalan-pull.timer; do
+  [ -e "$root/$f" ] || fail "$f not installed"
+done
+grep -qx '  Port 443' "$root/home/deploy/.ssh/config" || fail "GitHub is not reached on port 443"
+grep -qF 'systemctl enable --now dalan-pull.timer' "$state/commands.log" || fail "pull timer not started"
+grep -qF 'ssh-ed25519 BBBB dalan-pull' "$tmp/out-pull" || fail "setup does not print the GitHub deploy key"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || fail "second PULL_DEPLOY run failed"
+[ "$(grep -c 'ssh-keygen' "$state/commands.log")" = 1 ] || fail "GitHub key made again"
+rm "$src/settings.env"
+echo "PASS OPS-16 server set up to build main itself"
+
 # Rule: OPS-10 secrets can be made again
 old_secrets=$(grep -E '^(ConnectionStrings__Dalan|Identity__SigningKey|Notification__Push__(Public|Private)Key)=' "$env_file")
 printf 'ROTATE_SECRETS=1\n' > "$src/settings.env"

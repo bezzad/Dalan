@@ -13,6 +13,8 @@
 #   KAVENEGAR_KEY   the Kavenegar API key
 #   ROTATE_SECRETS  1: new database password, signing key (everyone logs in again) and push keys
 #   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET   the GitHub OAuth app for "Log in with GitHub" (OPS-14; docs/SERVER.md)
+#   PULL_DEPLOY=1   the server builds and deploys main itself (OPS-16): also downloads the .NET SDK (the version in
+#                   global.json, newest patch) and Node (the major version CI uses) here and copies them
 #   SITES_DOMAIN    the users' sites, for example dalancloud.ir (empty: sites are off); TUNNEL_DOMAIN default tunnel.<site domain> (OPS-15)
 # Example: ADMIN_PHONES=09121234567 SMS=log deploy/install.sh root@203.0.113.10 dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
 set -euo pipefail
@@ -35,9 +37,24 @@ curl -fsSL -o "$work/checksums.txt" "$base/caddy_${version}_checksums.txt"
 mkdir "$work/dalan-setup"
 tar -xzf "$work/$file" -C "$work/dalan-setup" caddy
 cp "$here"/{setup.sh,backup.sh,drill.sh,Caddyfile,dalan.service,caddy.service,dalan-backup.service,dalan-backup.timer} "$work/dalan-setup/"
+if [ "${PULL_DEPLOY:-}" = 1 ]; then
+  cp "$here"/{pull-deploy.sh,dalan-pull.service,dalan-pull.timer} "$work/dalan-setup/"
+  sdk=$(sed -nE 's/.*"version": "([0-9]+\.[0-9]+)\..*/\1/p' "$here/../global.json")
+  echo "Downloading the .NET SDK $sdk"
+  curl -fsSL -o "$work/dotnet-install.sh" https://dot.net/v1/dotnet-install.sh
+  bash "$work/dotnet-install.sh" --channel "$sdk" --install-dir "$work/dalan-setup/dotnet" --no-path >/dev/null
+  node=$(sed -nE 's/^ *node-version: ([0-9]+).*/\1/p' "$here/../.github/workflows/ci.yml" | head -n 1)
+  echo "Downloading Node $node"
+  base="https://nodejs.org/dist/latest-v$node.x"
+  curl -fsSL -o "$work/SHASUMS256.txt" "$base/SHASUMS256.txt"
+  file=$(grep -oE "node-v[0-9.]+-linux-x64\.tar\.xz" "$work/SHASUMS256.txt" | head -n 1)
+  curl -fsSL -o "$work/$file" "$base/$file"
+  (cd "$work" && grep " $file\$" SHASUMS256.txt | sha256sum -c -)
+  mkdir "$work/dalan-setup/node" && tar -xJf "$work/$file" -C "$work/dalan-setup/node" --strip-components=1
+fi
 cp "$key" "$work/dalan-setup/deploy.pub"
 # A file, not the command line, so the key is not visible in the server's process list.
-(umask 077 && for name in ADMIN_PHONES SMS KAVENEGAR_KEY ROTATE_SECRETS GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET SITES_DOMAIN TUNNEL_DOMAIN; do
+(umask 077 && for name in ADMIN_PHONES SMS KAVENEGAR_KEY ROTATE_SECRETS GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET SITES_DOMAIN TUNNEL_DOMAIN PULL_DEPLOY; do
   [ -z "${!name:-}" ] || printf '%s=%q\n' "$name" "${!name}"
 done > "$work/dalan-setup/settings.env")
 

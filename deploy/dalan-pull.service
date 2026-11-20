@@ -1,0 +1,19 @@
+# OPS-16: build and deploy the newest main on this server. deploy/setup.sh installs it when PULL_DEPLOY=1.
+[Unit]
+Description=Dalan: take main from GitHub, build and deploy
+After=network-online.target dalan.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+# The build must not slow down the running server.
+Nice=15
+IOSchedulingClass=idle
+TimeoutStartSec=45min
+Environment=PATH=/opt/dalan/tools/dotnet:/opt/dalan/tools/node/bin:/usr/local/bin:/usr/bin:/bin
+Environment=DOTNET_ROOT=/opt/dalan/tools/dotnet DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
+# Packages come from the caches in /home/deploy when they are there, so a build needs only the git fetch.
+Environment=npm_config_prefer_offline=true npm_config_audit=false npm_config_fund=false
+ExecStart=/opt/dalan/tools/pull-deploy.sh

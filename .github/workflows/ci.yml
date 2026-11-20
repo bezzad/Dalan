@@ -3,7 +3,9 @@ name: ci
 on:
   push:
     branches: [main]
+  # A draft pull request runs no CI (minutes cost money); it runs when marked ready and on each push after (DEL-01).
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
     inputs:
       deploy:
@@ -27,6 +29,7 @@ env:
 jobs:
   # Builds once. The tests and the deploy use these files; nothing builds again.
   build:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -81,7 +84,8 @@ jobs:
           path: tests.tar
           retention-days: 1
 
-  # Each test project on its own machine, all at the same time.
+  # Two machines at the same time: Relay (the longest) and all the others one after another.
+  # Fewer machines use fewer billed minutes (each machine costs its start-up time, rounded up to a minute).
   # tests/delivery/ci_workflow_test.sh fails when a test project is missing here.
   test:
     needs: build
@@ -90,15 +94,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project:
-          - Dalan.Admin.Tests
-          - Dalan.Architecture.Tests
-          - Dalan.Host.Tests
-          - Dalan.Identity.Tests
+        projects:
           - Dalan.Relay.Tests
-          - Dalan.Sites.Tests
-          - Dalan.Telegram.Tests
-    name: test (${{ matrix.project }})
+          - Dalan.Admin.Tests Dalan.Architecture.Tests Dalan.Host.Tests Dalan.Identity.Tests Dalan.Sites.Tests Dalan.Telegram.Tests
+    name: test (${{ matrix.projects }})
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -110,10 +109,13 @@ jobs:
       - name: dotnet test (built once by the build job)
         run: |
           tar -xf tests.tar
-          dotnet "tests/${{ matrix.project }}/bin/Release/net11.0/${{ matrix.project }}.dll"
+          for project in ${{ matrix.projects }}; do
+            dotnet "tests/$project/bin/Release/net11.0/$project.dll"
+          done
 
   # The checks that need no .NET build run next to the build.
   checks:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -137,6 +139,7 @@ jobs:
           bash tests/deploy/setup_test.sh
           bash tests/deploy/backup_test.sh
           bash tests/deploy/drill_test.sh
+          bash tests/deploy/pull_deploy_test.sh
 
       - name: Install Caddy
         run: |
@@ -152,6 +155,7 @@ jobs:
 
   # The image for local runs and container platforms; production does not use it.
   docker:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -163,7 +167,7 @@ jobs:
           for _ in $(seq 50); do curl -fs -o /dev/null http://127.0.0.1:18095/health && break; sleep 0.2; done
           curl -fs http://127.0.0.1:18095/health
 
-  # DEL-07: the agent for Windows, built on Windows (Native AOT does not cross systems).
+  # DEL-08: the agent for Windows, built on Windows (Native AOT does not cross systems).
   # Not on pull requests: Windows machines cost more CI minutes; the linux-x64 build checks every pull request.
   # A manual run (with or without deploy) builds it, to try an agent change before the merge.
   # No macOS yet: macOS machines did not start for this private repository (2026-11-20), and a deploy must never wait on them.
