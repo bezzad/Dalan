@@ -16,10 +16,10 @@ export interface PublicNumbers {
 }
 
 /** CLI-26: which screen an address shows. Unknown addresses never reach the page: the server answers 404. */
-export type Page = "landing" | "privacy" | "faq" | "showcase" | "login" | "bots" | "chat";
+export type Page = "landing" | "privacy" | "faq" | "showcase" | "guide" | "login" | "bots" | "chat";
 
 export function pageFor(path: string, loggedIn: boolean): Page {
-  if (path === "/privacy" || path === "/faq" || path === "/showcase") return path.slice(1) as Page;
+  if (path === "/privacy" || path === "/faq" || path === "/showcase" || path === "/guide") return path.slice(1) as Page;
   if (path.startsWith("/@")) return loggedIn ? "chat" : "login";
   if (path === "/bots") return loggedIn ? "bots" : "login";
   return "landing";

@@ -563,3 +563,11 @@ button.theme .icon { width: 18px; height: 18px; }
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
 /* The menu and the links read as one row: the same space between all of them. */
 @media (min-width: 641px) { header.site .menu + .links { margin-inline-start: calc(2px - var(--space-m)); } }
+
+/* CLI-38: the guide. Tabs and code sit at the start of a card, at full width. */
+.card .os-tabs { justify-content: flex-start; }
+.card .command { max-width: none; }
+.band a.more { color: var(--brand); font: 600 13px/1.6 var(--mono); letter-spacing: var(--tracking); text-transform: uppercase; text-decoration: none; }
+section.guide { display: flex; flex-direction: column; gap: var(--space-m); grid-column: 1 / -1; width: 100%; }
+section.guide > .card { max-width: none; width: 100%; }
+section.guide .code pre { max-height: none; }

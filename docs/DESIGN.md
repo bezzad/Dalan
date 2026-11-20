@@ -516,7 +516,7 @@ None of these is planned work. They are recorded so the design does not block th
 
 - [ ] SMS provider: the Kavenegar sender is built (milestone 4), SMS.ir stays the second choice. Still to do by the owner: a Kavenegar account, an approved OTP template named `dalan-login` with one token, and the API key on the server. Prices and delivery speed were not compared.
 - [ ] Which hosting provider, after comparing traffic cost, extra disk and DNS?
-- [ ] Buy a separate sites domain before Layer 2 (candidate: `dalancloud.ir`)?
+- [ ] Buy the separate sites domain before Layer 2 (decided 2026-11-20; candidate: `dalancloud.ir`). The owner buys it.
 - [ ] Buy a foreign backup domain (candidate: `dalanet.net`)?
 - [ ] Lawyer review of content responsibility, phone-number storage, and how long the access log must be kept.
 - [x] Telegram Bot API snapshot: 10.4 (2026-11-09), chosen on 2026-11-17 in milestone 5.
