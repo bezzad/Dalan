@@ -23,7 +23,7 @@ bash tests/delivery/agent_smoke_test.sh out # the site agent as one Native AOT f
 out/dalan login <key> --server http://localhost:5000 && out/dalan http 3000 --name mysite   # open http://mysite.localhost:5000
 node client/public/dalan.mjs                # the builder CLI (needs DALAN_URL and DALAN_KEY); /llms.txt explains it
 bash scripts/check-rules.sh                 # every spec rule ID has a test
-bash tests/deploy/deploy_test.sh            # deploy script tests (also setup_test, backup_test, drill_test)
+bash tests/deploy/deploy_test.sh            # deploy script tests (also setup_test, backup_test, drill_test, pull_deploy_test)
 bash tests/proxy/caddy_test.sh              # needs caddy on PATH
 bash scripts/publish.sh out                 # builds the client, then the self-contained linux-x64 release
 node scripts/vapid-keys.mjs                 # a key pair for Web Push (server environment)
@@ -52,7 +52,7 @@ openspec/                          specs and changes
 3. Sync calls through contracts; async through the PostgreSQL outbox. One schema per service, no cross-schema joins.
 4. Every limit, expiry, size and domain is configuration the admin can change. Never hard-code. Starting values: `docs/DESIGN.md` section 18; use them as defaults without asking (owner, 2026-11-16) and list every new setting in the milestone summary.
 5. A bot never receives a user's phone number.
-6. Production: one self-contained binary under systemd, deployed by CI over SSH. No Docker on the Iran server (Docker is fine locally).
+6. Production: one self-contained binary under systemd, deployed by CI over SSH or built by the server itself from main (`dalan-pull.timer`, OPS-16). No Docker on the Iran server (Docker is fine locally).
 7. The running product loads nothing from a foreign host: no CDN fonts, scripts or analytics.
 8. Security from day one: slow password hashing, hashed bot tokens, rate limits on every public endpoint, proof of work before each SMS, audit log.
 9. Spec first: change the rule in an OpenSpec change, owner reviews, write the failing test (tag it with the rule ID), then the code. Archive the change when the milestone is done.

@@ -70,7 +70,7 @@ KEEP_RELEASES=1 bash "$deploy" "$tmp/pkg" v1 >/dev/null || fail "deploy failed"
 [ -d "$tmp/server/releases/v1" ] || fail "current release was deleted"
 echo "PASS DEL-05 current release is kept"
 
-# Rule: DEL-06 the deploy calls nothing but the local ready URL; no git, wget, ssh or scp
+# Rule: DEL-06 the deploy script calls nothing but the local ready URL; no git, wget, ssh or scp
 [ ! -f "$tmp/forbidden.log" ] || fail "forbidden tools called: $(cat "$tmp/forbidden.log")"
 [ "$(sort -u "$tmp/curl.log")" = "http://127.0.0.1:5000/ready" ] || fail "curl called: $(sort -u "$tmp/curl.log")"
 echo "PASS DEL-06 no pull from outside"

@@ -8,6 +8,8 @@
 #   ROTATE_SECRETS=1, GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET. They are written into dalan.env, each run. SMS=log sends login codes only to ADMIN_PHONES, into the log.
 #   SITES_DOMAIN (the users' sites, for example dalancloud.ir; empty: sites are off) and TUNNEL_DOMAIN (default tunnel.<site domain>)
 #   go into domains.env, each run (OPS-15).
+#   PULL_DEPLOY=1: the server builds and deploys main itself (OPS-16): the .NET SDK and Node folders that install.sh
+#   copies (dotnet/, node/) go to /opt/dalan/tools, the deploy user gets a GitHub key, and dalan-pull.timer starts.
 #   ROTATE_SECRETS=1 makes new secrets (database password, signing key, push keys) in an existing dalan.env.
 # Settings (environment):
 #   SWAP_MB      default 2048. A server with less memory than this and no swap gets a swap file of this size.
@@ -20,13 +22,17 @@ key_file="${3:?public key file of the CI deploy user is required}"
 here="$(cd "$(dirname "$0")" && pwd)"
 root="${DALAN_ROOT:-}"
 
+[ ! -f "$here/settings.env" ] || . "$here/settings.env"
+# OPS-16: the server builds main itself; git and the agent's Native AOT build need these.
+build_packages=""; [ "${PULL_DEPLOY:-}" != 1 ] || build_packages="git clang zlib1g-dev"
+
 echo "Packages (from the Ubuntu mirror)"
 apt-get update -q
 # .NET needs ICU; its package name has the version in it (libicu74 on 24.04), so ask apt for the one this Ubuntu has.
 icu=$(apt-cache search --names-only '^libicu[0-9]+$' | awk '{ print $1 }' | sort -V | tail -n 1)
 # Postfix asks questions while it installs; these are the answers.
 printf 'postfix postfix/main_mailer_type select Internet Site\npostfix postfix/mailname string %s\n' "$site" | debconf-set-selections
-DEBIAN_FRONTEND=noninteractive apt-get install -y -q postgresql curl rsync nftables openssl $icu postfix opendkim opendkim-tools
+DEBIAN_FRONTEND=noninteractive apt-get install -y -q postgresql curl rsync nftables openssl $icu postfix opendkim opendkim-tools $build_packages
 
 swap_mb="${SWAP_MB:-2048}"
 memory_mb=$(awk '/^MemTotal:/ { print int($2 / 1024) }' "${MEMINFO:-/proc/meminfo}")
@@ -69,7 +75,6 @@ set_env() {
   lines=$(grep -v "^$1=" "$env_file" || true)
   { printf '%s\n' "$lines"; [ $# -lt 2 ] || printf '%s=%s\n' "$1" "$2"; } > "$env_file"
 }
-[ ! -f "$here/settings.env" ] || . "$here/settings.env"
 
 if [ ! -f "$env_file" ]; then
   echo "New $env_file"
@@ -185,6 +190,28 @@ done
 systemctl daemon-reload
 systemctl enable dalan.service
 systemctl enable --now dalan-backup.timer
+
+if [ "${PULL_DEPLOY:-}" = 1 ]; then
+  echo "Build on this server (OPS-16)"
+  for tool in dotnet node; do
+    [ -d "$here/$tool" ] || continue
+    rm -rf "$root/opt/dalan/tools/$tool"
+    cp -a "$here/$tool" "$root/opt/dalan/tools/$tool"
+  done
+  install -m 755 "$here/pull-deploy.sh" "$root/opt/dalan/tools/"
+  for unit in dalan-pull.service dalan-pull.timer; do
+    install -m 644 "$here/$unit" "$root/etc/systemd/system/$unit"
+  done
+  # A read-only key for the repository; port 443, because port 22 to GitHub is often closed from Iran.
+  github_key="$root/home/deploy/.ssh/github"
+  [ -f "$github_key" ] || ssh-keygen -q -t ed25519 -N '' -C "dalan-pull@$site" -f "$github_key"
+  printf 'Host github.com\n  HostName ssh.github.com\n  Port 443\n  User git\n  IdentityFile ~/.ssh/github\n  IdentitiesOnly yes\n  StrictHostKeyChecking accept-new\n' \
+    > "$root/home/deploy/.ssh/config"
+  chown deploy:deploy "$github_key" "$github_key.pub" "$root/home/deploy/.ssh/config"
+  systemctl daemon-reload
+  systemctl enable --now dalan-pull.timer
+  pull_key=$(cat "$github_key.pub")
+fi
 systemctl enable caddy.service
 systemctl restart caddy.service
 # A running Dalan reads new settings, domains or email lines only after a restart.
@@ -203,4 +230,5 @@ DNS records for $site (TXT):
 Reverse DNS (provider panel): the server address -> $site
 
 DNS
+[ -z "${pull_key:-}" ] || printf '\nGitHub, repository Settings, Deploy keys, Add (read only), so this server can take main:\n  %s\n' "$pull_key"
 echo "Done. Next: run the deploy from CI (the first time), and see docs/SERVER.md for the SMS settings."

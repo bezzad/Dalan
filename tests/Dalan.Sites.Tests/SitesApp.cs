@@ -113,7 +113,16 @@ internal static class SitesApp
             {
                 var client = app.Server.CreateWebSocketClient();
                 client.ConfigureRequest = request => request.Headers.Authorization = "Bearer " + agentKey;
-                return await client.ConnectAsync(address, cancellationToken);
+                try
+                {
+                    return await client.ConnectAsync(address, cancellationToken);
+                }
+                catch (InvalidOperationException exception)
+                {
+                    // The test server says "Incomplete handshake" (for example 499 when the test stops during the connect);
+                    // the real ClientWebSocket throws a WebSocketException there.
+                    throw new System.Net.WebSockets.WebSocketException(exception.Message, exception);
+                }
             }
             : (_, _, _) => throw new System.Net.WebSockets.WebSocketException("blocked on this network");
         return new TunnelClient(server, key, connect, new LocalForwarder(local), output ?? TextWriter.Null)

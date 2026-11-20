@@ -1,0 +1,10 @@
+# OPS-16: look for a new main every 5 minutes.
+[Unit]
+Description=Dalan: look for a new main every 5 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitInactiveSec=5min
+
+[Install]
+WantedBy=timers.target
