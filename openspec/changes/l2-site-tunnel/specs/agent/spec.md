@@ -74,3 +74,15 @@ The default server SHALL be `https://tunnel.dalanet.ir`. `--server <url>` or the
 #### Scenario: Another server
 - **WHEN** the agent runs with `DALAN_SERVER=http://localhost:5000`
 - **THEN** it opens its session there
+
+### Requirement: AGT-10 One-line install from Dalan
+`GET /install.sh` (Linux and macOS) and `GET /install.ps1` (Windows) SHALL give a script that downloads the agent for the user's system from the same Dalan site (`Admin:SiteUrl`) and puts it on the user's PATH, with no root and no .NET. `GET /downloads/<file>` SHALL serve only the known agent files from `Sites:AgentFolder`; any other name, or a file that is not there, SHALL answer 404. `Sites:AgentFolder` SHALL NOT be in the admin panel.
+
+#### Scenario: Install on Linux
+- **WHEN** a user runs `curl -fsSL https://dalanet.ir/install.sh | sh`
+- **THEN** the script downloads `https://dalanet.ir/downloads/dalan-linux-x64`, and `dalan version` works
+
+#### Scenario: Another file in the folder
+- **GIVEN** a file `secret.txt` in the agent folder
+- **WHEN** someone asks for `/downloads/secret.txt`
+- **THEN** the answer is 404

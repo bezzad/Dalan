@@ -10,6 +10,6 @@
 
 ## 2. Second PR: delivery
 
-- [ ] 2.1 CI builds the agent for Linux, Windows and macOS; Dalan serves the files; one-line install
-- [ ] 2.2 Caddy: the tunnel hostname and a certificate per site name on first visit; setup.sh and docs/SERVER.md
+- [x] 2.1 CI builds the agent for Linux, Windows and macOS; Dalan serves the files; one-line install
+- [x] 2.2 Caddy: the tunnel hostname and a certificate per site name on first visit; setup.sh and docs/SERVER.md
 - [ ] 2.3 Run Levelwise through the tunnel; archive this change
