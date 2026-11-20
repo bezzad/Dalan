@@ -65,10 +65,9 @@ export function botsScreen(app: App, onLanguage: () => void): Screen {
     h("p", { class: "note" }, h("bdi", {}, app.user.name)),
     ...(app.user.has_password ? [] : [h("p", { class: "note" }, t("noPasswordYet"))]),
     open,
-    // CLI-24: a builder or an admin makes bots from here, one press away.
-    ...(builderView(app.user) === "bots"
-      ? [h("button", { type: "button", class: "primary", onclick: () => app.showPanel("builder") }, t("createBot"))]
-      : []),
+    // CLI-24: one press away. A builder or an admin gets the builder screen; anyone else the account screen,
+    // which says how to become a builder.
+    h("button", { type: "button", class: "primary", onclick: () => app.showPanel(builderView(app.user) === "bots" ? "builder" : "account") }, t("createBot")),
     error,
     list,
     // CLI-26: the public pages, from inside the app too.

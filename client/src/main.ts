@@ -11,7 +11,8 @@ import { Language, type TextKey } from "./i18n.ts";
 import { Live } from "./live.ts";
 import { loginScreen } from "./login.ts";
 import { pageFor } from "./pages.ts";
-import { publicScreen, type PublicPage } from "./public.ts";
+import { h } from "./dom.ts";
+import { publicScreen, siteBrand, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
 import { Chats } from "./messages.ts";
 import { Theme } from "./theme.ts";
@@ -99,6 +100,10 @@ function route(): void {
       language.toggle();
       route();
     });
+  // The public pages have the site header; the app screens get the same logo and name on top.
+  if (!screen.element.classList.contains("public")) {
+    screen.element.prepend(h("header", { class: "site" }, siteBrand(language.t("appName"), navigate)));
+  }
   show(screen.element);
 }
 

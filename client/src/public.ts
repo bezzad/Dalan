@@ -34,6 +34,17 @@ const icons = {
   terminal: ["M3 5h18v14H3z", "M7 10l3 2-3 2", "M12 15h5"],
 };
 
+/** The logo and the name, a link to the home page. Every page has it at the top (owner, 2026-11-20). */
+export function siteBrand(name: string, go: (path: string) => void): HTMLElement {
+  return h("h1", {}, h("a", {
+    href: "/",
+    onclick: event => {
+      event.preventDefault();
+      go("/");
+    },
+  }, h("span", { class: "mark" }, icon("gate")), name));
+}
+
 function icon(name: keyof typeof icons): SVGSVGElement {
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
@@ -95,13 +106,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
   }
 
   const header = h("header", { class: "site" },
-    h("h1", {}, h("a", {
-      href: "/",
-      onclick: event => {
-        event.preventDefault();
-        context.go("/");
-      },
-    }, h("span", { class: "mark" }, icon("gate")), t("appName"))),
+    siteBrand(t("appName"), context.go),
     menu,
     nav,
     themeButton(context.theme, t),
