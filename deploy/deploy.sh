@@ -11,6 +11,9 @@
 #   READY_WAIT_SECONDS   default 30
 #   READY_URL            default http://127.0.0.1:5000/ready
 #   SYSTEMCTL            default "sudo systemctl"
+#   SSH_TRIES            default 5: tries to open the SSH connection (the link to Iran stalls now and then)
+#   SSH_TIMEOUT          default 30: seconds for each try
+#   SSH_WAIT             default 5: seconds between tries
 set -euo pipefail
 
 source="${1%/}"
@@ -21,14 +24,31 @@ keep="${KEEP_RELEASES:-5}"
 wait_seconds="${READY_WAIT_SECONDS:-30}"
 ready_url="${READY_URL:-http://127.0.0.1:5000/ready}"
 systemctl="${SYSTEMCTL:-sudo systemctl}"
+tries="${SSH_TRIES:-5}"
+timeout="${SSH_TIMEOUT:-30}"
+
+# DEL-07: one SSH connection for the whole deploy, opened with a few tries; every command and upload reuses it.
+control=$(mktemp -d)
+trap '[ "$host" = local ] || ssh -o ControlPath="$control/ssh" -O exit "$host" 2>/dev/null; rm -rf "$control"' EXIT
+ssh_options="-o ControlMaster=auto -o ControlPath=$control/ssh -o ControlPersist=600 -o ConnectTimeout=$timeout -o ServerAliveInterval=10 -o ServerAliveCountMax=3"
+if [ "$host" != local ]; then
+  for try in $(seq "$tries"); do
+    # shellcheck disable=SC2086
+    ssh $ssh_options "$host" true && break
+    [ "$try" -lt "$tries" ] || { echo "No SSH connection to $host after $tries tries" >&2; exit 1; }
+    echo "SSH try $try failed; trying again" >&2
+    sleep "${SSH_WAIT:-5}"
+  done
+fi
 
 # Every server command goes through these two functions.
-remote() { if [ "$host" = local ]; then bash -c "$1"; else ssh "$host" "$1"; fi; }
+# shellcheck disable=SC2086
+remote() { if [ "$host" = local ]; then bash -c "$1"; else ssh $ssh_options "$host" "$1"; fi; }
 # upload <folder> <server folder> <basis folder>: rsync sends only the parts of each file that differ from the basis.
 # A file equal to the basis (content and time) becomes a hard link. --checksum: never trust size and time alone.
 upload() {
   local target="$2"; [ "$host" = local ] || target="$host:$2"
-  rsync -a --checksum --compress ${3:+--link-dest="$3"} "$1/" "$target/"
+  rsync -a --checksum --compress -e "ssh $ssh_options" ${3:+--link-dest="$3"} "$1/" "$target/"
 }
 
 release="$dir/releases/$version"
