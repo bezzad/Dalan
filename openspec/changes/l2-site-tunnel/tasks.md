@@ -13,3 +13,4 @@
 - [x] 2.1 CI builds the agent for Linux, Windows and macOS; Dalan serves the files; one-line install
 - [x] 2.2 Caddy: the tunnel hostname and a certificate per site name on first visit; setup.sh and docs/SERVER.md
 - [ ] 2.3 Run Levelwise through the tunnel; archive this change
+- [ ] 2.4 Later: the macOS agent (osx-arm64, osx-x64) once a macOS CI machine runs for this repository

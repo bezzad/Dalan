@@ -163,9 +163,10 @@ jobs:
           for _ in $(seq 50); do curl -fs -o /dev/null http://127.0.0.1:18095/health && break; sleep 0.2; done
           curl -fs http://127.0.0.1:18095/health
 
-  # DEL-07: the agent for Windows and macOS, built on those systems (Native AOT does not cross systems).
-  # Not on pull requests: macOS and Windows machines cost more CI minutes; the linux-x64 build checks every pull request.
-  # A manual run (with or without deploy) builds them, to try an agent change before the merge.
+  # DEL-07: the agent for Windows, built on Windows (Native AOT does not cross systems).
+  # Not on pull requests: Windows machines cost more CI minutes; the linux-x64 build checks every pull request.
+  # A manual run (with or without deploy) builds it, to try an agent change before the merge.
+  # No macOS yet: macOS machines did not start for this private repository (2026-11-20), and a deploy must never wait on them.
   agent:
     if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.os }}
@@ -173,8 +174,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - { os: macos-15, rid: osx-arm64, from: dalan, file: dalan-macos-arm64 }
-          - { os: macos-15, rid: osx-x64, from: dalan, file: dalan-macos-x64, run: --no-run }
           - { os: windows-2025, rid: win-x64, from: dalan.exe, file: dalan-windows-x64.exe }
     name: agent (${{ matrix.rid }})
     steps:

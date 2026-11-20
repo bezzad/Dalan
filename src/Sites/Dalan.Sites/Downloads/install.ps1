@@ -12,7 +12,7 @@ Invoke-WebRequest -UseBasicParsing -Uri '__DALAN_URL__/downloads/dalan-windows-x
 Move-Item -Force "$exe.new" $exe
 Write-Host "Installed: $exe ($(& $exe version))"
 
-$path = [Environment]::GetEnvironmentVariable('Path', 'User')
+$path = [string][Environment]::GetEnvironmentVariable('Path', 'User')
 if (($path -split ';') -notcontains $dir) {
   [Environment]::SetEnvironmentVariable('Path', ($path.TrimEnd(';') + ';' + $dir).TrimStart(';'), 'User')
   $env:Path += ';' + $dir

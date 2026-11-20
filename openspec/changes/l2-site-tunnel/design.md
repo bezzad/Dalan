@@ -69,7 +69,7 @@ The agent's server address: `https://tunnel.dalanet.ir` (portability rule: a hos
 
 ## Delivery (second PR)
 
-- CI builds the agent on each system (Native AOT does not cross systems): linux-x64 on every pull request; osx-arm64, osx-x64 (cross-built on the same Mac) and win-x64 only before a deploy, because macOS and Windows machines cost more CI minutes in a private repository. No linux-arm64 yet (no free runner); `install.sh` says so.
+- CI builds the agent on each system (Native AOT does not cross systems): linux-x64 on every pull request; win-x64 only before a deploy, because Windows machines cost more CI minutes in a private repository. No macOS yet: macOS machines stayed queued for this private repository on 2026-11-20, and a deploy must never wait on them; `install.sh` already knows the macOS file names and says when the server has none. No linux-arm64 yet (no free runner).
 - Dalan serves the files and `install.sh` / `install.ps1` itself: users in Iran may have no GitHub access.
 - Caddy: the tunnel host is a normal site block; every other HTTPS host gets a certificate on its first visit after `GET /api/sites/tls` says yes. No wildcard certificate: Let's Encrypt needs a DNS challenge for that, and Caddy has no Arvan DNS module. Limit: Let's Encrypt gives 50 new certificates per registered domain per week, so at most about 50 new site names a week; a wildcard certificate is the later fix.
 - A site may set a cookie for the whole sites domain, which other sites then get. Adding the sites domain to the Public Suffix List stops browsers from this; the owner asks for it after buying the domain.

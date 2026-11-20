@@ -13,7 +13,8 @@ esac
 dir="${DALAN_INSTALL:-$HOME/.local/bin}"
 mkdir -p "$dir"
 echo "Downloading $file"
-curl -fSL --progress-bar -o "$dir/dalan.new" "__DALAN_URL__/downloads/$file"
+curl -fSL --progress-bar -o "$dir/dalan.new" "__DALAN_URL__/downloads/$file" \
+  || { rm -f "$dir/dalan.new"; echo "This server has no agent for $(uname -s) $(uname -m) yet." >&2; exit 1; }
 chmod +x "$dir/dalan.new"
 mv -f "$dir/dalan.new" "$dir/dalan"
 echo "Installed: $dir/dalan ($("$dir/dalan" version))"

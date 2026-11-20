@@ -23,7 +23,7 @@ done
 echo "PASS DEL-01 CI runs every gate"
 
 # DEL-07: every agent file the server offers (AGT-10) is built, and the deploy puts them in the release's agent folder.
-for file in dalan-linux-x64 dalan-macos-arm64 dalan-macos-x64 dalan-windows-x64.exe; do
+for file in dalan-linux-x64 dalan-windows-x64.exe; do
   grep -qF "$file" "$ci" || fail "CI does not build $file"
   grep -qF "\"$file\"" "$(dirname "$ci")/../../src/Sites/Dalan.Sites/Downloads/AgentDownloads.cs" || fail "the server does not offer $file"
 done
