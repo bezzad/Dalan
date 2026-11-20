@@ -470,7 +470,7 @@ The landing page SHALL have a "What you get" section after the product cards: fo
 - **THEN** it names TCP, SSH and the AI gateway, and no text of the section says "tunnel"
 
 ### Requirement: CLI-38 Guide to run a bot
-A visitor and a logged-in user SHALL see at `/guide`, in both languages, the steps to run a bot without an AI agent: log in, verify the mobile number, ask to become a builder, create the bot and copy the token, test it with `getMe`, change the server address in the code, run it and share the link, keep it running, and what to do when it fails. Addresses and numbers SHALL come from the public settings. The header, footer and landing steps SHALL link to it; "My bots" SHALL show steps 5 to 9 itself.
+A visitor and a logged-in user SHALL see at `/guide`, in both languages, nine steps to run a bot without an AI agent, from login to a bot that keeps running (scenarios below). Addresses and numbers SHALL come from the public settings. The header, footer and landing steps SHALL link to it; "My bots" SHALL show steps 5 to 9 itself.
 
 #### Scenario: Steps use the real addresses
 - **GIVEN** the public settings say `bot_api_url` is `https://api.example.ir`, `site_url` is `https://example.ir` and the expiry is 60 seconds
