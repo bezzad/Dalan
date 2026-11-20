@@ -20,6 +20,12 @@ public sealed class Bot
 
     /// <summary>REL-38: set while an admin has suspended the bot.</summary>
     public DateTimeOffset? SuspendedAt { get; set; }
+
+    /// <summary>
+    /// REL-49: set when the owner deleted the bot. The row and its chats stay for the admin; the username is free again
+    /// (the unique index covers only bots that are not deleted). Chats point to the bot id, never to the username.
+    /// </summary>
+    public DateTimeOffset? DeletedAt { get; set; }
 }
 
 public sealed class CommandEntry

@@ -55,7 +55,8 @@ internal static class ClientApiEndpoints
         var bots = await db.Memberships
             .Where(m => m.UserId == userId)
             .OrderByDescending(m => m.StartedAt)
-            .Join(db.Bots, m => m.BotId, b => b.Id, (chat, bot) => new
+            // REL-49: a deleted bot leaves the user's list; its chat stays for the admin.
+            .Join(db.Bots.Where(b => b.DeletedAt == null), m => m.BotId, b => b.Id, (chat, bot) => new
             {
                 bot.Id,
                 bot.Username,
@@ -82,7 +83,7 @@ internal static class ClientApiEndpoints
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
 #pragma warning disable CA1304, CA1311, CA1862 // This runs in PostgreSQL as lower(username), which the unique index covers.
         var bot = await db.Bots.AsNoTracking()
-            .FirstOrDefaultAsync(b => b.Username.ToLower() == username.ToLower(), http.RequestAborted);
+            .FirstOrDefaultAsync(b => b.Username.ToLower() == username.ToLower() && b.DeletedAt == null, http.RequestAborted);
 #pragma warning restore CA1304, CA1311, CA1862
         if (bot is null) return BotNotFound();
 

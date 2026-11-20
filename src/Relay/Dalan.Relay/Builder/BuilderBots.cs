@@ -13,6 +13,10 @@ namespace Dalan.Relay.Builder;
 
 internal sealed record CreateBotRequest(string? Username, string? Name);
 
+internal sealed record RenameBotRequest(string? Name);
+
+internal sealed record DeletedBotJson(long Id, bool Deleted);
+
 internal sealed record BuilderBotJson(
     long Id, string Username, string Name, DateTimeOffset CreatedAt, bool Online, DateTimeOffset? LastSeen, bool Suspended,
     ShowcaseJson? Showcase);
@@ -37,13 +41,15 @@ internal sealed partial class BuilderBots(
     BotPresence presence,
     IAuditLog audit,
     IUserDirectory users,
+    SuspendedBots suspendedBots,
+    TimeProvider time,
     IOptionsMonitor<RelayOptions> options)
 {
     public async Task<BuilderAnswer> ListAsync(long userId, CancellationToken cancellationToken)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         return new BuilderAnswer(StatusCodes.Status200OK,
-            new BuilderBotsResponse(await ReadAsync(db, db.Bots.Where(b => b.OwnerUserId == userId), cancellationToken)));
+            new BuilderBotsResponse(await ReadAsync(db, db.Bots.Where(b => b.OwnerUserId == userId && b.DeletedAt == null), cancellationToken)));
     }
 
     /// <summary>REL-45: one bot with its status, for its owner or an admin.</summary>
@@ -70,7 +76,7 @@ internal sealed partial class BuilderBots(
 
         await using (var db = await dbFactory.CreateDbContextAsync(cancellationToken))
         {
-            if (await db.Bots.CountAsync(b => b.OwnerUserId == userId, cancellationToken) >= limits.MaxBotsPerBuilder)
+            if (await db.Bots.CountAsync(b => b.OwnerUserId == userId && b.DeletedAt == null, cancellationToken) >= limits.MaxBotsPerBuilder)
             {
                 return BuilderAnswer.Error(StatusCodes.Status409Conflict, "bot_limit",
                     $"You already have {limits.MaxBotsPerBuilder} bots, the most one builder may have.");
@@ -100,10 +106,50 @@ internal sealed partial class BuilderBots(
         return new BuilderAnswer(StatusCodes.Status200OK, new NewTokenJson(bot!.Id, bot.Username, bot.Name, token));
     }
 
-    /// <summary>REL-37 and REL-40: only the owner of the bot, or an admin.</summary>
+    /// <summary>REL-48: a new display name. The username stays.</summary>
+    public async Task<BuilderAnswer> RenameAsync(long userId, long botId, RenameBotRequest? request, CancellationToken cancellationToken)
+    {
+        var name = request?.Name?.Trim() ?? "";
+        var max = options.CurrentValue.MaxBotNameLength;
+        if (name.Length == 0 || name.Length > max)
+        {
+            return BuilderAnswer.Error(StatusCodes.Status400BadRequest, "bad_request",
+                $$"""Send JSON like {"name": "Weather"}: a name of 1 to {{max}} characters.""");
+        }
+
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        if (!await MayChangeAsync(db, userId, botId, cancellationToken)) return BotNotFound();
+        await db.Bots.Where(b => b.Id == botId).ExecuteUpdateAsync(set => set.SetProperty(b => b.Name, name), cancellationToken);
+        await audit.RecordAsync(userId, "bot.rename", BuilderEndpoints.BotTarget(botId), name, cancellationToken);
+        var found = await ReadAsync(db, db.Bots.Where(b => b.Id == botId), cancellationToken);
+        return new BuilderAnswer(StatusCodes.Status200OK, found[0]);
+    }
+
+    /// <summary>
+    /// REL-49: the bot stops at once (a new secret token nobody has, and it counts as suspended), leaves every list and
+    /// the showcase, and its username is free. Its row and chats stay for the admin until the normal history expiry.
+    /// </summary>
+    public async Task<BuilderAnswer> DeleteAsync(long userId, long botId, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        if (!await MayChangeAsync(db, userId, botId, cancellationToken)) return BotNotFound();
+
+        var at = time.GetUtcNow();
+        var hash = BotToken.Hash(BotToken.NewSecret());
+        await db.Bots.Where(b => b.Id == botId).ExecuteUpdateAsync(set => set
+            .SetProperty(b => b.DeletedAt, at)
+            .SetProperty(b => b.SuspendedAt, b => b.SuspendedAt ?? at)
+            .SetProperty(b => b.TokenHash, hash), cancellationToken);
+        await db.Showcase.Where(e => e.BotId == botId).ExecuteDeleteAsync(cancellationToken);
+        suspendedBots.Set(botId, true);
+        await audit.RecordAsync(userId, "bot.delete", BuilderEndpoints.BotTarget(botId), null, cancellationToken);
+        return new BuilderAnswer(StatusCodes.Status200OK, new DeletedBotJson(botId, true));
+    }
+
+    /// <summary>REL-37 and REL-40: only the owner of the bot, or an admin. A deleted bot (REL-49) is nobody's.</summary>
     public async Task<bool> MayChangeAsync(RelayDb db, long userId, long botId, CancellationToken cancellationToken)
     {
-        var ownerId = await db.Bots.Where(b => b.Id == botId).Select(b => (long?)b.OwnerUserId).FirstOrDefaultAsync(cancellationToken);
+        var ownerId = await db.Bots.Where(b => b.Id == botId && b.DeletedAt == null).Select(b => (long?)b.OwnerUserId).FirstOrDefaultAsync(cancellationToken);
         return ownerId is not null && (ownerId == userId || (await users.GetAccessAsync(userId, cancellationToken)).IsAdmin);
     }
 

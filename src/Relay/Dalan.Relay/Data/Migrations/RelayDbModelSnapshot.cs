@@ -36,6 +36,10 @@ namespace Dalan.Relay.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
                     b.Property<DateTimeOffset?>("LastSeenAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_seen_at");
