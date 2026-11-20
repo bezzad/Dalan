@@ -7,7 +7,7 @@ The owner (2026-11-20): can a normal user get a bot running from the site alone,
 ## What Changes
 
 - A public page `/guide`: the steps from login to a bot that keeps running, with the address from the public settings, ready code for the common bot libraries (python-telegram-bot, aiogram, pyTelegramBotAPI, Telegraf, grammY, node-telegram-bot-api, Telegram.Bot), a token test with `getMe`, a Linux user service, and what to do when it does not work.
-- Links to it: the site header, the footer, the landing steps, and the token card in "My bots".
+- Links to it: the site header, the footer and the landing steps. "My bots" shows the steps after the token itself (owner, 2026-11-20: each section tells its own steps).
 
 ## Capabilities
 

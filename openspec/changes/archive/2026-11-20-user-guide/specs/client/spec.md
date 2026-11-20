@@ -22,7 +22,7 @@ The server SHALL serve the PWA page at `/`, `/bots`, `/privacy`, `/faq`, `/showc
 ## ADDED Requirements
 
 ### Requirement: CLI-38 Guide to run a bot
-A visitor and a logged-in user SHALL see at `/guide`, in both languages, the steps to run a bot without an AI agent: log in, verify the mobile number, ask to become a builder, create the bot and copy the token, test it with `getMe`, change the server address in the code, run it and share the link, keep it running, and what to do when it fails. Addresses and numbers SHALL come from the public settings. The header, footer, landing steps and token card SHALL link to it.
+A visitor and a logged-in user SHALL see at `/guide`, in both languages, the steps to run a bot without an AI agent: log in, verify the mobile number, ask to become a builder, create the bot and copy the token, test it with `getMe`, change the server address in the code, run it and share the link, keep it running, and what to do when it fails. Addresses and numbers SHALL come from the public settings. The header, footer and landing steps SHALL link to it; "My bots" SHALL show steps 5 to 9 itself.
 
 #### Scenario: Steps use the real addresses
 - **GIVEN** the public settings say `bot_api_url` is `https://api.example.ir`, `site_url` is `https://example.ir` and the expiry is 60 seconds

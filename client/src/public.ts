@@ -2,6 +2,7 @@
 import { api } from "./api.ts";
 import { errorText } from "./app.ts";
 import { h } from "./dom.ts";
+import { codeBlock as block, stepCards, tabbed as tabs } from "./codeView.ts";
 import { guideSteps, type Sample } from "./guide.ts";
 import type { Language } from "./i18n.ts";
 import { themeButton, type Theme } from "./theme.ts";
@@ -144,11 +145,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
       break;
     case "guide":
       body.append(h("h2", { class: "title" }, t("guideTitle")));
-      withNumbers(values => body.append(...guideSteps(lang, values, n).map((step, i) => h("section", { class: "card" },
-        h("h3", {}, `${n(i + 1)}. ${step.title}`),
-        h("p", {}, step.text),
-        ...(step.code ? [codeBlock(step.code)] : []),
-        ...(step.samples ? tabbed(step.samples) : [])))));
+      withNumbers(values => body.append(...stepCards(guideSteps(lang, values, n), 1, t, n)));
       break;
   }
 
@@ -228,31 +225,8 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
         h("span", { class: "frame-label" }, product.frame)));
   }
 
-  /** Tabs over code blocks: one tab per name, the first one open. */
-  function tabbed(samples: Sample[]): HTMLElement[] {
-    const tabs = h("div", { class: "os-tabs", role: "tablist" });
-    const command = h("div", { class: "command" });
-    const pick = (index: number) => {
-      for (const [i, tab] of [...tabs.children].entries()) tab.setAttribute("aria-selected", String(i === index));
-      command.replaceChildren(codeBlock(samples[index]!.code));
-    };
-    tabs.append(...samples.map((sample, i) => h("button", { type: "button", role: "tab", onclick: () => pick(i) }, sample.name)));
-    pick(0);
-    return [tabs, command];
-  }
-
-  /** A code block, always left to right, with a copy button. */
-  function codeBlock(code: string): HTMLElement {
-    const copy = h("button", {
-      type: "button",
-      class: "copy",
-      onclick: async () => {
-        await navigator.clipboard.writeText(code);
-        copy.textContent = t("copied");
-      },
-    }, t("copy"));
-    return h("div", { class: "code" }, h("pre", { dir: "ltr" }, h("code", {}, code)), copy);
-  }
+  const codeBlock = (code: string) => block(code, t);
+  const tabbed = (samples: Sample[]) => tabs(samples, t);
 
   // CLI-28: listed bots, a category filter and "more" while a full page came back.
   function showcase(target: HTMLElement): void {

@@ -566,3 +566,6 @@ button.theme .icon { width: 18px; height: 18px; }
 .card .os-tabs { justify-content: flex-start; }
 .card .command { max-width: none; }
 .band a.more { color: var(--brand); font: 600 13px/1.6 var(--mono); letter-spacing: var(--tracking); text-transform: uppercase; text-decoration: none; }
+section.guide { display: flex; flex-direction: column; gap: var(--space-m); grid-column: 1 / -1; width: 100%; }
+section.guide > .card { max-width: none; width: 100%; }
+section.guide .code pre { max-height: none; }
