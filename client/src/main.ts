@@ -12,6 +12,7 @@ import { Live } from "./live.ts";
 import { loginScreen } from "./login.ts";
 import { pageFor } from "./pages.ts";
 import { h } from "./dom.ts";
+import { toastRegion } from "./toast.ts";
 import { publicScreen, siteBrand, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
 import { Chats } from "./messages.ts";
@@ -34,7 +35,7 @@ function show(element: HTMLElement): void {
   document.title = language.t("appName");
   // Shown by the style sheet while the server cannot be reached.
   document.body.dataset["connecting"] = language.t("connecting");
-  document.body.replaceChildren(element);
+  document.body.replaceChildren(element, toastRegion());
 }
 
 function showLogin(error: TextKey | null = null): void {

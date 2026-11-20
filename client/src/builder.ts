@@ -3,29 +3,30 @@ import { agentsPart } from "./agents.ts";
 import { ApiError, api } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { h } from "./dom.ts";
+import { toast } from "./toast.ts";
 import { categoryName, showcaseStateName } from "./pages.ts";
 import { BuilderList, type BuilderBot, type NewToken } from "./panels.ts";
 
 export function builderScreen(app: App): Screen {
   const t = app.language.t.bind(app.language);
   const state = new BuilderList();
-  const list = h("ul", { class: "bots" });
+  const list = h("ul", { class: "rows" });
   const tokenCard = h("section", { class: "card token", hidden: true });
-  const error = h("p", { class: "error", role: "alert" });
 
   const failed = (failure: unknown) => {
-    error.textContent = failure instanceof ApiError && failure.code === "bad_request" ? t("badBot") : t(errorText(failure));
+    toast(failure instanceof ApiError && failure.code === "bad_request" ? t("badBot") : t(errorText(failure)), "error");
   };
 
   function draw(): void {
     list.replaceChildren(...(state.bots.length === 0 ? [h("li", { class: "note" }, t("noBuilderBots"))] : []),
       ...state.bots.map(bot => h("li", {},
         h("div", { class: "line" },
-          h("strong", { dir: "auto" }, bot.name),
-          h("span", { dir: "ltr" }, `@${bot.username}`),
+          h("div", { class: "who" },
+            h("strong", { dir: "auto" }, bot.name),
+            h("span", { class: "note", dir: "ltr" }, `@${bot.username}`)),
+          h("span", { class: "note" }, app.language.seen(bot, new Date())),
           ...(bot.suspended ? [h("span", { class: "badge danger" }, t("suspended"))] : []),
-          h("button", { type: "button", class: "link", onclick: () => void rotate(bot.id) }, t("newToken"))),
-        h("span", { class: "note" }, app.language.seen(bot, new Date())),
+          h("button", { type: "button", class: "small", onclick: () => void rotate(bot.id) }, t("newToken"))),
         showcasePart(bot))));
     drawToken(state.shownToken);
   }
@@ -34,7 +35,6 @@ export function builderScreen(app: App): Screen {
   function drawToken(token: NewToken | null): void {
     tokenCard.hidden = token === null;
     if (!token) return tokenCard.replaceChildren();
-    const copied = h("p", { class: "note", role: "status" });
     tokenCard.replaceChildren(
       h("h2", { dir: "ltr" }, `@${token.username}`),
       h("p", {}, t("tokenOnce")),
@@ -43,11 +43,10 @@ export function builderScreen(app: App): Screen {
         h("button", {
           type: "button", class: "primary", onclick: async () => {
             await navigator.clipboard.writeText(token.token);
-            copied.textContent = t("copied");
+            toast(t("copied"));
           },
         }, t("copy")),
-        h("button", { type: "button", onclick: () => { state.closeToken(); draw(); } }, t("close"))),
-      copied);
+        h("button", { type: "button", onclick: () => { state.closeToken(); draw(); } }, t("close"))));
   }
 
   // CLI-29: ask to be listed, change the entry (each change waits for review), or leave.
@@ -59,8 +58,7 @@ export function builderScreen(app: App): Screen {
       draw();
     };
     const run = (work: () => Promise<void>) => {
-      error.textContent = "";
-      work().catch(failed);
+      work().then(() => toast(t("saved")), failed);
     };
     const description = h("textarea", { dir: "auto", "aria-label": t("description"), required: true });
     description.value = entry?.description ?? "";
@@ -102,10 +100,10 @@ export function builderScreen(app: App): Screen {
 
   async function rotate(botId: number): Promise<void> {
     if (!confirm(t("newTokenConfirm"))) return;
-    error.textContent = "";
     try {
       state.rotated(await api.rotateToken(botId));
       draw();
+      toast(t("tokenMade"));
     } catch (failure) {
       failed(failure);
     }
@@ -114,36 +112,43 @@ export function builderScreen(app: App): Screen {
   const username = h("input", { id: "new-bot", type: "text", dir: "ltr", autocapitalize: "none", autocomplete: "off", placeholder: "weather_bot", required: true });
   const name = h("input", { id: "new-bot-name", type: "text", dir: "auto", autocomplete: "off", required: true });
   const create = h("form", {
-    class: "card",
+    class: "card create",
+    hidden: true,
     onsubmit: async event => {
       event.preventDefault();
-      error.textContent = "";
       try {
         state.created(await api.createBot(username.value.trim().replace(/^@/, ""), name.value.trim()), new Date());
         username.value = name.value = "";
+        create.hidden = true;
         draw();
+        toast(t("botMade"));
       } catch (failure) {
         failed(failure);
       }
     },
   },
   h("h2", {}, t("createBot")),
-  h("label", { for: "new-bot" }, t("botUsername")), username,
-  h("p", { class: "note" }, t("usernameNote")),
-  h("label", { for: "new-bot-name" }, t("name")), name,
-  h("button", { type: "submit", class: "primary" }, t("createBot")));
+  h("div", { class: "fields" },
+    h("div", { class: "field" }, h("label", { for: "new-bot" }, t("botUsername")), username, h("p", { class: "note" }, t("usernameNote"))),
+    h("div", { class: "field" }, h("label", { for: "new-bot-name" }, t("name")), name)),
+  h("div", { class: "row" },
+    h("button", { type: "submit", class: "primary" }, t("createBot")),
+    h("button", { type: "button", onclick: () => { create.hidden = true; } }, t("close"))));
 
   Promise.all([api.builderBots(), api.showcase("")]).then(([bots, showcase]) => {
     state.bots = bots;
     categories = showcase.categories;
+    // With no bot yet, the form is the next step: open it.
+    if (bots.length === 0) create.hidden = false;
     draw();
   }).catch(failed);
 
-  const element = h("main", {},
+  const element = h("main", { class: "wide" },
     h("header", {},
       h("button", { type: "button", class: "link", onclick: () => app.showPanel(null) }, t("back")),
-      h("h1", {}, t("builderBots"))),
-    h("div", { class: "scroller" }, tokenCard, error, list, create, agentsPart(app)));
+      h("h1", {}, t("builderBots")),
+      h("button", { type: "button", class: "primary", onclick: () => { create.hidden = false; username.focus(); } }, t("createBot"))),
+    h("div", { class: "scroller" }, tokenCard, create, h("section", { class: "card" }, list), agentsPart(app)));
 
   return { element };
 }

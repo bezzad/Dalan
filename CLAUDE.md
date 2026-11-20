@@ -7,6 +7,7 @@ Read first:
 - `docs/ARCHITECTURE.md`: services, communication, data, scale, decisions log.
 - `docs/TESTING.md`: rule IDs, test-first workflow, test kinds.
 - `docs/SERVER.md`: Iran server setup, deploy, backup, shutdown drill.
+- `docs/UI.md`: the UI design system (page frame, cards, buttons, toasts). Every screen follows it.
 - `openspec/specs/`: current rules. `openspec/changes/`: work in progress, one change per milestone.
 
 ## Commands

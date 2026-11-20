@@ -16,3 +16,9 @@ No rule changes: layout only.
 ## Impact
 
 Client only. No new setting.
+
+## Later in the same PR
+
+- `docs/UI.md`: one design system for every screen, so the same notes are not needed per page.
+- Toasts (`client/src/toast.ts`) for every user action: account forms, builder, admin actions, agents. The inline status and error lines of these actions go.
+- The builder screen ("My bots") follows it: wide page, "Create bot" in the title row opens the form, the bots as rows in one card.
