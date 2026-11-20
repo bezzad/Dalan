@@ -358,7 +358,7 @@ header.site > button.primary { border-radius: 999px; }
 .menu.user .panel { inset-inline: auto 0; min-width: 200px; display: flex; flex-direction: column; gap: 2px; padding: 6px; z-index: 3; }
 .menu.user .item { min-height: 0; border: 0; background: none; text-align: start; font: inherit; cursor: pointer; }
 .menu.user .item:hover { background: var(--bg); }
-.menu.user .item.off { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); cursor: default; }
+.menu.user .item.off { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); cursor: default; }
 .menu.user .item.off:hover { background: none; }
 /* Account on a wide screen: a wider page and cards in two columns, buttons as wide as their words (like ngrok). */
 /* docs/UI.md: inner pages are wide on a desktop. Buttons are as wide as their words; "cols" puts cards in two columns. */
