@@ -1,12 +1,14 @@
-// The public pages (CLI-26 to CLI-28): landing, privacy, FAQ and showcase. They open with or without login.
+// The public pages (CLI-26 to CLI-28, CLI-38): landing, privacy, FAQ, showcase and the guide. They open with or without login.
 import { api } from "./api.ts";
 import { errorText } from "./app.ts";
 import { h } from "./dom.ts";
+import { codeBlock as block, stepCards, tabbed as tabs } from "./codeView.ts";
+import { guideSteps, type Sample } from "./guide.ts";
 import type { Language } from "./i18n.ts";
 import { themeButton, type Theme } from "./theme.ts";
 import { categoryName, closing, faqItems, hero, initial, installCommands, labels, landing, notOffered, offers, privacyPoints, problems, products, security, steps, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
 
-export type PublicPage = "landing" | "privacy" | "faq" | "showcase";
+export type PublicPage = "landing" | "privacy" | "faq" | "showcase" | "guide";
 
 export interface PublicContext {
   language: Language;
@@ -78,7 +80,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
   }, label);
 
   const nav = h("nav", { class: "links" },
-    pageLink("/showcase", t("showcase")), pageLink("/faq", t("faq")), pageLink("/privacy", t("privacy")),
+    pageLink("/guide", t("guide")), pageLink("/showcase", t("showcase")), pageLink("/faq", t("faq")), pageLink("/privacy", t("privacy")),
     h("button", { type: "button", class: "link", onclick: context.onLanguage }, t("language")));
 
   /** Opens the login screen (or the bot list). In the page body a visitor sees "Try it (free)" (owner, 2026-11-18). */
@@ -141,6 +143,10 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
       body.append(h("h2", { class: "title" }, t("showcase")));
       showcase(body);
       break;
+    case "guide":
+      body.append(h("h2", { class: "title" }, t("guideTitle")));
+      withNumbers(values => body.append(...stepCards(guideSteps(lang, values, n), 1, t, n)));
+      break;
   }
 
   // CLI-26: hero, products, try it, steps, the three messages, security, a closing call.
@@ -148,21 +154,14 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
     const label = (text: string) => h("span", { class: "label" }, text);
 
     const stepList = h("ol", { class: "steps" });
-    const tabs = h("div", { class: "os-tabs", role: "tablist" });
-    const command = h("div", { class: "command" });
+    const commands = h("div");
     withNumbers(values => {
       stepList.append(...steps(lang, values).map((step, i) => h("li", { class: "step" },
         h("span", { class: "number" }, language.number(i + 1)),
         h("h3", {}, step.title),
         h("p", {}, step.text),
         ...(step.code ? [codeBlock(step.code)] : []))));
-      const list = installCommands(values);
-      const pick = (index: number) => {
-        for (const [i, tab] of [...tabs.children].entries()) tab.setAttribute("aria-selected", String(i === index));
-        command.replaceChildren(codeBlock(list[index]!.code));
-      };
-      tabs.append(...list.map((item, i) => h("button", { type: "button", role: "tab", onclick: () => pick(i) }, item.os)));
-      pick(0);
+      commands.replaceWith(...tabbed(installCommands(values).map(item => ({ name: item.os, code: item.code }))));
     });
 
     const featureIcons: (keyof typeof icons)[] = ["home", "shield", "offline"];
@@ -189,10 +188,9 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
         h("span", { class: "badge-icon" }, icon("terminal")),
         label(labels[lang].try),
         h("h2", {}, labels[lang].tryTitle),
-        tabs,
-        command,
+        commands,
         h("p", { class: "note" }, labels[lang].tryNote)),
-      h("section", { id: "how", class: "band" }, h("h2", {}, hero[lang].how), stepList),
+      h("section", { id: "how", class: "band" }, h("h2", {}, hero[lang].how), stepList, pageLink("/guide", t("guideTitle"), "more")),
       h("section", { id: "features", class: "features" }, ...landing[lang].map((message, i) => h("article", {},
         h("span", { class: "bubble" }, icon(featureIcons[i]!)), h("h3", {}, message.title), h("p", {}, message.text)))),
       h("section", { class: "security" },
@@ -227,18 +225,8 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
         h("span", { class: "frame-label" }, product.frame)));
   }
 
-  /** A code block, always left to right, with a copy button. */
-  function codeBlock(code: string): HTMLElement {
-    const copy = h("button", {
-      type: "button",
-      class: "copy",
-      onclick: async () => {
-        await navigator.clipboard.writeText(code);
-        copy.textContent = t("copied");
-      },
-    }, t("copy"));
-    return h("div", { class: "code" }, h("pre", { dir: "ltr" }, h("code", {}, code)), copy);
-  }
+  const codeBlock = (code: string) => block(code, t);
+  const tabbed = (samples: Sample[]) => tabs(samples, t);
 
   // CLI-28: listed bots, a category filter and "more" while a full page came back.
   function showcase(target: HTMLElement): void {
@@ -295,7 +283,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
       column(labels[lang].product, ...products[lang].map(product => h("span", {}, product.label,
         ...(product.soon ? [h("span", { class: "soon" }, labels[lang].soon)] : []))), pageLink("/showcase", t("showcase"))),
       column(labels[lang].problems, ...problems[lang].map(group => h("span", {}, group.group))),
-      column(labels[lang].resources, pageLink("/faq", t("faq")), pageLink("/privacy", t("privacy")),
+      column(labels[lang].resources, pageLink("/guide", t("guide")), pageLink("/faq", t("faq")), pageLink("/privacy", t("privacy")),
         h("a", { href: "/llms.txt" }, "llms.txt"), h("a", { href: "/dalan.mjs" }, "dalan.mjs"))),
     h("div", { class: "wordmark", "aria-hidden": "true" }, t("appName")));
   return h("main", { class: "public" }, header, error, h("div", { class: "scroller page" }, body, footer));

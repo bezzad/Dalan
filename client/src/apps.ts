@@ -94,8 +94,8 @@ export function appsScreen(app: App): Screen {
     name.addEventListener("input", update);
     update();
 
-    return h("section", { class: "card guide" },
-      h("h2", {}, t("guideTitle")),
+    return h("section", { class: "card app-guide" },
+      h("h2", {}, t("appsGuideTitle")),
       h("h3", {}, t("step1Title")),
       h("p", { class: "note" }, t("step1Note")),
       h("label", {}, t("unixLabel")), codeBlock(install.unix),

@@ -113,7 +113,7 @@ function route(): void {
   if (!app) return;
   const page = pageFor(location.pathname, true);
   const username = /^\/@([^/]+)$/.exec(decodeURIComponent(location.pathname))?.[1];
-  screen = page === "landing" || page === "privacy" || page === "faq" || page === "showcase" ? { element: publicPage(page, true) }
+  screen = page === "landing" || page === "privacy" || page === "faq" || page === "showcase" || page === "guide" ? { element: publicPage(page, true) }
     : username ? chatScreen(app, username)
     : page === "apps" && panel === null ? appsScreen(app)
     : panel === "account" ? accountScreen(app)

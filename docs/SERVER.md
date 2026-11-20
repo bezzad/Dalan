@@ -99,6 +99,17 @@ Then log in with your Gmail address on the site; in Gmail, "Show original" shoul
 
 The login card then shows "Log in with GitHub" first. GitHub users are level 1, like email users. When the international internet is cut, GitHub cannot be reached and the card says to use email or SMS.
 
+### A new computer for the owner
+
+Only `install.sh` and SSH need your own computer; the deploy runs from CI. On the new computer (Linux):
+
+1. `git clone https://github.com/bezzad/Dalan && cd Dalan`.
+2. Your own SSH key: `ssh-keygen -t ed25519`, then put `~/.ssh/id_ed25519.pub` on the server. From the old computer: `ssh-copy-id -i <new key>.pub root@<server>`; with no old computer, paste it into `/root/.ssh/authorized_keys` from the provider's web console. Check: `ssh root@<server>` asks no password.
+3. The CI public key, which `install.sh` needs: `ssh root@<server> cat /home/deploy/.ssh/authorized_keys > ~/.ssh/dalan-deploy.pub`. The CI private key stays only in the GitHub secret; if it is lost or leaked, make a new pair (section 1, step 5), run `install.sh` with the new `.pub`, and put the new private key in `DEPLOY_SSH_KEY`.
+4. Run `install.sh` again with the same settings when needed. `dalan.env` on the server keeps every secret, so nothing else moves with you.
+
+A bot you run at home (for example ArcaneBot) needs only its token and `https://api.<domain>`; the site page `/guide` has the steps.
+
 ## 3. Deploy
 
 GitHub, repository Settings, Environments, `production` (create it if missing), secrets:

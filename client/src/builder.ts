@@ -4,6 +4,8 @@ import { ApiError, api } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { h } from "./dom.ts";
 import { toast } from "./toast.ts";
+import { stepCards } from "./codeView.ts";
+import { guideSteps } from "./guide.ts";
 import { categoryName, showcaseStateName } from "./pages.ts";
 import { BuilderList, type BuilderBot, type NewToken } from "./panels.ts";
 
@@ -41,6 +43,7 @@ export function builderScreen(app: App): Screen {
       h("h2", { dir: "ltr" }, `@${token.username}`),
       h("p", {}, t("tokenOnce")),
       h("code", { dir: "ltr" }, token.token),
+      h("p", {}, t("guideNext")),
       h("div", { class: "row" },
         h("button", {
           type: "button", class: "primary", onclick: async () => {
@@ -183,7 +186,16 @@ export function builderScreen(app: App): Screen {
       h("button", { type: "button", class: "link", onclick: () => app.showPanel(null) }, t("back")),
       h("h1", {}, t("builderBots")),
       h("button", { type: "button", class: "primary", onclick: () => { create.hidden = false; username.focus(); } }, t("createBot"))),
-    h("div", { class: "scroller" }, tokenCard, create, h("section", { class: "card" }, list), agentsPart(app)));
+    h("div", { class: "scroller" }, tokenCard, create, h("section", { class: "card" }, list), runPart(), agentsPart(app)));
 
   return { element };
+
+  /** CLI-38: the guide's steps after the token, in this screen, so the builder needs no other page. */
+  function runPart(): HTMLElement {
+    const n = (value: number) => app.language.number(value);
+    const part = h("section", { class: "guide" }, h("h2", {}, t("guideRun")));
+    api.publicSettings().then(values => part.append(...stepCards(guideSteps(app.language.current, values, n).slice(4), 5, t, n),
+      h("p", {}, h("a", { href: "/guide", onclick: event => { event.preventDefault(); app.go("/guide"); } }, t("guideTitle")))), failed);
+    return part;
+  }
 }

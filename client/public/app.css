@@ -565,6 +565,14 @@ button.theme .icon { width: 18px; height: 18px; }
 @media (min-width: 641px) { header.site .menu + .links { margin-inline-start: calc(2px - var(--space-m)); } }
 
 /* My apps (CLI-39): the guide's steps are smaller than the card title; an online site is green. */
-.guide { display: flex; flex-direction: column; gap: var(--space-s); }
-.guide h3 { margin: var(--space-m) 0 0; font-size: 15px; }
+.app-guide { display: flex; flex-direction: column; gap: var(--space-s); }
+.app-guide h3 { margin: var(--space-m) 0 0; font-size: 15px; }
 .site-state.on { color: var(--brand); font-weight: 600; }
+
+/* CLI-38: the guide. Tabs and code sit at the start of a card, at full width. */
+.card .os-tabs { justify-content: flex-start; }
+.card .command { max-width: none; }
+.band a.more { color: var(--brand); font: 600 13px/1.6 var(--mono); letter-spacing: var(--tracking); text-transform: uppercase; text-decoration: none; }
+section.guide { display: flex; flex-direction: column; gap: var(--space-m); grid-column: 1 / -1; width: 100%; }
+section.guide > .card { max-width: none; width: 100%; }
+section.guide .code pre { max-height: none; }
