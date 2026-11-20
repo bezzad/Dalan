@@ -307,7 +307,8 @@ select { font: inherit; color: inherit; padding: 8px; border: 1px solid var(--li
    The document itself scrolls; the header stays on top. */
 main.public { --gutter: max(16px, calc((100vw - var(--page-width)) / 2)); height: auto; min-height: 100dvh; padding-block-end: 0; overflow-x: clip; }
 body.offline main.public { height: auto; }
-main.public > .scroller { flex: none; overflow: visible; }
+/* Grow to fill the screen so the footer stays at the bottom of short pages. */
+main.public > .scroller { flex: 1 0 auto; overflow: visible; }
 main.public > header.site { position: sticky; top: 0; margin-block-start: -12px; padding-block: 12px; background: var(--bg); }
 .label { font: 600 12px/1.6 var(--mono); letter-spacing: var(--tracking); text-transform: uppercase; color: var(--muted); }
 .soon { padding: 0 6px; border-radius: 6px; background: rgb(242 180 90 / .15); color: var(--accent); font: 600 11px/1.7 var(--mono); letter-spacing: 0; }
@@ -489,7 +490,7 @@ ol.steps { display: grid; gap: var(--space-m); margin: 0; padding: 0; list-style
 /* Closing call and footer */
 .cta { display: flex; flex-direction: column; align-items: center; gap: var(--space-m); padding: var(--space-xl) var(--space-m); text-align: center; }
 .cta h2 { font-size: clamp(30px, 5vw, 52px); line-height: 1.3; }
-footer.site { position: relative; display: flex; flex-direction: column; gap: var(--space-l); padding-block: var(--space-l) 0; border-block-start: 1px solid var(--line); overflow: hidden; }
+footer.site { position: relative; margin-block-start: auto; display: flex; flex-direction: column; gap: var(--space-l); padding-block: var(--space-l) 0; border-block-start: 1px solid var(--line); overflow: hidden; }
 footer.site .columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-l); }
 footer.site .column { gap: 6px; font: 14px/1.8 var(--mono); color: var(--muted); }
 footer.site .column .label { color: var(--text); margin-block-end: 4px; }
