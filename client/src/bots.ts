@@ -2,6 +2,7 @@
 import { api } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { h } from "./dom.ts";
+import { builderView } from "./panels.ts";
 import { themeButton } from "./theme.ts";
 
 export function botsScreen(app: App, onLanguage: () => void): Screen {
@@ -64,16 +65,20 @@ export function botsScreen(app: App, onLanguage: () => void): Screen {
     h("p", { class: "note" }, h("bdi", {}, app.user.name)),
     ...(app.user.has_password ? [] : [h("p", { class: "note" }, t("noPasswordYet"))]),
     open,
+    // CLI-24: a builder or an admin makes bots from here, one press away.
+    ...(builderView(app.user) === "bots"
+      ? [h("button", { type: "button", class: "primary", onclick: () => app.showPanel("builder") }, t("createBot"))]
+      : []),
     error,
     list,
     // CLI-26: the public pages, from inside the app too.
-    h("nav", { class: "links" }, ...(["showcase", "faq", "privacy"] as const).map(page => h("a", {
-      href: `/${page}`,
+    h("nav", { class: "links" }, ...([["", "home"], ["showcase", "showcase"], ["faq", "faq"], ["privacy", "privacy"]] as const).map(([path, label]) => h("a", {
+      href: `/${path}`,
       onclick: event => {
         event.preventDefault();
-        app.go(`/${page}`);
+        app.go(`/${path}`);
       },
-    }, t(page)))));
+    }, t(label)))));
 
   return { element, onMessage: reload, onRead: reload };
 }

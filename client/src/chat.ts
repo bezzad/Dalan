@@ -198,7 +198,7 @@ export function chatScreen(app: App, username: string): Screen {
 
   const element = h("main", { class: "chat" },
     h("header", {},
-      h("button", { type: "button", class: "link", onclick: () => app.go("/") }, t("back")),
+      h("button", { type: "button", class: "link", onclick: () => app.go("/bots") }, t("back")),
       title,
       h("span", { class: "note", dir: "ltr" }, `@${username}`)),
     status,
