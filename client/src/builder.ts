@@ -120,7 +120,7 @@ export function builderScreen(app: App): Screen {
     input.focus();
   }
 
-  // REL-49: gone at once with its chats, and the username is free again, so ask first.
+  // REL-49: gone at once for the owner and its users (the admin keeps its chats), so ask first.
   async function remove(bot: BuilderBot): Promise<void> {
     if (!confirm(t("deleteBotConfirm").replace("{name}", `@${bot.username}`))) return;
     try {
