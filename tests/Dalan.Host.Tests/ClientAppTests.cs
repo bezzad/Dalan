@@ -19,6 +19,7 @@ public class ClientAppTests(PostgresServer postgres)
     [Theory]
     [Trait("Rule", "CLI-01")]
     [InlineData("/")]
+    [InlineData("/bots")]
     [InlineData("/@ArcaneBot")]
     [InlineData("/privacy")]
     [InlineData("/faq")]

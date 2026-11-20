@@ -21,7 +21,8 @@ export type Page = "landing" | "privacy" | "faq" | "showcase" | "login" | "bots"
 export function pageFor(path: string, loggedIn: boolean): Page {
   if (path === "/privacy" || path === "/faq" || path === "/showcase") return path.slice(1) as Page;
   if (path.startsWith("/@")) return loggedIn ? "chat" : "login";
-  return loggedIn ? "bots" : "landing";
+  if (path === "/bots") return loggedIn ? "bots" : "login";
+  return "landing";
 }
 
 /** CLI-26: the three messages of DESIGN section 13, in this order. Never "free tunnel". */

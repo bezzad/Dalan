@@ -82,9 +82,9 @@ test("CLI-37 says what Dalan does not offer and never says tunnel", () => {
 });
 
 test("CLI-26 the address and the login decide the screen", () => {
-  const paths = ["/", "/privacy", "/faq", "/showcase", "/@bot"];
-  assert.deepEqual(paths.map(path => pageFor(path, false)), ["landing", "privacy", "faq", "showcase", "login"]);
-  assert.deepEqual(paths.map(path => pageFor(path, true)), ["bots", "privacy", "faq", "showcase", "chat"]);
+  const paths = ["/", "/bots", "/privacy", "/faq", "/showcase", "/@bot"];
+  assert.deepEqual(paths.map(path => pageFor(path, false)), ["landing", "login", "privacy", "faq", "showcase", "login"]);
+  assert.deepEqual(paths.map(path => pageFor(path, true)), ["landing", "bots", "privacy", "faq", "showcase", "chat"]);
 });
 
 test("CLI-27 privacy page and FAQ say six things with the numbers from the server", () => {

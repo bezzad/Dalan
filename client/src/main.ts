@@ -77,7 +77,7 @@ function publicPage(page: PublicPage, loggedIn: boolean): HTMLElement {
     theme,
     loggedIn,
     go: navigate,
-    enter: loggedIn ? () => navigate("/") : showLogin,
+    enter: loggedIn ? () => navigate("/bots") : showLogin,
     onLanguage() {
       language.toggle();
       render();
@@ -85,12 +85,12 @@ function publicPage(page: PublicPage, loggedIn: boolean): HTMLElement {
   });
 }
 
-/** Draws the screen of the current address: "/" is the bot list, "/@name" is a chat, and the public pages. */
+/** Draws the screen of the current address: "/" is the landing page, "/bots" the bot list, "/@name" a chat, and the public pages. */
 function route(): void {
   if (!app) return;
   const page = pageFor(location.pathname, true);
   const username = /^\/@([^/]+)$/.exec(decodeURIComponent(location.pathname))?.[1];
-  screen = page === "privacy" || page === "faq" || page === "showcase" ? { element: publicPage(page, true) }
+  screen = page === "landing" || page === "privacy" || page === "faq" || page === "showcase" ? { element: publicPage(page, true) }
     : username ? chatScreen(app, username)
     : panel === "account" ? accountScreen(app)
     : panel === "builder" ? builderScreen(app)
