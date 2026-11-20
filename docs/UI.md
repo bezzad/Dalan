@@ -6,9 +6,11 @@ Every screen follows this page. The reference is ngrok: dark and clean, neutral 
 - Light and dark. The first open follows the device; the theme button switches light and dark only and keeps the choice (CLI-35).
 - Colours only from the tokens in `client/public/app.css` (`--bg`, `--surface`, `--line`, `--text`, `--muted`, `--brand`, `--danger`). The dark tokens are set twice (media query and `[data-theme="dark"]`); keep both in sync.
 - Nothing from another host: fonts and icons are in the page (rule 7).
+- Font: Inter for Latin letters, Vazirmatn for Persian (both OFL, copied from npm by `client/build.mjs`).
+- Logo: the Dalan gate (`client/src/logo.ts`), an outer arch around a door. The favicon is the round version (`public/icons/icon.svg`); the app icons are square. The not-found page (CLI-40) shows the gate closed.
 
 ## Page frame
-- **Header on every page**: logo and "دالان", a link to `/`, at the start; the user area at the end: "Log in" for a visitor, the user menu (My bots, Account, Admin, Log out) after login. No page drops it.
+- **Header on every page**: logo and "دالان" on one line, a link to `/`, at the start. At the end the same tools (`headerTools`): a round language button (globe and EN or FA), the round theme button, then "Log in" or the user menu. No page drops it; language never sits among the menu links.
 - **Public pages**: the full site header, and the footer with the big half-cut wordmark, always at the bottom of the screen.
 - **Width**: public pages up to `--page-width`. Inner pages (`main.wide`) up to 960px; a simple list or chat may stay narrow. Below that, a 16px side gutter. No sideways scroll on a phone.
 - **Page title row**: Back, the title, then the main action of the page as one primary button at the end (for example "Create bot").
@@ -20,6 +22,7 @@ Every screen follows this page. The reference is ngrok: dark and clean, neutral 
 - Tokens, keys and commands: monospace code block, dark in both themes, with Copy.
 
 ## Buttons
+- One height per size: 40px normal, 32px `small`, 36px in the header. The words sit in the middle on both axes (`inline-flex`). Buttons in one row line up with the text beside them; never push one button down with a margin.
 - Inside a wide page a button is as wide as its words, never full width. Full width only on the login card.
 - One primary (green) button per card or row: the main action. Others are plain. A link button for Back and small inline actions.
 - A step that cannot be undone (new token, delete) asks first.

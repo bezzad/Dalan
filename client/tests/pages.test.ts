@@ -87,6 +87,14 @@ test("CLI-26 the address and the login decide the screen", () => {
   assert.deepEqual(paths.map(path => pageFor(path, true)), ["landing", "bots", "apps", "privacy", "faq", "showcase", "chat"]);
 });
 
+test("CLI-40 an unknown address is not found, never the landing page", () => {
+  for (const loggedIn of [false, true]) {
+    assert.equal(pageFor("/no-such-page", loggedIn), "notFound");
+    assert.equal(pageFor("/bots/7", loggedIn), "notFound");
+    assert.equal(pageFor("/", loggedIn), "landing");
+  }
+});
+
 test("CLI-27 privacy page and FAQ say six things with the numbers from the server", () => {
   for (const [lang, n] of [["fa", persian], ["en", english]] as const) {
     const points = privacyPoints(lang, numbers, n);

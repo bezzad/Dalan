@@ -11,7 +11,10 @@ rmSync(path("dist"), { recursive: true, force: true });
 execFileSync(process.execPath, [path("node_modules/typescript/bin/tsc"), "-p", path("tsconfig.build.json")], { stdio: "inherit" });
 cpSync(path("public"), path("dist"), { recursive: true });
 
-// The Persian font comes from the npm package and is served by us, never by a foreign host (CLAUDE.md rule 7).
+// The fonts come from npm packages and is served by us, never by a foreign host (CLAUDE.md rule 7).
 mkdirSync(path("dist/fonts"), { recursive: true });
 cpSync(path("node_modules/vazirmatn/fonts/webfonts/Vazirmatn[wght].woff2"), path("dist/fonts/vazirmatn.woff2"));
 cpSync(path("node_modules/vazirmatn/OFL.txt"), path("dist/fonts/OFL.txt"));
+// Inter for Latin letters (owner, 2026-11-20: Vazirmatn's Latin looked poor); Vazirmatn draws everything else.
+cpSync(path("node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2"), path("dist/fonts/inter.woff2"));
+cpSync(path("node_modules/@fontsource-variable/inter/LICENSE"), path("dist/fonts/OFL-Inter.txt"));

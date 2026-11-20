@@ -2,25 +2,24 @@
 import { api } from "./api.ts";
 import { errorText } from "./app.ts";
 import { h } from "./dom.ts";
+import { gate } from "./logo.ts";
 import { codeBlock as block, stepCards, tabbed as tabs } from "./codeView.ts";
 import { guideSteps, type Sample } from "./guide.ts";
 import type { Language } from "./i18n.ts";
 import { themeButton, type Theme } from "./theme.ts";
 import { categoryName, closing, faqItems, hero, initial, installCommands, labels, landing, notOffered, offers, privacyPoints, problems, products, security, steps, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
 
-export type PublicPage = "landing" | "privacy" | "faq" | "showcase" | "guide";
+export type PublicPage = "landing" | "privacy" | "faq" | "showcase" | "guide" | "notFound";
 
 export interface PublicContext {
   language: Language;
-  theme: Theme;
   loggedIn: boolean;
   /** Goes to an address of the site without a page load. */
   go(path: string): void;
   /** A visitor gets the login screen; a logged-in user goes to the bot list. */
   enter(): void;
-  /** The end of the site header: a login button, or the user menu. */
-  userArea: HTMLElement;
-  onLanguage(): void;
+  /** The end of the site header: language, theme, and a login button or the user menu (headerTools). */
+  tools: HTMLElement;
 }
 
 let numbers: Promise<PublicNumbers> | null = null;
@@ -46,7 +45,21 @@ export function siteBrand(name: string, go: (path: string) => void): HTMLElement
       event.preventDefault();
       go("/");
     },
-  }, h("span", { class: "mark" }, icon("gate")), name));
+  }, h("span", { class: "mark" }, gate()), h("span", { class: "name" }, name)));
+}
+
+/**
+ * The end of every site header (docs/UI.md): language and theme as small round buttons, then "Log in" or the user menu.
+ * The language button shows the other language's code, like the theme button shows its icon (owner, 2026-11-20).
+ */
+export function headerTools(language: Language, theme: Theme, onLanguage: () => void, userArea: HTMLElement): HTMLElement {
+  const t = language.t.bind(language);
+  const other = language.current === "fa" ? "EN" : "FA";
+  return h("div", { class: "tools" },
+    h("button", { type: "button", class: "round lang", title: t("language"), "aria-label": t("language"), onclick: onLanguage },
+      icon("globe"), h("span", { dir: "ltr" }, other)),
+    themeButton(theme, t),
+    userArea);
 }
 
 function icon(name: keyof typeof icons): SVGSVGElement {
@@ -80,8 +93,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
   }, label);
 
   const nav = h("nav", { class: "links" },
-    pageLink("/guide", t("guide")), pageLink("/showcase", t("showcase")), pageLink("/faq", t("faq")), pageLink("/privacy", t("privacy")),
-    h("button", { type: "button", class: "link", onclick: context.onLanguage }, t("language")));
+    pageLink("/guide", t("guide")), pageLink("/showcase", t("showcase")), pageLink("/faq", t("faq")), pageLink("/privacy", t("privacy")));
 
   /** Opens the login screen (or the bot list). In the page body a visitor sees "Try it (free)" (owner, 2026-11-18). */
   const enterButton = (label = t("enter")) => h("button", { type: "button", class: "primary", onclick: context.enter }, context.loggedIn ? t("chats") : label);
@@ -113,8 +125,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
     siteBrand(t("appName"), context.go),
     menu,
     nav,
-    themeButton(context.theme, t),
-    context.userArea);
+    context.tools);
 
   const body = h("div", { class: "content" });
   const n = (value: number) => language.number(value);
@@ -142,6 +153,13 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
     case "showcase":
       body.append(h("h2", { class: "title" }, t("showcase")));
       showcase(body);
+      break;
+    case "notFound":
+      body.append(h("section", { class: "not-found" },
+        gate(true),
+        h("h2", {}, t("notFoundTitle")),
+        h("p", {}, t("notFoundText")),
+        h("button", { type: "button", class: "primary", onclick: () => context.go("/") }, t("home"))));
       break;
     case "guide":
       body.append(h("h2", { class: "title" }, t("guideTitle")));
