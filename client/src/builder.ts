@@ -26,7 +26,9 @@ export function builderScreen(app: App): Screen {
             h("span", { class: "note", dir: "ltr" }, `@${bot.username}`)),
           h("span", { class: "note" }, app.language.seen(bot, new Date())),
           ...(bot.suspended ? [h("span", { class: "badge danger" }, t("suspended"))] : []),
-          h("button", { type: "button", class: "small", onclick: () => void rotate(bot.id) }, t("newToken"))),
+          h("button", { type: "button", class: "small", onclick: event => rename(bot, event.currentTarget as HTMLElement) }, t("rename")),
+          h("button", { type: "button", class: "small", onclick: () => void rotate(bot.id) }, t("newToken")),
+          h("button", { type: "button", class: "small danger", onclick: () => void remove(bot) }, t("delete"))),
         showcasePart(bot))));
     drawToken(state.shownToken);
   }
@@ -96,6 +98,39 @@ export function builderScreen(app: App): Screen {
           }),
         }, t("leaveShowcase")),
       ] : [])));
+  }
+
+  // REL-48: the name becomes a small form in its row.
+  function rename(bot: BuilderBot, button: HTMLElement): void {
+    const line = button.closest(".line")!;
+    const input = h("input", { type: "text", dir: "auto", value: bot.name, required: true, "aria-label": t("name") });
+    line.replaceChildren(h("form", {
+      class: "row grow",
+      onsubmit: async event => {
+        event.preventDefault();
+        try {
+          state.renamed(await api.renameBot(bot.id, input.value.trim()));
+          draw();
+          toast(t("saved"));
+        } catch (failure) {
+          failed(failure);
+        }
+      },
+    }, input, h("button", { type: "submit", class: "primary small" }, t("save")), h("button", { type: "button", class: "small", onclick: draw }, t("close"))));
+    input.focus();
+  }
+
+  // REL-49: gone at once for the owner and its users (the admin keeps its chats), so ask first.
+  async function remove(bot: BuilderBot): Promise<void> {
+    if (!confirm(t("deleteBotConfirm").replace("{name}", `@${bot.username}`))) return;
+    try {
+      await api.deleteBot(bot.id);
+      state.deleted(bot.id);
+      draw();
+      toast(t("botDeleted"));
+    } catch (failure) {
+      failed(failure);
+    }
   }
 
   async function rotate(botId: number): Promise<void> {

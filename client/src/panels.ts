@@ -40,6 +40,17 @@ export class BuilderList {
     this.shownToken = bot;
   }
 
+  /** REL-48: the new name from the server. */
+  renamed(bot: BuilderBot): void {
+    this.bots = this.bots.map(b => b.id === bot.id ? bot : b);
+  }
+
+  /** REL-49: the bot is gone, and so is its token if it was shown. */
+  deleted(botId: number): void {
+    this.bots = this.bots.filter(b => b.id !== botId);
+    if (this.shownToken?.id === botId) this.shownToken = null;
+  }
+
   closeToken(): void {
     this.shownToken = null;
   }

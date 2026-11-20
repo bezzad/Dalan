@@ -22,7 +22,7 @@ public sealed class RelayDb(DbContextOptions<RelayDb> options) : DbContext(optio
     {
         modelBuilder.HasDefaultSchema(Schema);
 
-        // Bot username is unique without regard to case: see the index on lower(username) in the first migration.
+        // Bot username is unique without regard to case among bots that are not deleted (REL-49): see the index on lower(username) in the BotDelete migration.
         modelBuilder.Entity<Bot>().OwnsMany(b => b.Commands, commands => commands.ToJson());
 
         modelBuilder.Entity<Membership>(membership =>

@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -193,6 +193,75 @@ public class BuilderTests(PostgresServer postgres)
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("bot_not_found", await response.ErrorCodeAsync());
         Assert.Empty(await Bot(app, created.GetProperty("token").GetString()!).UpdatesAsync());
+    }
+
+    [Fact]
+    [Trait("Rule", "REL-48")]
+    public async Task REL48_owner_renames_a_bot_and_the_username_stays()
+    {
+        await using var app = await StartAsync();
+        var (browser, _) = await BuilderAsync(app);
+        var id = (await JsonOf(await CreateAsync(browser, "weather_bot"))).GetProperty("id").GetInt64();
+
+        var response = await browser.PatchAsJsonAsync($"/api/builder/bots/{id}", new { name = " Arcane " }, Cancel);
+        var bot = await JsonOf(response);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Arcane", bot.GetProperty("name").GetString());
+        Assert.Equal("weather_bot", bot.GetProperty("username").GetString());
+        Assert.Equal(HttpStatusCode.BadRequest, (await browser.PatchAsJsonAsync($"/api/builder/bots/{id}", new { name = "" }, Cancel)).StatusCode);
+        Assert.Equal(1, await PostgresServer.ScalarAsync<long>(app.ConnectionString,
+            "SELECT count(*) FROM admin.audit_log WHERE action = 'bot.rename'"));
+    }
+
+    [Fact]
+    [Trait("Rule", "REL-48")]
+    [Trait("Rule", "REL-49")]
+    public async Task REL48_REL49_another_owners_bot_gets_404()
+    {
+        await using var app = await StartAsync();
+        var (alice, _) = await BuilderAsync(app, "Alice");
+        var (bob, _) = await BuilderAsync(app, "Bob");
+        var created = await JsonOf(await CreateAsync(alice, "alice_bot"));
+        var id = created.GetProperty("id").GetInt64();
+
+        var renamed = await bob.PatchAsJsonAsync($"/api/builder/bots/{id}", new { name = "Mine" }, Cancel);
+        var deleted = await bob.DeleteAsync($"/api/builder/bots/{id}", Cancel);
+
+        Assert.Equal("bot_not_found", await renamed.ErrorCodeAsync());
+        Assert.Equal("bot_not_found", await deleted.ErrorCodeAsync());
+        Assert.Empty(await Bot(app, created.GetProperty("token").GetString()!).UpdatesAsync());
+    }
+
+    [Fact]
+    [Trait("Rule", "REL-49")]
+    public async Task REL49_delete_hides_the_bot_keeps_its_chats_for_the_admin_and_frees_the_username()
+    {
+        await using var app = await StartAsync();
+        var (browser, _) = await BuilderAsync(app);
+        var created = await JsonOf(await CreateAsync(browser, "weather_bot"));
+        var id = created.GetProperty("id").GetInt64();
+        var token = created.GetProperty("token").GetString()!;
+        var (user, _) = await app.LoginAsync("Reader");
+        (await user.SayAsync(id, "hello")).EnsureSuccessStatusCode();
+
+        var response = await browser.DeleteAsync($"/api/builder/bots/{id}", Cancel);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Bot(app, token).GetAsync("/v1/updates?timeout=0", Cancel)).StatusCode);
+        Assert.Empty((await browser.JsonAsync("/api/builder/bots")).GetProperty("bots").EnumerateArray());
+        Assert.Empty((await user.JsonAsync("/api/bots")).GetProperty("bots").EnumerateArray());
+        Assert.Equal(1, await PostgresServer.ScalarAsync<long>(app.ConnectionString,
+            $"SELECT count(*) FROM relay.messages WHERE bot_id = {id}"));
+        Assert.Equal(1, await PostgresServer.ScalarAsync<long>(app.ConnectionString,
+            "SELECT count(*) FROM admin.audit_log WHERE action = 'bot.delete'"));
+
+        // The username is free again, but the new bot is a new id: the old chat never shows under it.
+        var again = await JsonOf(await CreateAsync(browser, "weather_bot"));
+        var newId = again.GetProperty("id").GetInt64();
+        Assert.NotEqual(id, newId);
+        Assert.Empty(await user.HistoryAsync(newId));
+        Assert.Empty((await user.JsonAsync("/api/bots")).GetProperty("bots").EnumerateArray());
     }
 
     [Fact]

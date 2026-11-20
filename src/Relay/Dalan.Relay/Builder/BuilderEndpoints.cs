@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Routing;
 namespace Dalan.Relay.Builder;
 
 /// <summary>
-/// REL-36, REL-37, REL-39, REL-45: a builder's own bots over REST. In the Client API group, so the access log (ADM-01)
+/// REL-36, REL-37, REL-39, REL-45, REL-48, REL-49: a builder's own bots over REST. In the Client API group, so the access log (ADM-01)
 /// and the per-user limit (SEC-03) hold. A session or an access key (AUTH-22) may call.
 /// </summary>
 internal static class BuilderEndpoints
@@ -24,6 +24,10 @@ internal static class BuilderEndpoints
             Answer(bots.GetAsync(ClientApiFilter.UserId(http), botId, http.RequestAborted)));
         builder.MapPost("/bots", async (HttpContext http, BuilderBots bots) =>
             await Answer(bots.CreateAsync(ClientApiFilter.UserId(http), await ApiJson.ReadAsync<CreateBotRequest>(http), http.RequestAborted)));
+        builder.MapPatch("/bots/{botId:long}", async (long botId, HttpContext http, BuilderBots bots) =>
+            await Answer(bots.RenameAsync(ClientApiFilter.UserId(http), botId, await ApiJson.ReadAsync<RenameBotRequest>(http), http.RequestAborted)));
+        builder.MapDelete("/bots/{botId:long}", (long botId, HttpContext http, BuilderBots bots) =>
+            Answer(bots.DeleteAsync(ClientApiFilter.UserId(http), botId, http.RequestAborted)));
         builder.MapPost("/bots/{botId:long}/token", (long botId, HttpContext http, BuilderBots bots) =>
             Answer(bots.RotateAsync(ClientApiFilter.UserId(http), botId, http.RequestAborted)));
         builder.MapShowcaseForBuilder();

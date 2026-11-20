@@ -72,3 +72,15 @@ test("CLI-25 a suspended bot is named in the chat in both languages", () => {
   assert.equal(key, "botSuspended");
   assert.ok(texts.fa[key].length > 0 && texts.en[key].length > 0);
 });
+
+test("CLI-24 rename keeps the bot in its place; delete drops it and its shown token", () => {
+  const list = new BuilderList();
+  list.created({ id: 1, username: "a_bot", name: "A", token: "1:x" }, new Date());
+  list.created({ id: 2, username: "b_bot", name: "B", token: "2:y" }, new Date());
+  list.renamed({ ...list.bots[0]!, name: "Arcane" });
+  assert.deepEqual(list.bots.map(b => b.name), ["Arcane", "B"]);
+
+  list.deleted(2);
+  assert.deepEqual(list.bots.map(b => b.id), [1]);
+  assert.equal(list.shownToken, null);
+});
