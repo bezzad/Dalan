@@ -24,7 +24,7 @@ public static class ClientApp
     /// <summary>The page itself. Only these addresses exist; any other unknown path is a real 404.</summary>
     public static void MapClientPage(this WebApplication app)
     {
-        foreach (var path in (string[])["/", "/bots", "/privacy", "/faq", "/showcase", "/@{username}"])
+        foreach (var path in (string[])["/", "/bots", "/privacy", "/faq", "/showcase", "/guide", "/@{username}"])
             app.MapGet(path, Page).DisableRateLimiting();
     }
 

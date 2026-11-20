@@ -39,6 +39,8 @@ export function builderScreen(app: App): Screen {
       h("h2", { dir: "ltr" }, `@${token.username}`),
       h("p", {}, t("tokenOnce")),
       h("code", { dir: "ltr" }, token.token),
+      // CLI-38: what to do with the token.
+      h("a", { href: "/guide", onclick: event => { event.preventDefault(); app.go("/guide"); } }, t("guideNext")),
       h("div", { class: "row" },
         h("button", {
           type: "button", class: "primary", onclick: async () => {
