@@ -16,6 +16,8 @@ export interface PublicContext {
   go(path: string): void;
   /** A visitor gets the login screen; a logged-in user goes to the bot list. */
   enter(): void;
+  /** The end of the site header: a login button, or the user menu. */
+  userArea: HTMLElement;
   onLanguage(): void;
 }
 
@@ -110,7 +112,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
     menu,
     nav,
     themeButton(context.theme, t),
-    enterButton());
+    context.userArea);
 
   const body = h("div", { class: "content" });
   const n = (value: number) => language.number(value);

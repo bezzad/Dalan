@@ -72,8 +72,24 @@ function guest(): void {
   show(publicPage(page as PublicPage, false));
 }
 
+/** The end of the site header on every page: "Log in" for a visitor, the user menu after login (owner, 2026-11-20). */
+function userArea(): HTMLElement {
+  const t = language.t.bind(language);
+  if (!app) return h("button", { type: "button", class: "primary", onclick: () => showLogin() }, t("enter"));
+  const current = app;
+  const item = (label: string, onclick: () => void) => h("button", { type: "button", class: "item", onclick }, label);
+  return h("details", { class: "menu user" },
+    h("summary", {}, h("bdi", {}, current.user.name)),
+    h("div", { class: "panel" },
+      item(t("myBots"), () => navigate("/bots")),
+      item(t("account"), () => current.showPanel("account")),
+      ...(current.user.admin ? [item(t("adminScreen"), () => current.showPanel("admin"))] : []),
+      item(t("logout"), () => current.logout())));
+}
+
 function publicPage(page: PublicPage, loggedIn: boolean): HTMLElement {
   return publicScreen(page, {
+    userArea: userArea(),
     language,
     theme,
     loggedIn,
@@ -102,7 +118,7 @@ function route(): void {
     });
   // The public pages have the site header; the app screens get the same logo and name on top.
   if (!screen.element.classList.contains("public")) {
-    screen.element.prepend(h("header", { class: "site" }, siteBrand(language.t("appName"), navigate)));
+    screen.element.prepend(h("header", { class: "site" }, siteBrand(language.t("appName"), navigate), userArea()));
   }
   show(screen.element);
 }
@@ -120,6 +136,8 @@ async function enter(user: User): Promise<void> {
     statusRefreshSeconds: settings.status_refresh_seconds,
     go: navigate,
     showPanel(next) {
+      // The panels live on the bot list address, so the menu can open them from any page.
+      if (location.pathname !== "/bots") history.pushState(null, "", "/bots");
       panel = next;
       route();
     },

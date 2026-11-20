@@ -352,9 +352,21 @@ header.site > button.primary { border-radius: 999px; }
 .menu a.item:hover { background: var(--bg); }
 .menu .item strong, .product > .label, footer.site .column > span { display: inline-flex; align-items: center; gap: 8px; }
 .menu .item small { color: var(--muted); font-size: 13px; line-height: 1.5; }
+/* The user menu at the end of the header: a small list under the name. */
+.menu.user { position: relative; margin-inline-start: auto; }
+.menu.user summary { display: inline-flex; align-items: center; min-height: 36px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--text); }
+.menu.user .panel { inset-inline: auto 0; min-width: 200px; display: flex; flex-direction: column; gap: 2px; padding: 6px; z-index: 3; }
+.menu.user .item { min-height: 0; border: 0; background: none; text-align: start; font: inherit; cursor: pointer; }
+.menu.user .item:hover { background: var(--bg); }
+/* Account on a wide screen: a wider page and cards in two columns, buttons as wide as their words (like ngrok). */
+main.wide { --gutter: max(16px, calc((100vw - 960px) / 2)); }
+@media (min-width: 900px) {
+  main.wide > .scroller { display: grid; grid-template-columns: 1fr 1fr; align-items: start; align-content: start; }
+  main.wide .card button:not(.link) { align-self: flex-start; padding-inline: 20px; }
+}
 .menu .item.off { opacity: .7; }
 /* On a phone the menu gives its place to the login button (owner, 2026-11-18). */
-@media (max-width: 640px) { header.site .links { order: 3; flex-basis: 100%; } header.site h1 { flex: 1; } header.site .menu { display: none; } }
+@media (max-width: 640px) { header.site .links { order: 3; flex-basis: 100%; } header.site h1 { flex: 1; } header.site .menu:not(.user) { display: none; } }
 
 /* Layout */
 .page { gap: var(--space-xl); }

@@ -162,7 +162,7 @@ export function accountScreen(app: App): Screen {
   const builderCard = h("section", { class: "card" },
     h("h2", {}, t("building")), h("p", { class: "note" }, t("buildingNote")), builderBody, builderError);
 
-  const element = h("main", {},
+  const element = h("main", { class: "wide" },
     h("header", {},
       h("button", { type: "button", class: "link", onclick: () => app.showPanel(null) }, t("back")),
       h("h1", {}, t("account"))),
