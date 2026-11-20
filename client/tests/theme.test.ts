@@ -10,28 +10,36 @@ function fakes() {
   return { root: { dataset: {} as Record<string, string | undefined> }, storage };
 }
 
-test("CLI-35 first open follows the device: no data-theme", () => {
-  const { root, storage } = fakes();
-  const theme = new Theme(root, storage);
-  assert.equal(theme.current, "system");
-  assert.equal(root.dataset["theme"], undefined);
+test("CLI-35 first open follows the device, and nothing is kept yet", () => {
+  for (const deviceDark of [false, true]) {
+    const { root, storage } = fakes();
+    const theme = new Theme(root, storage, deviceDark);
+    assert.equal(theme.current, deviceDark ? "dark" : "light");
+    assert.equal(root.dataset["theme"], theme.current);
+    assert.equal(storage.getItem("dalan.theme"), null);
+  }
 });
 
-test("CLI-35 the button moves light, dark, system, and the choice is kept", () => {
+test("CLI-35 the button switches only light and dark, and the choice is kept", () => {
   const { root, storage } = fakes();
-  const theme = new Theme(root, storage);
+  const theme = new Theme(root, storage, false);
+  theme.toggle();
+  assert.equal(root.dataset["theme"], "dark");
   theme.toggle();
   assert.equal(root.dataset["theme"], "light");
   theme.toggle();
   assert.equal(root.dataset["theme"], "dark");
 
+  // The kept choice wins over the device on the next open.
   const nextOpen = { dataset: {} as Record<string, string | undefined> };
-  assert.equal(new Theme(nextOpen, storage).current, "dark");
+  assert.equal(new Theme(nextOpen, storage, false).current, "dark");
   assert.equal(nextOpen.dataset["theme"], "dark");
+});
 
-  theme.toggle();
-  assert.equal(theme.current, "system");
-  assert.equal(root.dataset["theme"], undefined);
+test("CLI-35 an old kept \"system\" choice follows the device", () => {
+  const { root, storage } = fakes();
+  storage.setItem("dalan.theme", "system");
+  assert.equal(new Theme(root, storage, true).current, "dark");
 });
 
 test("CLI-35 the style sheet has dark colours for the device and for the choice, and code stays dark", () => {
