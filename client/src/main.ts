@@ -2,6 +2,7 @@
 import { accountScreen } from "./account.ts";
 import { ApiError, api, type AuthSettings, type User } from "./api.ts";
 import { adminScreen } from "./admin.ts";
+import { appsScreen } from "./apps.ts";
 import { loginErrorText, type App, type Panel, type Screen } from "./app.ts";
 import { Backoff } from "./backoff.ts";
 import { botsScreen } from "./bots.ts";
@@ -86,7 +87,7 @@ function userArea(): HTMLElement {
       // "My bots" are the bots this user built; "Chats" the bots they talk to (owner, 2026-11-20).
       item(t("myBots"), () => current.showPanel(builderView(current.user) === "bots" ? "builder" : "account")),
       item(t("chats"), () => navigate("/bots")),
-      h("span", { class: "item off" }, t("myApps"), h("span", { class: "soon" }, t("soon"))),
+      item(t("myApps"), () => navigate("/apps")),
       item(t("account"), () => current.showPanel("account")),
       ...(current.user.admin ? [item(t("adminScreen"), () => current.showPanel("admin"))] : []),
       item(t("logout"), () => current.logout())));
@@ -114,6 +115,7 @@ function route(): void {
   const username = /^\/@([^/]+)$/.exec(decodeURIComponent(location.pathname))?.[1];
   screen = page === "landing" || page === "privacy" || page === "faq" || page === "showcase" ? { element: publicPage(page, true) }
     : username ? chatScreen(app, username)
+    : page === "apps" && panel === null ? appsScreen(app)
     : panel === "account" ? accountScreen(app)
     : panel === "builder" ? builderScreen(app)
     : panel === "admin" ? adminScreen(app)

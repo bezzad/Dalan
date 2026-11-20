@@ -14,11 +14,11 @@ Short and current. `docs/DESIGN.md` says what we build and why. This file says h
            ┌─────────┴──────────┐
            │     Dalan.Host     │  one process, wires everything
            └─────────┬──────────┘
-   ┌──────────┬──────┴─────┬──────────────┐
-Identity    Relay      Notification     Admin
-(identity)  (relay)    (notification)   (admin)      ← PostgreSQL schema
-              ▲
-        Telegram adapter (plugin, no data)
+   ┌──────────┬──────┴─────┬──────────────┬──────────┐
+Identity    Relay      Notification     Admin       Sites
+(identity)  (relay)    (notification)   (admin)     (sites)    ← PostgreSQL schema
+              ▲                                       ▲
+        Telegram adapter (plugin, no data)      Dalan agent (agent/, on the home computer)
 ```
 
 ## 2. Services
@@ -29,12 +29,19 @@ Identity    Relay      Notification     Admin
 | **Relay** (core) | bots, memberships, messages, the in-memory queue of each bot | sync in; **async** out to bots (queue + long polling) |
 | **Notification** | push subscriptions | **async**, except the login SMS (`ISmsSender`) and the subscription calls (`IWebPush`), which are sync. It gets "send this to this receiver by this channel" and knows no business. Channels: Web Push and SMS, later Email |
 | **Admin** | settings the admin changed, audit log, access log; the one admin door `/api/admin/...` | sync. Other services write the access log and audit log through `IAccessLog` and `IAuditLog`; Admin calls `IUserAdmin` (Identity) and `IBotAdmin` (Relay) for users and bots |
+| **Sites** (Layer 2) | site names (`sites.sites`), the open agent sessions and waiting requests (in memory, `TunnelHub`) | sync in (`/api/tunnel`, `/api/sites`); site hosts go through `SiteProxy` before anything else. Uses `IUserDirectory` and `IAccessLog` only. No `.Contracts` yet: no service needs it |
 
 Relay has two thin HTTP doors, both inside Relay:
 
 - **Client API** (`dalanet.ir`): the door for **people** (PWA). Send a message or button press (POST), live messages (SSE), history sync, file upload. It never runs bot logic; the bot at home does.
 - **MCP door** (`/api/mcp`, inside the Client API group): an MCP server for builders' AI agents, stateless, with the official C# SDK. Its tools and the builder REST calls both call `BuilderBots`, so they share one set of rules.
 - **Bot API** (`api.dalanet.ir`): the door for **bots**. Token auth, `getUpdates` long polling, `sendMessage` and the rest.
+
+**Sites and the agent** (rules `openspec/specs/sites`, `openspec/specs/agent`):
+
+- A request whose host is `<name>.<Sites:Domain>` leaves the pipeline right after the ready gate (`UseSites`), with only the per-address limit: no Dalan page, path or security header ever answers it. The sites domain is another registered domain (SITE-13).
+- The agent (`agent/Dalan.Agent`, C# Native AOT, no package, decision 60) logs in with an access key, opens a session for its sites (`POST /api/tunnel/sessions`), then reads visitor requests over a WebSocket, or by long polling when WebSocket fails (decision 61), and answers each one. Bodies travel as base64 in JSON; size and time are capped (`Sites:MaxBodyMb`, `Sites:RequestTimeoutSeconds`).
+- A newer session takes a site from an older one; a session with no read for `Sites:SessionIdleSeconds` is offline. With more than one server, `TunnelHub` becomes shared like the bot queue.
 
 **Telegram adapter** is a plugin, not a service: no data, no domain. The host mounts it at `/bot<token>/<method>`, at the root like Telegram (the `Telegram.Bot` library keeps only the host of its base address). It turns Telegram-shaped calls into calls of `IBotGateway` (in `Dalan.Relay.Contracts`) and back. Rules in `openspec/specs/telegram`; it follows Telegram Bot API 10.4 and serves only what the core can do.
 
@@ -47,7 +54,9 @@ src/
   Relay/Dalan.Relay(.Contracts)
   Notification/Dalan.Notification(.Contracts)
   Admin/Dalan.Admin(.Contracts)
+  Sites/Dalan.Sites
   Plugins/Dalan.Telegram
+agent/Dalan.Agent                     the program on the home computer (Native AOT, stands alone: ARC-06)
 tests/                                one test project per area
 client/                               PWA, plain TypeScript
 deploy/                               deploy.sh, server setup, systemd units, Caddyfile, backup, drill (docs/SERVER.md)
@@ -202,6 +211,10 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 57 | 2026-11-18 | Login emails from our own server: Postfix (send only, loopback only) plus OpenDKIM, set up by `setup.sh`; no outside mail service |
 | 58 | 2026-11-18 | "Log in with GitHub" (OAuth web flow, no package) on a one-card login screen like ngrok; a verified GitHub email is needed and the same email is the same user. No Google for now |
 | 59 | 2026-11-19 | Faster CI and deploy: one build job keeps the release and the built tests as run files; each test project runs on its own machine in parallel; the deploy reuses that release and sends only the changes with rsync |
+| 60 | 2026-11-20 | The Layer 2 site Agent is written in C# with Native AOT: one file per OS, no .NET install, the same language as the server (owner chose it over Go and Rust) |
+| 61 | 2026-11-20 | The site Agent talks to the server over WebSocket first and falls back to long polling by itself when WebSocket does not work (like SignalR). User sites live on their own registered domain, not under `dalanet.ir` (filtering of one site must not block Dalan; cookies; phishing) |
+| 62 | 2026-11-20 | Sites is its own service and schema. A site is a name the first builder claims; the agent opens one session for many sites (each its own local port); the newest session of a site wins |
+| 63 | 2026-11-20 | The agent logs in with an access key (builders only, like bots); a browser code login comes later. It shares no code with the server; end-to-end tests run it against the test server |
 
 ## 11. Client address and access log
 
@@ -211,7 +224,7 @@ The owner must be able to tell the cyber police from which address a user or a b
 - **The header is believed only from `Dalan:TrustedProxies`** (addresses or CIDR ranges, comma separated; read at start). The header is read from the right until the first address that is not trusted, so one proxy or several work the same, and what a client wrote is never believed.
 - **Caddy replaces the header** with the client's `address:port` (`header_up X-Forwarded-For {remote}`).
 - **Adding a load balancer or a second proxy:** (1) add its address or range to `Dalan:TrustedProxies` on every instance; (2) make the first hop from the internet write the client's `address:port` and drop the client's own header (Envoy: set `X-Forwarded-For` to `%DOWNSTREAM_REMOTE_ADDRESS%`); (3) a proxy behind it must keep that header (Caddy: list the balancer in `trusted_proxies` and remove the `header_up` line). If step 1 is forgotten the server logs a warning that names the proxy (SEC-11).
-- **Access log:** table `admin.access_log` (actor `User`, `Bot`, `Phone` or `Email`, actor id, phone, email, address, port, time). Relay's two door filters call `IAccessLog` for every accepted call, so a new endpoint in those groups (also the MCP door `/api/mcp`) is covered with no extra code. The access key calls of Identity write a row too. A new door that knows its caller must call `IAccessLog` too. The anonymous public endpoints (`/api/public/settings`, `/api/showcase`, `/llms.txt`) know no caller and write no row. A row is written for a new address at once and for a known one after `Admin:AccessLogIntervalMinutes`; "last written" is in memory per instance. A call whose row cannot be written fails.
+- **Access log:** table `admin.access_log` (actor `User`, `Bot`, `Phone` or `Email`, actor id, phone, email, address, port, time). Relay's two door filters call `IAccessLog` for every accepted call, so a new endpoint in those groups (also the MCP door `/api/mcp`) is covered with no extra code. The access key calls of Identity write a row too. A new door that knows its caller must call `IAccessLog` too. The tunnel and "My sites" doors of Sites write a row for the builder (SITE-14). The anonymous public endpoints (`/api/public/settings`, `/api/showcase`, `/llms.txt`) and the visitors of a site know no caller and write no row. A row is written for a new address at once and for a known one after `Admin:AccessLogIntervalMinutes`; "last written" is in memory per instance. A call whose row cannot be written fails.
 - **SMS and email codes:** Identity calls `IAccessLog.RecordSmsAsync` / `RecordEmailAsync` for every login code that was sent: actor `Phone` or `Email`, the number or address, and the address of the caller who asked. A logged-in email user is recorded by user id like everyone else.
 - **Retention:** a sweep deletes rows older than `Admin:AccessLogRetentionDays`.
 - **Admin screen:** the access log tab searches by user, bot, phone, email or address (`GET /api/admin/access-log`, ADM-10), with times in UTC. Plain SQL still works: `SELECT address, port, at FROM admin.access_log WHERE actor = 'Bot' AND actor_id = 5 ORDER BY at`.

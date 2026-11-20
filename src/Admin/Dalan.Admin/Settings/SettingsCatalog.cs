@@ -19,7 +19,7 @@ public sealed record SettingEntry(string Key, string Value, string Start, bool C
 /// </summary>
 public sealed class SettingsCatalog(IConfiguration configuration)
 {
-    private static readonly string[] Sections = ["Admin", "Identity", "Relay", "Notification"];
+    private static readonly string[] Sections = ["Admin", "Identity", "Relay", "Notification", "Sites"];
 
     private static readonly HashSet<string> FromDalan = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -38,6 +38,8 @@ public sealed class SettingsCatalog(IConfiguration configuration)
         "Identity:GitHub:ClientId", "Identity:GitHub:CallbackUrl", "Identity:GitHub:WebUrl", "Identity:GitHub:ApiUrl",
         // Moving the folder at run time would lose the files.
         "Relay:FileFolder",
+        // SITE-13 is checked at start: the sites domain must never become Dalan's own (a site could set Dalan's cookies).
+        "Sites:Domain",
     };
 
     /// <summary>Read only once at start: a change works after a restart.</summary>
@@ -45,6 +47,7 @@ public sealed class SettingsCatalog(IConfiguration configuration)
     {
         "Dalan:IpRequestLimit", "Dalan:IpLimitWindowSeconds", "Identity:PasswordHashConcurrency",
         "Notification:Push:QueueSize", "Notification:Push:Workers", "Notification:Push:TimeoutSeconds",
+        "Sites:WebSocketPingSeconds",
     };
 
     public IReadOnlyList<SettingEntry> List() => [.. Keys().Select(Entry)];

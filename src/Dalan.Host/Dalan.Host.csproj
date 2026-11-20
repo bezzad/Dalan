@@ -4,6 +4,7 @@
     <ProjectReference Include="../Relay/Dalan.Relay/Dalan.Relay.csproj" />
     <ProjectReference Include="../Notification/Dalan.Notification/Dalan.Notification.csproj" />
     <ProjectReference Include="../Admin/Dalan.Admin/Dalan.Admin.csproj" />
+    <ProjectReference Include="../Sites/Dalan.Sites/Dalan.Sites.csproj" />
     <ProjectReference Include="../Plugins/Dalan.Telegram/Dalan.Telegram.csproj" />
   </ItemGroup>
   <!-- CLI-02: the built PWA is inside the binary, so the release stays one file. -->

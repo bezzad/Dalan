@@ -287,7 +287,7 @@ In Layer 2 the builder's frontend and backend stay unchanged. The page is served
 2. Otherwise the server puts the HTTP request in the bot's queue with a request ID.
 3. The Agent reads it, calls the local backend, and returns the response.
 
-**Dalan Agent.** A small program from Dalan that the builder runs beside the unchanged backend, for example `dalan connect --token <token> --to http://localhost:3000`. It uses the same outbound long polling. The builder writes no polling code.
+**Dalan Agent.** A small program from Dalan that the builder runs beside the unchanged backend: `dalan login <key>` once, then `dalan http 3000 --name levelwise` (more `<port> --name <name>` pairs for more sites in one agent; `dalan start` runs the saved ones). It connects out to `tunnel.dalanet.ir` by WebSocket, or by long polling when WebSocket is blocked. The builder writes no polling code. Built in Layer 2 milestone 1 (decisions 60 to 63).
 
 **Two ways to run a site:**
 
@@ -496,7 +496,7 @@ None of these is planned work. They are recorded so the design does not block th
 | Access key lifetime | 90 days | Assumed (milestone 10) |
 | Access keys per user | 10 | Assumed (milestone 10) |
 | Site storage per bot (Layer 2) | 200 MB | Agreed in discussion |
-| Pending site requests per user (Layer 2) | 20 | Assumed |
+| Pending site requests per visitor address (Layer 2) | 50 | Assumed; first 20, raised in Layer 2 milestone 1 because one page load asks for dozens of files at once |
 | Site request timeout (Layer 2) | 30 seconds | Assumed |
 
 **Confirmed by the owner on 2026-11-16:**
@@ -516,7 +516,7 @@ None of these is planned work. They are recorded so the design does not block th
 
 - [ ] SMS provider: the Kavenegar sender is built (milestone 4), SMS.ir stays the second choice. Still to do by the owner: a Kavenegar account, an approved OTP template named `dalan-login` with one token, and the API key on the server. Prices and delivery speed were not compared.
 - [ ] Which hosting provider, after comparing traffic cost, extra disk and DNS?
-- [ ] Buy a separate sites domain before Layer 2 (candidate: `dalancloud.ir`)?
+- [ ] Buy the separate sites domain before Layer 2 (decided 2026-11-20; candidate: `dalancloud.ir`). The owner buys it. Until then `Sites:Domain` stays empty and sites are off.
 - [ ] Buy a foreign backup domain (candidate: `dalanet.net`)?
 - [ ] Lawyer review of content responsibility, phone-number storage, and how long the access log must be kept.
 - [x] Telegram Bot API snapshot: 10.4 (2026-11-09), chosen on 2026-11-17 in milestone 5.

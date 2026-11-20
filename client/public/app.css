@@ -563,3 +563,8 @@ button.theme .icon { width: 18px; height: 18px; }
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
 /* The menu and the links read as one row: the same space between all of them. */
 @media (min-width: 641px) { header.site .menu + .links { margin-inline-start: calc(2px - var(--space-m)); } }
+
+/* My apps (CLI-39): the guide's steps are smaller than the card title; an online site is green. */
+.guide { display: flex; flex-direction: column; gap: var(--space-s); }
+.guide h3 { margin: var(--space-m) 0 0; font-size: 15px; }
+.site-state.on { color: var(--brand); font-weight: 600; }

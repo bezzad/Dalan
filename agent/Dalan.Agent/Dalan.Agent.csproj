@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- AGT-01: one native file per system, no .NET needed. ARC-06: no project and no package here, only the base library. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>dalan</AssemblyName>
+    <RootNamespace>Dalan.Agent</RootNamespace>
+    <Version>0.1.0</Version>
+    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <OptimizationPreference>Size</OptimizationPreference>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+  </PropertyGroup>
+</Project>

@@ -54,6 +54,10 @@ jobs:
       - name: Release smoke test
         run: bash tests/delivery/release_smoke_test.sh out
 
+      # AGT-01: the agent is one native file. The files for Windows and macOS are built on their own systems when they ship.
+      - name: Agent with Native AOT (linux-x64)
+        run: bash tests/delivery/agent_smoke_test.sh agent-out
+
       # tar keeps the file modes (the release must stay executable). ProcessTests run the host build.
       - name: Pack
         run: |
@@ -85,6 +89,7 @@ jobs:
           - Dalan.Host.Tests
           - Dalan.Identity.Tests
           - Dalan.Relay.Tests
+          - Dalan.Sites.Tests
           - Dalan.Telegram.Tests
     name: test (${{ matrix.project }})
     steps:
