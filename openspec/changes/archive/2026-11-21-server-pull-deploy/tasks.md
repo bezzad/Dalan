@@ -11,4 +11,4 @@
 - [x] 2.2 DEL-01, DEL-06, DEL-08: the workflow runs only by hand; its deploy only with deploy on
 - [x] 2.3 OPS-16: timer every minute, `git ls-remote` of `refs/heads/main` only, a failed deploy not tried again, GitHub host keys pinned
 - [x] 2.4 CLAUDE.md rules 6 and 11, docs/SERVER.md (deploy key commands), docs/TESTING.md
-- [ ] 2.5 `scripts/ci.sh` green on the owner's computer, then merge
+- [x] 2.5 `scripts/ci.sh` green on the owner's computer, then merge
