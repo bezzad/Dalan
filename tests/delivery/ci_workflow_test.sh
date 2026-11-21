@@ -61,7 +61,7 @@ grep -qxF '    if: inputs.deploy' "$ci" || fail "the deploy does not wait for de
 echo "PASS DEL-06 the server builds main; GitHub deploys only when run by hand"
 
 # DEL-08: every agent file the server offers (AGT-10) is built by a run by hand, and the deploy puts them in the release's agent folder.
-for file in dalan-linux-x64 dalan-windows-x64.exe; do
+for file in dalan-linux-x64 dalan-windows-x64.exe dalan-macos-arm64 dalan-macos-x64; do
   grep -qF "$file" "$ci" || fail "CI does not build $file"
   grep -qF "\"$file\"" "$root/src/Sites/Dalan.Sites/Downloads/AgentDownloads.cs" || fail "the server does not offer $file"
 done

@@ -12,7 +12,7 @@ namespace Dalan.Sites.Downloads;
 /// </summary>
 internal static class AgentDownloads
 {
-    /// <summary>The only files served. CI builds the Linux and Windows ones (DEL-08); macOS when a macOS machine is there.</summary>
+    /// <summary>The only files served. Each build makes the Linux one; a CI run by hand makes the Windows and macOS ones (DEL-08).</summary>
     internal static readonly string[] Files = ["dalan-linux-x64", "dalan-macos-arm64", "dalan-macos-x64", "dalan-windows-x64.exe"];
 
     public static void MapAgentDownloads(this IEndpointRouteBuilder endpoints)

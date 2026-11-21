@@ -134,7 +134,7 @@ The server builds `main` itself (OPS-16, next section): merge a pull request aft
 Fallbacks, both over SSH with `deploy/deploy.sh`: it sends the release with `rsync` to a new folder (only the parts that differ from the current release go over the network), checks `/ready` after the switch and rolls back by itself. It opens one SSH connection with up to 5 tries of 30 seconds (`SSH_TRIES`, `SSH_TIMEOUT`), because the link to Iran stalls now and then.
 
 - From your computer, when the server cannot reach GitHub: `bash scripts/build-release.sh out`, then `DEPLOY_HOST=root@<server> SYSTEMCTL=systemctl bash deploy/deploy.sh out manual-<name>` and `ssh root@<server> chown -R deploy:deploy /opt/dalan/releases`.
-- A CI run by hand: Actions, workflow `ci`, "Run workflow" on `main`, tick "Deploy". It is the only way to build the Windows agent (`dalan-windows-x64.exe`, DEL-08): run it after a change in `agent/`. The server's own builds keep that file. It needs these secrets in GitHub, repository Settings, Environments, `production`:
+- A CI run by hand: Actions, workflow `ci`, "Run workflow" on `main`, tick "Deploy". It is the only way to build the Windows and macOS agents (`dalan-windows-x64.exe`, `dalan-macos-arm64`, `dalan-macos-x64`, DEL-08): run it after a change in `agent/`, or `gh workflow run ci --repo bezzad/Dalan --ref main -f deploy=true`. The server's own builds keep those files. It needs these secrets in GitHub, repository Settings, Environments, `production`:
 
 | Secret | Value |
 |---|---|

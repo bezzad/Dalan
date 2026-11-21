@@ -46,7 +46,8 @@ step release 'bash scripts/publish.sh "$work/out" && bash tests/delivery/release
 # AGT-01: the agent is one native file. The Windows file comes only from a CI run by hand (DEL-08).
 step agent 'bash tests/delivery/agent_smoke_test.sh "$work/agent" linux-x64'
 step specs 'npx --yes @fission-ai/openspec@2.1.0 validate --all --strict'
-step rules 'bash scripts/check-rules.sh && bash tests/scripts/check_rules_test.sh && bash tests/delivery/ci_workflow_test.sh'
+step rules 'bash scripts/check-rules.sh && bash tests/scripts/check_rules_test.sh && bash tests/delivery/ci_workflow_test.sh &&
+  bash tests/delivery/install_script_test.sh'
 step deploy-scripts 'bash tests/deploy/deploy_test.sh && bash tests/deploy/setup_test.sh && bash tests/deploy/backup_test.sh &&
   bash tests/deploy/drill_test.sh && bash tests/deploy/pull_deploy_test.sh'
 step proxy 'bash tests/proxy/caddy_test.sh'
