@@ -6,7 +6,8 @@
 # Usage: setup.sh <site domain> <api domain> <deploy public key file>
 # Optional settings.env next to this script (install.sh writes it): ADMIN_PHONES, SMS (log or kavenegar), KAVENEGAR_KEY,
 #   ROTATE_SECRETS=1, GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET. They are written into dalan.env, each run. SMS=log sends login codes only to ADMIN_PHONES, into the log.
-#   SITES_DOMAIN (the users' sites, for example dalancloud.ir; empty: sites are off) and TUNNEL_DOMAIN (default tunnel.<site domain>)
+#   SITES_DOMAIN (the users' sites, for example dalancloud.ir, and the demo links on the domain itself; empty: both are off)
+#   and TUNNEL_DOMAIN (default tunnel.<site domain>)
 #   go into domains.env, each run (OPS-15).
 #   PULL_DEPLOY=1: the server builds and deploys main itself (OPS-16): the .NET SDK and Node folders that install.sh
 #   copies (dotnet/, node/) go to /opt/dalan/tools, the deploy user gets a GitHub key, and dalan-pull.timer starts.
@@ -183,8 +184,8 @@ install -d -m 755 "$root/etc/caddy"
 install -m 644 "$here/Caddyfile" "$root/etc/caddy/Caddyfile"
 # Domains for Caddy and for the links the server makes; written each run, so a new domain needs only a new run.
 tunnel="${TUNNEL_DOMAIN:-tunnel.$site}"
-printf 'DALAN_SITE_DOMAIN=%s\nDALAN_API_DOMAIN=%s\nDALAN_TUNNEL_DOMAIN=%s\nAdmin__SiteUrl=https://%s\nAdmin__BotApiUrl=https://%s\nNotification__Push__Subject=https://%s\nSites__TunnelUrl=https://%s\nSites__Domain=%s\n' \
-  "$site" "$api" "$tunnel" "$site" "$api" "$site" "$tunnel" "${SITES_DOMAIN:-}" > "$domains_file"
+printf 'DALAN_SITE_DOMAIN=%s\nDALAN_API_DOMAIN=%s\nDALAN_TUNNEL_DOMAIN=%s\nAdmin__SiteUrl=https://%s\nAdmin__BotApiUrl=https://%s\nNotification__Push__Subject=https://%s\nSites__TunnelUrl=https://%s\nSites__Domain=%s\nSites__DemoHost=%s\n' \
+  "$site" "$api" "$tunnel" "$site" "$api" "$site" "$tunnel" "${SITES_DOMAIN:-}" "${SITES_DOMAIN:-}" > "$domains_file"
 chmod 644 "$domains_file"
 rm -f "$root/etc/dalan/caddy.env"
 install -m 755 "$here/backup.sh" "$here/drill.sh" "$root/opt/dalan/tools/"
@@ -233,7 +234,7 @@ systemctl restart caddy.service
 dkim_record=$(tr -d '\n' < "$root/etc/dkimkeys/dalan.txt" | grep -o '"[^"]*"' | tr -d '"\t\n ' | sed 's/;/; /g; s/ $//')
 cat <<DNS
 
-DNS records (A, to this server): $site, $api, $tunnel${SITES_DOMAIN:+, *.$SITES_DOMAIN}
+DNS records (A, to this server): $site, $api, $tunnel${SITES_DOMAIN:+, $SITES_DOMAIN, *.$SITES_DOMAIN}
 
 DNS records for $site (TXT):
   $site                      v=spf1 a -all

@@ -189,10 +189,10 @@ echo "PASS OPS-10 settings from install.sh"
 # Rule: OPS-15 the sites domain and the tunnel host from install.sh
 printf 'SITES_DOMAIN=dalancloud.ir\nTUNNEL_DOMAIN=t.dalanet.ir\n' > "$src/settings.env"
 bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out-sites" || fail "run with a sites domain failed"
-for line in Sites__Domain=dalancloud.ir DALAN_TUNNEL_DOMAIN=t.dalanet.ir Sites__TunnelUrl=https://t.dalanet.ir; do
+for line in Sites__Domain=dalancloud.ir Sites__DemoHost=dalancloud.ir DALAN_TUNNEL_DOMAIN=t.dalanet.ir Sites__TunnelUrl=https://t.dalanet.ir; do
   grep -qx "$line" "$root/etc/dalan/domains.env" || fail "domains.env should have $line"
 done
-grep -qF '*.dalancloud.ir' "$tmp/out-sites" || fail "setup does not print the DNS record of the sites"
+grep -qF 'dalancloud.ir, *.dalancloud.ir' "$tmp/out-sites" || fail "setup does not print the DNS records of the sites and demos"
 rm "$src/settings.env"
 echo "PASS OPS-15 sites domain and tunnel host from install.sh"
 
