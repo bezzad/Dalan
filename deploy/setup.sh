@@ -205,9 +205,16 @@ if [ "${PULL_DEPLOY:-}" = 1 ]; then
   # A read-only key for the repository; port 443, because port 22 to GitHub is often closed from Iran.
   github_key="$root/home/deploy/.ssh/github"
   [ -f "$github_key" ] || ssh-keygen -q -t ed25519 -N '' -C "dalan-pull@$site" -f "$github_key"
-  printf 'Host github.com\n  HostName ssh.github.com\n  Port 443\n  User git\n  IdentityFile ~/.ssh/github\n  IdentitiesOnly yes\n  StrictHostKeyChecking accept-new\n' \
+  printf 'Host github.com\n  HostName ssh.github.com\n  Port 443\n  User git\n  IdentityFile ~/.ssh/github\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' \
     > "$root/home/deploy/.ssh/config"
-  chown deploy:deploy "$github_key" "$github_key.pub" "$root/home/deploy/.ssh/config"
+  # GitHub's published host keys for port 443 (docs.github.com, "GitHub's SSH key fingerprints"); never trust on first use.
+  # If GitHub changes a key, update these lines and run install.sh again.
+  cat > "$root/home/deploy/.ssh/known_hosts" <<'KEYS'
+[ssh.github.com]:443 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+[ssh.github.com]:443 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
+[ssh.github.com]:443 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk=
+KEYS
+  chown deploy:deploy "$github_key" "$github_key.pub" "$root/home/deploy/.ssh/config" "$root/home/deploy/.ssh/known_hosts"
   systemctl daemon-reload
   systemctl enable --now dalan-pull.timer
   pull_key=$(cat "$github_key.pub")
@@ -231,4 +238,4 @@ Reverse DNS (provider panel): the server address -> $site
 
 DNS
 [ -z "${pull_key:-}" ] || printf '\nGitHub, repository Settings, Deploy keys, Add (read only), so this server can take main:\n  %s\n' "$pull_key"
-echo "Done. Next: run the deploy from CI (the first time), and see docs/SERVER.md for the SMS settings."
+echo "Done. Next: the first deploy (docs/SERVER.md section 3), and see docs/SERVER.md for the SMS settings."

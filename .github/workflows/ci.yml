@@ -1,11 +1,9 @@
 name: ci
 
+# DEL-01: the gate is scripts/ci.sh on the owner's computer (GitHub minutes ran out, 2026-11-21); it runs these same steps.
+# DEL-06: the server builds main itself (OPS-16). This workflow runs only by hand: to build the Windows agent (DEL-08),
+# or to deploy when the server cannot reach GitHub. tests/delivery/ci_workflow_test.sh keeps it and scripts/ci.sh equal.
 on:
-  push:
-    branches: [main]
-  # A draft pull request runs no CI (minutes cost money); it runs when marked ready and on each push after (DEL-01).
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
     inputs:
       deploy:
@@ -18,8 +16,8 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  # On main a newer run waits: cancelling one could stop a deploy half way.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # A newer run waits: cancelling one could stop a deploy half way.
+  cancel-in-progress: false
 
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
@@ -29,7 +27,6 @@ env:
 jobs:
   # Builds once. The tests and the deploy use these files; nothing builds again.
   build:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -115,7 +112,6 @@ jobs:
 
   # The checks that need no .NET build run next to the build.
   checks:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -155,7 +151,6 @@ jobs:
 
   # The image for local runs and container platforms; production does not use it.
   docker:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -167,12 +162,10 @@ jobs:
           for _ in $(seq 50); do curl -fs -o /dev/null http://127.0.0.1:18095/health && break; sleep 0.2; done
           curl -fs http://127.0.0.1:18095/health
 
-  # DEL-08: the agent for Windows, built on Windows (Native AOT does not cross systems).
-  # Not on pull requests: Windows machines cost more CI minutes; the linux-x64 build checks every pull request.
-  # A manual run (with or without deploy) builds it, to try an agent change before the merge.
+  # DEL-08: the agent for Windows, built on Windows (Native AOT does not cross systems). Only here: the server's own
+  # build keeps the running release's file, so run this workflow with deploy on after an agent change.
   # No macOS yet: macOS machines did not start for this private repository (2026-11-20), and a deploy must never wait on them.
   agent:
-    if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -198,8 +191,8 @@ jobs:
 
   deploy:
     needs: [build, test, checks, docker, agent]
-    # Every merge to main deploys; a manual run deploys when "Deploy" is ticked.
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
+    # Only when "Deploy" is ticked (DEL-06: a merge to main reaches the server by the server's own build).
+    if: inputs.deploy
     runs-on: ubuntu-24.04
     environment: production
     concurrency:

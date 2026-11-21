@@ -214,6 +214,10 @@ for f in opt/dalan/tools/dotnet/dotnet opt/dalan/tools/node/bin/node opt/dalan/t
   [ -e "$root/$f" ] || fail "$f not installed"
 done
 grep -qx '  Port 443' "$root/home/deploy/.ssh/config" || fail "GitHub is not reached on port 443"
+# GitHub's published host keys (fingerprint SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU), never trust on first use.
+grep -qxF '[ssh.github.com]:443 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' \
+  "$root/home/deploy/.ssh/known_hosts" || fail "GitHub's host key is not pinned"
+grep -qx '  StrictHostKeyChecking yes' "$root/home/deploy/.ssh/config" || fail "an unknown GitHub host key is not refused"
 grep -qF 'systemctl enable --now dalan-pull.timer' "$state/commands.log" || fail "pull timer not started"
 grep -qF 'ssh-ed25519 BBBB dalan-pull' "$tmp/out-pull" || fail "setup does not print the GitHub deploy key"
 bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || fail "second PULL_DEPLOY run failed"

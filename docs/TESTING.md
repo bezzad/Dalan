@@ -27,7 +27,7 @@ Areas: `OPS` operations, `ARC` architecture, `DEL` delivery, `Q` bot queue, `REL
 | Integration | xUnit v3 + `WebApplicationFactory` + real PostgreSQL (Testcontainers) | HTTP endpoints, database, outbox. Never an in-memory database fake; `jsonb` and locking must be real. Each test gets a new database (`tests/Shared`). Without Docker, set `DALAN_TEST_POSTGRES` to the connection string of a server where the tests may create databases |
 | Contract | xUnit v3 + JSON files + the `Telegram.Bot` package | Telegram adapter answers compared with saved examples of the pinned Bot API version (`tests/Dalan.Telegram.Tests/Examples`); one test drives the real `Telegram.Bot` client against the test server |
 | Architecture | xUnit v3 + reflection on assemblies | Dependency rules `ARC-*` |
-| Client | Node test runner (`node --test`), TypeScript run directly, no test package | Pure client logic: message list, sync, reply buttons, reconnect wait, languages; a scan of the built files for foreign hosts. No browser test in CI yet: the screens are checked by hand in a real browser |
+| Client | Node test runner (`node --test`), TypeScript run directly, no test package | Pure client logic: message list, sync, reply buttons, reconnect wait, languages; a scan of the built files for foreign hosts. No browser test in the gate yet: the screens are checked by hand in a real browser |
 | Shell | bash | Deploy, server setup, backup and drill scripts with fake system commands and a fake server folder |
 | Load | chosen when the first load test is written | Target in `docs/ARCHITECTURE.md` section 8; run before each release to the Iran server, not on every push |
 
@@ -36,14 +36,23 @@ Areas: `OPS` operations, `ARC` architecture, `DEL` delivery, `Q` bot queue, `REL
 - One behavior per test. Name: `RuleId_what_happens`, for example `Q04_latest_command_replaces_older_from_same_user`.
 - Time is injected (`TimeProvider`), never `Thread.Sleep` or real waiting for expiry.
 - No test talks to a foreign host.
-- A flaky test is a bug: fix it or delete it, never retry it in CI.
+- A flaky test is a bug: fix it or delete it, never retry it in the gate.
 
 ## 5. Commands
 
+The gate is `scripts/ci.sh` on the owner's computer (rule `DEL-01`): it runs every step of `.github/workflows/ci.yml`, prints PASS or FAIL for each, and stops at the first failure. GitHub CI runs only by hand. `tests/delivery/ci_workflow_test.sh` fails when the two differ, so a new test script or test project goes into both.
+
+Tools it needs (it fails by name when one is missing): the .NET SDK of `global.json`, Node of the major version in `ci.yml` with npm, `clang` and `zlib1g-dev` (`sudo apt install clang zlib1g-dev`), `caddy` (the version `CADDY_VERSION` in `ci.yml`), and Docker or `DALAN_TEST_POSTGRES`. Without Docker only the image test is skipped.
+
+The test PostgreSQL keeps its data in memory (tmpfs, no `fsync`): on a busy disk the tests were slow and Docker could not stop the containers. `docker info` must reach the engine: on a computer with Docker Desktop installed but not running, `docker context use default`.
+
+With `DALAN_TEST_POSTGRES` (one shared server, no Docker) `ci.sh` runs the test projects one at a time. Each test leaves a database `dalan_test_<id>` there; drop them now and then.
+
 ```bash
+bash scripts/ci.sh               # everything, before each merge
 (cd client && npm ci && npm run build && npm test)  # client; the server build needs client/dist
 dotnet test                      # all .NET tests (needs Docker, or DALAN_TEST_POSTGRES)
-bash tests/deploy/deploy_test.sh # deploy script tests; also setup_test, backup_test, drill_test
+bash tests/deploy/deploy_test.sh # deploy script tests; also setup_test, backup_test, drill_test, pull_deploy_test
 bash scripts/check-rules.sh      # every rule has a test
 openspec validate --all --strict # specs are well formed
 ```
