@@ -42,6 +42,8 @@ public sealed class SettingsCatalog(IConfiguration configuration)
         "Sites:AgentFolder",
         // SITE-13 is checked at start: the sites domain must never become Dalan's own (a site could set Dalan's cookies).
         "Sites:Domain",
+        // SITE-18: the demo host takes every request of its host; a stolen admin session must not point it at Dalan's own host.
+        "Sites:DemoHost",
     };
 
     /// <summary>Read only once at start: a change works after a restart.</summary>

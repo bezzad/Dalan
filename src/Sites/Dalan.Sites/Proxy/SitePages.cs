@@ -13,6 +13,8 @@ internal static class SitePages
         ["site_timeout"] = ("این سایت به‌موقع جواب نداد. دوباره امتحان کنید.", "This site did not answer in time. Try again."),
         ["request_too_large"] = ("این درخواست برای این سایت خیلی بزرگ است.", "This request is too large for this site."),
         ["too_many_requests"] = ("درخواست‌های شما زیاد است. چند ثانیه صبر کنید.", "Too many requests from you. Wait a few seconds."),
+        ["demo_ended"] = ("این دمو تمام شده است.", "This demo has ended."),
+        ["demo_not_found"] = ("دمویی با این نشانی در دالان نیست.", "There is no demo at this address on Dalan."),
         ["bad_answer"] = ("جواب این سایت درست نبود.", "This site sent an answer that is not valid."),
     };
 

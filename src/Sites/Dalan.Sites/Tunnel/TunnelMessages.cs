@@ -7,10 +7,13 @@ public sealed record TunnelRequest(
 /// <summary>The agent's answer to one request.</summary>
 public sealed record TunnelResponse(long Id, int Status, Dictionary<string, string[]>? Headers, string? Body);
 
-internal sealed record OpenSessionRequest(string[]? Sites);
+/// <summary>Sites to serve, and optionally a demo: "new" or the id of a demo of the caller (SITE-18).</summary>
+internal sealed record OpenSessionRequest(string[]? Sites, string? Demo = null);
 
 internal sealed record SiteAddress(string Name, string Url);
 
-internal sealed record OpenSessionAnswer(string Session, SiteAddress[] Sites, int MaxBodyMb);
+internal sealed record DemoAddress(string Id, string Url, DateTimeOffset ExpiresAt);
+
+internal sealed record OpenSessionAnswer(string Session, SiteAddress[] Sites, int MaxBodyMb, DemoAddress? Demo = null);
 
 internal sealed record PollAnswer(TunnelRequest[] Requests);

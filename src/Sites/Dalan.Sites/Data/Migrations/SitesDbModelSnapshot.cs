@@ -23,6 +23,37 @@ namespace Dalan.Sites.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Dalan.Sites.Demos.Demo", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<long>("OwnerUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("owner_user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_demos");
+
+                    b.HasIndex("OwnerUserId")
+                        .HasDatabaseName("ix_demos_owner_user_id");
+
+                    b.ToTable("demos", "sites");
+                });
+
             modelBuilder.Entity("Dalan.Sites.Names.Site", b =>
                 {
                     b.Property<long>("Id")

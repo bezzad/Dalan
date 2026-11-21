@@ -289,6 +289,8 @@ In Layer 2 the builder's frontend and backend stay unchanged. The page is served
 
 **Dalan Agent.** A small program from Dalan that the builder runs beside the unchanged backend: `dalan login <key>` once, then `dalan http 3000 --name levelwise` (more `<port> --name <name>` pairs for more sites in one agent; `dalan start` runs the saved ones). It connects out to `tunnel.dalanet.ir` by WebSocket, or by long polling when WebSocket is blocked. The builder writes no polling code. Built in Layer 2 milestone 1 (decisions 60 to 63).
 
+**Demo link.** `dalan demo 3000` gives a test link with no name to claim: `https://dalans.ir/<random id>/`, open for 24 hours, at most 3 live demos per builder, ended at once by Ctrl+C. The first visit sets a cookie, so the app's own links (`/app.js`) keep going to the same demo. All demos share one origin, so a demo is for tests, not for real accounts (decision 67).
+
 **Two ways to run a site:**
 
 | Mode | What is on Dalan | If the home machine is off |
