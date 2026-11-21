@@ -26,7 +26,7 @@ internal static class SmsLoginEndpoints
     }
 
     public static IResult BadPhone() => AuthJson.BadRequest("bad_phone",
-        """Send JSON with "phone": an Iranian mobile number like 09121234567.""");
+        """Send JSON with "phone": a mobile number like 09121234567.""");
 
     public static IResult WrongCode() => AuthJson.BadRequest("wrong_code",
         "The code is wrong, too old, already used, or had too many tries. Ask for a new code.");

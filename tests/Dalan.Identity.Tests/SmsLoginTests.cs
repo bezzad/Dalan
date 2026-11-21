@@ -174,6 +174,19 @@ public class SmsLoginTests(PostgresServer postgres)
     }
 
     [Fact]
+    [Trait("Rule", "CLI-41")]
+    public async Task CLI41_the_bad_phone_text_never_names_iran()
+    {
+        await using var app = await StartAsync(postgres);
+
+        var response = await app.Browser().PostAsJsonAsync("/api/auth/sms", new { phone = "02112345678", challenge = "x", nonce = "0" }, Cancel);
+        var text = await response.Content.ReadAsStringAsync(Cancel);
+
+        Assert.Equal("bad_phone", await ErrorCodeAsync(response));
+        Assert.DoesNotContain("iran", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     [Trait("Rule", "AUTH-11")]
     public async Task AUTH11_failed_send_is_503_and_does_not_count()
     {

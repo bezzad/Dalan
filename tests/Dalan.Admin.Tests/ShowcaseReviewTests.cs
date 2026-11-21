@@ -149,6 +149,17 @@ public class ShowcaseReviewTests(PostgresServer postgres)
     }
 
     [Fact]
+    [Trait("Rule", "CLI-41")]
+    public async Task CLI41_llms_txt_never_names_iran()
+    {
+        await using var app = await AdminApp.StartAsync(postgres);
+
+        var text = await app.CreateClient().GetStringAsync("/llms.txt", TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain("iran", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     [Trait("Rule", "ADM-15")]
     public async Task ADM15_a_panel_change_of_an_address_shows_at_once()
     {

@@ -47,7 +47,7 @@ internal static class DevLoginEndpoint
         if (phone is null || name.Length == 0 || name.Length > options.CurrentValue.MaxNameLength)
         {
             return AuthJson.BadRequest("bad_request",
-                """Send JSON like {"phone": "09121234567", "name": "Sara"}: an Iranian mobile number and a short name.""");
+                """Send JSON like {"phone": "09121234567", "name": "Sara"}: a mobile number and a short name.""");
         }
 
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
