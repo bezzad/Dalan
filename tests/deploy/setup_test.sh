@@ -252,11 +252,18 @@ out=""; while [ \$# -gt 0 ]; do case "\$1" in -o) out="\$2"; shift 2;; http*) ur
 echo "\$url" >> "$inst/urls.log"
 case "\$url" in
   *checksums.txt) (cd "$inst" && sha512sum caddy_${ci_version}_linux_amd64.tar.gz) > "\$out";;
+  *dotnet-install.sh) cp "$inst/dotnet-install.sh" "\$out";;
+  *SHASUMS256.txt) (cd "$inst" && sha256sum node-v26.0.0-linux-x64.tar.xz) > "\$out";;
+  *node-v26.0.0-linux-x64.tar.xz) cp "$inst/node-v26.0.0-linux-x64.tar.xz" "\$out";;
   *) cp "$inst/caddy_${ci_version}_linux_amd64.tar.gz" "\$out";;
 esac
 SH
-printf '#!/bin/bash\necho "scp $*" >> %s/remote.log\ncp -r "${@: -2:1}" %s/copied\n' "$inst" "$inst" > "$inst/bin/scp"
-printf '#!/bin/bash\necho "ssh $*" >> %s/remote.log\n' "$inst" > "$inst/bin/ssh"
+# The fake ssh writes each call down; the call that unpacks the setup folder unpacks it into $inst/copied.
+cat > "$inst/bin/ssh" <<SH
+#!/bin/bash
+echo "ssh \$*" >> "$inst/remote.log"
+case "\$*" in *"tar --no-same-owner -xf - -C /tmp"*) mkdir -p "$inst/unpack" && tar -xf - -C "$inst/unpack" && mv "$inst/unpack/dalan-setup" "$inst/copied";; esac
+SH
 chmod +x "$inst/bin"/*
 mkdir "$inst/pkg" && printf '#!/bin/sh\n' > "$inst/pkg/caddy" && tar -czf "$inst/caddy_${ci_version}_linux_amd64.tar.gz" -C "$inst/pkg" caddy
 PATH="$inst/bin:$PATH" bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null || fail "install.sh failed"
@@ -292,6 +299,24 @@ before=$(sha256sum < "$env_file")
 bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out4" || { cat "$tmp/out4"; fail "run without GitHub failed"; }
 [ "$(sha256sum < "$env_file")" = "$before" ] || fail "dalan.env changed without GitHub settings"
 echo "PASS OPS-14 no GitHub settings keep dalan.env"
+
+# Rule: OPS-16 install.sh with PULL_DEPLOY=1 brings Node and the .NET SDK with their symlinks (npm is one: a copy cannot find its files)
+mkdir -p "$inst/node/node-v26.0.0-linux-x64/bin" "$inst/node/node-v26.0.0-linux-x64/lib/node_modules/npm/bin"
+echo 'npm' > "$inst/node/node-v26.0.0-linux-x64/lib/node_modules/npm/bin/npm-cli.js"
+ln -s ../lib/node_modules/npm/bin/npm-cli.js "$inst/node/node-v26.0.0-linux-x64/bin/npm"
+tar -cJf "$inst/node-v26.0.0-linux-x64.tar.xz" -C "$inst/node" node-v26.0.0-linux-x64
+cat > "$inst/dotnet-install.sh" <<'SH'
+#!/bin/bash
+while [ $# -gt 0 ]; do [ "$1" = --install-dir ] && dir="$2"; shift; done
+mkdir -p "$dir/sdk" && echo sdk > "$dir/sdk/dotnet.dll" && ln -s sdk/dotnet.dll "$dir/dotnet"
+SH
+rm -rf "$inst/copied" "$inst/remote.log"
+PULL_DEPLOY=1 PATH="$inst/bin:$PATH" bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null \
+  || fail "install.sh with PULL_DEPLOY failed"
+[ "$(readlink "$inst/copied/node/bin/npm")" = ../lib/node_modules/npm/bin/npm-cli.js ] || fail "npm is not a symlink on the server"
+[ "$(readlink "$inst/copied/dotnet/dotnet")" = sdk/dotnet.dll ] || fail "the .NET SDK lost its symlinks"
+for f in pull-deploy.sh dalan-pull.service dalan-pull.timer; do [ -f "$inst/copied/$f" ] || fail "$f not copied"; done
+echo "PASS OPS-16 install.sh brings Node and the .NET SDK with their symlinks"
 
 # Rule: OPS-14 install.sh sends the secret in a file, never on a command line
 rm -rf "$inst/copied" "$inst/remote.log"
