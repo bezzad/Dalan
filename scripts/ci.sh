@@ -40,7 +40,8 @@ step() {
 # The server embeds the built client, so the client comes first.
 step client 'cd client && npm ci && npm run check && npm run build && npm test'
 step build 'dotnet build Dalan.slnx -c Release'
-step dotnet-test 'dotnet test --solution Dalan.slnx -c Release --no-build'
+# With Docker each test project starts its own PostgreSQL; one shared DALAN_TEST_POSTGRES server takes one project at a time.
+step dotnet-test 'dotnet test --solution Dalan.slnx -c Release --no-build ${DALAN_TEST_POSTGRES:+--max-parallel-test-modules 1}'
 step release 'bash scripts/publish.sh "$work/out" && bash tests/delivery/release_smoke_test.sh "$work/out"'
 # AGT-01: the agent is one native file. The Windows file comes only from a CI run by hand (DEL-08).
 step agent 'bash tests/delivery/agent_smoke_test.sh "$work/agent" linux-x64'
