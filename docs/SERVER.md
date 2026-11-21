@@ -20,7 +20,7 @@ How to set up the production server, deploy, back up and run the shutdown drill.
    ```
 
 4. DNS hosted inside Iran (for example ArvanCloud DNS or the provider's DNS): add the domain there, put its two nameservers in the nic.ir panel, then add `A` records `@` and `api` to the server address with the CDN proxy **off** (with it on, Caddy gets no certificate and the server sees the CDN's address instead of the client's, which breaks the access log duty). Check with `dig +short dalanet.ir`. Do this first: Caddy asks Let's Encrypt for certificates as soon as it starts. Before the domain is ready, test with `sslip.io` names, which point to the address inside them, for example `203-0-113-10.sslip.io` and `api.203-0-113-10.sslip.io` for the address 203.0.113.10 (they need foreign DNS, so not for the drill). Later run `install.sh` again with the real domains; secrets and data stay.
-5. A key pair for CI, on your own machine. It must exist before the next step:
+5. A key pair for the fallback deploy over SSH (your computer or a CI run by hand), on your own machine. It must exist before the next step:
 
    ```bash
    ssh-keygen -t ed25519 -N "" -C dalan-ci -f ~/.ssh/dalan-deploy
@@ -37,7 +37,7 @@ bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-depl
 
 The user is root or has sudo. It downloads Caddy here, copies it with `deploy/` to the server and runs `deploy/setup.sh` with sudo. A server with less than 2 GB of memory and no swap gets a 2 GB swap file (`SWAP_MB`). The server downloads only Ubuntu packages from its mirror. It is safe to run again.
 
-Result: users `dalan` (service) and `deploy` (CI; may only `sudo systemctl restart dalan`), PostgreSQL with database `dalan`, Caddy, `rsync` (the deploy needs it), the units `dalan`, `caddy`, `dalan-backup.timer`, Postfix and OpenDKIM for the login emails, `/etc/dalan/domains.env` (the domains; written each run) and `/etc/dalan/dalan.env` with a new database password, signing key and push keys. The secrets are made once and never overwritten; setup only adds the email lines at the end when it has no `Notification__Smtp__Host` line.
+Result: users `dalan` (service) and `deploy` (builds and deploys; may only `sudo systemctl restart dalan`), PostgreSQL with database `dalan`, Caddy, `rsync` (the deploy needs it), the units `dalan`, `caddy`, `dalan-backup.timer`, Postfix and OpenDKIM for the login emails, `/etc/dalan/domains.env` (the domains; written each run) and `/etc/dalan/dalan.env` with a new database password, signing key and push keys. The secrets are made once and never overwritten; setup only adds the email lines at the end when it has no `Notification__Smtp__Host` line.
 
 Admin phone and SMS go in as settings of the same command. Run it again to change them, or to move to new domains; it restarts the server by itself:
 
@@ -118,7 +118,7 @@ The agent files come with each deploy (`/opt/dalan/current/agent`, DEL-08); `/do
 
 ### A new computer for the owner
 
-Only `install.sh` and SSH need your own computer; the deploy runs from CI. On the new computer (Linux):
+Only `install.sh`, `scripts/ci.sh` (the tests, docs/TESTING.md) and SSH need your own computer; the server builds main itself. On the new computer (Linux):
 
 1. `git clone https://github.com/bezzad/Dalan && cd Dalan`.
 2. Your own SSH key: `ssh-keygen -t ed25519`, then put `~/.ssh/id_ed25519.pub` on the server. From the old computer: `ssh-copy-id -i <new key>.pub root@<server>`; with no old computer, paste it into `/root/.ssh/authorized_keys` from the provider's web console. Check: `ssh root@<server>` asks no password.
@@ -129,7 +129,12 @@ A bot you run at home (for example ArcaneBot) needs only its token and `https://
 
 ## 3. Deploy
 
-GitHub, repository Settings, Environments, `production` (create it if missing), secrets:
+The server builds `main` itself (OPS-16, next section): merge a pull request after `scripts/ci.sh` passed on your computer, and the new release runs a few minutes later. GitHub CI does not run by itself any more (its minutes ran out, 2026-11-21).
+
+Fallbacks, both over SSH with `deploy/deploy.sh`: it sends the release with `rsync` to a new folder (only the parts that differ from the current release go over the network), checks `/ready` after the switch and rolls back by itself. It opens one SSH connection with up to 5 tries of 30 seconds (`SSH_TRIES`, `SSH_TIMEOUT`), because the link to Iran stalls now and then.
+
+- From your computer, when the server cannot reach GitHub: `bash scripts/build-release.sh out`, then `DEPLOY_HOST=root@<server> SYSTEMCTL=systemctl bash deploy/deploy.sh out manual-<name>` and `ssh root@<server> chown -R deploy:deploy /opt/dalan/releases`.
+- A CI run by hand: Actions, workflow `ci`, "Run workflow" on `main`, tick "Deploy". It is the only way to build the Windows agent (`dalan-windows-x64.exe`, DEL-08): run it after a change in `agent/`. The server's own builds keep that file. It needs these secrets in GitHub, repository Settings, Environments, `production`:
 
 | Secret | Value |
 |---|---|
@@ -137,7 +142,7 @@ GitHub, repository Settings, Environments, `production` (create it if missing), 
 | `DEPLOY_SSH_KEY` | the private key: the whole output of `cat ~/.ssh/dalan-deploy` |
 | `DEPLOY_KNOWN_HOSTS` | the output of `ssh-keyscan <server>` |
 
-Every merge to `main` deploys by itself after all gates pass. CI builds once (job `build`), runs the tests on two machines at the same time (a draft pull request runs no CI, to save minutes), and the deploy uses the same release the tests passed with. `deploy/deploy.sh` sends it with `rsync` to a new folder: only the parts that differ from the current release go over the network. It rolls back by itself if `/ready` fails. It opens one SSH connection for the whole deploy, with up to 5 tries of 30 seconds (`SSH_TRIES`, `SSH_TIMEOUT`), because the link from GitHub to Iran stalls now and then. "Connection closed by <server> port 22" or "No SSH connection" in the deploy log is such a stall: run the deploy again. On the server, `journalctl -u ssh | grep 'Timeout before authentication'` shows it. A server set up before 2026-11-19 may not have `rsync`: run `install.sh` again, or `sudo apt-get install rsync`. The first deploy, or a deploy again, by hand: Actions, workflow `ci`, "Run workflow" on `main`, tick "Deploy". A change of `dalan.env` by hand needs `sudo systemctl restart dalan`.
+"Connection closed by <server> port 22" or "No SSH connection" in a deploy log is a stall: run it again. On the server, `journalctl -u ssh | grep 'Timeout before authentication'` shows it. A server set up before 2026-11-19 may not have `rsync`: run `install.sh` again, or `sudo apt-get install rsync`. A change of `dalan.env` by hand needs `sudo systemctl restart dalan`.
 
 Check: `https://dalanet.ir` opens, SMS login works, your number sees the admin area. Logs: `journalctl -u dalan -f`.
 
@@ -157,13 +162,45 @@ sudo sed -i "s|^Identity__SigningKey=.*|Identity__SigningKey=$NEW|" /etc/dalan/d
 
 ### The server builds main itself (OPS-16)
 
-When GitHub Actions cannot run (for example its minutes ran out), the server can take `main` and build it. It needs GitHub, but nothing else from abroad after the first build (NuGet and npm packages stay in `/home/deploy`).
+The main way a release reaches the server (DEL-06). The server needs GitHub, but nothing else from abroad after the first build (NuGet and npm packages stay in `/home/deploy`).
 
-1. On your computer: `PULL_DEPLOY=1 SITES_DOMAIN=<sites domain> bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub`. It downloads the .NET SDK and Node here (about 300 MB) and copies them; give `PULL_DEPLOY=1` again only to update them.
-2. Setup prints a key: GitHub, repository Settings, Deploy keys, **Add deploy key**, paste it, leave "Allow write access" off.
-3. `dalan-pull.timer` looks for a new `main` every 5 minutes and builds it (about 5 minutes, low priority), then deploys with the usual rollback. Watch: `journalctl -u dalan-pull -f`. Start a run now: `sudo systemctl start dalan-pull`.
+1. On your computer: `PULL_DEPLOY=1 SITES_DOMAIN=<sites domain> bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub`. It downloads the .NET SDK (the version in `global.json`, newest patch) and Node (the major version in `ci.yml`) here, about 300 MB, and copies them; the server downloads neither. Give `PULL_DEPLOY=1` again only to update them.
+2. Setup makes the GitHub key and prints it. Add it to GitHub read-only (below).
+3. `dalan-pull.timer` runs every minute. Each run asks GitHub only for `refs/heads/main` (`git ls-remote`, small); no other branch is ever fetched or built. A new commit is fetched, built in a new folder (about 5 minutes, low priority), smoke-tested on `/health` (no database), and deployed with `deploy.sh`: switch, restart, `/ready`, rollback when not ready. Only the last 5 releases are kept. A lock keeps two runs from overlapping. Watch: `journalctl -u dalan-pull -f`. Start a run now: `sudo systemctl start dalan-pull`.
 
-A failed build is not tried again (`/opt/dalan/pull-failed` holds its commit); push a fix to `main`. The full .NET tests do not run here (they need a test database server): only the client checks, the release smoke test and the agent build. The Windows agent file comes only from CI; a server build keeps the one it has. Without GitHub, deploy from your computer: build with `scripts/build-release.sh out`, then `DEPLOY_HOST=root@<server> SYSTEMCTL=systemctl bash deploy/deploy.sh out manual-<name>` and `ssh root@<server> chown -R deploy:deploy /opt/dalan/releases`.
+A failed build or a deploy that rolled back is not tried again: `/opt/dalan/pull-failed` holds its commit and the journal has the reason. Push a fix to `main`. A failed `git ls-remote` or fetch (GitHub slow or cut) is tried again on the next run. The full .NET tests do not run here (they need a test database server; `scripts/ci.sh` runs them): only the client checks, the release smoke test and the Linux agent build.
+
+#### The GitHub deploy key
+
+Setup does the server part. The same by hand, as the user `deploy` on the server:
+
+```bash
+sudo -iu deploy
+ssh-keygen -t ed25519 -N '' -C dalan-pull@dalanet.ir -f ~/.ssh/github
+cat > ~/.ssh/config <<'EOF'
+Host github.com
+  HostName ssh.github.com
+  Port 443
+  User git
+  IdentityFile ~/.ssh/github
+  IdentitiesOnly yes
+  StrictHostKeyChecking yes
+EOF
+# GitHub's host keys for port 443 (deploy/setup.sh has the full lines). Compare the fingerprints with
+# docs.github.com "GitHub's SSH key fingerprints", for example ED25519 SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU
+ssh-keyscan -p 443 ssh.github.com > ~/.ssh/known_hosts && ssh-keygen -lf ~/.ssh/known_hosts
+cat ~/.ssh/github.pub          # the key for GitHub
+```
+
+Port 443, because port 22 to GitHub is often closed from Iran. If GitHub changes a host key, update the lines in `deploy/setup.sh` and run `install.sh` again.
+
+On GitHub, read-only: repository Settings, Deploy keys, **Add deploy key**, title `dalan-server`, paste the key, leave **Allow write access** off. Or from your computer, with the key copied there (`scp root@<server>:/home/deploy/.ssh/github.pub dalan-server.pub`):
+
+```bash
+gh repo deploy-key add dalan-server.pub --repo bezzad/Dalan --title dalan-server   # read-only unless --allow-write
+```
+
+Check on the server: `sudo -iu deploy git ls-remote git@github.com:bezzad/Dalan.git refs/heads/main` prints one commit.
 
 ## 4. Backups
 

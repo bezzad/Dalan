@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Deploy one release to the server and roll back if it is not ready (DEL-04, DEL-05, DEL-06).
-# CI pushes over SSH; the server never pulls. rsync sends only the parts that changed since the current release.
+# Run on the server by pull-deploy.sh (DEPLOY_HOST=local, OPS-16), or over SSH from the owner's computer or a CI run by hand.
+# It never reaches GitHub itself. rsync sends only the parts that changed since the current release.
 #
 # Usage: deploy/deploy.sh <release folder> <version>
 #

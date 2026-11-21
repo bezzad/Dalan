@@ -383,9 +383,9 @@ These facts shaped the design. Several were learned the hard way by the Valorian
 **Deployment**
 
 - Docker Hub and `download.docker.com` refuse Iranian IP addresses. Do not depend on Docker on the Iran server.
-- Build in CI, produce one self-contained binary, copy it over SSH, run it under systemd.
+- Produce one self-contained binary and run it under systemd. The server builds main itself (it reaches only GitHub); a copy over SSH from the owner's computer or a CI run by hand is the fallback.
 - Keep the last few releases, check a health endpoint after each deploy, and roll back if it fails.
-- GitHub may not open from the server, so the server never pulls; CI pushes.
+- GitHub may not open from the server: a failed fetch keeps the running release and is tried again; without GitHub the owner deploys over SSH.
 - Back up PostgreSQL daily.
 - Built in milestone 11: one-command server setup, daily backup and a shutdown drill script (`docs/SERVER.md`).
 

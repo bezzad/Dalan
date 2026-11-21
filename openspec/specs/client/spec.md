@@ -412,7 +412,7 @@ A user with no phone (AUTH-04 `has_phone` false) SHALL see a card in the account
 - **THEN** the "verify your mobile" card is shown; with `has_phone` true it is not
 
 ### Requirement: CLI-35 Light and dark theme
-The client SHALL have a light and a dark theme. On the first open it SHALL follow the device's theme. Every page header SHALL have a round theme button that switches only between light and dark, beside a round language button of the same size that shows only a globe and switches Persian and English in one click (Persian is the default, CLI-04; the page itself shows the change); both SHALL be in the same place in the fixed header of every page. The theme choice SHALL be kept on this device and used on the next open, whatever the device says. The new theme SHALL grow as a circle from the button (at once with reduced motion). Code blocks SHALL stay dark in both themes.
+The client SHALL have a light and a dark theme, the device's theme on the first open. The fixed header of every page SHALL have, in the same place, a round theme button (light or dark only) beside a round language button of the same size, a globe that switches Persian and English in one click (CLI-04). The choice SHALL be kept on this device over the device's theme. The new theme SHALL grow as a circle from the button (at once with reduced motion). Code blocks SHALL stay dark in both themes.
 
 #### Scenario: First open follows the device
 - **WHEN** a visitor opens the site for the first time on a device that asks for dark

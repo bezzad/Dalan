@@ -216,6 +216,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 62 | 2026-11-20 | Sites is its own service and schema. A site is a name the first builder claims; the agent opens one session for many sites (each its own local port); the newest session of a site wins |
 | 63 | 2026-11-20 | The agent logs in with an access key (builders only, like bots); a browser code login comes later. It shares no code with the server; end-to-end tests run it against the test server |
 | 64 | 2026-11-20 | Dalan serves the agent files and the one-line install scripts itself (users in Iran may have no GitHub). Caddy gets a certificate for each site name on its first visit, after Dalan says the name is real; no wildcard certificate yet (needs a DNS challenge) |
+| 65 | 2026-11-21 | GitHub Actions minutes ran out: the gate is `scripts/ci.sh` on the owner's computer (the same steps as `ci.yml`, which now runs only by hand); the server builds main itself every minute (`git ls-remote` of main only); the Windows agent comes from a CI run by hand |
 
 ## 11. Client address and access log
 
