@@ -101,13 +101,13 @@ The login card then shows "Log in with GitHub" first. GitHub users are level 1, 
 
 ### Sites (Layer 2, optional)
 
-Users' sites live on their own registered domain (for example `dalancloud.ir`), never under the site domain (SITE-13). The site agents connect to the tunnel host, `tunnel.<site domain>` unless `TUNNEL_DOMAIN` says another.
+Users' sites live on their own registered domain (ours: `dalans.ir`), never under the site domain (SITE-13). The site agents connect to the tunnel host, `tunnel.<site domain>` unless `TUNNEL_DOMAIN` says another.
 
 1. DNS: an `A` record `tunnel` in the site domain, and in the sites domain an `A` record `*` (and `@` if you like), all to the server address with the CDN proxy **off**.
 2. Run `install.sh` again with the sites domain. Give `SITES_DOMAIN` (and `TUNNEL_DOMAIN`, if not the default) on **every** later run too: without it, sites are off again.
 
    ```bash
-   SITES_DOMAIN=dalancloud.ir bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
+   SITES_DOMAIN=dalans.ir bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
    ```
 
 3. Check: `curl -fsSL https://dalanet.ir/install.sh | head -3`, then on any computer install the agent, make a key in "My apps" and run a site. Caddy gets each site's certificate on its first visit (a few seconds), only for names Dalan knows (SITE-17).
@@ -164,7 +164,7 @@ sudo sed -i "s|^Identity__SigningKey=.*|Identity__SigningKey=$NEW|" /etc/dalan/d
 
 The main way a release reaches the server (DEL-06). The server needs GitHub, but nothing else from abroad after the first build (NuGet and npm packages stay in `/home/deploy`).
 
-1. On your computer: `PULL_DEPLOY=1 SITES_DOMAIN=<sites domain> bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub`. It downloads the .NET SDK (the version in `global.json`, newest patch) and Node (the major version in `ci.yml`) here, about 300 MB, and copies them; the server downloads neither. Give `PULL_DEPLOY=1` again only to update them.
+1. On your computer: `PULL_DEPLOY=1 SITES_DOMAIN=dalans.ir bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub`. It downloads the .NET SDK (the version in `global.json`, newest patch) and Node (the major version in `ci.yml`) here, about 300 MB, and copies them; the server downloads neither. Give `PULL_DEPLOY=1` again only to update them.
 2. Setup makes the GitHub key and prints it. Add it to GitHub read-only (below).
 3. `dalan-pull.timer` runs every minute. Each run asks GitHub only for `refs/heads/main` (`git ls-remote`, small); no other branch is ever fetched or built. A new commit is fetched, built in a new folder (about 5 minutes, low priority), smoke-tested on `/health` (no database), and deployed with `deploy.sh`: switch, restart, `/ready`, rollback when not ready. Only the last 5 releases are kept. A lock keeps two runs from overlapping. Watch: `journalctl -u dalan-pull -f`. Start a run now: `sudo systemctl start dalan-pull`.
 
