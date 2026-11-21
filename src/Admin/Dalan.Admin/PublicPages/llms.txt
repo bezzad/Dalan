@@ -1,6 +1,6 @@
 # Dalan
 
-> Dalan runs a bot or a web app from a home computer with no public IP and no server. The home program makes only outbound long-polling calls to Dalan; people use Dalan's web app ({site}) with a verified mobile number; Dalan passes messages between them. Hosted in Iran, so it keeps working when international internet is cut.
+> Dalan runs a bot or a web app from a home computer with no public IP and no server. The home program makes only outbound long-polling calls to Dalan; people use Dalan's web app ({site}) with a verified mobile number; Dalan passes messages between them. Its servers are inside the country, so it keeps working when links to the outside world are down.
 
 ## Connect a Telegram bot (no code change)
 

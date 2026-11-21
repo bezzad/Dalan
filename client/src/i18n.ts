@@ -296,7 +296,7 @@ export const texts = {
     appsNeedBuilder: "To run a site, the admin of Dalan must approve you as a builder. Ask for it in your account screen.",
     appsGuideTitle: "Set up in three steps",
     step1Title: "1. Install the Dalan agent",
-    step1Note: "Run this in a terminal on the computer where your app runs. The file comes from Dalan itself; no international internet is needed.",
+    step1Note: "Run this in a terminal on the computer where your app runs. The file comes from Dalan itself, not from another site.",
     unixLabel: "Linux and macOS",
     windowsLabel: "Windows (PowerShell)",
     step2Title: "2. Log in once",

@@ -408,6 +408,8 @@ button.danger { color: var(--danger); }
 .menu .item.off { opacity: .7; }
 /* On a phone the menu gives its place to the login button (owner, 2026-11-18). */
 @media (max-width: 640px) { header.site .links { order: 3; flex-basis: 100%; } header.site h1 { flex: 1; } header.site .menu:not(.user) { display: none; } }
+/* On a narrow phone the logo and the tools still share one line, in both languages. */
+@media (max-width: 420px) { header.site { column-gap: var(--space-s); } .tools { gap: 6px; } .tools > button.primary { padding-inline: 12px; } }
 
 /* Layout */
 .page { gap: var(--space-xl); }
@@ -574,9 +576,8 @@ footer.site a:hover { color: var(--text); }
 :lang(fa) .page ol:not(.steps) { list-style-type: persian; }
 
 /* CLI-35: the theme button, round, in the top bar of the site and of the bot list. */
-/* Round header buttons: theme (an icon) and language (a globe and the other language's code). */
-button.theme, button.round { flex: none; min-width: 36px; min-height: 36px; height: 36px; padding: 0; border-radius: 999px; background: transparent; color: var(--muted); }
-button.round.lang { gap: 4px; padding-inline: 8px 10px; font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+/* Round header buttons of one size: theme (sun or moon) and language (a globe). */
+button.theme, button.round { flex: none; width: 36px; height: 36px; min-height: 36px; padding: 0; border-radius: 999px; background: transparent; color: var(--muted); }
 button.theme:hover, button.round:hover { color: var(--text); border-color: var(--brand); }
 button.theme .icon, button.round .icon { width: 18px; height: 18px; }
 /* The theme wave (theme.ts): no cross-fade, the new page is uncovered by a growing circle. */

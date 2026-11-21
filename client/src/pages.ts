@@ -37,7 +37,7 @@ export const landing: Record<Lang, { title: string; text: string }[]> = {
   en: [
     { title: "Run your app from your own computer.", text: "Do not buy a server. Your bot or app stays on your home or office computer and only connects out to Dalan. No public IP is needed." },
     { title: "Get real users, verified by email or SMS.", text: "Every Dalan user is verified by email or SMS. You do not need to build a login." },
-    { title: "Keep working when international internet is cut.", text: "Dalan runs inside Iran. Your bot and its users reach each other without international internet." },
+    { title: "Keep working when outside links are down.", text: "Dalan's servers are inside the country. Your bot and its users still reach each other when links to the outside world are down." },
   ],
 };
 
@@ -51,7 +51,7 @@ export const hero: Record<Lang, { title: string; glow: string; text: string; how
   },
   en: {
     title: "Your bot on your computer,",
-    glow: "reachable from all of Iran.",
+    glow: "reachable from anywhere.",
     text: "Dalan brings verified users to the bot or app on your own computer. No server, no public IP, no open port.",
     how: "How does it work?",
   },
@@ -86,7 +86,7 @@ export const problems: Record<Lang, { group: string; items: MenuItem[] }[]> = {
     ] },
     { group: "Reach users", items: [
       { title: "Real users", text: "Every user is verified by email or SMS", href: "#features" },
-      { title: "When international internet is cut", text: "Dalan runs inside Iran", href: "#features" },
+      { title: "When outside links are down", text: "Dalan's servers are inside the country", href: "#features" },
       { title: "Bot showcase", text: "New users find your bot", href: "/showcase" },
     ] },
     { group: "Sites", items: [
@@ -214,7 +214,7 @@ export const security: Record<Lang, string[]> = {
   fa: ["کاربران تأییدشده با ایمیل یا پیامک", "بات هرگز شماره نمی‌بیند", "توکن بات به شکل hash", "رمز با hash کند", "محدودیت سرعت روی هر در",
     "گواه کار پیش از هر پیامک", "گزارش کارهای ادمین", "سرور در ایران", "بدون اسکریپت و فونت خارجی", "فقط HTTPS"],
   en: ["Users verified by email or SMS", "Bots never see phone numbers", "Hashed bot tokens", "Slow password hashing", "Rate limits on every door",
-    "Proof of work before each SMS", "Admin audit log", "Servers in Iran", "No foreign scripts or fonts", "HTTPS only"],
+    "Proof of work before each SMS", "Admin audit log", "Servers inside the country", "No foreign scripts or fonts", "HTTPS only"],
 };
 
 export interface Step { title: string; text: string; code?: string }

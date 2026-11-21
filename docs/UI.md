@@ -10,7 +10,7 @@ Every screen follows this page. The reference is ngrok: dark and clean, neutral 
 - Logo: the Dalan gate (`client/src/logo.ts`), an outer arch around a door. The favicon is the round version (`public/icons/icon.svg`); the app icons are square. The not-found page (CLI-40) shows the gate closed.
 
 ## Page frame
-- **Header on every page**: logo and "دالان" on one line, a link to `/`, at the start. At the end the same tools (`headerTools`): a round language button (globe and EN or FA), the round theme button, then "Log in" or the user menu. No page drops it; language never sits among the menu links.
+- **Header on every page**: logo and "دالان" on one line, a link to `/`, at the start. At the end the same tools (`headerTools`): the round language button (only a globe; one click switches Persian and English, Persian first), the round theme button of the same size (36px), then "Log in" or the user menu. No page drops it; language never sits among the menu links.
 - **Public pages**: the full site header, and the footer with the big half-cut wordmark, always at the bottom of the screen.
 - **Width**: public pages up to `--page-width`. Inner pages (`main.wide`) up to 960px; a simple list or chat may stay narrow. Below that, a 16px side gutter. No sideways scroll on a phone.
 - **Page title row**: Back, the title, then the main action of the page as one primary button at the end (for example "Create bot").
@@ -38,3 +38,4 @@ Every screen follows this page. The reference is ngrok: dark and clean, neutral 
 ## Language
 - Persian (right to left) and English. Use logical CSS properties only (inline-start, inline-end). Latin names inside Persian text go in `<bdi>`.
 - Short, plain words.
+- English text, titles, meta and SEO never name Iran (sanctions, search engines); say "inside the country" or "when outside links are down". Persian may say ایران (CLI-41).

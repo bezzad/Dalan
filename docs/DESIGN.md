@@ -344,7 +344,7 @@ Version 1 ships a small MCP server and CLI (create bot, token, status). They gro
 
 1. Run your app from your own computer. Do not buy a server.
 2. Get real users, verified by email or SMS, without building a login.
-3. Keep working when international internet is cut.
+3. Keep working when outside links are down. (Persian: when international internet is cut. English text never names Iran, CLI-41.)
 
 Do not advertise "free tunnel". Cloudflare does that better for anyone with open internet (section 15).
 
