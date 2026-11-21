@@ -59,6 +59,6 @@ cp "$key" "$work/dalan-setup/deploy.pub"
 done > "$work/dalan-setup/settings.env")
 
 echo "Copying to $target"
-ssh "$target" "rm -rf /tmp/dalan-setup"
-scp -q -r "$work/dalan-setup" "$target:/tmp/"
+# tar, not scp -r: scp turns symlinks into copies, and Node's bin/npm is a symlink that breaks as a copy (OPS-16).
+tar -cf - -C "$work" dalan-setup | ssh "$target" "rm -rf /tmp/dalan-setup && tar --no-same-owner -xf - -C /tmp"
 ssh -t "$target" "sudo bash /tmp/dalan-setup/setup.sh '$site' '$api' /tmp/dalan-setup/deploy.pub; code=\$?; rm -rf /tmp/dalan-setup; exit \$code"
