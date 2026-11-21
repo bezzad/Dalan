@@ -173,7 +173,12 @@ systemctl enable opendkim.service postfix.service
 systemctl restart opendkim.service postfix.service
 
 echo "Caddy and units"
-install -m 755 "$here/caddy" "$root/usr/local/bin/caddy"
+install -d -m 755 "$root/opt/dalan/tools"
+# install.sh sends Caddy (and Node and the .NET SDK) only when this server has another version; <tool>.version says which.
+if [ -f "$here/caddy" ]; then
+  install -m 755 "$here/caddy" "$root/usr/local/bin/caddy"
+  install -m 644 "$here/caddy.version" "$root/opt/dalan/tools/caddy.version"
+fi
 install -d -m 755 "$root/etc/caddy"
 install -m 644 "$here/Caddyfile" "$root/etc/caddy/Caddyfile"
 # Domains for Caddy and for the links the server makes; written each run, so a new domain needs only a new run.
@@ -182,7 +187,6 @@ printf 'DALAN_SITE_DOMAIN=%s\nDALAN_API_DOMAIN=%s\nDALAN_TUNNEL_DOMAIN=%s\nAdmin
   "$site" "$api" "$tunnel" "$site" "$api" "$site" "$tunnel" "${SITES_DOMAIN:-}" > "$domains_file"
 chmod 644 "$domains_file"
 rm -f "$root/etc/dalan/caddy.env"
-install -d -m 755 "$root/opt/dalan/tools"
 install -m 755 "$here/backup.sh" "$here/drill.sh" "$root/opt/dalan/tools/"
 for unit in dalan.service caddy.service dalan-backup.service dalan-backup.timer; do
   install -m 644 "$here/$unit" "$root/etc/systemd/system/$unit"
@@ -197,6 +201,7 @@ if [ "${PULL_DEPLOY:-}" = 1 ]; then
     [ -d "$here/$tool" ] || continue
     rm -rf "$root/opt/dalan/tools/$tool"
     cp -a "$here/$tool" "$root/opt/dalan/tools/$tool"
+    install -m 644 "$here/$tool.version" "$root/opt/dalan/tools/$tool.version"
   done
   install -m 755 "$here/pull-deploy.sh" "$root/opt/dalan/tools/"
   for unit in dalan-pull.service dalan-pull.timer; do

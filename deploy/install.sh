@@ -45,8 +45,17 @@ echo "Caddy $version"
 curl -fsSL -o "$cache/caddy_checksums.txt" "$base/caddy_${version}_checksums.txt"
 fetch "$base/$file" "$file" caddy_checksums.txt sha512sum
 
+# The tool versions the server has (written by setup.sh). A tool with the same version is not sent again.
+# No answer (a first install, or the link stalled): everything is sent.
+have=$(ssh "$target" 'cat /opt/dalan/tools/*.version 2>/dev/null' || true)
+# send <tool> <version>: true when the server needs it; writes <tool>.version into the setup folder for setup.sh.
+send() {
+  if grep -qxF "$1 $2" <<< "$have"; then echo "  $1 $2 is on the server already"; return 1; fi
+  echo "$1 $2" > "$work/dalan-setup/$1.version"
+}
+
 mkdir "$work/dalan-setup"
-tar -xzf "$cache/$file" -C "$work/dalan-setup" caddy
+! send caddy "$version" || tar -xzf "$cache/$file" -C "$work/dalan-setup" caddy
 cp "$here"/{setup.sh,backup.sh,drill.sh,Caddyfile,dalan.service,caddy.service,dalan-backup.service,dalan-backup.timer} "$work/dalan-setup/"
 if [ "${PULL_DEPLOY:-}" = 1 ]; then
   cp "$here"/{pull-deploy.sh,dalan-pull.service,dalan-pull.timer} "$work/dalan-setup/"
@@ -55,14 +64,15 @@ if [ "${PULL_DEPLOY:-}" = 1 ]; then
   # dotnet-install.sh skips the download when the newest patch is already in the cache folder.
   [ -s "$cache/dotnet-install.sh" ] || curl -fsSL -o "$cache/dotnet-install.sh" https://dot.net/v1/dotnet-install.sh
   bash "$cache/dotnet-install.sh" --channel "$sdk" --install-dir "$cache/dotnet-$sdk" --no-path >/dev/null
-  cp -a "$cache/dotnet-$sdk" "$work/dalan-setup/dotnet"
+  sdk_version=$(ls "$cache/dotnet-$sdk/sdk" | sort -V | tail -n 1)
+  ! send dotnet "$sdk_version" || cp -a "$cache/dotnet-$sdk" "$work/dalan-setup/dotnet"
   node=$(sed -nE 's/^ *node-version: ([0-9]+).*/\1/p' "$here/../.github/workflows/ci.yml" | head -n 1)
   echo "Node $node"
   base="https://nodejs.org/dist/latest-v$node.x"
   curl -fsSL -o "$cache/node_SHASUMS256.txt" "$base/SHASUMS256.txt"
   file=$(grep -oE "node-v[0-9.]+-linux-x64\.tar\.xz" "$cache/node_SHASUMS256.txt" | head -n 1)
   fetch "$base/$file" "$file" node_SHASUMS256.txt sha256sum
-  mkdir "$work/dalan-setup/node" && tar -xJf "$cache/$file" -C "$work/dalan-setup/node" --strip-components=1
+  ! send node "${file%.tar.xz}" || { mkdir "$work/dalan-setup/node" && tar -xJf "$cache/$file" -C "$work/dalan-setup/node" --strip-components=1; }
 fi
 cp "$key" "$work/dalan-setup/deploy.pub"
 # A file, not the command line, so the key is not visible in the server's process list.
