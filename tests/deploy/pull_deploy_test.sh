@@ -10,6 +10,7 @@ tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 export RETRY_WAITS="0 0 0" DEPLOY_DIR="$tmp/dalan" DALAN_REPO="$tmp/origin.git"
 mkdir -p "$DEPLOY_DIR/releases/old/agent"
 echo windows > "$DEPLOY_DIR/releases/old/agent/dalan-windows-x64.exe"
+echo mac > "$DEPLOY_DIR/releases/old/agent/dalan-macos-arm64"
 ln -s "$DEPLOY_DIR/releases/old" "$DEPLOY_DIR/current"
 
 # Every git call is written down, then the real git runs.
@@ -43,11 +44,12 @@ version=$(git -C "$work" rev-parse HEAD | cut -c1-12)
 bash "$script" > /dev/null || fail "first run failed"
 [ "$(cat "$DEPLOY_DIR/deploys.log")" = "deploy $version" ] || fail "main not deployed: $(cat "$DEPLOY_DIR/deploys.log")"
 [ -f "$DEPLOY_DIR/releases/$version/agent/dalan-windows-x64.exe" ] || fail "the Windows agent of the running release was lost"
+[ -f "$DEPLOY_DIR/releases/$version/agent/dalan-macos-arm64" ] || fail "the macOS agent of the running release was lost"
 [ -f "$DEPLOY_DIR/releases/$version/agent/dalan-linux-x64" ] || fail "the new Linux agent is not in the release"
 : > "$tmp/git.log"
 bash "$script" > /dev/null || fail "second run failed"
 [ "$(deploys)" = 1 ] || fail "the same commit was deployed twice"
-echo "PASS OPS-16 DEL-08 the server builds and deploys a new main once, with the running Windows agent"
+echo "PASS OPS-16 DEL-08 the server builds and deploys a new main once, with the running Windows and macOS agents"
 
 grep -qx "git ls-remote --exit-code $DALAN_REPO refs/heads/main" "$tmp/git.log" || fail "not asked for refs/heads/main only: $(cat "$tmp/git.log")"
 [ "$(wc -l < "$tmp/git.log")" = 1 ] || fail "a run with nothing new did more than ask: $(cat "$tmp/git.log")"

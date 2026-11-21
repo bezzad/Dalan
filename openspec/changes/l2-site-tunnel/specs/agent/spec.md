@@ -9,6 +9,10 @@ The agent SHALL be published with Native AOT as one executable per system that r
 - **WHEN** CI publishes the agent for linux-x64
 - **THEN** it is one file, there is no warning, and `dalan version` runs on a machine with no .NET
 
+#### Scenario: macOS build
+- **WHEN** CI publishes the agent for osx-arm64 and osx-x64, each on a Mac of that CPU
+- **THEN** each is one file, there is no warning, and `dalan version` runs
+
 ### Requirement: AGT-02 Login once
 `dalan login <key>` SHALL save the access key, and the server address when given, in the config file (`~/.config/dalan/dalan.json`, or `%APPDATA%\dalan\dalan.json` on Windows). On Linux and macOS the file SHALL be readable only by its owner. A key that does not start with `dalan_` SHALL be refused.
 
@@ -81,6 +85,14 @@ The default server SHALL be `https://tunnel.dalanet.ir`. `--server <url>` or the
 #### Scenario: Install on Linux
 - **WHEN** a user runs `curl -fsSL https://dalanet.ir/install.sh | sh`
 - **THEN** the script downloads `https://dalanet.ir/downloads/dalan-linux-x64`, and `dalan version` works
+
+#### Scenario: Install on a Mac
+- **WHEN** a user runs the same command on a Mac with an Apple or an Intel CPU
+- **THEN** the script downloads `dalan-macos-arm64` or `dalan-macos-x64`
+
+#### Scenario: Another system
+- **WHEN** a user runs the same command on a system with no agent file
+- **THEN** the script says so and installs nothing
 
 #### Scenario: Another file in the folder
 - **GIVEN** a file `secret.txt` in the agent folder

@@ -217,6 +217,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 63 | 2026-11-20 | The agent logs in with an access key (builders only, like bots); a browser code login comes later. It shares no code with the server; end-to-end tests run it against the test server |
 | 64 | 2026-11-20 | Dalan serves the agent files and the one-line install scripts itself (users in Iran may have no GitHub). Caddy gets a certificate for each site name on its first visit, after Dalan says the name is real; no wildcard certificate yet (needs a DNS challenge) |
 | 65 | 2026-11-21 | GitHub Actions minutes ran out: the gate is `scripts/ci.sh` on the owner's computer (the same steps as `ci.yml`, which now runs only by hand); the server builds main itself every minute (`git ls-remote` of main only); the Windows agent comes from a CI run by hand |
+| 66 | 2026-11-21 | The repository is public (the owner cannot pay GitHub; public repositories run Actions free). A CI run by hand builds the Windows and macOS agents (`macos-26`, `macos-26-intel`) with Native AOT, each on its own system |
 
 ## 11. Client address and access log
 
