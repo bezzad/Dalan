@@ -6,7 +6,7 @@ set -euo pipefail
 dir="$1"
 fail() { echo "FAIL: $*"; exit 1; }
 
-files=$(ls "$dir" | sort | tr '\n' ' ')
+files=$(ls "$dir" | LC_ALL=C sort | tr '\n' ' ')
 [ "$files" = "Dalan.Host appsettings.json " ] || fail "release has extra files: $files"
 
 # CLI-02: the PWA page is inside the executable, not beside it.
