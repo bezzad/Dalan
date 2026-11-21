@@ -27,6 +27,10 @@ try
             file.Save(saved);
             return await RunAsync(command, saved, sites);
 
+        case CommandKind.Demo:
+            // AGT-11: a demo is not saved in the config file.
+            return await RunAsync(command, config, [], command.Sites[0].Port);
+
         default:
             return config.Sites.Count > 0
                 ? await RunAsync(command, config, config.Sites)
@@ -39,7 +43,7 @@ catch (AgentStopException stop)
     return 1;
 }
 
-static async Task<int> RunAsync(Command command, AgentConfig config, IReadOnlyList<SiteEntry> sites)
+static async Task<int> RunAsync(Command command, AgentConfig config, IReadOnlyList<SiteEntry> sites, int? demoPort = null)
 {
     if (config.Key is null) throw new AgentStopException("Log in first: dalan login <key> (make a key in \"My apps\" on Dalan).");
 
@@ -56,6 +60,6 @@ static async Task<int> RunAsync(Command command, AgentConfig config, IReadOnlyLi
     using var local = new LocalForwarder(handler);
     var client = new TunnelClient(http, config.Key, TunnelClient.RealWebSocket, local, Console.Out);
     Console.WriteLine($"Connecting to {server} ...");
-    await client.RunAsync(sites, stop.Token);
+    await client.RunAsync(sites, stop.Token, demoPort);
     return 0;
 }

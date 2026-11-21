@@ -5,7 +5,9 @@ using System.Security.Claims;
 using System.Text.Json;
 using Dalan.Admin.Contracts;
 using Dalan.Identity.Contracts;
+using Dalan.Sites.Demos;
 using Dalan.Sites.Names;
+using Dalan.Sites.Proxy;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -24,6 +26,7 @@ internal static class TunnelEndpoints
         var tunnel = endpoints.MapGroup("/api/tunnel").RequireAuthorization(AccessKeys.SessionOrKeyPolicy)
             .AddEndpointFilter<BuilderOnly>();
         tunnel.MapPost("/sessions", OpenAsync);
+        tunnel.MapDelete("/demos/{id}", EndDemoAsync);
         tunnel.MapGet("/sessions/{session}/ws", WebSocketAsync);
         tunnel.MapGet("/sessions/{session}/requests", PollAsync);
         tunnel.MapPost("/sessions/{session}/responses", AnswerAsync);
@@ -33,32 +36,71 @@ internal static class TunnelEndpoints
     internal static long UserId(HttpContext http) =>
         long.Parse(http.User.FindFirstValue("sub")!, CultureInfo.InvariantCulture);
 
-    private static async Task<IResult> OpenAsync(HttpContext http, SiteBook book, TunnelHub hub, IOptionsMonitor<SitesOptions> options)
+    private static async Task<IResult> OpenAsync(
+        HttpContext http, SiteBook book, DemoBook demos, TunnelHub hub, IOptionsMonitor<SitesOptions> options)
     {
         var settings = options.CurrentValue;
         if (settings.Domain.Length == 0)
             return SitesJson.Error(StatusCodes.Status503ServiceUnavailable, "sites_off", "Sites are not turned on in this server yet.");
 
         var body = await SitesJson.ReadAsync<OpenSessionRequest>(http);
-        if (body?.Sites is not { Length: > 0 } names)
-            return SitesJson.Error(StatusCodes.Status400BadRequest, "bad_request", "Send {\"sites\":[\"name\"]} with one name or more.");
+        var names = body?.Sites ?? [];
+        if (body is null || (names.Length == 0 && string.IsNullOrEmpty(body.Demo)))
+            return SitesJson.Error(StatusCodes.Status400BadRequest, "bad_request", "Send {\"sites\":[\"name\"]} with one name or more, or {\"demo\":\"new\"}.");
+        if (!string.IsNullOrEmpty(body.Demo) && settings.DemoHost.Length == 0)
+            return SitesJson.Error(StatusCodes.Status503ServiceUnavailable, "demos_off", "Demos are not turned on in this server yet.");
 
         var userId = UserId(http);
-        var (error, name, clean) = await book.ClaimAsync(userId, names, http.RequestAborted);
-        return error switch
+        var clean = Array.Empty<string>();
+        if (names.Length > 0)
         {
-            ClaimError.BadName => SitesJson.Error(StatusCodes.Status400BadRequest, "bad_name",
-                $"\"{name}\" is not a good site name. Use 3 to {settings.MaxNameLength} letters a-z, digits and '-', not at the start or end. Some names are kept for Dalan."),
-            ClaimError.NameTaken => SitesJson.Error(StatusCodes.Status409Conflict, "name_taken",
-                $"The name \"{name}\" belongs to another builder. Choose another name."),
-            ClaimError.SiteLimit => SitesJson.Error(StatusCodes.Status409Conflict, "site_limit",
-                $"You may have at most {settings.MaxSitesPerBuilder} sites. Delete one in My apps first."),
-            _ => SitesJson.Ok(Opened(hub.Open(userId, clean), clean, settings)),
-        };
+            var (error, name, claimed) = await book.ClaimAsync(userId, names, http.RequestAborted);
+            if (error != ClaimError.None) return ClaimFailed(error, name, settings);
+            clean = claimed;
+        }
+
+        DemoAddress? address = null;
+        string[] keys = clean;
+        if (!string.IsNullOrEmpty(body.Demo))
+        {
+            var (error, demo) = await demos.OpenAsync(userId, body.Demo, http.RequestAborted);
+            if (demo is null) return DemoFailed(error, settings);
+            address = new DemoAddress(demo.Id, settings.DemoUrlOf(demo.Id), demo.ExpiresAt);
+            keys = [.. clean, SiteProxy.DemoKey(demo.Id)];
+        }
+
+        var session = hub.Open(userId, keys);
+        return SitesJson.Ok(new OpenSessionAnswer(session.Id,
+            [.. clean.Select(site => new SiteAddress(site, settings.UrlOf(site)))], settings.MaxBodyMb, address));
     }
 
-    private static OpenSessionAnswer Opened(TunnelSession session, string[] sites, SitesOptions settings) =>
-        new(session.Id, [.. sites.Select(site => new SiteAddress(site, settings.UrlOf(site)))], settings.MaxBodyMb);
+    private static IResult ClaimFailed(ClaimError error, string? name, SitesOptions settings) => error switch
+    {
+        ClaimError.BadName => SitesJson.Error(StatusCodes.Status400BadRequest, "bad_name",
+            $"\"{name}\" is not a good site name. Use 3 to {settings.MaxNameLength} letters a-z, digits and '-', not at the start or end. Some names are kept for Dalan."),
+        ClaimError.NameTaken => SitesJson.Error(StatusCodes.Status409Conflict, "name_taken",
+            $"The name \"{name}\" belongs to another builder. Choose another name."),
+        _ => SitesJson.Error(StatusCodes.Status409Conflict, "site_limit",
+            $"You may have at most {settings.MaxSitesPerBuilder} sites. Delete one in My apps first."),
+    };
+
+    private static IResult DemoFailed(DemoError error, SitesOptions settings) => error switch
+    {
+        DemoError.Limit => SitesJson.Error(StatusCodes.Status409Conflict, "demo_limit",
+            $"You may have at most {settings.MaxDemosPerBuilder} live demos. Stop one first."),
+        DemoError.Ended => SitesJson.Error(StatusCodes.Status410Gone, "demo_ended", "This demo has ended."),
+        _ => DemoNotFound(),
+    };
+
+    private static IResult DemoNotFound() => SitesJson.Error(StatusCodes.Status404NotFound, "demo_not_found", "You have no demo with this id.");
+
+    /// <summary>SITE-20: the owner ends a demo; its address answers 410 at once.</summary>
+    private static async Task<IResult> EndDemoAsync(string id, HttpContext http, DemoBook demos, TunnelHub hub)
+    {
+        if (!await demos.EndAsync(UserId(http), id, http.RequestAborted)) return DemoNotFound();
+        hub.Drop(SiteProxy.DemoKey(id));
+        return Results.NoContent();
+    }
 
     /// <summary>SITE-05: requests out as text messages, answers in as text messages. SITE-15: access is asked again from time to time.</summary>
     private static async Task WebSocketAsync(

@@ -5,11 +5,13 @@ namespace Dalan.Agent;
 // The tunnel protocol of the server (openspec change l2-site-tunnel, design.md). The agent shares no code with the server;
 // the end-to-end tests in tests/Dalan.Sites.Tests run this agent against the real server, so both sides stay the same.
 
-public sealed record OpenSession(string[] Sites);
+public sealed record OpenSession(string[] Sites, string? Demo = null);
 
 public sealed record SiteAddress(string Name, string Url);
 
-public sealed record SessionOpened(string Session, SiteAddress[] Sites, int MaxBodyMb);
+public sealed record DemoAddress(string Id, string Url, DateTimeOffset ExpiresAt);
+
+public sealed record SessionOpened(string Session, SiteAddress[] Sites, int MaxBodyMb, DemoAddress? Demo = null);
 
 public sealed record TunnelRequest(long Id, string Site, string Method, string Path, Dictionary<string, string[]> Headers, string? Body);
 

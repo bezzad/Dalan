@@ -1,4 +1,5 @@
 using Dalan.Sites.Data;
+using Dalan.Sites.Demos;
 using Dalan.Sites.Downloads;
 using Dalan.Sites.MySites;
 using Dalan.Sites.Names;
@@ -22,6 +23,8 @@ public static class SitesService
         services.AddOptions<SitesOptions>().BindConfiguration("Sites")
             .Validate<IConfiguration>((options, configuration) => !IsUnderDalan(options.Domain, configuration["Admin:SiteUrl"]),
                 "Sites:Domain must be another registered domain than the host of Admin:SiteUrl (SITE-13): a site's script could set cookies for Dalan.")
+            .Validate<IConfiguration>((options, configuration) => !IsUnderDalan(options.DemoHost, configuration["Admin:SiteUrl"]),
+                "Sites:DemoHost must not be Dalan's own host or a name under it (SITE-18): the demo host takes every request of its host.")
             .ValidateOnStart();
         services.TryAddSingleton(TimeProvider.System);
         services.AddPooledDbContextFactory<SitesDb>((provider, options) => options
@@ -30,6 +33,7 @@ public static class SitesService
                 npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", SitesDb.Schema))
             .UseSnakeCaseNamingConvention());
         services.AddSingleton<SiteBook>();
+        services.AddSingleton<DemoBook>();
         services.AddSingleton<TunnelHub>();
         services.AddSingleton<SiteProxy>();
         return services;
@@ -42,12 +46,17 @@ public static class SitesService
     public static IApplicationBuilder UseSites(this IApplicationBuilder app, Action<IApplicationBuilder> branch)
     {
         var options = app.ApplicationServices.GetRequiredService<IOptionsMonitor<SitesOptions>>();
-        return app.MapWhen(http => SiteProxy.SiteOf(http.Request.Host, options.CurrentValue) is not null, site =>
-        {
-            branch(site);
-            site.Run(http => http.RequestServices.GetRequiredService<SiteProxy>()
-                .HandleAsync(http, SiteProxy.SiteOf(http.Request.Host, options.CurrentValue) ?? ""));
-        });
+        return app.MapWhen(
+            http => SiteProxy.IsDemoHost(http.Request.Host, options.CurrentValue)
+                || SiteProxy.SiteOf(http.Request.Host, options.CurrentValue) is not null,
+            site =>
+            {
+                branch(site);
+                site.Run(http => SiteProxy.IsDemoHost(http.Request.Host, options.CurrentValue)
+                    ? http.RequestServices.GetRequiredService<SiteProxy>().HandleDemoAsync(http)
+                    : http.RequestServices.GetRequiredService<SiteProxy>()
+                        .HandleAsync(http, SiteProxy.SiteOf(http.Request.Host, options.CurrentValue) ?? ""));
+            });
     }
 
     public static IEndpointRouteBuilder MapSitesService(this IEndpointRouteBuilder endpoints)

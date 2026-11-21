@@ -112,6 +112,8 @@ Users' sites live on their own registered domain (ours: `dalans.ir`), never unde
 
 3. Check: `curl -fsSL https://dalanet.ir/install.sh | head -3`, then on any computer install the agent, make a key in "My apps" and run a site. Caddy gets each site's certificate on its first visit (a few seconds), only for names Dalan knows (SITE-17).
 
+4. Demo links (`dalan demo <port>`): set `Sites__DemoHost=dalans.ir` in `/etc/dalan/dalan.env` and restart Dalan. It needs only the DNS of the sites domain, which exists; Caddy gets the certificate of the bare host on its first visit, after Dalan says yes (SITE-17). Empty `Sites__DemoHost`: demos are off. It cannot be changed in the admin screen. `Sites:DemoHours`, `Sites:DemoIdLength` and `Sites:MaxDemosPerBuilder` can.
+
 Limit: Let's Encrypt gives about 50 new certificates per registered domain per week, so about 50 new site names a week. After buying the sites domain, ask for it on the Public Suffix List (https://github.com/publicsuffix/list), so a site cannot set cookies for the other sites. Before the domain is ready, test with sslip.io: `SITES_DOMAIN=203-0-113-10.sslip.io` gives `name.203-0-113-10.sslip.io` (it needs foreign DNS, so not for the drill).
 
 The agent files come with each deploy (`/opt/dalan/current/agent`, DEL-08); `/downloads/<file>` serves them.

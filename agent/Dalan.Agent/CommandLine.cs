@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 
 namespace Dalan.Agent;
 
-public enum CommandKind { Help, Version, Login, Http, Start }
+public enum CommandKind { Help, Version, Login, Http, Demo, Start }
 
 /// <summary>What the user asked for. <see cref="Sites"/> holds port and name pairs of "http"; a null name means "choose one".</summary>
 public sealed record Command(CommandKind Kind, string? Key, string? Server, IReadOnlyList<(int Port, string? Name)> Sites);
@@ -18,6 +18,7 @@ public static class CommandLine
 
           dalan login <key>                       save your access key (make one in "My apps" on Dalan)
           dalan http <port> [--name <name>]       show the app on this port; more "<port> --name <name>" pairs for more sites
+          dalan demo <port>                       a test link, for a limited time, to show the app on this port; Ctrl+C ends it
           dalan start                             run every site saved in the config file
           dalan version
 
@@ -40,6 +41,7 @@ public static class CommandLine
             "login" when rest.Count == 2 => new(CommandKind.Login, Key(rest[1]), server, []),
             "login" => throw new AgentStopException("Use: dalan login <key>"),
             "http" => new(CommandKind.Http, null, server, Pairs(rest)),
+            "demo" => new(CommandKind.Demo, null, server, [(DemoPort(rest), null)]),
             "start" => new(CommandKind.Start, null, server, []),
             "version" or "--version" => new(CommandKind.Version, null, server, []),
             "help" or "--help" or "-h" => new(CommandKind.Help, null, server, []),
@@ -82,6 +84,12 @@ public static class CommandLine
     private static string Key(string key) => key.StartsWith("dalan_", StringComparison.Ordinal)
         ? key
         : throw new AgentStopException("This is not a Dalan access key. A key starts with \"dalan_\"; make one in \"My apps\" on Dalan.");
+
+    /// <summary>AGT-11: "demo" takes exactly one port.</summary>
+    private static int DemoPort(List<string> rest) =>
+        rest.Count == 2 && int.TryParse(rest[1], NumberStyles.None, CultureInfo.InvariantCulture, out var port) && port is >= 1 and <= 65535
+            ? port
+            : throw new AgentStopException("Use: dalan demo <port>, for example dalan demo 3000");
 
     private static List<(int, string?)> Pairs(List<string> rest)
     {
