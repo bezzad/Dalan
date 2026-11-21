@@ -2,7 +2,9 @@
 
 ## Purpose
 The web app people use: a small PWA in plain TypeScript, Persian first, served by the same process, that loads nothing from a foreign host.
+
 ## Requirements
+
 ### Requirement: CLI-01 The server serves the client
 The server SHALL serve the PWA page at `/`, `/bots`, `/privacy`, `/faq`, `/showcase`, `/guide` and `/@<bot username>`, and its files (scripts, styles, font, icons) from the same origin. The page SHALL be sent with `Cache-Control: no-cache`, so a new release is seen at the next open. Any other unknown path SHALL get 404.
 
@@ -500,3 +502,13 @@ No English text that the product shows SHALL name Iran: client texts, page title
 - **WHEN** a visitor reads `/llms.txt`, or sends a bad phone number to `/api/auth/sms`
 - **THEN** the text does not contain "Iran" in any case
 
+### Requirement: CLI-39 My apps
+The user menu SHALL open "My apps" at `/apps`. For a builder it SHALL list their sites (name, address as a link, online or offline) with a delete that asks first, and show a step-by-step guide: 1) install the agent, 2) log in with a key made here by one button (the full `dalan login` command, shown once, with Copy), 3) run `dalan http <port> --name <name>`, with an example for two sites. Every action SHALL end in a toast. A user who is not a builder SHALL see how to become one instead.
+
+#### Scenario: Guide commands
+- **WHEN** the guide is drawn for the name `levelwise` and port `3000`
+- **THEN** it shows `dalan http 3000 --name levelwise`
+
+#### Scenario: Not a builder
+- **WHEN** a user who is not a builder opens "My apps"
+- **THEN** they see the way to become a builder, and no site list
