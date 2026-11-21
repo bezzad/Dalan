@@ -4,6 +4,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- NU1900: nuget.org did not answer the vulnerability check (filtered from Iran now and then). The build uses the
+         package cache, so it must not fail for that. A known vulnerable package (NU1901 to NU1904) still fails it. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1900</WarningsNotAsErrors>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
   </PropertyGroup>
 </Project>
