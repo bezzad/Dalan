@@ -44,14 +44,9 @@ The gate is `scripts/ci.sh` on the owner's computer (rule `DEL-01`): it runs eve
 
 Tools it needs (it fails by name when one is missing): the .NET SDK of `global.json`, Node of the major version in `ci.yml` with npm, `clang` and `zlib1g-dev` (`sudo apt install clang zlib1g-dev`), `caddy` (the version `CADDY_VERSION` in `ci.yml`), and Docker or `DALAN_TEST_POSTGRES`. Without Docker only the image test is skipped.
 
-When Docker cannot stop the test containers (seen on the owner's NUC: "Container failed to exit within 10s of kill", then every test project fails in its cleanup), use one long-running PostgreSQL instead. With `DALAN_TEST_POSTGRES` set, `ci.sh` runs the test projects one at a time:
+The test PostgreSQL keeps its data in memory (tmpfs, no `fsync`): on a busy disk the tests were slow and Docker could not stop the containers. `docker info` must reach the engine: on a computer with Docker Desktop installed but not running, `docker context use default`.
 
-```bash
-docker compose -p dalan up -d
-DALAN_TEST_POSTGRES='Host=127.0.0.1;Port=5432;Username=dalan;Password=dalan;Database=postgres' bash scripts/ci.sh
-```
-
-Each test makes a database `dalan_test_<id>` there and leaves it. Drop them now and then: `docker exec dalan-postgres-1 psql -U dalan -d postgres -Atc "select format('drop database %I with (force);', datname) from pg_database where datname like 'dalan_test_%'" | docker exec -i dalan-postgres-1 psql -U dalan -d postgres -q`.
+With `DALAN_TEST_POSTGRES` (one shared server, no Docker) `ci.sh` runs the test projects one at a time. Each test leaves a database `dalan_test_<id>` there; drop them now and then.
 
 ```bash
 bash scripts/ci.sh               # everything, before each merge

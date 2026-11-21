@@ -56,7 +56,7 @@ if [ "$docker" = yes ]; then
     docker run -d --name "$name" -p 127.0.0.1:18095:8080 dalan-ci > /dev/null
     trap "docker rm -f $name > /dev/null" EXIT
     for _ in $(seq 50); do curl -fs -o /dev/null http://127.0.0.1:18095/health && break; sleep 0.2; done
-    curl -fs http://127.0.0.1:18095/health'
+    curl -fs http://127.0.0.1:18095/health && echo'
 else
   echo "SKIP docker (Docker is not there)"
 fi
