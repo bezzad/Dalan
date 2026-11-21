@@ -245,6 +245,7 @@ echo "PASS OPS-10 secrets can be made again"
 
 # Rule: OPS-09 install.sh downloads Caddy on the owner's machine (the CI version, checked) and runs setup over SSH
 inst="$tmp/inst"; mkdir -p "$inst/bin"
+export DALAN_CACHE="$inst/cache"
 ci_version=$(sed -nE 's/^ *CADDY_VERSION: "(.*)"/\1/p' "$deploy/../.github/workflows/ci.yml")
 cat > "$inst/bin/curl" <<SH
 #!/bin/bash
@@ -308,7 +309,8 @@ tar -cJf "$inst/node-v26.0.0-linux-x64.tar.xz" -C "$inst/node" node-v26.0.0-linu
 cat > "$inst/dotnet-install.sh" <<'SH'
 #!/bin/bash
 while [ $# -gt 0 ]; do [ "$1" = --install-dir ] && dir="$2"; shift; done
-mkdir -p "$dir/sdk" && echo sdk > "$dir/sdk/dotnet.dll" && ln -s sdk/dotnet.dll "$dir/dotnet"
+# Like the real script: an SDK that is already there is not installed again.
+[ -e "$dir/dotnet" ] || { mkdir -p "$dir/sdk" && echo sdk > "$dir/sdk/dotnet.dll" && ln -s sdk/dotnet.dll "$dir/dotnet"; }
 SH
 rm -rf "$inst/copied" "$inst/remote.log"
 PULL_DEPLOY=1 PATH="$inst/bin:$PATH" bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null \
@@ -317,6 +319,17 @@ PULL_DEPLOY=1 PATH="$inst/bin:$PATH" bash "$deploy/install.sh" admin@server dala
 [ "$(readlink "$inst/copied/dotnet/dotnet")" = sdk/dotnet.dll ] || fail "the .NET SDK lost its symlinks"
 for f in pull-deploy.sh dalan-pull.service dalan-pull.timer; do [ -f "$inst/copied/$f" ] || fail "$f not copied"; done
 echo "PASS OPS-16 install.sh brings Node and the .NET SDK with their symlinks"
+
+# Rule: OPS-16 a second install.sh run takes Caddy, Node and the .NET SDK from the cache on this computer
+[ -f "$DALAN_CACHE/dotnet-11.0/sdk/dotnet.dll" ] || fail "the .NET SDK is not installed into the cache"
+rm -rf "$inst/copied" "$inst/remote.log" "$inst/urls.log"
+PULL_DEPLOY=1 PATH="$inst/bin:$PATH" bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null \
+  || fail "second install.sh with PULL_DEPLOY failed"
+grep -E 'caddy_.*linux_amd64\.tar\.gz$|node-v.*\.tar\.xz$|dotnet-install\.sh$' "$inst/urls.log" && fail "downloaded again: $(cat "$inst/urls.log")"
+[ "$(readlink "$inst/copied/node/bin/npm")" = ../lib/node_modules/npm/bin/npm-cli.js ] || fail "npm from the cache is not a symlink"
+[ "$(readlink "$inst/copied/dotnet/dotnet")" = sdk/dotnet.dll ] || fail "the .NET SDK from the cache lost its symlinks"
+[ -f "$inst/copied/caddy" ] || fail "Caddy from the cache not copied"
+echo "PASS OPS-16 a second install.sh run downloads Caddy, Node and the .NET SDK only once"
 
 # Rule: OPS-14 install.sh sends the secret in a file, never on a command line
 rm -rf "$inst/copied" "$inst/remote.log"

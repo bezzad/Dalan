@@ -164,7 +164,7 @@ sudo sed -i "s|^Identity__SigningKey=.*|Identity__SigningKey=$NEW|" /etc/dalan/d
 
 The main way a release reaches the server (DEL-06). The server needs GitHub, but nothing else from abroad after the first build (NuGet and npm packages stay in `/home/deploy`).
 
-1. On your computer: `PULL_DEPLOY=1 SITES_DOMAIN=dalans.ir bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub`. It downloads the .NET SDK (the version in `global.json`, newest patch) and Node (the major version in `ci.yml`) here, about 300 MB, and copies them; the server downloads neither. Give `PULL_DEPLOY=1` again only to update them.
+1. On your computer: `PULL_DEPLOY=1 SITES_DOMAIN=dalans.ir bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub`. It downloads the .NET SDK (the version in `global.json`, newest patch) and Node (the major version in `ci.yml`) here, about 300 MB, and copies them; the server downloads neither. They stay in `~/.cache/dalan-install` (`DALAN_CACHE`), so a later run downloads only a new version. Give `PULL_DEPLOY=1` again only to update them.
 2. Setup makes the GitHub key and prints it. Add it to GitHub read-only (below).
 3. `dalan-pull.timer` runs every minute. Each run asks GitHub only for `refs/heads/main` (`git ls-remote`, small); no other branch is ever fetched or built. A new commit is fetched, built in a new folder (about 5 minutes, low priority), smoke-tested on `/health` (no database), and deployed with `deploy.sh`: switch, restart, `/ready`, rollback when not ready. Only the last 5 releases are kept. A lock keeps two runs from overlapping. Watch: `journalctl -u dalan-pull -f`. Start a run now: `sudo systemctl start dalan-pull`.
 

@@ -15,6 +15,8 @@
 #   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET   the GitHub OAuth app for "Log in with GitHub" (OPS-14; docs/SERVER.md)
 #   PULL_DEPLOY=1   the server builds and deploys main itself (OPS-16): also downloads the .NET SDK (the version in
 #                   global.json, newest patch) and Node (the major version CI uses) here and copies them
+#   DALAN_CACHE     default ~/.cache/dalan-install: Caddy, Node and the .NET SDK stay here, so the next run downloads
+#                   only what changed (a new version)
 #   SITES_DOMAIN    the users' sites, for example dalancloud.ir (empty: sites are off); TUNNEL_DOMAIN default tunnel.<site domain> (OPS-15)
 # Example: ADMIN_PHONES=09121234567 SMS=log deploy/install.sh root@203.0.113.10 dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
 set -euo pipefail
@@ -27,30 +29,40 @@ here="$(cd "$(dirname "$0")" && pwd)"
 version="${CADDY_VERSION:-$(sed -nE 's/^ *CADDY_VERSION: "(.*)"/\1/p' "$here/../.github/workflows/ci.yml")}"
 
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
+cache="${DALAN_CACHE:-$HOME/.cache/dalan-install}"
+mkdir -p "$cache"
+# fetch <url> <file in the cache> <checksum file> <sha256sum|sha512sum>: download only when the cached file is missing or wrong.
+fetch() {
+  local check; check() { (cd "$cache" && grep " $2\$" "$3" | "$4" -c - >/dev/null 2>&1); }
+  check "$1" "$2" "$3" "$4" && { echo "  $2 (from the cache)"; return 0; }
+  curl -fsSL -o "$cache/$2" "$1"
+  (cd "$cache" && grep " $2\$" "$3" | "$4" -c -)
+}
+
 file="caddy_${version}_linux_amd64.tar.gz"
 base="https://github.com/caddyserver/caddy/releases/download/v${version}"
-echo "Downloading Caddy $version"
-curl -fsSL -o "$work/$file" "$base/$file"
-curl -fsSL -o "$work/checksums.txt" "$base/caddy_${version}_checksums.txt"
-(cd "$work" && grep " $file\$" checksums.txt | sha512sum -c -)
+echo "Caddy $version"
+curl -fsSL -o "$cache/caddy_checksums.txt" "$base/caddy_${version}_checksums.txt"
+fetch "$base/$file" "$file" caddy_checksums.txt sha512sum
 
 mkdir "$work/dalan-setup"
-tar -xzf "$work/$file" -C "$work/dalan-setup" caddy
+tar -xzf "$cache/$file" -C "$work/dalan-setup" caddy
 cp "$here"/{setup.sh,backup.sh,drill.sh,Caddyfile,dalan.service,caddy.service,dalan-backup.service,dalan-backup.timer} "$work/dalan-setup/"
 if [ "${PULL_DEPLOY:-}" = 1 ]; then
   cp "$here"/{pull-deploy.sh,dalan-pull.service,dalan-pull.timer} "$work/dalan-setup/"
   sdk=$(sed -nE 's/.*"version": "([0-9]+\.[0-9]+)\..*/\1/p' "$here/../global.json")
-  echo "Downloading the .NET SDK $sdk"
-  curl -fsSL -o "$work/dotnet-install.sh" https://dot.net/v1/dotnet-install.sh
-  bash "$work/dotnet-install.sh" --channel "$sdk" --install-dir "$work/dalan-setup/dotnet" --no-path >/dev/null
+  echo "The .NET SDK $sdk"
+  # dotnet-install.sh skips the download when the newest patch is already in the cache folder.
+  [ -s "$cache/dotnet-install.sh" ] || curl -fsSL -o "$cache/dotnet-install.sh" https://dot.net/v1/dotnet-install.sh
+  bash "$cache/dotnet-install.sh" --channel "$sdk" --install-dir "$cache/dotnet-$sdk" --no-path >/dev/null
+  cp -a "$cache/dotnet-$sdk" "$work/dalan-setup/dotnet"
   node=$(sed -nE 's/^ *node-version: ([0-9]+).*/\1/p' "$here/../.github/workflows/ci.yml" | head -n 1)
-  echo "Downloading Node $node"
+  echo "Node $node"
   base="https://nodejs.org/dist/latest-v$node.x"
-  curl -fsSL -o "$work/SHASUMS256.txt" "$base/SHASUMS256.txt"
-  file=$(grep -oE "node-v[0-9.]+-linux-x64\.tar\.xz" "$work/SHASUMS256.txt" | head -n 1)
-  curl -fsSL -o "$work/$file" "$base/$file"
-  (cd "$work" && grep " $file\$" SHASUMS256.txt | sha256sum -c -)
-  mkdir "$work/dalan-setup/node" && tar -xJf "$work/$file" -C "$work/dalan-setup/node" --strip-components=1
+  curl -fsSL -o "$cache/node_SHASUMS256.txt" "$base/SHASUMS256.txt"
+  file=$(grep -oE "node-v[0-9.]+-linux-x64\.tar\.xz" "$cache/node_SHASUMS256.txt" | head -n 1)
+  fetch "$base/$file" "$file" node_SHASUMS256.txt sha256sum
+  mkdir "$work/dalan-setup/node" && tar -xJf "$cache/$file" -C "$work/dalan-setup/node" --strip-components=1
 fi
 cp "$key" "$work/dalan-setup/deploy.pub"
 # A file, not the command line, so the key is not visible in the server's process list.
