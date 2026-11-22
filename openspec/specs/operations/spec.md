@@ -2,9 +2,7 @@
 
 ## Purpose
 Defines how the running Dalan server reports its health, starts, stops, logs and reads settings, so it can run under systemd or any container platform.
-
 ## Requirements
-
 ### Requirement: OPS-01 Liveness endpoint
 The server SHALL answer `GET /health` with HTTP 200 and a JSON body with `status` set to `ok` and `version` set to the release version. It MUST NOT call the database or any other dependency.
 
@@ -128,7 +126,7 @@ With `PULL_DEPLOY=1`, setup SHALL install the .NET SDK and Node brought by `inst
 - **THEN** the second run stops at once and changes nothing
 
 ### Requirement: OPS-15 Front proxy for sites and the tunnel
-The front proxy SHALL serve the tunnel host (`DALAN_TUNNEL_DOMAIN`, default `tunnel.<site domain>`) like the site domain. Every other HTTPS host SHALL get its certificate on its first visit, only after Dalan says yes (SITE-17), and SHALL go to Dalan with the client's real address; none of its paths is blocked, because they are the user's site. `setup.sh` SHALL write the tunnel host, `Sites__TunnelUrl` and `Sites__Domain` (from `SITES_DOMAIN`; empty: sites are off) into `domains.env` on each run.
+The front proxy SHALL serve the tunnel host (`DALAN_TUNNEL_DOMAIN`, default `tunnel.<site domain>`) like the site domain. Every other HTTPS host SHALL get its certificate on its first visit, only after Dalan says yes (SITE-17), and SHALL go to Dalan with the client's real address and no blocked path. Each `setup.sh` run SHALL write the tunnel host, `Sites__TunnelUrl`, `Sites__Domain` and `Sites__DemoHost` (both `SITES_DOMAIN`; empty: off) into `domains.env`.
 
 #### Scenario: Unknown host
 - **WHEN** a client opens `https://shop.<sites domain>` and Dalan has no site `shop`
@@ -136,4 +134,5 @@ The front proxy SHALL serve the tunnel host (`DALAN_TUNNEL_DOMAIN`, default `tun
 
 #### Scenario: Sites domain from install.sh
 - **WHEN** the owner runs `SITES_DOMAIN=dalancloud.ir deploy/install.sh ...`
-- **THEN** `domains.env` has `Sites__Domain=dalancloud.ir` and setup prints the DNS record `*.dalancloud.ir`
+- **THEN** `domains.env` has `Sites__Domain=dalancloud.ir` and `Sites__DemoHost=dalancloud.ir`, and setup prints the DNS records `dalancloud.ir` and `*.dalancloud.ir`
+
