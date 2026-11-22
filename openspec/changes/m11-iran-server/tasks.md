@@ -12,5 +12,5 @@
 
 - [x] 2.1 Server, DNS inside Iran, `install.sh` with `PULL_DEPLOY=1`, secrets, the GitHub deploy key; first deploy by the server's own build of main (OPS-16). Done 2026-11-21: 80.244.7.112, DNS at ArvanCloud, `SITES_DOMAIN=dalans.ir`, release `32c55fb` built by the server
 - [ ] 2.2 Drill on: SMS login, ArcaneBot chat and buttons from Iranian mobile data with no VPN
-- [ ] 2.3 DNS records for mail (SPF, DKIM, DMARC) and reverse DNS; a login email reaches Gmail. SPF, DKIM and DMARC are published (2026-11-21); open: reverse DNS of 80.244.7.112 (now `hosted-by.webdade.cloud`) to `dalanet.ir` in the provider panel, then a login email to Gmail
+- [x] 2.3 DNS records for mail (SPF, DKIM, DMARC) and reverse DNS; a login email reaches Gmail. Done 2026-11-22: SPF, DKIM and DMARC are published; a login email reaches the Gmail inbox without a PTR. Reverse DNS stays the provider default (`hosted-by.webdade.cloud`); set it to `dalanet.ir` only if a mail provider rejects us
 - [ ] 2.4 Fix what the drill found, archive this change

@@ -75,7 +75,9 @@ At the end setup prints three TXT records. Add them in the DNS panel (Arvan: DNS
 | `dalan._domainkey` | `v=DKIM1; h=sha256; k=rsa; p=...` (from the setup output, or `sudo cat /etc/dkimkeys/dalan.txt`) |
 | `_dmarc` | `v=DMARC1; p=none` |
 
-In the server provider's panel, set the reverse DNS (PTR) of the server address to `dalanet.ir`. Check:
+Reverse DNS (PTR) is not needed: ours stays the provider default (`hosted-by.webdade.cloud`) and login emails still reach the Gmail inbox (2026-11-22). Only if a mail provider rejects us, set the PTR of the server address to `dalanet.ir` in the server provider's panel.
+
+Check:
 
 ```bash
 timeout 8 bash -c '</dev/tcp/gmail-smtp-in.l.google.com/25' && echo "port 25 open"   # the provider may block it
