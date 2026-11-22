@@ -12,7 +12,7 @@ test("CLI-26 the landing page has the three messages in order and never says tun
   assert.match(landing.en[0]!.title, /own computer/);
   assert.match(landing.en[1]!.title, /verified by email or SMS/);
   assert.match(landing.en[2]!.title, /outside links are down/);
-  assert.match(landing.fa[2]!.title, /اینترنت بین‌الملل قطع/);
+  assert.match(landing.fa[2]!.title, /قطعی اینترنت بین‌الملل/);
   assert.equal(landing.fa.length, 3);
   for (const message of [...landing.fa, ...landing.en]) {
     assert.doesNotMatch(message.title + message.text, /tunnel|تونل/i);
