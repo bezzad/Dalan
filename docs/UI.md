@@ -1,6 +1,6 @@
 # UI design system
 
-Every screen follows this page. The reference is ngrok: dark and clean, neutral greys, one green (owner, 2026-11-18). Change this page first when a rule changes.
+Every screen follows this page. The reference is ngrok: clean and simple, neutral greys, one green (owner, 2026-11-18). Its principles only, never its brand or words: few words, much space, no glow or rainbow text (owner, 2026-11-22). Change this page first when a rule changes.
 
 ## Theme
 - Light and dark. The first open follows the device; the theme button switches light and dark only and keeps the choice (CLI-35).
@@ -11,13 +11,17 @@ Every screen follows this page. The reference is ngrok: dark and clean, neutral 
 
 ## Page frame
 - **Header on every page**: logo and "دالان" on one line, a link to `/`, at the start. At the end the same tools (`headerTools`): the round language button (only a globe; one click switches Persian and English, Persian first), the round theme button of the same size (36px), then "Log in" or the user menu. No page drops it; language never sits among the menu links.
+- **Header links** (public pages, CLI-42): only Plans, Showcase and Guide. FAQ and Privacy live in the footer only.
+- **Phone (below 760px)**: the links fold into a round ☰ button after the tools; it opens a panel with one 48px row per link, closed by a link, a click outside or Escape. "Log in or sign up" becomes "Log in"; a long user name is cut with "…". Under 360px the logo stands without the name. Every page fits 320px and 360 by 740 portrait and 740 by 360 landscape, with no sideways scroll.
 - **Public pages**: the full site header, and the footer with the big half-cut wordmark, always at the bottom of the screen.
+- **Landing page**: only what Dalan does, its features and its plans. No install steps or commands: each plan has "Get started" to its guide, and `/guide` first asks which plan.
 - **Width**: public pages up to `--page-width`. Inner pages (`main.wide`) up to 960px; a simple list or chat may stay narrow. Below that, a 16px side gutter. No sideways scroll on a phone.
 - **Page title row**: Back, the title, then the main action of the page as one primary button at the end (for example "Create bot").
 
 ## Cards, forms and lists
 - A section is a `card`: 1px line, round corners, `--surface`. One topic per card. On a desktop, settings cards may sit in two columns (`main.cols`).
 - A form opens when needed (for example the create form under "Create bot"), not always. Labels above fields; short help under the field in `note`. Two short fields sit side by side on a desktop.
+- A list with ticks is `ul.ticks`: the icon sits in the middle of the first text line (`margin-block-start: calc((1lh - size) / 2)`), so it lines up in both fonts, on one line or many.
 - A list of things is one card of rows (`.rows`): name and small grey detail at the start, status, then small actions (`button.small`) at the end.
 - Tokens, keys and commands: monospace code block, dark in both themes, with Copy.
 

@@ -15,7 +15,7 @@ import { pageFor } from "./pages.ts";
 import { h } from "./dom.ts";
 import { builderView } from "./panels.ts";
 import { toastRegion } from "./toast.ts";
-import { headerTools, publicScreen, siteBrand, type PublicPage } from "./public.ts";
+import { headerTools, publicPages, publicScreen, siteBrand, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
 import { Chats } from "./messages.ts";
 import { Theme } from "./theme.ts";
@@ -38,6 +38,8 @@ function show(element: HTMLElement): void {
   // Shown by the style sheet while the server cannot be reached.
   document.body.dataset["connecting"] = language.t("connecting");
   document.body.replaceChildren(element, toastRegion());
+  // An address like "/#plans": the part is drawn now, so go to it.
+  if (location.hash.length > 1) document.getElementById(location.hash.slice(1))?.scrollIntoView();
 }
 
 function showLogin(error: TextKey | null = null): void {
@@ -78,7 +80,9 @@ function guest(): void {
 /** The end of the site header on every page: "Log in" for a visitor, the user menu after login (owner, 2026-11-20). */
 function userArea(): HTMLElement {
   const t = language.t.bind(language);
-  if (!app) return h("button", { type: "button", class: "primary", onclick: () => showLogin() }, t("enter"));
+  // On a phone the button says only "Log in", so the header stays on one line (CLI-42).
+  if (!app) return h("button", { type: "button", class: "primary", "aria-label": t("enter"), onclick: () => showLogin() },
+    h("span", { class: "long" }, t("enter")), h("span", { class: "short" }, t("login")));
   const current = app;
   const item = (label: string, onclick: () => void) => h("button", { type: "button", class: "item", onclick }, label);
   return h("details", { class: "menu user" },
@@ -116,8 +120,8 @@ function route(): void {
   if (!app) return;
   const page = pageFor(location.pathname, true);
   const username = /^\/@([^/]+)$/.exec(decodeURIComponent(location.pathname))?.[1];
-  screen = page === "landing" || page === "privacy" || page === "faq" || page === "showcase" || page === "guide" || page === "notFound"
-    ? { element: publicPage(page, true) }
+  screen = publicPages.includes(page)
+    ? { element: publicPage(page as PublicPage, true) }
     : username ? chatScreen(app, username)
     : page === "apps" && panel === null ? appsScreen(app)
     : panel === "account" ? accountScreen(app)

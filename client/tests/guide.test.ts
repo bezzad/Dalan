@@ -1,7 +1,7 @@
 // Rules: CLI-38
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { guideSteps, librarySamples } from "../src/guide.ts";
+import { guideSteps, librarySamples, siteGuideSteps } from "../src/guide.ts";
 import { pageFor, type PublicNumbers } from "../src/pages.ts";
 
 const numbers: PublicNumbers = { history_messages: 200, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60,
@@ -30,7 +30,22 @@ test("CLI-38 every library sample points at Dalan, never at Telegram", () => {
   }
 });
 
-test("CLI-38 the guide opens for a visitor and a logged-in user", () => {
-  assert.equal(pageFor("/guide", false), "guide");
-  assert.equal(pageFor("/guide", true), "guide");
+test("CLI-38 the site guide has four steps: builder, one-line install, login, run", () => {
+  for (const lang of ["fa", "en"] as const) {
+    const steps = siteGuideSteps(lang, numbers);
+    assert.equal(steps.length, 4);
+    const install = steps[1]!.samples!.map(sample => sample.code);
+    assert.deepEqual(install, ["curl -fsSL https://example.ir/install.sh | sh", "irm https://example.ir/install.ps1 | iex"]);
+    assert.equal(steps[3]!.code, "dalan http 3000 --name mysite");
+    assert.doesNotMatch(JSON.stringify(steps), /tunnel|تونل/i);
+  }
+});
+
+test("CLI-38 the guide asks for a plan first, and opens for a visitor and a logged-in user", () => {
+  for (const loggedIn of [false, true]) {
+    assert.equal(pageFor("/guide", loggedIn), "guide");
+    assert.equal(pageFor("/guide/bot", loggedIn), "guideBot");
+    assert.equal(pageFor("/guide/site", loggedIn), "guideSite");
+    assert.equal(pageFor("/guide/other", loggedIn), "notFound");
+  }
 });

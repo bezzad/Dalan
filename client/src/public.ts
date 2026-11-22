@@ -1,15 +1,18 @@
-// The public pages (CLI-26 to CLI-28, CLI-38): landing, privacy, FAQ, showcase and the guide. They open with or without login.
+// The public pages (CLI-26 to CLI-28, CLI-38): landing, privacy, FAQ, showcase and the guides. They open with or without login.
 import { api } from "./api.ts";
 import { errorText } from "./app.ts";
 import { h } from "./dom.ts";
 import { gate } from "./logo.ts";
-import { codeBlock as block, stepCards, tabbed as tabs } from "./codeView.ts";
-import { guideSteps, type Sample } from "./guide.ts";
+import { stepCards } from "./codeView.ts";
+import { guideSteps, siteGuideSteps } from "./guide.ts";
 import type { Language } from "./i18n.ts";
 import { themeButton, type Theme } from "./theme.ts";
-import { categoryName, closing, faqItems, hero, initial, installCommands, labels, landing, notOffered, offers, privacyPoints, problems, products, security, steps, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
+import { categoryName, closing, faqItems, hero, initial, labels, landing, notOffered, offers, privacyPoints, products, security, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
 
-export type PublicPage = "landing" | "privacy" | "faq" | "showcase" | "guide" | "notFound";
+export type PublicPage = "landing" | "privacy" | "faq" | "showcase" | "guide" | "guideBot" | "guideSite" | "notFound";
+
+/** Every public page: the same for a visitor and a logged-in user. */
+export const publicPages: readonly string[] = ["landing", "privacy", "faq", "showcase", "guide", "guideBot", "guideSite", "notFound"];
 
 export interface PublicContext {
   language: Language;
@@ -35,6 +38,8 @@ const icons = {
   globe: ["M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z", "M3 12h18", "M12 3c3 3 3 15 0 18", "M12 3c-3 3-3 15 0 18"],
   check: ["M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z", "M8 12l3 3 5-6"],
   terminal: ["M3 5h18v14H3z", "M7 10l3 2-3 2", "M12 15h5"],
+  burger: ["M4 7h16", "M4 12h16", "M4 17h16"],
+  close: ["M6 6l12 12", "M18 6L6 18"],
 };
 
 /** The logo and the name, a link to the home page. Every page has it at the top (owner, 2026-11-20). */
@@ -82,49 +87,59 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
   const error = h("p", { class: "error", role: "alert" });
   const failed = (failure: unknown) => { error.textContent = t(errorText(failure)); };
 
-  const pageLink = (path: string, label: string, kind = "") => h("a", {
-    href: path,
-    class: kind,
-    onclick: event => {
-      event.preventDefault();
-      context.go(path);
-    },
-  }, label);
-
-  const nav = h("nav", { class: "links" },
-    pageLink("/guide", t("guide")), pageLink("/showcase", t("showcase")), pageLink("/faq", t("faq")), pageLink("/privacy", t("privacy")));
-
   /** Opens the login screen (or the bot list). In the page body a visitor sees "Try it (free)" (owner, 2026-11-18). */
-  const enterButton = (label = t("enter")) => h("button", { type: "button", class: "primary", onclick: context.enter }, context.loggedIn ? t("chats") : label);
+  const enterButton = (label: string) => h("button", { type: "button", class: "primary", onclick: context.enter }, context.loggedIn ? t("chats") : label);
 
-  // CLI-26: "Problems we solve". A <details> panel; choosing an item closes it.
-  const menu = h("details", { class: "menu" },
-    h("summary", {}, labels[lang].problems),
-    h("div", { class: "panel" }, ...problems[lang].map(group => h("div", { class: "column" },
-      h("span", { class: "label" }, group.group),
-      ...group.items.map(item => {
-        const body = [h("strong", {}, item.title, ...(item.soon ? [h("span", { class: "soon" }, labels[lang].soon)] : [])), h("small", {}, item.text)];
-        if (!item.href) return h("div", { class: "item off" }, ...body);
-        return h("a", { class: "item", href: item.href, onclick: event => go(event, item.href!) }, ...body);
-      })))));
-
+  /** A link inside the site, without a page load. "/#plans" goes to the landing page, then to its plans. */
   function go(event: Event, href: string): void {
-    menu.open = false;
-    if (href.startsWith("#")) {
-      event.preventDefault();
-      if (page !== "landing") return context.go("/");
-      body.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
-    } else if (href.startsWith("/") && !href.includes(".")) {
-      event.preventDefault();
-      context.go(href);
-    }
+    event.preventDefault();
+    closeMenu();
+    const [path = "/", hash] = href.split("#");
+    if (!hash) return context.go(path);
+    if (page !== "landing") context.go(href);
+    document.getElementById(hash)?.scrollIntoView({ behavior: "smooth" });
+  }
+  const link = (href: string, label: string, kind = "") => h("a", { href, class: kind, onclick: event => go(event, href) }, label);
+
+  // CLI-42: three links only; FAQ and privacy are in the footer. On a phone the links fold into the ☰ button.
+  const navLinks = () => [link("/#plans", labels[lang].plans), link("/showcase", t("showcase")), link("/guide", t("guide"))];
+  const sheet = h("nav", { class: "sheet", hidden: true, "aria-label": t("menu") }, ...navLinks());
+  const burger = h("button", {
+    type: "button",
+    class: "round burger",
+    title: t("menu"),
+    "aria-label": t("menu"),
+    "aria-expanded": "false",
+    onclick: event => {
+      // The click must not reach the document, where it would close the menu at once.
+      event.stopPropagation();
+      if (sheet.hidden) openMenu();
+      else closeMenu();
+    },
+  }, icon("burger"));
+  const onKey = (event: Event) => { if ((event as KeyboardEvent).key === "Escape") closeMenu(); };
+  const onOutside = (event: Event) => { if (!sheet.contains(event.target as Node)) closeMenu(); };
+  function openMenu(): void {
+    sheet.hidden = false;
+    burger.setAttribute("aria-expanded", "true");
+    burger.replaceChildren(icon("close"));
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("click", onOutside);
+  }
+  function closeMenu(): void {
+    sheet.hidden = true;
+    burger.setAttribute("aria-expanded", "false");
+    burger.replaceChildren(icon("burger"));
+    document.removeEventListener("keydown", onKey);
+    document.removeEventListener("click", onOutside);
   }
 
   const header = h("header", { class: "site" },
     siteBrand(t("appName"), context.go),
-    menu,
-    nav,
-    context.tools);
+    h("nav", { class: "links" }, ...navLinks()),
+    context.tools,
+    burger,
+    sheet);
 
   const body = h("div", { class: "content" });
   const n = (value: number) => language.number(value);
@@ -161,70 +176,69 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
         h("button", { type: "button", class: "primary", onclick: () => context.go("/") }, t("home"))));
       break;
     case "guide":
+      // CLI-38: the install steps wait until the person picks a plan.
+      body.append(h("h2", { class: "title" }, t("guideChoose")), h("div", { class: "choices" }, ...products[lang].map((product, i) =>
+        h("article", {},
+          h("span", { class: "badge-icon" }, icon(i === 0 ? "gate" : "globe")),
+          h("span", { class: "label" }, product.label),
+          h("h3", {}, product.title),
+          h("p", {}, product.text),
+          link(product.guide, labels[lang].getStarted, "button primary")))));
+      break;
+    case "guideBot":
       body.append(h("h2", { class: "title" }, t("guideTitle")));
       withNumbers(values => body.append(...stepCards(guideSteps(lang, values, n), 1, t, n)));
       break;
+    case "guideSite":
+      body.append(h("h2", { class: "title" }, t("guideSiteTitle")));
+      withNumbers(values => body.append(...stepCards(siteGuideSteps(lang, values), 1, t, n)));
+      break;
   }
 
-  // CLI-26: hero, products, try it, steps, the three messages, security, a closing call.
+  // CLI-26: only what Dalan does, its features and its plans. No install steps: they wait in the guide of each plan.
   function landingPage(target: HTMLElement): void {
     const label = (text: string) => h("span", { class: "label" }, text);
-
-    const stepList = h("ol", { class: "steps" });
-    const commands = h("div");
-    withNumbers(values => {
-      stepList.append(...steps(lang, values).map((step, i) => h("li", { class: "step" },
-        h("span", { class: "number" }, language.number(i + 1)),
-        h("h3", {}, step.title),
-        h("p", {}, step.text),
-        ...(step.code ? [codeBlock(step.code)] : []))));
-      commands.replaceWith(...tabbed(installCommands(values).map(item => ({ name: item.os, code: item.code }))));
-    });
-
+    const soon = () => h("span", { class: "soon" }, labels[lang].soon);
+    /** A list with a tick before each item; the tick sits on the first line of the text (docs/UI.md). */
+    const ticks = (items: Node[][]) => h("ul", { class: "ticks" }, ...items.map(item => h("li", {}, icon("check"), ...item)));
     const featureIcons: (keyof typeof icons)[] = ["home", "shield", "offline"];
     const offerIcons: (keyof typeof icons)[] = ["gate", "shield", "terminal", "globe"];
     target.append(
-      h("section", { class: "hero glow" },
-        h("h2", {}, hero[lang].title, h("br"), h("span", { class: "rainbow" }, hero[lang].glow)),
+      h("section", { class: "hero" },
+        h("h2", {}, hero[lang].title, h("br"), h("span", { class: "accent" }, hero[lang].glow)),
         h("p", { class: "lead" }, hero[lang].text),
-        h("div", { class: "row wrap" }, enterButton(labels[lang].start), h("a", { href: "#how", class: "button", onclick: event => go(event, "#how") }, hero[lang].how))),
-      h("section", { class: "products" },
-        label(labels[lang].products),
+        h("div", { class: "row wrap" }, enterButton(labels[lang].start), link("/#plans", hero[lang].plans, "button"))),
+      h("section", { id: "plans", class: "products" },
+        label(labels[lang].plans),
+        h("h2", {}, labels[lang].plansTitle),
         h("div", { class: "cards" }, ...products[lang].map((product, i) => productCard(product, i === 0 ? "gate" : "globe")))),
       h("section", { id: "offers", class: "offers" },
         label(labels[lang].offers),
         h("h2", {}, labels[lang].offersTitle),
-        h("div", { class: "groups" }, ...offers[lang].map((group, i) => h("article", { class: group.items.every(item => item.soon) ? "soon-card" : "" },
+        h("div", { class: "groups" }, ...offers[lang].map((group, i) => h("article", {},
           h("span", { class: "badge-icon" }, icon(offerIcons[i]!)),
           h("h3", {}, group.title),
           h("p", {}, group.text),
-          h("ul", {}, ...group.items.map(item => h("li", {}, icon("check"), h("span", {}, item.text),
-            ...(item.soon ? [h("span", { class: "soon" }, labels[lang].soon)] : []))))))),
+          ticks(group.items.map(item => [h("span", {}, item.text), ...(item.soon ? [soon()] : [])]))))),
         h("p", { class: "note" }, notOffered[lang])),
-      h("section", { id: "try", class: "try framed" },
-        h("span", { class: "badge-icon" }, icon("terminal")),
-        label(labels[lang].try),
-        h("h2", {}, labels[lang].tryTitle),
-        commands,
-        h("p", { class: "note" }, labels[lang].tryNote)),
-      h("section", { id: "how", class: "band" }, h("h2", {}, hero[lang].how), stepList, pageLink("/guide", t("guideTitle"), "more")),
-      h("section", { id: "features", class: "features" }, ...landing[lang].map((message, i) => h("article", {},
-        h("span", { class: "bubble" }, icon(featureIcons[i]!)), h("h3", {}, message.title), h("p", {}, message.text)))),
+      h("section", { id: "features", class: "features" },
+        label(labels[lang].why),
+        h("div", { class: "cards" }, ...landing[lang].map((message, i) => h("article", {},
+          h("span", { class: "bubble" }, icon(featureIcons[i]!)), h("h3", {}, message.title), h("p", {}, message.text))))),
       h("section", { class: "security" },
         h("h2", {}, labels[lang].security),
-        h("ul", {}, ...security[lang].map(item => h("li", {}, icon("check"), item))),
-        pageLink("/privacy", t("privacy"), "more")),
-      h("section", { class: "cta glow framed" },
-        h("h2", {}, closing[lang].title, h("br"), h("span", { class: "rainbow" }, closing[lang].glow)),
+        ticks(security[lang].map(item => [h("span", {}, item)]))),
+      h("section", { class: "cta" },
+        h("h2", {}, closing[lang].title, h("br"), h("span", { class: "accent" }, closing[lang].glow)),
         h("p", {}, closing[lang].text),
-        h("div", { class: "row wrap" }, enterButton(labels[lang].start), pageLink("/showcase", t("showcase"), "button"))));
+        h("div", { class: "row wrap" }, enterButton(labels[lang].start), link("/showcase", t("showcase"), "button"))));
   }
 
-  /** A product card with its traffic picture: from, Dalan with its guards, to. */
+  /** A plan: its traffic picture (from, Dalan with its guards, to) and "Get started", which opens its guide. */
   function productCard(product: Product, name: keyof typeof icons): HTMLElement {
-    return h("article", { class: product.soon ? "product soon-card" : "product" },
+    return h("article", { class: "product" },
       h("span", { class: "badge-icon" }, icon(name)),
-      h("span", { class: "label" }, product.label, ...(product.soon ? [h("span", { class: "soon" }, labels[lang].soon)] : [])),
+      h("span", { class: "label" }, product.label),
       h("h3", {}, product.title),
       h("p", {}, product.text),
       h("figure", { class: "traffic" },
@@ -232,18 +246,16 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
         h("span", { class: "wire" }),
         h("div", { class: "hub-row" },
           h("span", { class: "hub" }, icon("gate")),
-          h("ul", { class: "guards" }, ...product.guards.map(guard => h("li", {}, icon("check"), guard)))),
+          h("ul", { class: "guards ticks" }, ...product.guards.map(guard => h("li", {}, icon("check"), h("span", {}, guard))))),
         h("span", { class: "wire" }),
         h("div", { class: "split" }, ...product.branches.map(branch => h("div", { class: "branch" },
           h("span", { class: "wire" }),
           h("span", { class: "tag", dir: "ltr" }, branch.via),
           h("span", { class: "wire up" }),
           h("span", { class: "box" }, icon("computer"), h("span", { dir: "ltr" }, branch.to))))),
-        h("span", { class: "frame-label" }, product.frame)));
+        h("span", { class: "frame-label" }, product.frame)),
+      link(product.guide, labels[lang].getStarted, "button primary"));
   }
-
-  const codeBlock = (code: string) => block(code, t);
-  const tabbed = (samples: Sample[]) => tabs(samples, t);
 
   // CLI-28: listed bots, a category filter and "more" while a full page came back.
   function showcase(target: HTMLElement): void {
@@ -294,13 +306,12 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
     load(true).catch(failed);
   }
 
+  // CLI-42: FAQ and privacy live here, not in the header.
   const column = (title: string, ...items: Node[]) => h("div", { class: "column" }, h("span", { class: "label" }, title), ...items);
   const footer = h("footer", { class: "site" },
     h("div", { class: "columns" },
-      column(labels[lang].product, ...products[lang].map(product => h("span", {}, product.label,
-        ...(product.soon ? [h("span", { class: "soon" }, labels[lang].soon)] : []))), pageLink("/showcase", t("showcase"))),
-      column(labels[lang].problems, ...problems[lang].map(group => h("span", {}, group.group))),
-      column(labels[lang].resources, pageLink("/guide", t("guide")), pageLink("/faq", t("faq")), pageLink("/privacy", t("privacy")),
+      column(labels[lang].product, ...products[lang].map(product => link(product.guide, product.label)), link("/showcase", t("showcase"))),
+      column(labels[lang].resources, link("/guide", t("guide")), link("/faq", t("faq")), link("/privacy", t("privacy")),
         h("a", { href: "/llms.txt" }, "llms.txt"), h("a", { href: "/dalan.mjs" }, "dalan.mjs"))),
     h("div", { class: "wordmark", "aria-hidden": "true" }, t("appName")));
   return h("main", { class: "public" }, header, error, h("div", { class: "scroller page" }, body, footer));

@@ -1,7 +1,7 @@
 // Rules: CLI-26, CLI-27, CLI-28, CLI-29, CLI-30, CLI-37
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { categoryName, faqItems, initial, installCommands, landing, notOffered, offers, problems, products, security, steps, pageFor, privacyPoints, readyPrompt, showcaseStateName, type PublicNumbers } from "../src/pages.ts";
+import { categoryName, faqItems, initial, landing, notOffered, offers, products, security, pageFor, privacyPoints, readyPrompt, showcaseStateName, type PublicNumbers } from "../src/pages.ts";
 
 const numbers: PublicNumbers = { history_messages: 200, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60,
   site_url: "https://dalanet.ir", bot_api_url: "https://api.dalanet.ir" };
@@ -29,37 +29,16 @@ test("CLI-26 the bot card shows users, Dalan and your computer, and the computer
   for (const product of [...products.en, ...products.fa]) assert.equal(product.branches.length, 2);
 });
 
-test("CLI-26 the steps use the addresses from the public settings", () => {
-  const values = { ...numbers, site_url: "https://example.ir", bot_api_url: "https://api.example.ir" };
+test("CLI-26 two plans, both built, each opens its own guide", () => {
   for (const lang of ["fa", "en"] as const) {
-    const list = steps(lang, values);
-    assert.equal(list.length, 3);
-    assert.ok(list[1]!.code!.includes("https://api.example.ir/bot<token>/getUpdates"));
-    assert.ok(list[2]!.code!.includes("https://example.ir/@"));
-    for (const step of list) assert.doesNotMatch(step.title + step.text + (step.code ?? ""), /tunnel|تونل|dalanet/i);
-  }
-});
-
-test("CLI-26 try it on every system with the site address from the settings", () => {
-  const values = { ...numbers, site_url: "https://example.ir" };
-  const tabs = installCommands(values);
-  assert.deepEqual(tabs.map(tab => tab.os), ["Linux", "macOS", "Windows", "Docker"]);
-  for (const tab of tabs) assert.ok(tab.code.includes("https://example.ir/dalan.mjs"), tab.os);
-});
-
-test("CLI-26 only real things are offered: what is not built says soon", () => {
-  for (const lang of ["fa", "en"] as const) {
-    const items = problems[lang].flatMap(group => group.items);
-    assert.ok(items.some(item => item.soon) && items.some(item => !item.soon));
-    for (const item of items) assert.ok(item.soon || item.href, item.title);
-    assert.deepEqual(products[lang].map(product => product.soon), [false, true]);
+    assert.deepEqual(products[lang].map(product => product.soon), [false, false]);
+    assert.deepEqual(products[lang].map(product => product.guide), ["/guide/bot", "/guide/site"]);
     assert.ok(security[lang].length >= 6);
-    const all = JSON.stringify([problems[lang], products[lang], security[lang]]);
-    assert.doesNotMatch(all, /tunnel|تونل/i);
+    assert.doesNotMatch(JSON.stringify([products[lang], security[lang]]), /tunnel|تونل/i);
   }
 });
 
-test("CLI-37 what you get: three ready groups, then sites and gateway, all soon", () => {
+test("CLI-37 what you get: three ready groups, then sites and gateway: a local site is built, the rest soon", () => {
   for (const lang of ["fa", "en"] as const) {
     const groups = offers[lang];
     assert.equal(groups.length, 4);
@@ -67,7 +46,8 @@ test("CLI-37 what you get: three ready groups, then sites and gateway, all soon"
       assert.ok(group.items.length >= 3, group.title);
       assert.ok(group.items.every(item => !item.soon), group.title);
     }
-    assert.ok(groups[3]!.items.every(item => item.soon));
+    assert.ok(!groups[3]!.items[0]!.soon);
+    assert.ok(groups[3]!.items.slice(1).every(item => item.soon));
     assert.match(groups[0]!.items[0]!.text, /Bot API/);
   }
   assert.match(offers.en[3]!.title, /Sites/);
