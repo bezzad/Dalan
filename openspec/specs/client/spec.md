@@ -542,3 +542,14 @@ The site header SHALL link only to Plans, Showcase and Guide; FAQ and Privacy SH
 - **WHEN** the landing, guide, showcase, FAQ, privacy, login, bot list and chat pages are open in a browser at 360 by 740 and at 740 by 360 pixels
 - **THEN** no page is wider than the screen
 
+### Requirement: CLI-43 Natural, formal Persian
+Every Persian text the client shows SHALL be a little formal and use the common Persian word, never a literal translation: «ربات» (not «بات»), «اتصال ربات» (not «رله»), «برنامه» (not «اپ»), «برنامه‌ی رابط دالان» (not «ایجنت»), «توسعه‌دهنده» for the builder role, «مدیر» (not «ادمین»), «رمز عبور», «جدید» (not «تازه»), «طرح‌ها» (not «پلن»), «گزارش» (not «لاگ»), «پوسته» (not «تم»), «پرسش‌های متداول» and «گفت‌وگو». «می‌» and «ها» SHALL be joined with a zero-width non-joiner.
+
+#### Scenario: No literal words
+- **WHEN** every Persian text of the client (texts, landing, privacy, FAQ, both guides, the ready prompt) is read
+- **THEN** none has «بات» as a word, «رله», «اپ» as a word, «ایجنت», «ادمین», «پلن», «لاگ», «تم:», «گواه کار», «محدودیت سرعت», «سوال‌های رایج» or «گفتگو»
+
+#### Scenario: Joined prefixes
+- **WHEN** every Persian text of the client is read
+- **THEN** no «می» stands alone before a space
+
