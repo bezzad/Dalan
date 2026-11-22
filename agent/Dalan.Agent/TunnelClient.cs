@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -43,7 +44,20 @@ public sealed class TunnelClient(
         }
     };
 
-    public async Task RunAsync(IReadOnlyList<SiteEntry> sites, CancellationToken cancellationToken)
+    /// <summary>AGT-11: the id of the demo this client keeps, once the server gave it.</summary>
+    private string? _demoId;
+
+    /// <summary>
+    /// Keeps the sites online until <paramref name="cancellationToken"/> is cancelled. With <paramref name="demoPort"/> it also
+    /// serves a demo (AGT-11): Ctrl+C ends it. A demo that the server ended stops the run with an <see cref="AgentStopException"/>.
+    /// </summary>
+    public async Task RunAsync(IReadOnlyList<SiteEntry> sites, CancellationToken cancellationToken, int? demoPort = null)
+    {
+        await KeepOnlineAsync(sites, demoPort, cancellationToken);
+        if (_demoId is not null) await EndDemoAsync();
+    }
+
+    private async Task KeepOnlineAsync(IReadOnlyList<SiteEntry> sites, int? demoPort, CancellationToken cancellationToken)
     {
         var ports = sites.ToDictionary(s => s.Name.ToLowerInvariant(), s => s.Port);
         var wait = FirstWait;
@@ -52,9 +66,15 @@ public sealed class TunnelClient(
         {
             try
             {
-                var session = await OpenAsync(sites, cancellationToken);
+                var session = await OpenAsync(sites, demoPort is null ? null : _demoId ?? "new", cancellationToken);
                 wait = FirstWait;
-                if (first) PrintSites(session, sites);
+                if (session.Demo is { } demo && demoPort is { } port)
+                {
+                    _demoId = demo.Id;
+                    ports[$"demo:{demo.Id}"] = port;
+                }
+
+                if (first) PrintSites(session, sites, demoPort);
                 first = false;
                 await ServeAsync(session, ports, cancellationToken);
                 output.WriteLine("Connection to Dalan ended. Connecting again...");
@@ -83,11 +103,11 @@ public sealed class TunnelClient(
         }
     }
 
-    private async Task<SessionOpened> OpenAsync(IReadOnlyList<SiteEntry> sites, CancellationToken cancellationToken)
+    private async Task<SessionOpened> OpenAsync(IReadOnlyList<SiteEntry> sites, string? demo, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/tunnel/sessions")
         {
-            Content = JsonContent.Create(new OpenSession([.. sites.Select(s => s.Name)]), AgentJson.Default.OpenSession),
+            Content = JsonContent.Create(new OpenSession([.. sites.Select(s => s.Name)], demo), AgentJson.Default.OpenSession),
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
         using var response = await server.SendAsync(request, cancellationToken);
@@ -116,15 +136,39 @@ public sealed class TunnelClient(
         }
     }
 
-    private void PrintSites(SessionOpened session, IReadOnlyList<SiteEntry> sites)
+    private void PrintSites(SessionOpened session, IReadOnlyList<SiteEntry> sites, int? demoPort)
     {
+        if (session.Demo is { } demo)
+        {
+            output.WriteLine($"Demo: {demo.Url}  ->  http://localhost:{demoPort}");
+            output.WriteLine($"It ends at {demo.ExpiresAt.ToUniversalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)} UTC.");
+            output.WriteLine("A demo is for tests: do not use real accounts or secrets in it");
+        }
+
         foreach (var site in session.Sites)
         {
             var port = sites.First(s => string.Equals(s.Name, site.Name, StringComparison.OrdinalIgnoreCase)).Port;
             output.WriteLine($"Online: {site.Url}  ->  http://localhost:{port}");
         }
 
-        output.WriteLine("Press Ctrl+C to stop.");
+        output.WriteLine(_demoId is null ? "Press Ctrl+C to stop." : "Press Ctrl+C to stop and end the demo.");
+    }
+
+    /// <summary>AGT-11: asks the server to end the demo. The demo ends by its time anyway, so a failure is only said.</summary>
+    private async Task EndDemoAsync()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/tunnel/demos/{_demoId}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
+        using var limit = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try
+        {
+            using var response = await server.SendAsync(request, limit.Token);
+            output.WriteLine(response.IsSuccessStatusCode ? "Demo ended." : $"Could not end the demo ({(int)response.StatusCode}); it ends by its time.");
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            output.WriteLine($"Could not end the demo ({exception.Message}); it ends by its time.");
+        }
     }
 
     /// <summary>AGT-05: WebSocket first; when it cannot be opened, long polling on the same session.</summary>

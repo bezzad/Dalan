@@ -1,10 +1,10 @@
-# OPS-16: look for a new main every 5 minutes.
+# OPS-16: look for a new main every minute. A run with nothing new only asks GitHub for refs/heads/main.
 [Unit]
-Description=Dalan: look for a new main every 5 minutes
+Description=Dalan: look for a new main every minute
 
 [Timer]
-OnBootSec=5min
-OnUnitInactiveSec=5min
+OnBootSec=2min
+OnUnitInactiveSec=1min
 
 [Install]
 WantedBy=timers.target

@@ -45,7 +45,8 @@ DALAN_SITE_DOMAIN=http://localhost:18080 DALAN_API_DOMAIN=http://127.0.0.1:18080
   DALAN_UPSTREAM=127.0.0.1:18081 DALAN_HTTP_PORT=18082 DALAN_HTTPS_PORT=18443 \
   caddy run --config "$root/deploy/Caddyfile" --adapter caddyfile >"$tmp/caddy.log" 2>&1 & proxy=$!
 
-for _ in $(seq 50); do curl -s -o /dev/null http://127.0.0.1:18080/ && break; sleep 0.2; done
+# Wait for a 200: Caddy may answer 502 before the stub upstream listens.
+for _ in $(seq 50); do curl -fs -o /dev/null http://127.0.0.1:18080/ && break; sleep 0.2; done
 
 [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/)" = 200 ] || fail "proxy does not forward normal paths"
 for probe in /health /ready /api/sites/tls; do

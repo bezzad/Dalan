@@ -322,7 +322,7 @@ The admin screen SHALL have tabs: settings (grouped by section, each with its va
 - **THEN** the chat shows that the bot is suspended
 
 ### Requirement: CLI-26 Landing page
-A visitor and a logged-in user SHALL see at `/` a landing page in the current theme (CLI-35) that says only what Dalan does, its features and its plans, in this order: a hero with "Try it (free)" and "See plans"; the plans (`#plans`): product cards with a traffic picture (bot relay, where the computer only calls out; sites), each with a "Get started" button to its guide (CLI-38); what you get (CLI-37); the three messages of DESIGN section 13 in order; a security list; a closing call; a footer. It SHALL NOT show install steps, commands or code, and SHALL NOT say "tunnel".
+A visitor and a logged-in user SHALL see at `/` a landing page in the current theme (CLI-35) that says only what Dalan does, its features and its plans, in this order: a hero with "Try it (free)" and "See plans"; the plans (`#plans`), product cards with a traffic picture, each with "Get started" to its guide (CLI-38); what you get (CLI-37); the three messages of DESIGN section 13; a security list; a closing call; a footer. It SHALL NOT show install steps or code, or say "tunnel".
 
 #### Scenario: Three messages in order
 - **WHEN** the landing texts are read in Persian or English
@@ -415,7 +415,7 @@ A user with no phone (AUTH-04 `has_phone` false) SHALL see a card in the account
 - **THEN** the "verify your mobile" card is shown; with `has_phone` true it is not
 
 ### Requirement: CLI-35 Light and dark theme
-The client SHALL have a light and a dark theme. On the first open it SHALL follow the device's theme. Every page header SHALL have a round theme button that switches only between light and dark, beside a round language button of the same size that shows only a globe and switches Persian and English in one click (Persian is the default, CLI-04; the page itself shows the change); both SHALL be in the same place in the fixed header of every page. The theme choice SHALL be kept on this device and used on the next open, whatever the device says. The new theme SHALL grow as a circle from the button (at once with reduced motion). Code blocks SHALL stay dark in both themes.
+The client SHALL have a light and a dark theme, the device's theme on the first open. The fixed header of every page SHALL have, in the same place, a round theme button (light or dark only) beside a round language button of the same size, a globe that switches Persian and English in one click (CLI-04). The choice SHALL be kept on this device over the device's theme. The new theme SHALL grow as a circle from the button (at once with reduced motion). Code blocks SHALL stay dark in both themes.
 
 #### Scenario: First open follows the device
 - **WHEN** a visitor opens the site for the first time on a device that asks for dark
@@ -466,7 +466,7 @@ The landing page SHALL have a "What you get" section after the plans: four group
 - **THEN** it names TCP, SSH and the AI gateway, and no text of the section says "tunnel"
 
 ### Requirement: CLI-38 Guide to run a bot
-A visitor and a logged-in user SHALL see at `/guide` a choice of plan: a bot or a site. `/guide/bot` SHALL show, in both languages, nine steps to run a bot without an AI agent, from login to a bot that keeps running (scenarios below). `/guide/site` SHALL show four steps: log in and become a builder; install the agent with the one-line command for Linux and macOS and for Windows (CLI-39); log in from "My apps" with the command it shows; run `dalan http <port> --name <name>`. Addresses and numbers SHALL come from the public settings. The header and footer SHALL link to `/guide`, and each plan of the landing page to its guide; "My bots" SHALL show steps 5 to 9 of the bot guide itself.
+A visitor and a logged-in user SHALL see at `/guide` a choice of plan: a bot or a site. `/guide/bot` SHALL show, in both languages, nine steps to run a bot without an AI agent. `/guide/site` SHALL show four steps: become a builder, install the agent in one line (CLI-39), log in from "My apps", run `dalan http`. Addresses and numbers SHALL come from the public settings. "My bots" SHALL show steps 5 to 9 of the bot guide itself.
 
 #### Scenario: Steps use the real addresses
 - **GIVEN** the public settings say `bot_api_url` is `https://api.example.ir`, `site_url` is `https://example.ir` and the expiry is 60 seconds
@@ -508,8 +508,19 @@ No English text that the product shows SHALL name Iran: client texts, page title
 - **WHEN** a visitor reads `/llms.txt`, or sends a bad phone number to `/api/auth/sms`
 - **THEN** the text does not contain "Iran" in any case
 
+### Requirement: CLI-39 My apps
+The user menu SHALL open "My apps" at `/apps`. For a builder it SHALL list their sites (name, address as a link, online or offline) with a delete that asks first, and show a step-by-step guide: 1) install the agent, 2) log in with a key made here by one button (the full `dalan login` command, shown once, with Copy), 3) run `dalan http <port> --name <name>`, with an example for two sites. Every action SHALL end in a toast. A user who is not a builder SHALL see how to become one instead.
+
+#### Scenario: Guide commands
+- **WHEN** the guide is drawn for the name `levelwise` and port `3000`
+- **THEN** it shows `dalan http 3000 --name levelwise`
+
+#### Scenario: Not a builder
+- **WHEN** a user who is not a builder opens "My apps"
+- **THEN** they see the way to become a builder, and no site list
+
 ### Requirement: CLI-42 Simple header and a phone menu
-The site header SHALL link to three places only: Plans (the plans part of the landing page), Showcase and Guide. FAQ and Privacy SHALL be only in the footer. A tick icon in a list SHALL sit in the middle of the first line of its text, in both languages. Below 760px the three links SHALL fold into one round ☰ button at the end of the header, after the header tools; it SHALL open a panel with the same links, and a chosen link, a click outside the panel or Escape SHALL close it. The button SHALL say for screen readers whether the menu is open. No page SHALL scroll sideways on a phone, in portrait or in landscape.
+The site header SHALL link only to Plans, Showcase and Guide; FAQ and Privacy SHALL be only in the footer. Below 760px the links SHALL fold into a round ☰ button after the header tools, which opens a panel with the same links; a link, a click outside or Escape SHALL close it. A tick icon in a list SHALL sit in the middle of the first text line. No page SHALL scroll sideways on a phone, in portrait or in landscape.
 
 #### Scenario: Header and footer links
 - **WHEN** a public page is drawn in Persian or English

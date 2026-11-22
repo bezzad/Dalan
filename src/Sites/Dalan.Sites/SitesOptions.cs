@@ -31,8 +31,18 @@ public sealed class SitesOptions
     /// <summary>AGT-10: the folder of the agent files, next to the server file unless rooted. The deploy fills it.</summary>
     public string AgentFolder { get; set; } = "";
 
+    /// <summary>SITE-18: the host of demo links, for example "dalans.ir". Empty: demos are off.</summary>
+    public string DemoHost { get; set; } = "";
+
+    public int DemoHours { get; set; }
+    public int DemoIdLength { get; set; }
+    public int MaxDemosPerBuilder { get; set; }
+
     public long MaxBodyBytes => MaxBodyMb * 1024L * 1024L;
 
     /// <summary>The public address of a site.</summary>
     public string UrlOf(string name) => $"{Scheme}://{name}.{Domain}";
+
+    /// <summary>The public address of a demo.</summary>
+    public string DemoUrlOf(string id) => $"{Scheme}://{DemoHost}/{id}/";
 }

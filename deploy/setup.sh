@@ -6,7 +6,8 @@
 # Usage: setup.sh <site domain> <api domain> <deploy public key file>
 # Optional settings.env next to this script (install.sh writes it): ADMIN_PHONES, SMS (log or kavenegar), KAVENEGAR_KEY,
 #   ROTATE_SECRETS=1, GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET. They are written into dalan.env, each run. SMS=log sends login codes only to ADMIN_PHONES, into the log.
-#   SITES_DOMAIN (the users' sites, for example dalancloud.ir; empty: sites are off) and TUNNEL_DOMAIN (default tunnel.<site domain>)
+#   SITES_DOMAIN (the users' sites, for example dalancloud.ir, and the demo links on the domain itself; empty: both are off)
+#   and TUNNEL_DOMAIN (default tunnel.<site domain>)
 #   go into domains.env, each run (OPS-15).
 #   PULL_DEPLOY=1: the server builds and deploys main itself (OPS-16): the .NET SDK and Node folders that install.sh
 #   copies (dotnet/, node/) go to /opt/dalan/tools, the deploy user gets a GitHub key, and dalan-pull.timer starts.
@@ -173,16 +174,20 @@ systemctl enable opendkim.service postfix.service
 systemctl restart opendkim.service postfix.service
 
 echo "Caddy and units"
-install -m 755 "$here/caddy" "$root/usr/local/bin/caddy"
+install -d -m 755 "$root/opt/dalan/tools"
+# install.sh sends Caddy (and Node and the .NET SDK) only when this server has another version; <tool>.version says which.
+if [ -f "$here/caddy" ]; then
+  install -m 755 "$here/caddy" "$root/usr/local/bin/caddy"
+  install -m 644 "$here/caddy.version" "$root/opt/dalan/tools/caddy.version"
+fi
 install -d -m 755 "$root/etc/caddy"
 install -m 644 "$here/Caddyfile" "$root/etc/caddy/Caddyfile"
 # Domains for Caddy and for the links the server makes; written each run, so a new domain needs only a new run.
 tunnel="${TUNNEL_DOMAIN:-tunnel.$site}"
-printf 'DALAN_SITE_DOMAIN=%s\nDALAN_API_DOMAIN=%s\nDALAN_TUNNEL_DOMAIN=%s\nAdmin__SiteUrl=https://%s\nAdmin__BotApiUrl=https://%s\nNotification__Push__Subject=https://%s\nSites__TunnelUrl=https://%s\nSites__Domain=%s\n' \
-  "$site" "$api" "$tunnel" "$site" "$api" "$site" "$tunnel" "${SITES_DOMAIN:-}" > "$domains_file"
+printf 'DALAN_SITE_DOMAIN=%s\nDALAN_API_DOMAIN=%s\nDALAN_TUNNEL_DOMAIN=%s\nAdmin__SiteUrl=https://%s\nAdmin__BotApiUrl=https://%s\nNotification__Push__Subject=https://%s\nSites__TunnelUrl=https://%s\nSites__Domain=%s\nSites__DemoHost=%s\n' \
+  "$site" "$api" "$tunnel" "$site" "$api" "$site" "$tunnel" "${SITES_DOMAIN:-}" "${SITES_DOMAIN:-}" > "$domains_file"
 chmod 644 "$domains_file"
 rm -f "$root/etc/dalan/caddy.env"
-install -d -m 755 "$root/opt/dalan/tools"
 install -m 755 "$here/backup.sh" "$here/drill.sh" "$root/opt/dalan/tools/"
 for unit in dalan.service caddy.service dalan-backup.service dalan-backup.timer; do
   install -m 644 "$here/$unit" "$root/etc/systemd/system/$unit"
@@ -197,6 +202,7 @@ if [ "${PULL_DEPLOY:-}" = 1 ]; then
     [ -d "$here/$tool" ] || continue
     rm -rf "$root/opt/dalan/tools/$tool"
     cp -a "$here/$tool" "$root/opt/dalan/tools/$tool"
+    install -m 644 "$here/$tool.version" "$root/opt/dalan/tools/$tool.version"
   done
   install -m 755 "$here/pull-deploy.sh" "$root/opt/dalan/tools/"
   for unit in dalan-pull.service dalan-pull.timer; do
@@ -205,9 +211,16 @@ if [ "${PULL_DEPLOY:-}" = 1 ]; then
   # A read-only key for the repository; port 443, because port 22 to GitHub is often closed from Iran.
   github_key="$root/home/deploy/.ssh/github"
   [ -f "$github_key" ] || ssh-keygen -q -t ed25519 -N '' -C "dalan-pull@$site" -f "$github_key"
-  printf 'Host github.com\n  HostName ssh.github.com\n  Port 443\n  User git\n  IdentityFile ~/.ssh/github\n  IdentitiesOnly yes\n  StrictHostKeyChecking accept-new\n' \
+  printf 'Host github.com\n  HostName ssh.github.com\n  Port 443\n  User git\n  IdentityFile ~/.ssh/github\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' \
     > "$root/home/deploy/.ssh/config"
-  chown deploy:deploy "$github_key" "$github_key.pub" "$root/home/deploy/.ssh/config"
+  # GitHub's published host keys for port 443 (docs.github.com, "GitHub's SSH key fingerprints"); never trust on first use.
+  # If GitHub changes a key, update these lines and run install.sh again.
+  cat > "$root/home/deploy/.ssh/known_hosts" <<'KEYS'
+[ssh.github.com]:443 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+[ssh.github.com]:443 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
+[ssh.github.com]:443 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk=
+KEYS
+  chown deploy:deploy "$github_key" "$github_key.pub" "$root/home/deploy/.ssh/config" "$root/home/deploy/.ssh/known_hosts"
   systemctl daemon-reload
   systemctl enable --now dalan-pull.timer
   pull_key=$(cat "$github_key.pub")
@@ -221,7 +234,7 @@ systemctl restart caddy.service
 dkim_record=$(tr -d '\n' < "$root/etc/dkimkeys/dalan.txt" | grep -o '"[^"]*"' | tr -d '"\t\n ' | sed 's/;/; /g; s/ $//')
 cat <<DNS
 
-DNS records (A, to this server): $site, $api, $tunnel${SITES_DOMAIN:+, *.$SITES_DOMAIN}
+DNS records (A, to this server): $site, $api, $tunnel${SITES_DOMAIN:+, $SITES_DOMAIN, *.$SITES_DOMAIN}
 
 DNS records for $site (TXT):
   $site                      v=spf1 a -all
@@ -231,4 +244,4 @@ Reverse DNS (provider panel): the server address -> $site
 
 DNS
 [ -z "${pull_key:-}" ] || printf '\nGitHub, repository Settings, Deploy keys, Add (read only), so this server can take main:\n  %s\n' "$pull_key"
-echo "Done. Next: run the deploy from CI (the first time), and see docs/SERVER.md for the SMS settings."
+echo "Done. Next: the first deploy (docs/SERVER.md section 3), and see docs/SERVER.md for the SMS settings."

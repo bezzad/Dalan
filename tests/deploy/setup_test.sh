@@ -10,7 +10,7 @@ mkdir -p "$bin" "$state" "$root"/{etc/sudoers.d,etc/dkimkeys,etc/systemd/system,
 # The setup folder as install.sh copies it: deploy/ plus a fake caddy binary.
 src="$tmp/dalan-setup"; mkdir "$src"
 cp "$deploy"/{setup.sh,backup.sh,drill.sh,Caddyfile,dalan.service,caddy.service,dalan-backup.service,dalan-backup.timer} "$src/"
-printf '#!/bin/sh\n' > "$src/caddy"
+printf '#!/bin/sh\n' > "$src/caddy"; echo 'caddy 2.11.9' > "$src/caddy.version"
 echo 'ssh-ed25519 AAAA ci-deploy' > "$src/deploy.pub"
 
 log() { printf '#!/bin/sh\necho "%s $*" >> %s/commands.log\n%s\n' "$1" "$state" "${2:-}" > "$bin/$1"; }
@@ -189,16 +189,17 @@ echo "PASS OPS-10 settings from install.sh"
 # Rule: OPS-15 the sites domain and the tunnel host from install.sh
 printf 'SITES_DOMAIN=dalancloud.ir\nTUNNEL_DOMAIN=t.dalanet.ir\n' > "$src/settings.env"
 bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out-sites" || fail "run with a sites domain failed"
-for line in Sites__Domain=dalancloud.ir DALAN_TUNNEL_DOMAIN=t.dalanet.ir Sites__TunnelUrl=https://t.dalanet.ir; do
+for line in Sites__Domain=dalancloud.ir Sites__DemoHost=dalancloud.ir DALAN_TUNNEL_DOMAIN=t.dalanet.ir Sites__TunnelUrl=https://t.dalanet.ir; do
   grep -qx "$line" "$root/etc/dalan/domains.env" || fail "domains.env should have $line"
 done
-grep -qF '*.dalancloud.ir' "$tmp/out-sites" || fail "setup does not print the DNS record of the sites"
+grep -qF 'dalancloud.ir, *.dalancloud.ir' "$tmp/out-sites" || fail "setup does not print the DNS records of the sites and demos"
 rm "$src/settings.env"
 echo "PASS OPS-15 sites domain and tunnel host from install.sh"
 
 # Rule: OPS-16 the server builds main itself: tools, the GitHub key on port 443, the timer
 cp "$deploy"/{pull-deploy.sh,dalan-pull.service,dalan-pull.timer} "$src/"
 mkdir -p "$src/dotnet" "$src/node/bin" && touch "$src/dotnet/dotnet" "$src/node/bin/node"
+echo 'dotnet 11.0.100' > "$src/dotnet.version"; echo 'node node-v26.13.1-linux-x64' > "$src/node.version"
 cat > "$bin/ssh-keygen" <<SH
 #!/bin/bash
 echo "ssh-keygen \$*" >> "$state/commands.log"
@@ -214,12 +215,27 @@ for f in opt/dalan/tools/dotnet/dotnet opt/dalan/tools/node/bin/node opt/dalan/t
   [ -e "$root/$f" ] || fail "$f not installed"
 done
 grep -qx '  Port 443' "$root/home/deploy/.ssh/config" || fail "GitHub is not reached on port 443"
+for v in 'caddy 2.11.9:caddy' 'dotnet 11.0.100:dotnet' 'node node-v26.13.1-linux-x64:node'; do
+  [ "$(cat "$root/opt/dalan/tools/${v#*:}.version" 2>/dev/null)" = "${v%:*}" ] || fail "setup does not record the ${v#*:} version"
+done
+# GitHub's published host keys (fingerprint SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU), never trust on first use.
+grep -qxF '[ssh.github.com]:443 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' \
+  "$root/home/deploy/.ssh/known_hosts" || fail "GitHub's host key is not pinned"
+grep -qx '  StrictHostKeyChecking yes' "$root/home/deploy/.ssh/config" || fail "an unknown GitHub host key is not refused"
 grep -qF 'systemctl enable --now dalan-pull.timer' "$state/commands.log" || fail "pull timer not started"
 grep -qF 'ssh-ed25519 BBBB dalan-pull' "$tmp/out-pull" || fail "setup does not print the GitHub deploy key"
 bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || fail "second PULL_DEPLOY run failed"
 [ "$(grep -c 'ssh-keygen' "$state/commands.log")" = 1 ] || fail "GitHub key made again"
+# A run without the tools (install.sh sends only what changed) keeps the installed ones.
+mv "$src/caddy" "$src/dotnet" "$src/node" "$src/caddy.version" "$src/dotnet.version" "$src/node.version" "$tmp/"
+echo kept > "$root/usr/local/bin/caddy"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || fail "run without the tools failed"
+[ "$(cat "$root/usr/local/bin/caddy")" = kept ] || fail "Caddy replaced without a new one"
+[ -e "$root/opt/dalan/tools/dotnet/dotnet" ] && [ -e "$root/opt/dalan/tools/node/bin/node" ] || fail "a tool removed without a new one"
+[ "$(cat "$root/opt/dalan/tools/caddy.version")" = 'caddy 2.11.9' ] || fail "the Caddy version lost"
+mv "$tmp/caddy" "$tmp/dotnet" "$tmp/node" "$tmp/caddy.version" "$tmp/dotnet.version" "$tmp/node.version" "$src/"
 rm "$src/settings.env"
-echo "PASS OPS-16 server set up to build main itself"
+echo "PASS OPS-16 server set up to build main itself; a run without the tools keeps them"
 
 # Rule: OPS-10 secrets can be made again
 old_secrets=$(grep -E '^(ConnectionStrings__Dalan|Identity__SigningKey|Notification__Push__(Public|Private)Key)=' "$env_file")
@@ -241,6 +257,7 @@ echo "PASS OPS-10 secrets can be made again"
 
 # Rule: OPS-09 install.sh downloads Caddy on the owner's machine (the CI version, checked) and runs setup over SSH
 inst="$tmp/inst"; mkdir -p "$inst/bin"
+export DALAN_CACHE="$inst/cache"
 ci_version=$(sed -nE 's/^ *CADDY_VERSION: "(.*)"/\1/p' "$deploy/../.github/workflows/ci.yml")
 cat > "$inst/bin/curl" <<SH
 #!/bin/bash
@@ -248,11 +265,18 @@ out=""; while [ \$# -gt 0 ]; do case "\$1" in -o) out="\$2"; shift 2;; http*) ur
 echo "\$url" >> "$inst/urls.log"
 case "\$url" in
   *checksums.txt) (cd "$inst" && sha512sum caddy_${ci_version}_linux_amd64.tar.gz) > "\$out";;
+  *dotnet-install.sh) cp "$inst/dotnet-install.sh" "\$out";;
+  *SHASUMS256.txt) (cd "$inst" && sha256sum node-v26.0.0-linux-x64.tar.xz) > "\$out";;
+  *node-v26.0.0-linux-x64.tar.xz) cp "$inst/node-v26.0.0-linux-x64.tar.xz" "\$out";;
   *) cp "$inst/caddy_${ci_version}_linux_amd64.tar.gz" "\$out";;
 esac
 SH
-printf '#!/bin/bash\necho "scp $*" >> %s/remote.log\ncp -r "${@: -2:1}" %s/copied\n' "$inst" "$inst" > "$inst/bin/scp"
-printf '#!/bin/bash\necho "ssh $*" >> %s/remote.log\n' "$inst" > "$inst/bin/ssh"
+# The fake ssh writes each call down; the call that unpacks the setup folder unpacks it into $inst/copied.
+cat > "$inst/bin/ssh" <<SH
+#!/bin/bash
+echo "ssh \$*" >> "$inst/remote.log"
+case "\$*" in *"cat /opt/dalan/tools/"*) cat "$inst/server-versions" 2>/dev/null;; *"tar --no-same-owner -xf - -C /tmp"*) mkdir -p "$inst/unpack" && tar -xf - -C "$inst/unpack" && mv "$inst/unpack/dalan-setup" "$inst/copied";; esac
+SH
 chmod +x "$inst/bin"/*
 mkdir "$inst/pkg" && printf '#!/bin/sh\n' > "$inst/pkg/caddy" && tar -czf "$inst/caddy_${ci_version}_linux_amd64.tar.gz" -C "$inst/pkg" caddy
 PATH="$inst/bin:$PATH" bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null || fail "install.sh failed"
@@ -288,6 +312,54 @@ before=$(sha256sum < "$env_file")
 bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out4" || { cat "$tmp/out4"; fail "run without GitHub failed"; }
 [ "$(sha256sum < "$env_file")" = "$before" ] || fail "dalan.env changed without GitHub settings"
 echo "PASS OPS-14 no GitHub settings keep dalan.env"
+
+# Rule: OPS-16 install.sh with PULL_DEPLOY=1 brings Node and the .NET SDK with their symlinks (npm is one: a copy cannot find its files)
+mkdir -p "$inst/node/node-v26.0.0-linux-x64/bin" "$inst/node/node-v26.0.0-linux-x64/lib/node_modules/npm/bin"
+echo 'npm' > "$inst/node/node-v26.0.0-linux-x64/lib/node_modules/npm/bin/npm-cli.js"
+ln -s ../lib/node_modules/npm/bin/npm-cli.js "$inst/node/node-v26.0.0-linux-x64/bin/npm"
+tar -cJf "$inst/node-v26.0.0-linux-x64.tar.xz" -C "$inst/node" node-v26.0.0-linux-x64
+cat > "$inst/dotnet-install.sh" <<'SH'
+#!/bin/bash
+while [ $# -gt 0 ]; do [ "$1" = --install-dir ] && dir="$2"; shift; done
+# Like the real script: an SDK that is already there is not installed again.
+[ -e "$dir/dotnet" ] || { mkdir -p "$dir/sdk/11.0.100" && echo sdk > "$dir/sdk/11.0.100/dotnet.dll" && ln -s sdk/11.0.100/dotnet.dll "$dir/dotnet"; }
+SH
+rm -rf "$inst/copied" "$inst/remote.log"
+PULL_DEPLOY=1 PATH="$inst/bin:$PATH" bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null \
+  || fail "install.sh with PULL_DEPLOY failed"
+[ "$(readlink "$inst/copied/node/bin/npm")" = ../lib/node_modules/npm/bin/npm-cli.js ] || fail "npm is not a symlink on the server"
+[ "$(readlink "$inst/copied/dotnet/dotnet")" = sdk/11.0.100/dotnet.dll ] || fail "the .NET SDK lost its symlinks"
+for f in pull-deploy.sh dalan-pull.service dalan-pull.timer; do [ -f "$inst/copied/$f" ] || fail "$f not copied"; done
+echo "PASS OPS-16 install.sh brings Node and the .NET SDK with their symlinks"
+
+# Rule: OPS-16 a second install.sh run takes Caddy, Node and the .NET SDK from the cache on this computer
+[ -f "$DALAN_CACHE/dotnet-11.0/sdk/11.0.100/dotnet.dll" ] || fail "the .NET SDK is not installed into the cache"
+rm -rf "$inst/copied" "$inst/remote.log" "$inst/urls.log"
+PULL_DEPLOY=1 PATH="$inst/bin:$PATH" bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null \
+  || fail "second install.sh with PULL_DEPLOY failed"
+grep -E 'caddy_.*linux_amd64\.tar\.gz$|node-v.*\.tar\.xz$|dotnet-install\.sh$' "$inst/urls.log" && fail "downloaded again: $(cat "$inst/urls.log")"
+[ "$(readlink "$inst/copied/node/bin/npm")" = ../lib/node_modules/npm/bin/npm-cli.js ] || fail "npm from the cache is not a symlink"
+[ "$(readlink "$inst/copied/dotnet/dotnet")" = sdk/11.0.100/dotnet.dll ] || fail "the .NET SDK from the cache lost its symlinks"
+[ -f "$inst/copied/caddy" ] || fail "Caddy from the cache not copied"
+echo "PASS OPS-16 a second install.sh run downloads Caddy, Node and the .NET SDK only once"
+
+# Rule: OPS-16 install.sh sends Caddy, Node and the .NET SDK only when the server has another version
+for v in 'caddy:caddy 2.11.9' 'node:node node-v26.0.0-linux-x64' 'dotnet:dotnet 11.0.100'; do
+  [ "$(cat "$inst/copied/${v%%:*}.version" 2>/dev/null)" = "${v#*:}" ] || fail "install.sh does not send the ${v%%:*} version"
+done
+cat "$inst/copied"/*.version > "$inst/server-versions"
+rm -rf "$inst/copied" "$inst/remote.log"
+PULL_DEPLOY=1 PATH="$inst/bin:$PATH" bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null \
+  || fail "install.sh against a server with the same tools failed"
+for f in caddy node dotnet; do [ ! -e "$inst/copied/$f" ] || fail "$f sent again with the same version"; done
+grep -q 'cat /opt/dalan/tools/' "$inst/remote.log" || fail "install.sh does not ask the server for its versions"
+echo 'node node-v25.0.0-linux-x64' > "$inst/server-versions"
+rm -rf "$inst/copied" "$inst/remote.log"
+PULL_DEPLOY=1 PATH="$inst/bin:$PATH" bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null \
+  || fail "install.sh against a server with an old Node failed"
+for f in caddy node dotnet; do [ -e "$inst/copied/$f" ] || fail "$f not sent to a server with another version"; done
+rm -f "$inst/server-versions"
+echo "PASS OPS-16 install.sh sends a tool only when the server has another version"
 
 # Rule: OPS-14 install.sh sends the secret in a file, never on a command line
 rm -rf "$inst/copied" "$inst/remote.log"

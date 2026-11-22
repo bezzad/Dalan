@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: CLI-42 Simple header and a phone menu
-The site header SHALL link to three places only: Plans (the plans part of the landing page), Showcase and Guide. FAQ and Privacy SHALL be only in the footer. A tick icon in a list SHALL sit in the middle of the first line of its text, in both languages. Below 760px the three links SHALL fold into one round ☰ button at the end of the header, after the header tools; it SHALL open a panel with the same links, and a chosen link, a click outside the panel or Escape SHALL close it. The button SHALL say for screen readers whether the menu is open. No page SHALL scroll sideways on a phone, in portrait or in landscape.
+The site header SHALL link only to Plans, Showcase and Guide; FAQ and Privacy SHALL be only in the footer. Below 760px the links SHALL fold into a round ☰ button after the header tools, which opens a panel with the same links; a link, a click outside or Escape SHALL close it. A tick icon in a list SHALL sit in the middle of the first text line. No page SHALL scroll sideways on a phone, in portrait or in landscape.
 
 #### Scenario: Header and footer links
 - **WHEN** a public page is drawn in Persian or English
@@ -45,7 +45,7 @@ The server SHALL serve the PWA page at `/`, `/bots`, `/apps`, `/privacy`, `/faq`
 - **THEN** the response is 404
 
 ### Requirement: CLI-26 Landing page
-A visitor and a logged-in user SHALL see at `/` a landing page in the current theme (CLI-35) that says only what Dalan does, its features and its plans, in this order: a hero with "Try it (free)" and "See plans"; the plans (`#plans`): product cards with a traffic picture (bot relay, where the computer only calls out; sites), each with a "Get started" button to its guide (CLI-38); what you get (CLI-37); the three messages of DESIGN section 13 in order; a security list; a closing call; a footer. It SHALL NOT show install steps, commands or code, and SHALL NOT say "tunnel".
+A visitor and a logged-in user SHALL see at `/` a landing page in the current theme (CLI-35) that says only what Dalan does, its features and its plans, in this order: a hero with "Try it (free)" and "See plans"; the plans (`#plans`), product cards with a traffic picture, each with "Get started" to its guide (CLI-38); what you get (CLI-37); the three messages of DESIGN section 13; a security list; a closing call; a footer. It SHALL NOT show install steps or code, or say "tunnel".
 
 #### Scenario: Three messages in order
 - **WHEN** the landing texts are read in Persian or English
@@ -79,7 +79,7 @@ The landing page SHALL have a "What you get" section after the plans: four group
 - **THEN** it names TCP, SSH and the AI gateway, and no text of the section says "tunnel"
 
 ### Requirement: CLI-38 Guide to run a bot
-A visitor and a logged-in user SHALL see at `/guide` a choice of plan: a bot or a site. `/guide/bot` SHALL show, in both languages, nine steps to run a bot without an AI agent, from login to a bot that keeps running (scenarios below). `/guide/site` SHALL show four steps: log in and become a builder; install the agent with the one-line command for Linux and macOS and for Windows (CLI-39); log in from "My apps" with the command it shows; run `dalan http <port> --name <name>`. Addresses and numbers SHALL come from the public settings. The header and footer SHALL link to `/guide`, and each plan of the landing page to its guide; "My bots" SHALL show steps 5 to 9 of the bot guide itself.
+A visitor and a logged-in user SHALL see at `/guide` a choice of plan: a bot or a site. `/guide/bot` SHALL show, in both languages, nine steps to run a bot without an AI agent. `/guide/site` SHALL show four steps: become a builder, install the agent in one line (CLI-39), log in from "My apps", run `dalan http`. Addresses and numbers SHALL come from the public settings. "My bots" SHALL show steps 5 to 9 of the bot guide itself.
 
 #### Scenario: Steps use the real addresses
 - **GIVEN** the public settings say `bot_api_url` is `https://api.example.ir`, `site_url` is `https://example.ir` and the expiry is 60 seconds

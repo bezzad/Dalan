@@ -39,3 +39,10 @@ Only the host project SHALL reference service implementations and plugins.
 #### Scenario: A non-host project wires services
 - **WHEN** any project other than the host references two or more service implementations or a plugin
 - **THEN** the architecture tests fail
+
+### Requirement: ARC-06 The agent stands alone
+The agent project (`agent/Dalan.Agent`) SHALL reference no other project and no package: only the .NET base library. No server project SHALL reference it.
+
+#### Scenario: Agent with a project reference
+- **WHEN** the agent project references a Dalan project or a package
+- **THEN** the architecture test fails

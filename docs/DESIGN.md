@@ -289,6 +289,8 @@ In Layer 2 the builder's frontend and backend stay unchanged. The page is served
 
 **Dalan Agent.** A small program from Dalan that the builder runs beside the unchanged backend: `dalan login <key>` once, then `dalan http 3000 --name levelwise` (more `<port> --name <name>` pairs for more sites in one agent; `dalan start` runs the saved ones). It connects out to `tunnel.dalanet.ir` by WebSocket, or by long polling when WebSocket is blocked. The builder writes no polling code. Built in Layer 2 milestone 1 (decisions 60 to 63).
 
+**Demo link.** `dalan demo 3000` gives a test link with no name to claim: `https://dalans.ir/<random id>/`, open for 24 hours, at most 3 live demos per builder, ended at once by Ctrl+C. The first visit sets a cookie, so the app's own links (`/app.js`) keep going to the same demo. All demos share one origin, so a demo is for tests, not for real accounts (decision 67).
+
 **Two ways to run a site:**
 
 | Mode | What is on Dalan | If the home machine is off |
@@ -385,9 +387,9 @@ These facts shaped the design. Several were learned the hard way by the Valorian
 **Deployment**
 
 - Docker Hub and `download.docker.com` refuse Iranian IP addresses. Do not depend on Docker on the Iran server.
-- Build in CI, produce one self-contained binary, copy it over SSH, run it under systemd.
+- Produce one self-contained binary and run it under systemd. The server builds main itself (it reaches only GitHub); a copy over SSH from the owner's computer or a CI run by hand is the fallback.
 - Keep the last few releases, check a health endpoint after each deploy, and roll back if it fails.
-- GitHub may not open from the server, so the server never pulls; CI pushes.
+- GitHub may not open from the server: a failed fetch keeps the running release and is tried again; without GitHub the owner deploys over SSH.
 - Back up PostgreSQL daily.
 - Built in milestone 11: one-command server setup, daily backup and a shutdown drill script (`docs/SERVER.md`).
 
@@ -517,8 +519,8 @@ None of these is planned work. They are recorded so the design does not block th
 **Open questions:**
 
 - [ ] SMS provider: the Kavenegar sender is built (milestone 4), SMS.ir stays the second choice. Still to do by the owner: a Kavenegar account, an approved OTP template named `dalan-login` with one token, and the API key on the server. Prices and delivery speed were not compared.
-- [ ] Which hosting provider, after comparing traffic cost, extra disk and DNS?
-- [ ] Buy the separate sites domain before Layer 2 (decided 2026-11-20; candidate: `dalancloud.ir`). The owner buys it. Until then `Sites:Domain` stays empty and sites are off.
+- [x] Which hosting provider, after comparing traffic cost, extra disk and DNS? webdade (80.244.7.112), DNS at ArvanCloud (2026-11-21).
+- [x] Buy the separate sites domain before Layer 2 (decided 2026-11-20): `dalans.ir`, pointed at the server (2026-11-21). `Sites:Domain` is set by `SITES_DOMAIN=dalans.ir` in `install.sh`.
 - [ ] Buy a foreign backup domain (candidate: `dalanet.net`)?
 - [ ] Lawyer review of content responsibility, phone-number storage, and how long the access log must be kept.
 - [x] Telegram Bot API snapshot: 10.4 (2026-11-09), chosen on 2026-11-17 in milestone 5.

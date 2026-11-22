@@ -1,4 +1,5 @@
 using System.Net;
+using Dalan.Sites.Demos;
 using Dalan.Sites.Names;
 using Dalan.Sites.Tunnel;
 using Microsoft.AspNetCore.Http;
@@ -8,7 +9,7 @@ using Microsoft.Extensions.Options;
 namespace Dalan.Sites.Proxy;
 
 /// <summary>SITE-08 to SITE-12: a visitor request to "name.(sites domain)" goes through the site's session and back.</summary>
-internal sealed class SiteProxy(TunnelHub hub, SiteBook book, IOptionsMonitor<SitesOptions> options, TimeProvider time)
+internal sealed class SiteProxy(TunnelHub hub, SiteBook book, DemoBook demos, IOptionsMonitor<SitesOptions> options, TimeProvider time)
 {
     /// <summary>Headers of one connection only; they never pass a proxy (RFC 9110 section 7.6.1).</summary>
     private static readonly HashSet<string> HopByHop = new(StringComparer.OrdinalIgnoreCase)
@@ -31,9 +32,12 @@ internal sealed class SiteProxy(TunnelHub hub, SiteBook book, IOptionsMonitor<Si
         return label.Contains('.', StringComparison.Ordinal) ? "" : label;
     }
 
+    /// <summary>SITE-18: true when the host is the demo host and demos are on.</summary>
+    public static bool IsDemoHost(HostString host, SitesOptions settings) =>
+        settings.DemoHost.Length > 0 && string.Equals(host.Host, settings.DemoHost, StringComparison.OrdinalIgnoreCase);
+
     public async Task HandleAsync(HttpContext http, string site)
     {
-        var settings = options.CurrentValue;
         var session = site.Length == 0 ? null : hub.Find(site);
         if (session is null)
         {
@@ -43,6 +47,76 @@ internal sealed class SiteProxy(TunnelHub hub, SiteBook book, IOptionsMonitor<Si
             return;
         }
 
+        await RelayAsync(http, session, site, http.Request.Path, null);
+    }
+
+    /// <summary>
+    /// SITE-19 and SITE-20: "/id/rest" goes to the demo as "/rest" and sets the cookie; with the cookie any other path goes
+    /// to the demo unchanged; a demo that ended answers 410; anything else the 404 page.
+    /// </summary>
+    public async Task HandleDemoAsync(HttpContext http)
+    {
+        var settings = options.CurrentValue;
+        var path = http.Request.Path;
+        var (id, rest) = SplitDemoPath(path, settings.DemoIdLength);
+        var fromAddress = id is not null && await demos.FindAsync(id, http.RequestAborted) is not null;
+        if (!fromAddress)
+        {
+            id = http.Request.Cookies[DemoCookie];
+            rest = path.Value ?? "/";
+        }
+
+        var demo = string.IsNullOrEmpty(id) ? null : await demos.FindAsync(id, http.RequestAborted);
+        if (demo is null)
+        {
+            await PageAsync(http, StatusCodes.Status404NotFound, "demo_not_found");
+            return;
+        }
+
+        var key = DemoKey(demo.Id);
+        if (!demo.IsLive(time.GetUtcNow()))
+        {
+            hub.Drop(key); // SITE-20: its tunnel stops carrying requests.
+            await PageAsync(http, StatusCodes.Status410Gone, "demo_ended");
+            return;
+        }
+
+        if (fromAddress && rest.Length == 0)
+        {
+            http.Response.Redirect($"/{demo.Id}/{http.Request.QueryString}");
+            return;
+        }
+
+        if (hub.Find(key) is not { } session)
+        {
+            await PageAsync(http, StatusCodes.Status502BadGateway, "site_offline");
+            return;
+        }
+
+        var cookie = fromAddress ? $"{DemoCookie}={demo.Id}; Path=/; Secure; HttpOnly; SameSite=Lax" : null;
+        await RelayAsync(http, session, key, rest, cookie);
+    }
+
+    /// <summary>The demo key in the hub, and in <c>TunnelRequest.Site</c>.</summary>
+    public static string DemoKey(string id) => "demo:" + id;
+
+    private const string DemoCookie = "dalan_demo";
+
+    /// <summary>"/id/rest" gives (id, "/rest"); "/id" gives (id, ""); a first part that cannot be an id gives (null, "").</summary>
+    private static (string? Id, string Tail) SplitDemoPath(PathString path, int idLength)
+    {
+        var text = path.Value ?? "";
+        if (text.Length < idLength + 1 || text[0] != '/') return (null, "");
+        var end = idLength + 1;
+        if (text.Length > end && text[end] != '/') return (null, "");
+        foreach (var c in text.AsSpan(1, idLength))
+            if (c is not (>= 'a' and <= 'z') and not (>= '0' and <= '9')) return (null, "");
+        return (text[1..end], text[end..]);
+    }
+
+    private async Task RelayAsync(HttpContext http, TunnelSession session, string site, PathString path, string? cookie)
+    {
+        var settings = options.CurrentValue;
         var body = await ReadBodyAsync(http, settings.MaxBodyBytes);
         if (body is null)
         {
@@ -59,7 +133,7 @@ internal sealed class SiteProxy(TunnelHub hub, SiteBook book, IOptionsMonitor<Si
 
         try
         {
-            await ForwardAsync(http, session, site, body, settings);
+            await ForwardAsync(http, session, site, path, cookie, body, settings);
         }
         finally
         {
@@ -67,10 +141,11 @@ internal sealed class SiteProxy(TunnelHub hub, SiteBook book, IOptionsMonitor<Si
         }
     }
 
-    private async Task ForwardAsync(HttpContext http, TunnelSession session, string site, byte[] body, SitesOptions settings)
+    private async Task ForwardAsync(
+        HttpContext http, TunnelSession session, string site, PathString path, string? cookie, byte[] body, SitesOptions settings)
     {
         var (id, answer) = hub.Send(session, new TunnelRequestDraft(
-            site, http.Request.Method, http.Request.Path + http.Request.QueryString, RequestHeaders(http), Base64(body)));
+            site, http.Request.Method, path + http.Request.QueryString, RequestHeaders(http), Base64(body)));
         TunnelResponse? response;
         try
         {
@@ -104,6 +179,7 @@ internal sealed class SiteProxy(TunnelHub hub, SiteBook book, IOptionsMonitor<Si
         }
 
         http.Response.StatusCode = response.Status;
+        if (cookie is not null) http.Response.Headers.Append("Set-Cookie", cookie);
         foreach (var (name, values) in response.Headers ?? [])
             if (!HopByHop.Contains(name) && values is not null) http.Response.Headers.Append(name, values);
         http.Response.ContentLength = bytes.Length;

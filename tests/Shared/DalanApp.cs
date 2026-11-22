@@ -58,8 +58,10 @@ public sealed class DalanApp(
         return [.. rows.Select(row => row.TrimEnd())];
     }
 
+    // A guard against a hang, not a speed check: on a busy computer with one shared DALAN_TEST_POSTGRES server,
+    // many tests create and migrate databases at once and a start-up can take over a minute.
     public Task ReadyAsync() =>
-        Services.GetRequiredService<Startup>().Done.WaitAsync(TimeSpan.FromSeconds(60), TestContext.Current.CancellationToken);
+        Services.GetRequiredService<Startup>().Done.WaitAsync(TimeSpan.FromMinutes(3), TestContext.Current.CancellationToken);
 
     public async Task<long> AddUserAsync(string displayName = "Sara", string? username = null, string? phone = null)
     {

@@ -6,11 +6,24 @@ Defines the gates every change passes and how a release reaches the server, so b
 ## Requirements
 
 ### Requirement: DEL-01 CI gate
-CI SHALL build the client and the solution, run all server tests and all client tests, type-check the client, and run `openspec validate --strict` on every push and pull request. Any failure SHALL fail the run.
+The gate SHALL be `scripts/ci.sh` on the owner's computer, with every step of the GitHub workflow: build, all server and client tests, client type-check, release smoke test, linux-x64 agent, `openspec validate --all --strict`, rule check, script tests, and the Docker image test when Docker is there. It SHALL print PASS or FAIL per step and the total time, and exit non-zero at the first failure or missing tool. The workflow SHALL run only by hand, with the same steps.
 
 #### Scenario: A test fails
-- **WHEN** a pull request has a failing test
-- **THEN** the CI run fails
+- **WHEN** a test fails during `scripts/ci.sh`
+- **THEN** it prints FAIL for that step and exits with a non-zero code
+
+#### Scenario: A tool is missing
+- **GIVEN** `caddy` is not on the PATH
+- **WHEN** the owner runs `scripts/ci.sh`
+- **THEN** it fails at once and names `caddy`
+
+#### Scenario: The two gates drift apart
+- **WHEN** a test script or test project is in the workflow and not in `scripts/ci.sh` (or the other way)
+- **THEN** the workflow test fails
+
+#### Scenario: A push
+- **WHEN** a commit is pushed or a pull request is opened
+- **THEN** no GitHub CI machine starts
 
 ### Requirement: DEL-02 Every rule has a test
 CI SHALL fail when a rule ID in a requirement name in `openspec/specs` or in an active change has no test that names that ID. Server tests are under `tests/`, client tests under `client/tests/`.
@@ -51,13 +64,17 @@ After a successful deploy, the server SHALL keep the configured number of newest
 - **WHEN** a deploy succeeds
 - **THEN** the 5 newest releases remain, including the current one
 
-### Requirement: DEL-06 Server never pulls
-The deploy SHALL push files from CI to the server over SSH. The server MUST NOT need access to GitHub or any foreign host to deploy.
+### Requirement: DEL-06 How a release reaches the server
+The deploy script SHALL deploy a release folder it is given, and SHALL NOT itself reach GitHub or any foreign host. The main way a release reaches the server SHALL be the server's own build of main (OPS-16), which reaches only GitHub. The fallbacks SHALL be the owner's computer over SSH, and a CI run started by hand with deploy on.
 
 #### Scenario: Server has no internet
 - **GIVEN** the server cannot reach GitHub
-- **WHEN** CI runs the deploy
+- **WHEN** the owner's computer or a manual CI run deploys over SSH
 - **THEN** the deploy succeeds using only the SSH connection
+
+#### Scenario: A merge to main
+- **WHEN** a pull request is merged to main
+- **THEN** GitHub CI does not deploy; the server builds the new main itself
 
 ### Requirement: DEL-07 One SSH connection, tried again
 The deploy SHALL open one SSH connection to the server, trying up to `SSH_TRIES` times (start 5) with `SSH_TIMEOUT` seconds each (start 30), and send every command and upload over that connection. If no try connects, it SHALL exit with an error and change nothing on the server.
@@ -71,3 +88,14 @@ The deploy SHALL open one SSH connection to the server, trying up to `SSH_TRIES`
 - **GIVEN** no SSH try connects
 - **WHEN** CI runs the deploy
 - **THEN** the deploy exits with an error and the current link is not changed
+
+### Requirement: DEL-08 The agent for every system ships with the server
+Every release SHALL have the agent, built with Native AOT, in its `agent` folder, which is `Sites:AgentFolder` (AGT-10): `dalan-linux-x64` from each build (the server's own build, `scripts/ci.sh` and CI), and `dalan-windows-x64.exe`, `dalan-macos-arm64` and `dalan-macos-x64` from a CI run started by hand (each on its own system; Native AOT does not cross systems). A build that cannot make a file SHALL keep the one of the running release (OPS-16).
+
+#### Scenario: Deploy
+- **WHEN** a manual CI run deploys
+- **THEN** the new release has `agent/dalan-linux-x64`, `agent/dalan-windows-x64.exe`, `agent/dalan-macos-arm64` and `agent/dalan-macos-x64`
+
+#### Scenario: The server's own build
+- **WHEN** the server builds and deploys a new main
+- **THEN** the new release has a new `agent/dalan-linux-x64` and the running release's Windows and macOS files

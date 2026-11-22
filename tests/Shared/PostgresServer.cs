@@ -19,7 +19,12 @@ public sealed class PostgresServer : IAsyncLifetime
         _server = Environment.GetEnvironmentVariable("DALAN_TEST_POSTGRES") ?? "";
         if (_server.Length > 0) return;
 
-        _container = new PostgreSqlBuilder("postgres:18-alpine").Build();
+        // Test data is thrown away, so it lives in memory and never waits for the disk. On a busy disk every
+        // test was slow and the container hard to stop (a process waiting on the disk cannot be killed).
+        _container = new PostgreSqlBuilder("postgres:18-alpine")
+            .WithTmpfsMount("/var/lib/postgresql")
+            .WithCommand("-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "full_page_writes=off")
+            .Build();
         await _container.StartAsync();
         _server = _container.GetConnectionString();
     }

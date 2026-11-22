@@ -1,3 +1,4 @@
+using Dalan.Sites.Demos;
 using Dalan.Sites.Names;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,7 @@ public sealed class SitesDb(DbContextOptions<SitesDb> options) : DbContext(optio
     public const string Schema = "sites";
 
     public DbSet<Site> Sites => Set<Site>();
+    public DbSet<Demo> Demos => Set<Demo>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -17,6 +19,12 @@ public sealed class SitesDb(DbContextOptions<SitesDb> options) : DbContext(optio
             site.ToTable("sites");
             site.HasIndex(s => s.Name).IsUnique();
             site.HasIndex(s => s.OwnerUserId);
+        });
+        modelBuilder.Entity<Demo>(demo =>
+        {
+            demo.ToTable("demos");
+            demo.HasKey(d => d.Id);
+            demo.HasIndex(d => d.OwnerUserId);
         });
     }
 }

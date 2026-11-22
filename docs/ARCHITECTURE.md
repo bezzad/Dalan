@@ -41,6 +41,7 @@ Relay has two thin HTTP doors, both inside Relay:
 
 - A request whose host is `<name>.<Sites:Domain>` leaves the pipeline right after the ready gate (`UseSites`), with only the per-address limit: no Dalan page, path or security header ever answers it. The sites domain is another registered domain (SITE-13).
 - The agent (`agent/Dalan.Agent`, C# Native AOT, no package, decision 60) logs in with an access key, opens a session for its sites (`POST /api/tunnel/sessions`), then reads visitor requests over a WebSocket, or by long polling when WebSocket fails (decision 61), and answers each one. Bodies travel as base64 in JSON; size and time are capped (`Sites:MaxBodyMb`, `Sites:RequestTimeoutSeconds`).
+- Demo links (SITE-17 to SITE-20, AGT-11): the host `Sites:DemoHost` (empty: off) also leaves the pipeline at `UseSites`. `/<id>/rest` goes to the demo as `/rest` and sets the cookie `dalan_demo`; other paths with the cookie go unchanged. The demo is a tunnel site called `demo:<id>`; its row in `sites.demos` stays after the end. A request looks the row up, so the end (owner call or time) works at once. Settings: `Sites:DemoHours`, `DemoIdLength`, `MaxDemosPerBuilder`. `Sites:DemoHost` is not editable in the admin screen: it takes every request of its host.
 - A newer session takes a site from an older one; a session with no read for `Sites:SessionIdleSeconds` is offline. With more than one server, `TunnelHub` becomes shared like the bot queue.
 
 **Telegram adapter** is a plugin, not a service: no data, no domain. The host mounts it at `/bot<token>/<method>`, at the root like Telegram (the `Telegram.Bot` library keeps only the host of its base address). It turns Telegram-shaped calls into calls of `IBotGateway` (in `Dalan.Relay.Contracts`) and back. Rules in `openspec/specs/telegram`; it follows Telegram Bot API 10.4 and serves only what the core can do.
@@ -216,6 +217,9 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 62 | 2026-11-20 | Sites is its own service and schema. A site is a name the first builder claims; the agent opens one session for many sites (each its own local port); the newest session of a site wins |
 | 63 | 2026-11-20 | The agent logs in with an access key (builders only, like bots); a browser code login comes later. It shares no code with the server; end-to-end tests run it against the test server |
 | 64 | 2026-11-20 | Dalan serves the agent files and the one-line install scripts itself (users in Iran may have no GitHub). Caddy gets a certificate for each site name on its first visit, after Dalan says the name is real; no wildcard certificate yet (needs a DNS challenge) |
+| 65 | 2026-11-21 | GitHub Actions minutes ran out: the gate is `scripts/ci.sh` on the owner's computer (the same steps as `ci.yml`, which now runs only by hand); the server builds main itself every minute (`git ls-remote` of main only); the Windows agent comes from a CI run by hand |
+| 66 | 2026-11-21 | The repository is public (the owner cannot pay GitHub; public repositories run Actions free). A CI run by hand builds the Windows and macOS agents (`macos-26`, `macos-26-intel`) with Native AOT, each on its own system |
+| 67 | 2026-11-22 | A demo link is a path on one shared host (`dalans.ir/<id>/`) with a cookie for the app's own links, not a new subdomain: no new name to claim and no new certificate per demo. The price is one shared origin, so demos are for tests only |
 
 ## 11. Client address and access log
 
