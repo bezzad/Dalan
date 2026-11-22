@@ -6,4 +6,4 @@
 - [x] 1.4 Guide: plan choice, bot guide, site guide
 - [x] 1.5 Phone layout on every page, portrait and landscape; tick icons on the first text line (owner, 2026-11-22); check in a real browser
 - [x] 1.6 docs/UI.md, docs/DESIGN.md section 13
-- [ ] 2.1 CI green, review the whole diff, merge, archive
+- [x] 2.1 CI green, review the whole diff, merge, archive
