@@ -16,10 +16,13 @@ export interface PublicNumbers {
 }
 
 /** CLI-26: which screen an address shows. Unknown addresses never reach the page: the server answers 404. */
-export type Page = "landing" | "privacy" | "faq" | "showcase" | "guide" | "login" | "bots" | "apps" | "chat" | "notFound";
+export type Page = "landing" | "privacy" | "faq" | "showcase" | "guide" | "guideBot" | "guideSite" | "login" | "bots" | "apps" | "chat" | "notFound";
 
 export function pageFor(path: string, loggedIn: boolean): Page {
   if (path === "/privacy" || path === "/faq" || path === "/showcase" || path === "/guide") return path.slice(1) as Page;
+  // CLI-38: the guide of each plan.
+  if (path === "/guide/bot") return "guideBot";
+  if (path === "/guide/site") return "guideSite";
   if (path.startsWith("/@")) return loggedIn ? "chat" : "login";
   if (path === "/bots") return loggedIn ? "bots" : "login";
   if (path === "/apps") return loggedIn ? "apps" : "login";
@@ -41,87 +44,49 @@ export const landing: Record<Lang, { title: string; text: string }[]> = {
   ],
 };
 
-/** CLI-26: the hero at the top of the landing page. `glow` is drawn in colour on its own line. */
-export const hero: Record<Lang, { title: string; glow: string; text: string; how: string }> = {
+/** CLI-26: the hero at the top of the landing page. `glow` is drawn in the accent green on its own line. */
+export const hero: Record<Lang, { title: string; glow: string; text: string; plans: string }> = {
   fa: {
     title: "بات روی کامپیوتر خودتان،",
     glow: "در دسترس همه‌ی ایران.",
     text: "دالان کاربران تأییدشده را به بات یا برنامه‌ی روی کامپیوتر شما می‌رساند. نه سرور، نه IP عمومی، نه پورت باز.",
-    how: "چطور کار می‌کند؟",
+    plans: "پلن‌ها را ببینید",
   },
   en: {
     title: "Your bot on your computer,",
     glow: "reachable from anywhere.",
     text: "Dalan brings verified users to the bot or app on your own computer. No server, no public IP, no open port.",
-    how: "How does it work?",
+    plans: "See the plans",
   },
-};
-
-export interface MenuItem { title: string; text: string; href?: string; soon?: boolean }
-
-/** CLI-26: the "Problems we solve" menu. A live item links to the page; what is not built yet says "soon". */
-export const problems: Record<Lang, { group: string; items: MenuItem[] }[]> = {
-  fa: [
-    { group: "ساخت و تست", items: [
-      { title: "اجرای بات از خانه", text: "بات روی کامپیوتر خودتان، بدون سرور و IP عمومی", href: "#how" },
-      { title: "بات‌های تلگرامی، بدون تغییر کد", text: "فقط آدرس سرور را عوض کنید", href: "#try" },
-      { title: "دستیار هوش مصنوعی", text: "ساخت و مدیریت بات با CLI و MCP", href: "/llms.txt" },
-    ] },
-    { group: "رساندن به کاربر", items: [
-      { title: "کاربر واقعی", text: "همه‌ی کاربران با ایمیل یا پیامک تأیید شده‌اند", href: "#features" },
-      { title: "وقتی اینترنت بین‌الملل قطع است", text: "دالان در ایران است", href: "#features" },
-      { title: "ویترین بات‌ها", text: "کاربران تازه بات شما را پیدا می‌کنند", href: "/showcase" },
-    ] },
-    { group: "سایت‌ها", items: [
-      { title: "سایت محلی با آدرس ثابت", text: "سایت روی کامپیوتر شما، با زیردامنه‌ی دالان", soon: true },
-      { title: "دامنه‌ی خودتان", text: "سایت با دامنه‌ی شخصی", soon: true },
-      { title: "بررسی و تکرار وب‌هوک", text: "درخواست‌ها را ببینید و دوباره بفرستید", soon: true },
-    ] },
-  ],
-  en: [
-    { group: "Build and test", items: [
-      { title: "Run a bot from home", text: "Your own computer, no server, no public IP", href: "#how" },
-      { title: "Telegram bots, no code change", text: "Change only the server address", href: "#try" },
-      { title: "AI assistants", text: "Make and manage bots with the CLI and MCP", href: "/llms.txt" },
-    ] },
-    { group: "Reach users", items: [
-      { title: "Real users", text: "Every user is verified by email or SMS", href: "#features" },
-      { title: "When outside links are down", text: "Dalan's servers are inside the country", href: "#features" },
-      { title: "Bot showcase", text: "New users find your bot", href: "/showcase" },
-    ] },
-    { group: "Sites", items: [
-      { title: "A local site with a fixed address", text: "A site on your computer, on a Dalan subdomain", soon: true },
-      { title: "Your own domain", text: "Your site on your own domain", soon: true },
-      { title: "Inspect and replay webhooks", text: "See requests and send them again", soon: true },
-    ] },
-  ],
 };
 
 /** `branches`: the traffic splits in two below Dalan; `frame` names the place both branches run in. */
 export interface Product {
   label: string; title: string; text: string; soon: boolean; from: string; guards: string[];
+  /** CLI-26: "Get started" opens the guide of this plan (CLI-38). */
+  guide: "/guide/bot" | "/guide/site";
   branches: { via: string; to: string }[]; frame: string;
 }
 
-/** CLI-26: the product cards and the words of their traffic pictures. */
+/** CLI-26: the plans: the product cards and the words of their traffic pictures. Both are built (CLI-39). */
 export const products: Record<Lang, Product[]> = {
   fa: [
-    { label: "رله‌ی بات", title: "یک دالان بین کاربران و بات شما.", text: "کاربر در دالان پیام می‌دهد. بات روی کامپیوتر شما پیام را با getUpdates برمی‌دارد.", soon: false,
+    { label: "رله‌ی بات", title: "یک دالان بین کاربران و بات شما.", text: "کاربر در دالان پیام می‌دهد. بات روی کامپیوتر شما پیام را با getUpdates برمی‌دارد.", soon: false, guide: "/guide/bot",
       from: "کاربران تأییدشده", branches: [{ via: "getUpdates", to: "@shop_bot" }, { via: "getUpdates", to: "@game_bot" }], frame: "کامپیوتر شما · فقط اتصال خروجی", guards: ["محدودیت سرعت", "گواه کار پیش از پیامک", "ثبت دسترسی"] },
-    { label: "سایت‌ها", title: "سایت روی کامپیوترتان، با یک آدرس ثابت.", text: "یک برنامه‌ی کوچک روی کامپیوتر شما به دالان وصل می‌شود و سایت محلی را به بازدیدکننده‌ها نشان می‌دهد.", soon: true,
-      from: "بازدیدکننده‌ها", branches: [{ via: "/", to: "localhost:3000" }, { via: "/api", to: "localhost:8080" }], frame: "کامپیوتر شما", guards: ["رمز ورود", "فهرست IP مجاز", "بازبینی درخواست‌ها"] },
+    { label: "سایت‌ها", title: "سایت روی کامپیوترتان، با یک آدرس ثابت.", text: "یک برنامه‌ی کوچک روی کامپیوتر شما به دالان وصل می‌شود و سایت محلی را به بازدیدکننده‌ها نشان می‌دهد.", soon: false, guide: "/guide/site",
+      from: "بازدیدکننده‌ها", branches: [{ via: "/", to: "localhost:3000" }, { via: "/api", to: "localhost:8080" }], frame: "کامپیوتر شما", guards: ["HTTPS", "زیردامنه‌ی ثابت", "ثبت دسترسی"] },
   ],
   en: [
-    { label: "Bot relay", title: "A passage between users and your bot.", text: "Users write in Dalan. The bot on your computer picks up messages with getUpdates.", soon: false,
+    { label: "Bot relay", title: "A passage between users and your bot.", text: "Users write in Dalan. The bot on your computer picks up messages with getUpdates.", soon: false, guide: "/guide/bot",
       from: "Verified users", branches: [{ via: "getUpdates", to: "@shop_bot" }, { via: "getUpdates", to: "@game_bot" }], frame: "Your computer · outgoing only", guards: ["Rate limits", "Proof of work before SMS", "Access log"] },
-    { label: "Sites", title: "A site on your computer, at a fixed address.", text: "A small program on your computer connects out to Dalan and shows your local site to visitors.", soon: true,
-      from: "Visitors", branches: [{ via: "/", to: "localhost:3000" }, { via: "/api", to: "localhost:8080" }], frame: "Your computer", guards: ["Basic Auth", "IP allowlist", "Request inspector"] },
+    { label: "Sites", title: "A site on your computer, at a fixed address.", text: "A small program on your computer connects out to Dalan and shows your local site to visitors.", soon: false, guide: "/guide/site",
+      from: "Visitors", branches: [{ via: "/", to: "localhost:3000" }, { via: "/api", to: "localhost:8080" }], frame: "Your computer", guards: ["HTTPS", "Fixed subdomain", "Access log"] },
   ],
 };
 
 export interface OfferGroup { title: string; text: string; items: { text: string; soon?: boolean }[] }
 
-/** CLI-37: what you get. The first three groups are built today; every item of the last one is Layer 2 and says "soon". */
+/** CLI-37: what you get. The first three groups are built today; in the last one only the local site is built (CLI-39), the rest says "soon". */
 export const offers: Record<Lang, OfferGroup[]> = {
   fa: [
     { title: "رله‌ی بات", text: "پیام‌ها بین کاربران و بات روی کامپیوتر شما.", items: [
@@ -146,7 +111,7 @@ export const offers: Record<Lang, OfferGroup[]> = {
       { text: "صفحه‌ی llms.txt که دالان را به هوش مصنوعی معرفی می‌کند" },
     ] },
     { title: "سایت‌ها و درگاه", text: "سایت یا API روی کامپیوتر شما، با یک آدرس عمومی.", items: [
-      { text: "سایت محلی با زیردامنه‌ی ثابت دالان", soon: true },
+      { text: "سایت محلی با زیردامنه‌ی ثابت دالان" },
       { text: "دامنه‌ی خودتان", soon: true },
       { text: "لینک پیش‌نمایش برای نشان دادن کار", soon: true },
       { text: "دیدن و دوباره فرستادن وب‌هوک‌ها", soon: true },
@@ -179,7 +144,7 @@ export const offers: Record<Lang, OfferGroup[]> = {
       { text: "An llms.txt page that explains Dalan to AI" },
     ] },
     { title: "Sites and gateway", text: "A site or API on your computer, at a public address.", items: [
-      { text: "A local site at a fixed Dalan subdomain", soon: true },
+      { text: "A local site at a fixed Dalan subdomain" },
       { text: "Your own domain", soon: true },
       { text: "Preview links to show your work", soon: true },
       { text: "See webhooks and send them again", soon: true },
@@ -197,18 +162,6 @@ export const notOffered: Record<Lang, string> = {
   en: "What we do not offer: raw TCP ports, SSH or remote desktop, and an AI gateway.",
 };
 
-/** CLI-26: "Try it right now". Real commands only: get the CLI (CLI-31) from the site and make a bot. */
-export function installCommands(numbers: PublicNumbers): { os: string; code: string }[] {
-  const site = numbers.site_url;
-  const unix = `curl -fsSO ${site}/dalan.mjs\nexport DALAN_URL=${site} DALAN_KEY=dalan_...\nnode dalan.mjs create my_bot "My bot"`;
-  return [
-    { os: "Linux", code: unix },
-    { os: "macOS", code: unix },
-    { os: "Windows", code: `iwr ${site}/dalan.mjs -OutFile dalan.mjs\n$env:DALAN_URL="${site}"; $env:DALAN_KEY="dalan_..."\nnode dalan.mjs create my_bot "My bot"` },
-    { os: "Docker", code: `docker run --rm -e DALAN_URL=${site} -e DALAN_KEY=dalan_... node:lts-alpine \\\n  sh -c 'wget -q ${site}/dalan.mjs && node dalan.mjs create my_bot "My bot"'` },
-  ];
-}
-
 /** CLI-26: what Dalan really does for safety (CLAUDE.md rules 5, 7, 8 and 13). */
 export const security: Record<Lang, string[]> = {
   fa: ["کاربران تأییدشده با ایمیل یا پیامک", "بات هرگز شماره نمی‌بیند", "توکن بات به شکل hash", "رمز با hash کند", "محدودیت سرعت روی هر در",
@@ -217,23 +170,6 @@ export const security: Record<Lang, string[]> = {
     "Proof of work before each SMS", "Admin audit log", "Servers inside the country", "No foreign scripts or fonts", "HTTPS only"],
 };
 
-export interface Step { title: string; text: string; code?: string }
-
-/** CLI-26: three steps. The addresses come from the public settings (rule 4), never from this file. */
-export function steps(lang: Lang, numbers: PublicNumbers): Step[] {
-  const api = `${numbers.bot_api_url}/bot<token>/getUpdates`;
-  const link = `${numbers.site_url}/@your_bot`;
-  return lang === "fa" ? [
-    { title: "توکن بگیرید", text: "وارد شوید، در بخش حساب درخواست سازنده شدن بدهید، بات بسازید و توکنش را بردارید." },
-    { title: "یک خط را عوض کنید", text: "در کد بات، به جای api.telegram.org آدرس دالان را بگذارید. بقیه‌ی کد همان است.", code: api },
-    { title: "روی کامپیوتر خودتان اجرا کنید", text: "بات را روشن کنید. کاربران با این لینک به آن می‌رسند:", code: link },
-  ] : [
-    { title: "Get a token", text: "Log in, ask to become a builder in your account screen, create a bot and copy its token." },
-    { title: "Change one line", text: "In your bot code, put Dalan's address in place of api.telegram.org. The rest of the code stays the same.", code: api },
-    { title: "Run it on your own computer", text: "Start the bot. Users reach it with this link:", code: link },
-  ];
-}
-
 /** CLI-26: the closing call of the landing page. */
 export const closing: Record<Lang, { title: string; glow: string; text: string }> = {
   fa: { title: "نوبت شماست.", glow: "بات‌تان را روشن کنید.", text: "وارد شوید و اولین بات‌تان را بسازید، یا بات‌های ویترین را ببینید." },
@@ -241,11 +177,11 @@ export const closing: Record<Lang, { title: string; glow: string; text: string }
 };
 
 /** CLI-26: the small labels above the landing sections and the words of the footer. */
-export const labels: Record<Lang, Record<"products" | "offers" | "offersTitle" | "try" | "tryTitle" | "tryNote" | "security" | "problems" | "soon" | "resources" | "product" | "start", string>> = {
-  fa: { products: "محصولات ما", offers: "چه چیزی می‌گیرید", offersTitle: "هر چه بین کاربران و کامپیوتر شما لازم است.", try: "همین الان", tryTitle: "همین الان یک بات بسازید.", tryNote: "کد بات شما با هر زبانی کار می‌کند: هر کتابخانه‌ی بات تلگرام، فقط با عوض کردن آدرس سرور.",
-    security: "امنیت از روز اول.", problems: "چه مشکلی را حل می‌کنیم", soon: "به‌زودی", resources: "منابع", product: "محصول", start: "آزمایش کنید (رایگان)" },
-  en: { products: "Our products", offers: "What you get", offersTitle: "Everything between your users and your computer.", try: "Right now", tryTitle: "Make a bot right now.", tryNote: "Your bot code works in any language: any Telegram bot library, after changing only the server address.",
-    security: "Security from day one.", problems: "Problems we solve", soon: "Soon", resources: "Resources", product: "Product", start: "Try it (free)" },
+export const labels: Record<Lang, Record<"plans" | "plansTitle" | "getStarted" | "offers" | "offersTitle" | "why" | "security" | "soon" | "resources" | "product" | "start", string>> = {
+  fa: { plans: "پلن‌ها", plansTitle: "چه چیزی را آنلاین می‌کنید؟", getStarted: "شروع کنید", offers: "چه چیزی می‌گیرید", offersTitle: "هر چه بین کاربران و کامپیوتر شما لازم است.",
+    why: "چرا دالان", security: "امنیت از روز اول.", soon: "به‌زودی", resources: "منابع", product: "محصول", start: "آزمایش کنید (رایگان)" },
+  en: { plans: "Plans", plansTitle: "What do you want to put online?", getStarted: "Get started", offers: "What you get", offersTitle: "Everything between your users and your computer.",
+    why: "Why Dalan", security: "Security from day one.", soon: "Soon", resources: "Resources", product: "Product", start: "Try it (free)" },
 };
 
 /** CLI-27: the six points of DESIGN section 13. `n` writes a number in the page's digits. */

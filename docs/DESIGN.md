@@ -361,6 +361,8 @@ Do not advertise "free tunnel". Cloudflare does that better for anyone with open
 
 **Redesign (after milestone 10):** public pages are dark for every visitor, inspired by ngrok's layout (ideas only, nothing copied): a "Problems we solve" menu, a hero with a colour glow, product cards with a traffic picture (bot relay; sites marked soon), "try it now" tabs per system with the real CLI commands, three steps, a security list, a closing call and a large footer. Addresses come from the settings. Tokens live in `client/public/app.css`.
 
+**Simpler, for phones (2026-11-22):** the landing page says only what Dalan does, its features and its plans (bot relay, sites); each plan has "Get started" to its own guide (`/guide/bot`, `/guide/site`), and `/guide` first asks which plan. No install steps or commands on the landing page. The header has three links (Plans, Showcase, Guide), folded into a ☰ menu on a phone; FAQ and Privacy are only in the footer. No glow and no rainbow text.
+
 **Legal check.** Before opening to the public, ask a lawyer about responsibility for hosted content and for storing phone numbers. The owner's rule that Dalan has no user-to-user chat, groups or channels stays in place.
 
 ## 14. Infrastructure and deployment facts for Iran

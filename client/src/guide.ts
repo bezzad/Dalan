@@ -1,5 +1,6 @@
 // CLI-38: the step-by-step guide at /guide, for a builder with no AI agent. Pure texts, so tests run without a browser.
 // The addresses and numbers come from the public settings (rule 4), never from this file.
+import { httpCommand, installCommands } from "./appGuide.ts";
 import type { Lang, PublicNumbers } from "./pages.ts";
 
 export interface Sample { name: string; code: string }
@@ -88,5 +89,23 @@ export function guideSteps(lang: Lang, numbers: PublicNumbers, n: (value: number
     { title: "Run it on your own computer", text: "Start the bot as always. Dalan has only long polling (getUpdates), no webhooks, so you need no public IP and no open port. Users reach the bot with this link:", code: link },
     { title: "Keep it running (optional)", text: "On Linux these commands keep the bot running after a restart, with the token outside the code. Change the folder and the start command to your bot's. On Windows and macOS keep the program open, or start it with the system's own start-up tool.", code: service },
     { title: "If it does not work", text: `An answer 401 means the token is wrong or was changed. If a user's message shows "not delivered", the bot did not read it within ${expiry} seconds: the bot must keep calling getUpdates. A method Dalan does not have answers ok=false with a description. The list of methods is in llms.txt.` },
+  ];
+}
+
+/** CLI-38: the site guide: become a builder, install the agent in one line, log in from "My apps", run the site (CLI-39). */
+export function siteGuideSteps(lang: Lang, numbers: PublicNumbers): GuideStep[] {
+  const install = installCommands(numbers.site_url);
+  const samples = [{ name: "Linux / macOS", code: install.unix }, { name: "Windows", code: install.windows }];
+  const run = httpCommand([{ port: 3000, name: "mysite" }]);
+  return lang === "fa" ? [
+    { title: "وارد شوید و سازنده شوید", text: "وارد شوید، شماره موبایل را تأیید کنید و در صفحه‌ی «حساب» درخواست سازنده شدن بدهید. بعد از تأیید ادمین، «اپ‌های من» در منوی کاربر باز می‌شود." },
+    { title: "برنامه‌ی دالان را نصب کنید", text: "روی کامپیوتری که سایت روی آن است، این یک خط را اجرا کنید:", samples },
+    { title: "یک بار وارد شوید", text: "در «اپ‌های من» دکمه‌ی «ساخت کلید و دستور ورود» را بزنید و خطی را که نشان می‌دهد اجرا کنید. کلید فقط همان یک بار دیده می‌شود." },
+    { title: "سایت را آنلاین کنید", text: "سایت را روی کامپیوترتان روشن کنید (مثلاً روی پورت ۳۰۰۰) و این دستور را بزنید. آدرس عمومی سایت در «اپ‌های من» دیده می‌شود.", code: run },
+  ] : [
+    { title: "Log in and become a builder", text: "Log in, verify your mobile number and ask to become a builder on the \"Account\" screen. After the admin approves, \"My apps\" opens from the user menu." },
+    { title: "Install the Dalan agent", text: "On the computer that runs your site, run this one line:", samples },
+    { title: "Log in once", text: "In \"My apps\" press \"Make a key and login command\", then run the line it shows. The key is shown only once." },
+    { title: "Put your site online", text: "Start your site on your computer (for example on port 3000) and run this command. The public address of the site is in \"My apps\".", code: run },
   ];
 }

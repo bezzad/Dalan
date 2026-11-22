@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
-import { guideSteps } from "../src/guide.ts";
+import { guideSteps, siteGuideSteps } from "../src/guide.ts";
 import { texts } from "../src/i18n.ts";
 import * as pages from "../src/pages.ts";
 
@@ -23,13 +23,13 @@ function strings(value: unknown, path: string): [string, string][] {
 test("CLI-41 no English text of the client names Iran", () => {
   const english: [string, string][] = [
     ...strings(texts.en, "texts.en"),
-    // Every page text kept per language (landing, hero, problems, products, offers, security, closing, labels, ...).
+    // Every page text kept per language (landing, hero, products, offers, security, closing, labels, ...).
     ...Object.entries(pages).flatMap(([name, value]) =>
       value && typeof value === "object" && "en" in value ? strings((value as Record<string, unknown>)["en"], `${name}.en`) : []),
-    ...strings(pages.steps("en", numbers), "steps"),
     ...strings(pages.privacyPoints("en", numbers, n), "privacyPoints"),
     ...strings(pages.faqItems("en", numbers, n), "faqItems"),
     ...strings(guideSteps("en", numbers, n), "guideSteps"),
+    ...strings(siteGuideSteps("en", numbers), "siteGuideSteps"),
   ];
   assert.ok(english.length > 100, "the English texts were not found");
   const found = english.filter(([, text]) => iran.test(text)).map(([path, text]) => `${path}: ${text}`);

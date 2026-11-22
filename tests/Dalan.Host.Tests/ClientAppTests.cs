@@ -26,6 +26,8 @@ public class ClientAppTests(PostgresServer postgres)
     [InlineData("/faq")]
     [InlineData("/showcase")]
     [InlineData("/guide")]
+    [InlineData("/guide/bot")]
+    [InlineData("/guide/site")]
     public async Task CLI01_page_is_served_and_not_cached(string path)
     {
         await using var app = await StartAsync();
