@@ -240,7 +240,7 @@ DNS records for $site (TXT):
   $site                      v=spf1 a -all
   dalan._domainkey.$site     $dkim_record
   _dmarc.$site               v=DMARC1; p=none
-Reverse DNS (provider panel): the server address -> $site
+Reverse DNS: not needed; only if a mail provider rejects us, set it to $site (provider panel)
 
 DNS
 [ -z "${pull_key:-}" ] || printf '\nGitHub, repository Settings, Deploy keys, Add (read only), so this server can take main:\n  %s\n' "$pull_key"
