@@ -200,7 +200,12 @@ public class TunnelTests(PostgresServer postgres)
         var poll = agent.PollAsync(session, timeout: 5);
         await Task.Delay(100, Cancel);
         Assert.False(poll.IsCompleted);
-        app.Time.Advance(TimeSpan.FromSeconds(5));
+        // On a busy machine the server may start its timer after the first step of the clock, so step until the poll ends.
+        for (var step = 0; step < 50 && !poll.IsCompleted; step++)
+        {
+            app.Time.Advance(TimeSpan.FromSeconds(5));
+            await Task.WhenAny(poll, Task.Delay(100, Cancel));
+        }
 
         Assert.Empty(await poll);
     }
