@@ -1,9 +1,21 @@
 // The messages of the chats, as pure logic with no DOM and no network (CLI-05, CLI-06, CLI-07, CLI-13 to CLI-17).
 
+/** REL-17 and REL-20: Telegram's button colours. */
+export type ButtonStyle = "success" | "danger" | "primary";
+
 export interface InlineButton {
   text: string;
   callback_data?: string;
   url?: string;
+  style?: ButtonStyle;
+}
+
+/** REL-17: sent only when a flag or a style is set. `styles` has the shape of the rows. */
+export interface KeyboardOptions {
+  persistent?: boolean;
+  resize?: boolean;
+  one_time?: boolean;
+  styles?: (ButtonStyle | null)[][];
 }
 
 export interface FileInfo {
@@ -13,6 +25,8 @@ export interface FileInfo {
   /** The content type. */
   type: string;
   size: number;
+  /** REL-50: the length in seconds, when known. */
+  duration?: number;
 }
 
 export interface Message {
@@ -26,6 +40,7 @@ export interface Message {
   date: string;
   /** Rows of button texts. Missing = this message does not change the buttons. Empty = remove them. */
   reply_keyboard?: string[][];
+  reply_keyboard_options?: KeyboardOptions;
   inline_keyboard?: InlineButton[][];
   file?: FileInfo;
   /** Time of the last edit. */
@@ -54,11 +69,79 @@ export function merge(list: readonly Message[], incoming: readonly Message[]): M
 
 /** CLI-07: the buttons under the input come from the newest bot message that carries a keyboard. */
 export function currentKeyboard(list: readonly Message[]): string[][] {
+  return replyKeyboard(list)?.rows.map(row => row.map(button => button.text)) ?? [];
+}
+
+export interface KeyButton { text: string; style: ButtonStyle | null }
+
+/** CLI-07: the reply keyboard to show, with the id of its message; null when there is none or it was removed. */
+export interface ReplyKeyboard {
+  messageId: number;
+  /** As the bot sent them: never joined or split. */
+  rows: KeyButton[][];
+  persistent: boolean;
+  resize: boolean;
+  oneTime: boolean;
+}
+
+export function replyKeyboard(list: readonly Message[]): ReplyKeyboard | null {
   for (let i = list.length - 1; i >= 0; i--) {
     const message = list[i]!;
-    if (message.from === "bot" && !message.deleted && message.reply_keyboard) return message.reply_keyboard;
+    if (message.from !== "bot" || message.deleted || !message.reply_keyboard) continue;
+    if (message.reply_keyboard.length === 0) return null;
+    const options = message.reply_keyboard_options ?? {};
+    return {
+      messageId: message.id,
+      rows: message.reply_keyboard.map((row, r) => row.map((text, b) => ({ text, style: options.styles?.[r]?.[b] ?? null }))),
+      persistent: options.persistent === true,
+      resize: options.resize === true,
+      oneTime: options.one_time === true,
+    };
   }
-  return [];
+  return null;
+}
+
+/**
+ * CLI-07: hidden or shown, per chat. A one-time keyboard hides after a tap; the ⌨ button hides and shows one that is
+ * not persistent; a new keyboard (another message) is shown again.
+ */
+export class KeyboardState {
+  private hiddenFor: number | null = null;
+
+  visible(keyboard: ReplyKeyboard | null): boolean {
+    return keyboard !== null && (keyboard.persistent || this.hiddenFor !== keyboard.messageId);
+  }
+
+  /** The ⌨ button is there only for a keyboard that may hide. */
+  hasToggle(keyboard: ReplyKeyboard | null): boolean {
+    return keyboard !== null && !keyboard.persistent;
+  }
+
+  toggle(keyboard: ReplyKeyboard): void {
+    this.hiddenFor = this.visible(keyboard) ? keyboard.messageId : null;
+  }
+
+  tapped(keyboard: ReplyKeyboard): void {
+    if (keyboard.oneTime && !keyboard.persistent) this.hiddenFor = keyboard.messageId;
+  }
+}
+
+/** CLI-16: a length for people: 0:07, 1:05, 1:02:03. */
+export function clock(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  const two = (value: number) => String(value).padStart(2, "0");
+  return s >= 3600 ? `${Math.floor(s / 3600)}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}` : `${Math.floor(s / 60)}:${two(s % 60)}`;
+}
+
+/** CLI-47: the first file of a paste or a drop; an image with no real name is named `image.<type>`. Null for text only. */
+export function firstFile(files: ArrayLike<File>, rename: (file: File, name: string) => File): File | null {
+  const file = files[0];
+  if (!file) return null;
+  if (file.type.startsWith("image/") && (file.name === "" || file.name === "image.png" || file.name === "blob")) {
+    const extension = file.type.slice("image/".length).replace("jpeg", "jpg").replace(/[^a-z0-9]/g, "") || "png";
+    return rename(file, `image.${extension}`);
+  }
+  return file;
 }
 
 /** CLI-13: what a tap on an inline button does. */
@@ -66,12 +149,12 @@ export function buttonAction(button: InlineButton): { press: string } | { open: 
   return button.url !== undefined ? { open: button.url } : { press: button.callback_data ?? "" };
 }
 
-/** CLI-16: how a file is shown. */
-export function fileView(file: FileInfo): "image" | "audio" | "video" | "link" {
+/** CLI-16: how a file is shown. A voice and an audio get Dalan's own player. */
+export function fileView(file: FileInfo): "image" | "player" | "video" | "link" {
   switch (file.kind) {
     case "photo": return "image";
     case "audio":
-    case "voice": return "audio";
+    case "voice": return "player";
     case "video": return "video";
     default: return "link";
   }

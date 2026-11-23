@@ -2,6 +2,7 @@
 import { api } from "./api.ts";
 import { errorText } from "./app.ts";
 import { h } from "./dom.ts";
+import { botFace } from "./icon.ts";
 import { gate } from "./logo.ts";
 import { stepCards } from "./codeView.ts";
 import { guideSteps, siteGuideSteps } from "./guide.ts";
@@ -288,9 +289,8 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
           context.go(`/@${bot.username}`);
         },
       },
-      bot.icon
-        ? h("img", { class: "avatar", src: api.showcaseIconUrl(bot.id), alt: "" })
-        : h("span", { class: "avatar" }, initial(bot.name)),
+      // CLI-50: the bot icon, or the first letter.
+      botFace(bot),
       h("span", { class: "column" },
         h("strong", { dir: "auto" }, bot.name),
         h("span", { dir: "ltr" }, `@${bot.username} · ${categoryName(language.current, bot.category)}`),

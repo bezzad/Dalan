@@ -220,7 +220,7 @@ export function adminScreen(app: App): Screen {
 
   const element = h("main", { class: "admin" },
     h("header", {},
-      h("button", { type: "button", class: "link", onclick: () => app.showPanel("account") }, t("back")),
+      h("button", { type: "button", class: "link", onclick: () => app.go("/account") }, t("back")),
       h("h1", {}, t("adminScreen"))),
     tabs, error, body);
 

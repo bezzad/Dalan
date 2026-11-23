@@ -123,7 +123,7 @@ internal sealed record MessageJson(
 
 /// <summary>
 /// Telegram's PhotoSize, Document, Audio, Voice and Video in one shape; fields a kind does not have stay out.
-/// Dalan does not read media, so width, height and duration are 0.
+/// Dalan does not read media, so width and height are 0; duration is the stored length (REL-50), else 0.
 /// </summary>
 internal sealed record FileJson(
     string FileId, string FileUniqueId, long FileSize, string? FileName, string? MimeType, int? Width, int? Height, int? Duration)
@@ -131,9 +131,9 @@ internal sealed record FileJson(
     public static FileJson Of(BotFile file) => file.Kind switch
     {
         FileKind.Photo => new(file.Id, file.Id, file.Size, null, null, 0, 0, null),
-        FileKind.Voice => new(file.Id, file.Id, file.Size, null, file.ContentType, null, null, 0),
-        FileKind.Audio => new(file.Id, file.Id, file.Size, file.Name, file.ContentType, null, null, 0),
-        FileKind.Video => new(file.Id, file.Id, file.Size, file.Name, file.ContentType, 0, 0, 0),
+        FileKind.Voice => new(file.Id, file.Id, file.Size, null, file.ContentType, null, null, file.Duration ?? 0),
+        FileKind.Audio => new(file.Id, file.Id, file.Size, file.Name, file.ContentType, null, null, file.Duration ?? 0),
+        FileKind.Video => new(file.Id, file.Id, file.Size, file.Name, file.ContentType, 0, 0, file.Duration ?? 0),
         _ => new(file.Id, file.Id, file.Size, file.Name, file.ContentType, null, null, null),
     };
 }
@@ -144,10 +144,10 @@ internal sealed record TelegramFileJson(string FileId, string FileUniqueId, long
 internal sealed record InlineMarkupJson(List<List<InlineButtonJson>> InlineKeyboard)
 {
     public static InlineMarkupJson Of(List<List<InlineButton>> rows) =>
-        new(rows.ConvertAll(row => row.ConvertAll(b => new InlineButtonJson(b.Text, b.CallbackData, b.Url))));
+        new(rows.ConvertAll(row => row.ConvertAll(b => new InlineButtonJson(b.Text, b.CallbackData, b.Url, b.Style))));
 }
 
-internal sealed record InlineButtonJson(string Text, string? CallbackData, string? Url);
+internal sealed record InlineButtonJson(string Text, string? CallbackData, string? Url, string? Style = null);
 
 internal sealed record CommandJson(string Command, string Description);
 

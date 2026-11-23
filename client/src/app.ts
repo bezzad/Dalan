@@ -14,14 +14,12 @@ export interface App {
   maxFileSizeMb: number;
   /** CLI-19: how often an open chat asks for the bot's status. */
   statusRefreshSeconds: number;
-  /** Goes to "/" or "/@name" without a page load. */
+  /** REL-51: the size limit of a bot icon. */
+  maxBotIconKb: number;
+  /** CLI-51: goes to the screen of an address ("/chats", "/bots/new", "/@name") without a page load. */
   go(path: string): void;
-  /** Shows the account, builder or admin screen over the bot list, or goes back to the list (null). */
-  showPanel(panel: Panel | null): void;
   logout(): void;
 }
-
-export type Panel = "account" | "builder" | "admin";
 
 /** What the open screen does with live events. */
 export interface Screen {

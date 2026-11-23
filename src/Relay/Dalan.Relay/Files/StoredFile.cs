@@ -19,10 +19,13 @@ public sealed class StoredFile
     public required string Name { get; set; }
     public required string ContentType { get; set; }
     public long Size { get; set; }
+
+    /// <summary>REL-50: seconds of a voice, audio or video; null when unknown.</summary>
+    public int? Duration { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 
     /// <summary>REL-30: the sweep deletes the file after this time.</summary>
     public DateTimeOffset ExpiresAt { get; set; }
 
-    public BotFile ToBot() => new(Id, Kind, Name, ContentType, Size);
+    public BotFile ToBot() => new(Id, Kind, Name, ContentType, Size, Duration);
 }

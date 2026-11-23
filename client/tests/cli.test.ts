@@ -2,7 +2,9 @@
 // Runs public/dalan.mjs as a builder would, against a small fake server.
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer, type IncomingMessage } from "node:http";
 import { test } from "node:test";
 
@@ -82,6 +84,31 @@ test("CLI-31 no command, a wrong command or no key prints the usage with exit co
 test("CLI-32 the CLI is one file that needs no package", () => {
   const text = readFileSync(cli, "utf8");
   const imports = [...text.matchAll(/\bimport\b[^;]*?from\s+["']([^"']+)["']|\bimport\(\s*["']([^"']+)["']/g)];
-  assert.deepEqual(imports, []);
+  // Node's own modules ("node:fs") are not packages.
+  assert.deepEqual(imports.map(m => m[1] ?? m[2]).filter(name => !name!.startsWith("node:")), []);
   assert.doesNotMatch(text, /\brequire\(/);
+});
+
+test("REL-51 icon sends the picture as the body with its type", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "dalan-icon-"));
+  writeFileSync(join(dir, "face.PNG"), "PNGDATA");
+  const seen: string[] = [];
+  const server = createServer(async (request, response) => {
+    let body = "";
+    for await (const chunk of request) body += chunk;
+    seen.push(`${request.method} ${request.url} ${request.headers["content-type"]} ${body}`);
+    response.writeHead(200, { "content-type": "application/json" }).end("{}");
+  });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const env = { DALAN_URL: `http://127.0.0.1:${(server.address() as { port: number }).port}`, DALAN_KEY: "dalan_k" };
+    assert.equal((await run(["icon", "7", join(dir, "face.PNG")], env)).code, 0);
+    assert.deepEqual(seen, ["PUT /api/builder/bots/7/icon image/png PNGDATA"]);
+
+    const missing = await run(["icon", "7", join(dir, "none.png")], env);
+    assert.equal(missing.code, 1);
+    assert.equal(JSON.parse(missing.stderr).error, "no_file");
+  } finally {
+    server.close();
+  }
 });

@@ -26,6 +26,13 @@ public sealed class Bot
     /// (the unique index covers only bots that are not deleted). Chats point to the bot id, never to the username.
     /// </summary>
     public DateTimeOffset? DeletedAt { get; set; }
+
+    /// <summary>REL-51: PNG, JPEG or WebP; null when the bot has no icon.</summary>
+    public byte[]? Icon { get; set; }
+    public string? IconType { get; set; }
+
+    /// <summary>REL-51: 0 with no icon, higher after every change. Clients use it as the cache key (?v=).</summary>
+    public int IconVersion { get; set; }
 }
 
 public sealed class CommandEntry

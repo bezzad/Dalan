@@ -19,7 +19,7 @@ internal sealed record DeletedBotJson(long Id, bool Deleted);
 
 internal sealed record BuilderBotJson(
     long Id, string Username, string Name, DateTimeOffset CreatedAt, bool Online, DateTimeOffset? LastSeen, bool Suspended,
-    ShowcaseJson? Showcase);
+    ShowcaseJson? Showcase, int IconVersion);
 
 internal sealed record BuilderBotsResponse(IEnumerable<BuilderBotJson> Bots);
 
@@ -39,6 +39,7 @@ internal sealed partial class BuilderBots(
     IDbContextFactory<RelayDb> dbFactory,
     BotRegistry bots,
     BotPresence presence,
+    BotIcons icons,
     IAuditLog audit,
     IUserDirectory users,
     SuspendedBots suspendedBots,
@@ -146,6 +147,37 @@ internal sealed partial class BuilderBots(
         return new BuilderAnswer(StatusCodes.Status200OK, new DeletedBotJson(botId, true));
     }
 
+    /// <summary>REL-51: sets the icon from <paramref name="content"/>: PNG, JPEG or WebP, at most Relay:MaxBotIconKb.</summary>
+    public async Task<BuilderAnswer> SetIconAsync(long userId, long botId, Stream content, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        if (!await MayChangeAsync(db, userId, botId, cancellationToken)) return BotNotFound();
+
+        var (read, image) = await icons.ReadAsync(content, cancellationToken);
+        if (read == IconResult.Ok && await icons.SetAsync(botId, image, cancellationToken) is var set and not IconResult.Ok) read = set;
+        if (read != IconResult.Ok)
+        {
+            return BuilderAnswer.Error(StatusCodes.Status400BadRequest, "bad_icon",
+                $"Send the icon as the body: a PNG, JPEG or WebP image of at most {options.CurrentValue.MaxBotIconKb} KB.");
+        }
+
+        await audit.RecordAsync(userId, "bot.icon", BuilderEndpoints.BotTarget(botId), "set", cancellationToken);
+        var found = await ReadAsync(db, db.Bots.Where(b => b.Id == botId), cancellationToken);
+        return new BuilderAnswer(StatusCodes.Status200OK, found[0]);
+    }
+
+    /// <summary>REL-51.</summary>
+    public async Task<BuilderAnswer> RemoveIconAsync(long userId, long botId, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        if (!await MayChangeAsync(db, userId, botId, cancellationToken)) return BotNotFound();
+
+        await icons.RemoveAsync(botId, cancellationToken);
+        await audit.RecordAsync(userId, "bot.icon", BuilderEndpoints.BotTarget(botId), "removed", cancellationToken);
+        var found = await ReadAsync(db, db.Bots.Where(b => b.Id == botId), cancellationToken);
+        return new BuilderAnswer(StatusCodes.Status200OK, found[0]);
+    }
+
     /// <summary>REL-37 and REL-40: only the owner of the bot, or an admin. A deleted bot (REL-49) is nobody's.</summary>
     public async Task<bool> MayChangeAsync(RelayDb db, long userId, long botId, CancellationToken cancellationToken)
     {
@@ -157,18 +189,22 @@ internal sealed partial class BuilderBots(
     {
         var found = await query.AsNoTracking()
             .OrderBy(b => b.Id)
-            .Select(b => new { b.Id, b.Username, b.Name, b.CreatedAt, b.LastSeenAt, Suspended = b.SuspendedAt != null })
+            .Select(b => new
+            {
+                b.Id, b.Username, b.Name, b.CreatedAt, b.LastSeenAt, Suspended = b.SuspendedAt != null,
+                IconVersion = b.IconType != null ? b.IconVersion : 0,
+            })
             .ToListAsync(cancellationToken);
         var ids = found.ConvertAll(b => b.Id);
-        // REL-40: the entry without the icon bytes; "icon" only says whether there is one.
+        // REL-40: the entry; "icon" says whether the bot has an icon (REL-51).
         var entries = await db.Showcase.AsNoTracking().Where(e => ids.Contains(e.BotId))
-            .Select(e => new { e.BotId, e.State, e.Description, e.Category, Icon = e.Icon != null })
-            .ToDictionaryAsync(e => e.BotId, e => ShowcaseJson.Of(e.State, e.Description, e.Category, e.Icon), cancellationToken);
+            .Select(e => new { e.BotId, e.State, e.Description, e.Category })
+            .ToDictionaryAsync(e => e.BotId, e => ShowcaseJson.Of(e.State, e.Description, e.Category, icon: found.Find(b => b.Id == e.BotId)!.IconVersion > 0), cancellationToken);
         return found.ConvertAll(b =>
         {
             var status = presence.Of(b.Id, b.LastSeenAt);
             return new BuilderBotJson(b.Id, b.Username, b.Name, b.CreatedAt, status.Online, status.LastSeen, b.Suspended,
-                entries.GetValueOrDefault(b.Id));
+                entries.GetValueOrDefault(b.Id), b.IconVersion);
         });
     }
 

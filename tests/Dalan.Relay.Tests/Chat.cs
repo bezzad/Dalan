@@ -47,17 +47,18 @@ internal sealed record Chat(DalanApp App, HttpClient Bot, long BotId, HttpClient
         (await PageAsync()).GetProperty("messages").EnumerateArray().Single(m => m.GetProperty("id").GetInt64() == id);
 
     /// <summary>A user upload (REL-28): the raw body with its type and the name and caption headers.</summary>
-    public async Task<HttpResponseMessage> UploadAsync(byte[] bytes, string type, string? name, string? caption = null)
+    public async Task<HttpResponseMessage> UploadAsync(byte[] bytes, string type, string? name, string? caption = null, string? voiceDuration = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/bots/{BotId}/files") { Content = new ByteArrayContent(bytes) };
         request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(type);
         if (name is not null) request.Headers.Add("X-File-Name", Uri.EscapeDataString(name));
         if (caption is not null) request.Headers.Add("X-Caption", Uri.EscapeDataString(caption));
+        if (voiceDuration is not null) request.Headers.Add("X-Voice-Duration", voiceDuration);
         return await Browser.SendAsync(request, Cancel);
     }
 
     /// <summary>A bot upload (REL-27) as multipart/form-data.</summary>
-    public async Task<HttpResponseMessage> BotUploadAsync(byte[] bytes, string name, string kind, string text = "", string? type = null)
+    public async Task<HttpResponseMessage> BotUploadAsync(byte[] bytes, string name, string kind, string text = "", string? type = null, int? duration = null)
     {
         using var form = new MultipartFormDataContent
         {
@@ -65,6 +66,7 @@ internal sealed record Chat(DalanApp App, HttpClient Bot, long BotId, HttpClient
             { new StringContent(kind), "kind" },
             { new StringContent(text), "text" },
         };
+        if (duration is not null) form.Add(new StringContent(duration.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)), "duration");
         var file = new ByteArrayContent(bytes);
         if (type is not null) file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(type);
         form.Add(file, "file", name);

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using Dalan.Relay.Bots;
 using Dalan.Relay.Builder;
 using Dalan.Relay.ClientApi;
 using Microsoft.AspNetCore.Http;
@@ -43,6 +44,30 @@ internal static class BuilderTools
         BuilderBots bots, IHttpContextAccessor http, [Description("The bot id from list_bots.")] long bot_id,
         CancellationToken cancellationToken) =>
         AnswerAsync(bots.GetAsync(UserId(http), bot_id, cancellationToken));
+
+    [McpServerTool(Name = "set_bot_icon", OpenWorld = false)]
+    [Description("Sets the icon (profile picture) of a bot: a PNG, JPEG or WebP image, square, small. Gives the bot with its icon_version.")]
+    public static async Task<CallToolResult> SetBotIconAsync(
+        BuilderBots bots, BotIcons icons, IHttpContextAccessor http, [Description("The bot id from list_bots.")] long bot_id,
+        [Description("The image file, base64 encoded.")] string image_base64, CancellationToken cancellationToken)
+    {
+        // REL-51: a text too long for the limit is refused before any bytes are made from it.
+        if (image_base64.Length > (icons.MaxBytes + 2) / 3 * 4 + 4)
+        {
+            return await AnswerAsync(Task.FromResult(BuilderAnswer.Error(StatusCodes.Status400BadRequest, "bad_icon",
+                "The icon is too big. Send a smaller PNG, JPEG or WebP image.")));
+        }
+
+        var bytes = new byte[image_base64.Length * 3 / 4 + 3];
+        if (!Convert.TryFromBase64String(image_base64.Trim(), bytes, out var written))
+        {
+            return await AnswerAsync(Task.FromResult(BuilderAnswer.Error(StatusCodes.Status400BadRequest, "bad_icon",
+                "'image_base64' is not base64. Send the bytes of a PNG, JPEG or WebP file as base64 text.")));
+        }
+
+        using var content = new MemoryStream(bytes, 0, written);
+        return await AnswerAsync(bots.SetIconAsync(UserId(http), bot_id, content, cancellationToken));
+    }
 
     private static long UserId(IHttpContextAccessor http) => ClientApiFilter.UserId(http.HttpContext!);
 

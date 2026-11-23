@@ -20,7 +20,7 @@ export function appsScreen(app: App): Screen {
   if (builderView(app.user) !== "bots") {
     body.append(h("section", { class: "card" },
       h("p", {}, t("appsNeedBuilder")),
-      h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => app.showPanel("account") }, t("account")))));
+      h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => app.go("/account") }, t("account")))));
     return { element };
   }
 

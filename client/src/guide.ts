@@ -66,22 +66,33 @@ journalctl --user -u my-bot -f`;
 /** CLI-38: a sample in the token's real shape, so the reader sees where the token goes. */
 const sampleToken = "12:AbCdEfGhIjKlMnOp";
 
-/** CLI-38: "My bots" shows steps 5 to 9, numbered from 1; while a new token is on screen, the test line has it. */
-export function botRunSteps(lang: Lang, numbers: PublicNumbers, n: (value: number) => string, token: string | null): GuideStep[] {
-  return guideSteps(lang, numbers, n, token).slice(4);
+/** The bot a guide is made for (CLI-49). */
+export interface GuideBot { id: number; username: string }
+
+/**
+ * CLI-38 and CLI-49: a bot's page shows steps 5 to 9, numbered from 1, made for that bot only.
+ * While a new token is on screen the test line has it; else `<id>:<TOKEN>`.
+ */
+export function botRunSteps(lang: Lang, numbers: PublicNumbers, n: (value: number) => string, bot: GuideBot, token: string | null): GuideStep[] {
+  return guideSteps(lang, numbers, n, token, bot).slice(4);
 }
 
-export function guideSteps(lang: Lang, numbers: PublicNumbers, n: (value: number) => string, token: string | null = null): GuideStep[] {
+export function guideSteps(lang: Lang, numbers: PublicNumbers, n: (value: number) => string, token: string | null = null, bot: GuideBot | null = null): GuideStep[] {
   const api = numbers.bot_api_url;
   const site = numbers.site_url;
-  const check = `curl ${api}/bot${token ?? sampleToken}/getMe`;
+  const placeholder = bot ? `${bot.id}:<TOKEN>` : sampleToken;
+  const check = `curl ${api}/bot${token ?? placeholder}/getMe`;
   const testFa = token
     ? "این دستور توکن جدید شما را دارد. آن را اجرا کنید؛ پاسخ باید شامل \"ok\":true و نام بات باشد:"
-    : `توکن کامل خود را درست پس از bot بگذارید، بدون فاصله، / یا <>. در نمونه‌ی زیر، ${sampleToken} توکن است. پاسخ باید شامل "ok":true و نام بات باشد:`;
+    : bot
+      ? `توکن کامل این بات را (که با ${bot.id}: شروع می‌شود) به جای ${placeholder} بگذارید، بدون فاصله یا <>. پاسخ باید شامل "ok":true و نام بات باشد:`
+      : `توکن کامل خود را درست پس از bot بگذارید، بدون فاصله، / یا <>. در نمونه‌ی زیر، ${sampleToken} توکن است. پاسخ باید شامل "ok":true و نام بات باشد:`;
   const testEn = token
     ? "This command has your new token in it. Run it; it must answer with \"ok\":true and the bot's name:"
-    : `Put your whole token right after bot, with no space, / or <>. In this sample the token is ${sampleToken}. It must answer with "ok":true and the bot's name:`;
-  const link = `${site}/@your_bot`;
+    : bot
+      ? `Put this bot's whole token (it starts with ${bot.id}:) in place of ${placeholder}, with no space or <>. It must answer with "ok":true and the bot's name:`
+      : `Put your whole token right after bot, with no space, / or <>. In this sample the token is ${sampleToken}. It must answer with "ok":true and the bot's name:`;
+  const link = `${site}/@${bot?.username ?? "your_bot"}`;
   const expiry = n(numbers.update_expiry_seconds);
   return lang === "fa" ? [
     { title: "وارد شوید", text: "دکمه‌ی «ورود یا ثبت‌نام» را در بالای صفحه انتخاب کنید و با ایمیل، گیت‌هاب یا شماره‌ی موبایل وارد شوید." },
@@ -103,6 +114,25 @@ export function guideSteps(lang: Lang, numbers: PublicNumbers, n: (value: number
     { title: "Run it on your own computer", text: "Start the bot as always. Dalan has only long polling (getUpdates), no webhooks, so you need no public IP and no open port. Users reach the bot with this link:", code: link },
     { title: "Keep it running (optional)", text: "On Linux these commands keep the bot running after a restart, with the token outside the code. Change the folder and the start command to your bot's. On Windows and macOS keep the program open, or start it with the system's own start-up tool.", code: service },
     { title: "If it does not work", text: `An answer 401 means the token is wrong or was changed. If a user's message shows "not delivered", the bot did not read it within ${expiry} seconds: the bot must keep calling getUpdates. A method Dalan does not have answers ok=false with a description. The list of methods is in llms.txt.` },
+  ];
+}
+
+/** CLI-49: the command line tool, ready to copy for this one bot. The access key stays a placeholder. */
+export function botCliCode(site: string, bot: GuideBot): string {
+  return `curl -O ${site}/dalan.mjs
+export DALAN_URL=${site} DALAN_KEY=<KEY>
+node dalan.mjs status ${bot.id}       # @${bot.username}: online or last seen
+node dalan.mjs token ${bot.id}        # a new token; the old one stops at once
+node dalan.mjs icon ${bot.id} icon.png`;
+}
+
+/** CLI-49: the MCP server for an AI tool, and a first request about this one bot. */
+export function botMcpSamples(site: string, bot: GuideBot): Sample[] {
+  const url = `${site}/api/mcp`;
+  return [
+    { name: "Claude Code", code: `claude mcp add --transport http dalan ${url} --header "Authorization: Bearer <KEY>"` },
+    { name: "JSON", code: JSON.stringify({ mcpServers: { dalan: { type: "http", url, headers: { Authorization: "Bearer <KEY>" } } } }, null, 2) },
+    { name: "Prompt", code: `Use the dalan MCP server. My bot is @${bot.username} (bot_id ${bot.id}). Call bot_status for it.` },
   ];
 }
 

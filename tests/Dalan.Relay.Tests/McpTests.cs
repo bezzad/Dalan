@@ -58,7 +58,7 @@ public class McpTests(PostgresServer postgres)
     [Trait("Rule", "REL-46")]
     [InlineData(null)]
     [InlineData("2025-11-25")]
-    public async Task REL46_lists_the_four_tools(string? protocolVersion)
+    public async Task REL46_lists_the_tools(string? protocolVersion)
     {
         await using var app = await StartAsync();
         var (key, _) = await KeyAsync(app);
@@ -66,7 +66,7 @@ public class McpTests(PostgresServer postgres)
 
         var tools = await client.ListToolsAsync(cancellationToken: Cancel);
 
-        Assert.Equal(["bot_status", "create_bot", "list_bots", "rotate_token"], tools.Select(t => t.Name).Order());
+        Assert.Equal(["bot_status", "create_bot", "list_bots", "rotate_token", "set_bot_icon"], tools.Select(t => t.Name).Order());
     }
 
     [Fact]
@@ -125,6 +125,30 @@ public class McpTests(PostgresServer postgres)
         Assert.Equal("Another bot has this username. Choose another one.", Text(taken));
         Assert.True(unknown.IsError);
         Assert.Equal("You have no bot with this id.", Text(unknown));
+    }
+
+    private static readonly byte[] Png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4];
+
+    [Fact]
+    [Trait("Rule", "REL-46")]
+    [Trait("Rule", "REL-51")]
+    public async Task REL46_set_bot_icon_sets_the_icon_and_bad_input_is_a_tool_error()
+    {
+        await using var app = await StartAsync();
+        var (key, _) = await KeyAsync(app);
+        await using var client = await ConnectAsync(app, key);
+        var id = JsonElement.Parse(Text(await CallAsync(client, "create_bot", new { username = "weather_bot", name = "Weather" }))).GetProperty("id").GetInt64();
+
+        var done = await CallAsync(client, "set_bot_icon", new { bot_id = id, image_base64 = Convert.ToBase64String(Png) });
+        var notBase64 = await CallAsync(client, "set_bot_icon", new { bot_id = id, image_base64 = "not base64!" });
+        var notImage = await CallAsync(client, "set_bot_icon", new { bot_id = id, image_base64 = Convert.ToBase64String("just text"u8) });
+
+        Assert.NotEqual(true, done.IsError);
+        Assert.Equal(1, JsonElement.Parse(Text(done)).GetProperty("icon_version").GetInt32());
+        Assert.Equal(Png, await app.CreateClient().GetByteArrayAsync($"/api/bots/{id}/icon", Cancel));
+        Assert.True(notBase64.IsError);
+        Assert.True(notImage.IsError);
+        Assert.Equal(Png, await app.CreateClient().GetByteArrayAsync($"/api/bots/{id}/icon", Cancel));
     }
 
     /// <summary>A raw MCP call, as an agent sends it on the wire.</summary>

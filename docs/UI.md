@@ -31,6 +31,18 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - One primary (green) button per card or row: the main action. Others are plain. A link button for Back and small inline actions.
 - A step that cannot be undone (new token, delete) asks first.
 
+## Addresses
+- One address per screen (CLI-51): `/chats`, `/@<username>` (a chat), `/bots` (My bots), `/bots/new`, `/bots/<username>` (one bot's page), `/account`, `/admin`, `/apps`. No screen hides behind another's address; reload and Back show the same screen.
+- A bot's page shows only that bot's values; a token shows only right after create or New token.
+
+## Chat (like Telegram)
+- Message text 14px, line 1.35, time 12px: the `--message-*` tokens (CLI-48).
+- The bot's reply keyboard sits under the input, where a phone keyboard would be. Rows exactly as sent; a row's buttons share its width. ⌨ in the input bar hides and shows it (not for a persistent one) (CLI-07).
+- Button colours: `success` green, `danger` red, `primary` blue (`--primary`), each with its `--on-*` text colour. Link buttons have a small ↗ (CLI-13).
+- 🎤 takes Send's place while the input is empty; voices and audio use Dalan's own player (CLI-16, CLI-46).
+- 📎, paste and drop open one card above the input; the input is the caption (CLI-47).
+- Bot icons are round, cut to fill; no icon shows the first letter (CLI-50).
+
 ## Toasts
 - **Every action the user takes ends in a toast**: saved, created, copied, sent, deleted, and every error. Use `toast(text, kind)` from `client/src/toast.ts`; kind `ok` (green dot), `error` (red dot, stays longer), `info` (grey dot).
 - One short sentence, what happened and, if needed, what to do next ("Bot created. Copy the token now.").

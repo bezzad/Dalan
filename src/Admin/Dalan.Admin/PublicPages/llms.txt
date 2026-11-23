@@ -9,7 +9,9 @@ Dalan speaks the Telegram Bot API (snapshot 10.4). Change only two things in an 
 - Server address: {api} (calls go to {api}/bot<token>/<method>, like Telegram)
 - Token: the Dalan token of the bot (create it below)
 
-Served: getMe, getUpdates (long polling; webhooks are not served), sendMessage with reply and inline keyboards, editMessageText, editMessageReplyMarkup, deleteMessage, pinChatMessage, unpinChatMessage, unpinAllChatMessages, answerCallbackQuery, setMyCommands, getMyCommands, deleteMyCommands, sendPhoto, sendDocument, sendAudio, sendVideo, sendVoice, getFile, sendChatAction, deleteWebhook. Any other method answers ok=false with a clear description. parse_mode is ignored (plain text).
+Served: getMe, getUpdates (long polling; webhooks are not served), sendMessage with reply and inline keyboards, editMessageText, editMessageReplyMarkup, deleteMessage, pinChatMessage, unpinChatMessage, unpinAllChatMessages, answerCallbackQuery, setMyCommands, getMyCommands, deleteMyCommands, sendPhoto, sendDocument, sendAudio, sendVideo, sendVoice, getFile, setMyProfilePhoto (a static picture, PNG, JPEG or WebP, becomes the bot's icon), removeMyProfilePhoto, sendChatAction, deleteWebhook. Any other method answers ok=false with a clear description. parse_mode is ignored (plain text).
+
+A keyboard button may have `style` (`success`, `danger` or `primary`; another value is a 400). A reply keyboard keeps `is_persistent`, `resize_keyboard` and `one_time_keyboard`. `duration` (seconds) on sendVoice, sendAudio and sendVideo is kept and shown.
 
 A bot never gets a user's phone number, only id, name and username.
 
@@ -18,7 +20,7 @@ A bot never gets a user's phone number, only id, name and username.
 Header on every call: `Authorization: Bearer <bot token>`. Base: {api}
 
 - `GET /v1/updates?offset=<last update_id + 1>&timeout=30` long polls (the server cuts a timeout over its maximum). An update is confirmed by the next call's offset. Each update has `update_id` and a `message` (`id`, `from` {`id`, `name`, `username`}, `text`, `date`) or a `callback`.
-- `POST /v1/messages` with JSON `{"user_id": 5, "text": "Hi"}` sends a message.
+- `POST /v1/messages` with JSON `{"user_id": 5, "text": "Hi"}` sends a message. Optional: `reply_keyboard` (rows; a button is a text or `{"text": "Yes", "style": "success"}`), `reply_keyboard_persistent`, `reply_keyboard_resize`, `reply_keyboard_one_time`, `inline_keyboard` (buttons may have `style`), and `duration` (seconds) with a voice, audio or video file.
 - Errors are JSON `{"error": "<code>", "message": "<what went wrong and how to fix it>"}`.
 
 A user message waits for the bot only a short time (`update_expiry_seconds` in {site}/api/public/settings); after that it is marked "not delivered". Keep the bot polling.
@@ -31,7 +33,7 @@ A person who is an approved builder logs in at {site}, opens "My bots", and make
 
 URL: {site}/api/mcp (Streamable HTTP, stateless). Header: `Authorization: Bearer <access key>`.
 
-Tools: `list_bots`, `create_bot` (username, name), `rotate_token` (bot_id), `bot_status` (bot_id).
+Tools: `list_bots`, `create_bot` (username, name), `rotate_token` (bot_id), `bot_status` (bot_id), `set_bot_icon` (bot_id, image_base64: PNG, JPEG or WebP).
 
 Claude Code:
 
@@ -49,6 +51,7 @@ One Node file (Node 18 or newer, no packages), served by Dalan itself:
     node dalan.mjs create weather_bot "Weather"
     node dalan.mjs token <bot id>
     node dalan.mjs status <bot id>
+    node dalan.mjs icon <bot id> <image file>
 
 Output is JSON on stdout (exit 0). An error is JSON on stderr (exit 1). A wrong command prints the usage (exit 2).
 
@@ -60,5 +63,6 @@ Base {site}, header `Authorization: Bearer <access key>`:
 - `POST /api/builder/bots` with `{"username": "weather_bot", "name": "Weather"}`: a new bot and its token (shown once)
 - `POST /api/builder/bots/<id>/token`: a new token; the old one stops at once
 - `GET /api/builder/bots/<id>`: one bot with `online` and `last_seen`
+- `PUT /api/builder/bots/<id>/icon` with the image as the body (PNG, JPEG or WebP, small): sets the icon; `DELETE` removes it. `GET /api/bots/<id>/icon` shows it to anyone (use `?v=<icon_version>` for caching)
 
 A bot username is 5 to 32 characters of a-z, 0-9 and _, starting with a letter.

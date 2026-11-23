@@ -37,7 +37,8 @@ public static class TelegramAdapter
         if (name == "GETME") return TelegramJson.Ok(UserJson.Of(bot));
 
         // TG-20: a file upload may be as big as the core allows.
-        if (name.StartsWith("SEND", StringComparison.Ordinal)
+        // TG-23: so is the picture of setMyProfilePhoto.
+        if ((name.StartsWith("SEND", StringComparison.Ordinal) || name == "SETMYPROFILEPHOTO")
             && http.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
         {
             limit.MaxRequestBodySize = gateway.MaxUploadBytes + (1024 * 1024);
@@ -66,6 +67,8 @@ public static class TelegramAdapter
             "DELETEMYCOMMANDS" => await call.SetCommandsAsync(clear: true),
             "GETMYCOMMANDS" => await call.GetCommandsAsync(),
             "GETFILE" => await call.GetFileAsync(),
+            "SETMYPROFILEPHOTO" => await call.SetProfilePhotoAsync(),
+            "REMOVEMYPROFILEPHOTO" => await call.RemoveProfilePhotoAsync(),
             // TG-09: Dalan has no webhook to delete, and shows no "typing" yet. Libraries call both and expect true.
             "DELETEWEBHOOK" or "SENDCHATACTION" => TelegramJson.Ok(true),
             "SETCHATMENUBUTTON" => call.SetMenuButton(),
@@ -130,23 +133,25 @@ public static class TelegramAdapter
         {
             // A chat is one user, so chat_id is the user's id. A channel name can never be one.
             if (parameters.Number("chat_id") is not { } userId) return TelegramJson.BadRequest("chat not found");
-            if (ReplyMarkup.Read(parameters, out var keyboard, out var inline) is { } problem) return TelegramJson.BadRequest(problem);
+            if (ReplyMarkup.Read(parameters, out var keyboard, out var inline, out var keyboardOptions) is { } problem) return TelegramJson.BadRequest(problem);
 
+            // REL-50: the length is only a label; a negative or broken value is dropped.
+            var duration = parameters.Number("duration") is >= 0 and <= int.MaxValue and var seconds ? (int)seconds : (int?)null;
             NewFile? file = null;
             await using var content = kind is { } k ? parameters.File(FileFields[k])?.OpenReadStream() : null;
             if (kind is { } fileKind)
             {
                 var field = FileFields[fileKind];
-                if (parameters.File(field) is { } part) file = new NewFile(fileKind, content, part.FileName, part.ContentType);
+                if (parameters.File(field) is { } part) file = new NewFile(fileKind, content, part.FileName, part.ContentType, Duration: duration);
                 else if (parameters.Text(field) is not { Length: > 0 } fileId || fileId.StartsWith("attach://", StringComparison.Ordinal))
                     return TelegramJson.BadRequest($"there is no {field} in the request");
                 else if (fileId.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || fileId.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                     return TelegramJson.BadRequest("sending a file by URL is not supported by Dalan; upload it or send a file_id");
-                else file = new NewFile(fileKind, FileId: fileId);
+                else file = new NewFile(fileKind, FileId: fileId, Duration: duration);
             }
 
             var text = (file is null ? parameters.Text("text") : parameters.Text("caption")) ?? "";
-            var (error, message) = await gateway.SendAsync(bot.Id, userId, new OutgoingMessage(text, keyboard, inline, file), cancellationToken);
+            var (error, message) = await gateway.SendAsync(bot.Id, userId, new OutgoingMessage(text, keyboard, inline, file, keyboardOptions), cancellationToken);
             return error == BotError.None ? TelegramJson.Ok(MessageJson.Sent(bot, message!)) : ErrorOf(error, "send", file is not null);
         }
 
@@ -274,6 +279,34 @@ public static class TelegramAdapter
                 : TelegramJson.BadRequest("invalid file_id");
         }
 
+        /// <summary>TG-23: the photo is an InputProfilePhoto whose "photo" is attach://part. It becomes the bot icon (REL-51).</summary>
+        public async Task<IResult> SetProfilePhotoAsync()
+        {
+            if (!parameters.TryObject("photo", out var photo) || photo is not { } input)
+                return TelegramJson.BadRequest("can't parse photo: it must be a JSON object (InputProfilePhoto)");
+
+            var type = input.TryGetProperty("type", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null;
+            if (type == "animated") return TelegramJson.BadRequest("animated profile photos are not supported by Dalan");
+            if (type != "static") return TelegramJson.BadRequest("IMAGE_PROCESS_FAILED");
+
+            var reference = input.TryGetProperty("photo", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
+            if (parameters.AttachedFile(reference) is not { } part) return TelegramJson.BadRequest("IMAGE_PROCESS_FAILED");
+
+            await using var content = part.OpenReadStream();
+            return await gateway.SetIconAsync(bot.Id, content, cancellationToken) switch
+            {
+                BotError.None => TelegramJson.Ok(true),
+                BotError.ImageTooBig => TelegramJson.BadRequest("photo is too big"),
+                _ => TelegramJson.BadRequest("IMAGE_PROCESS_FAILED"),
+            };
+        }
+
+        public async Task<IResult> RemoveProfilePhotoAsync()
+        {
+            await gateway.RemoveIconAsync(bot.Id, cancellationToken);
+            return TelegramJson.Ok(true);
+        }
+
         /// <summary>True when the call is for the one list Dalan keeps: no language and the default or all-private-chats scope.</summary>
         private bool ForEveryone(out IResult? problem)
         {
@@ -296,7 +329,7 @@ public static class TelegramAdapter
             BotError.TextTooLong when action == "answer" => TelegramJson.BadRequest("text is too long"),
             BotError.TextTooLong => TelegramJson.BadRequest(withFile ? "message caption is too long" : "message is too long"),
             BotError.BadKeyboard => TelegramJson.BadRequest(
-                "the keyboard has too many buttons, a button text is empty or too long, " +
+                "the keyboard has too many buttons, a button text is empty or too long, a button style is not success, danger or primary, " +
                 "or an inline button has not exactly one of callback_data and an http(s) url"),
             BotError.MessageNotFound => TelegramJson.BadRequest($"message to {action} not found"),
             BotError.NotEditable => TelegramJson.BadRequest("message can't be edited"),

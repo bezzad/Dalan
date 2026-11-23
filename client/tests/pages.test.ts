@@ -1,7 +1,7 @@
 // Rules: CLI-26, CLI-27, CLI-28, CLI-29, CLI-30, CLI-37
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { categoryName, faqItems, initial, landing, notOffered, offers, products, security, pageFor, privacyPoints, readyPrompt, showcaseStateName, type PublicNumbers } from "../src/pages.ts";
+import { botPageUsername, categoryName, faqItems, initial, landing, notOffered, offers, products, security, pageFor, privacyPoints, readyPrompt, showcaseStateName, type PublicNumbers } from "../src/pages.ts";
 
 const numbers: PublicNumbers = { history_messages: 200, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60,
   site_url: "https://dalanet.ir", bot_api_url: "https://api.dalanet.ir" };
@@ -66,6 +66,16 @@ test("CLI-26 the address and the login decide the screen", () => {
   const paths = ["/", "/bots", "/apps", "/privacy", "/faq", "/showcase", "/@bot"];
   assert.deepEqual(paths.map(path => pageFor(path, false)), ["landing", "login", "login", "privacy", "faq", "showcase", "login"]);
   assert.deepEqual(paths.map(path => pageFor(path, true)), ["landing", "bots", "apps", "privacy", "faq", "showcase", "chat"]);
+});
+
+test("CLI-51 each screen has its own address", () => {
+  const paths = ["/chats", "/bots", "/bots/new", "/bots/mofidbot", "/account", "/admin", "/apps"];
+  assert.deepEqual(paths.map(path => pageFor(path, true)), ["chats", "bots", "botNew", "botPage", "account", "admin", "apps"]);
+  assert.deepEqual(paths.map(path => pageFor(path, false)), paths.map(() => "login"));
+  assert.equal(botPageUsername("/bots/mofidbot"), "mofidbot");
+  assert.equal(botPageUsername("/bots/new"), null);
+  assert.equal(botPageUsername("/bots"), null);
+  assert.equal(pageFor("/bots/a/b", true), "notFound");
 });
 
 test("CLI-40 an unknown address is not found, never the landing page", () => {

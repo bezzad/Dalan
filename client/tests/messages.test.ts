@@ -2,7 +2,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  buttonAction, Chat, Chats, commandMessage, currentKeyboard, fileView, fitsSize, merge, stamp, type FileInfo, type Message,
+  buttonAction, Chat, Chats, clock, commandMessage, currentKeyboard, fileView, firstFile, fitsSize, KeyboardState, merge, replyKeyboard, stamp,
+  type FileInfo, type Message,
 } from "../src/messages.ts";
 
 /** A message whose version is its id, as when nothing was changed. */
@@ -230,7 +231,55 @@ test("CLI-16 each kind of file has its view", () => {
   const file = (kind: FileInfo["kind"]): FileInfo => ({ id: "x", kind, name: "f", type: "", size: 1 });
 
   assert.deepEqual(["photo", "voice", "audio", "video", "document"].map(kind => fileView(file(kind as FileInfo["kind"]))),
-    ["image", "audio", "audio", "video", "link"]);
+    ["image", "player", "player", "video", "link"]);
+});
+
+test("CLI-16 a voice length reads as minutes and seconds", () => {
+  assert.equal(clock(65), "1:05");
+  assert.equal(clock(7), "0:07");
+  assert.equal(clock(3723), "1:02:03");
+  assert.equal(clock(-1), "0:00");
+});
+
+test("CLI-47 a pasted screenshot gets a name; text alone is no file", () => {
+  const rename = (file: File, name: string) => new File([file], name, { type: file.type });
+  assert.equal(firstFile([new File(["x"], "image.png", { type: "image/png" })], rename)?.name, "image.png");
+  assert.equal(firstFile([new File(["x"], "", { type: "image/jpeg" })], rename)?.name, "image.jpg");
+  assert.equal(firstFile([new File(["x"], "report.pdf", { type: "application/pdf" })], rename)?.name, "report.pdf");
+  assert.equal(firstFile([], rename), null);
+});
+
+test("CLI-07 rows stay as sent, with their styles and options", () => {
+  const rows = [["1", "2", "3", "4", "5"], ["6", "7", "8", "9"], ["a", "b", "➕"]];
+  const message: Message = { ...m(3, "bot", rows), reply_keyboard_options: { resize: true, styles: [[null, null, null, null, null], [null, null, null, null], [null, null, "success"]] } };
+  const keyboard = replyKeyboard([m(1, "bot", [["Old"]]), message])!;
+  assert.deepEqual(keyboard.rows.map(row => row.length), [5, 4, 3]);
+  assert.equal(keyboard.rows[2]![2]!.style, "success");
+  assert.equal(keyboard.rows[0]![0]!.style, null);
+  assert.deepEqual([keyboard.messageId, keyboard.resize, keyboard.persistent, keyboard.oneTime], [3, true, false, false]);
+  assert.equal(replyKeyboard([message, m(4, "bot", [])]), null);
+});
+
+test("CLI-07 a one-time keyboard hides after a tap and the ⌨ button brings it back; a new one shows again", () => {
+  const state = new KeyboardState();
+  const oneTime = replyKeyboard([{ ...m(2, "bot", [["Yes"]]), reply_keyboard_options: { one_time: true } }])!;
+  assert.equal(state.visible(oneTime), true);
+  state.tapped(oneTime);
+  assert.equal(state.visible(oneTime), false);
+  assert.equal(state.hasToggle(oneTime), true);
+  state.toggle(oneTime);
+  assert.equal(state.visible(oneTime), true);
+  state.toggle(oneTime);
+  assert.equal(state.visible(oneTime), false);
+  assert.equal(state.visible(replyKeyboard([m(5, "bot", [["New"]])])), true);
+});
+
+test("CLI-07 a persistent keyboard cannot hide and has no ⌨ button", () => {
+  const state = new KeyboardState();
+  const persistent = replyKeyboard([{ ...m(2, "bot", [["Yes"]]), reply_keyboard_options: { persistent: true, one_time: true } }])!;
+  state.tapped(persistent);
+  assert.equal(state.visible(persistent), true);
+  assert.equal(state.hasToggle(persistent), false);
 });
 
 test("CLI-16 a file over the limit is refused before it is sent", () => {

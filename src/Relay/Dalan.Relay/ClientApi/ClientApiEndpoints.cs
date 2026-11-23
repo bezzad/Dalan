@@ -44,7 +44,7 @@ internal static class ClientApiEndpoints
         var relay = options.CurrentValue;
         return ApiJson.Ok(new ClientSettingsJson(
             relay.MaxTextLength, relay.MaxCaptionLength, relay.MaxFileSizeMb, relay.MaxMessagesPerSync,
-            relay.ClientReconnectMinSeconds, relay.ClientReconnectMaxSeconds, relay.ClientStatusRefreshSeconds));
+            relay.ClientReconnectMinSeconds, relay.ClientReconnectMaxSeconds, relay.ClientStatusRefreshSeconds, relay.MaxBotIconKb));
     }
 
     /// <summary>REL-14: the bots this user has a chat with, newest chat first.</summary>
@@ -61,6 +61,7 @@ internal static class ClientApiEndpoints
                 bot.Id,
                 bot.Username,
                 bot.Name,
+                IconVersion = bot.IconType != null ? bot.IconVersion : 0,
                 bot.LastSeenAt,
                 Suspended = bot.SuspendedAt != null,
                 // REL-32: the same count as in ChatService.ReadAsync.
@@ -72,7 +73,7 @@ internal static class ClientApiEndpoints
         return ApiJson.Ok(new BotsResponse(bots.Select(bot =>
         {
             var status = presence.Of(bot.Id, bot.LastSeenAt);
-            return new BotJson(bot.Id, bot.Username, bot.Name, bot.Unread, status.Online, status.LastSeen, bot.Suspended);
+            return new BotJson(bot.Id, bot.Username, bot.Name, bot.Unread, status.Online, status.LastSeen, bot.Suspended, bot.IconVersion);
         })));
     }
 
@@ -83,12 +84,14 @@ internal static class ClientApiEndpoints
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
 #pragma warning disable CA1304, CA1311, CA1862 // This runs in PostgreSQL as lower(username), which the unique index covers.
         var bot = await db.Bots.AsNoTracking()
-            .FirstOrDefaultAsync(b => b.Username.ToLower() == username.ToLower() && b.DeletedAt == null, http.RequestAborted);
+            .Where(b => b.Username.ToLower() == username.ToLower() && b.DeletedAt == null)
+            .Select(b => new { b.Id, b.Username, b.Name, b.SuspendedAt, IconVersion = b.IconType != null ? b.IconVersion : 0 })
+            .FirstOrDefaultAsync(http.RequestAborted);
 #pragma warning restore CA1304, CA1311, CA1862
         if (bot is null) return BotNotFound();
 
         var started = await db.Memberships.AnyAsync(m => m.BotId == bot.Id && m.UserId == userId, http.RequestAborted);
-        return ApiJson.Ok(new FoundBotJson(bot.Id, bot.Username, bot.Name, started, bot.SuspendedAt is not null));
+        return ApiJson.Ok(new FoundBotJson(bot.Id, bot.Username, bot.Name, started, bot.SuspendedAt is not null, bot.IconVersion));
     }
 
     /// <summary>REL-15: a person writes to a bot. The first message starts the chat.</summary>
@@ -117,8 +120,18 @@ internal static class ClientApiEndpoints
                 "Send the file itself as the body, its type as Content-Type, and its name in the header X-File-Name (percent-encoded).");
         }
 
+        // REL-28: a recorded voice says how long it is, in whole seconds.
+        int? voiceSeconds = null;
+        if (headers.TryGetValue("X-Voice-Duration", out var given))
+        {
+            if (!int.TryParse(given.ToString(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var seconds))
+                return ApiJson.BadRequest("The header X-Voice-Duration must be a whole number of seconds, 0 or more.");
+
+            voiceSeconds = seconds;
+        }
+
         BotApiEndpoints.AllowFileUpload(http, files);
-        var upload = new UserUpload(http.Request.Body, name, http.Request.ContentType);
+        var upload = new UserUpload(http.Request.Body, name, http.Request.ContentType, voiceSeconds);
         return Sent(await chats.ReceiveFromUserAsync(botId, ClientApiFilter.UserId(http), caption, upload, http.RequestAborted), options);
     }
 

@@ -2,7 +2,7 @@
 import { api } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { h } from "./dom.ts";
-import { builderView } from "./panels.ts";
+import { botFace } from "./icon.ts";
 
 export function botsScreen(app: App): Screen {
   const t = app.language.t.bind(app.language);
@@ -36,6 +36,8 @@ export function botsScreen(app: App): Screen {
               app.go(`/@${bot.username}`);
             },
           },
+          // CLI-50: the bot's icon or its first letter.
+          botFace(bot),
           // <bdi>: a Latin name keeps its own direction, but the row still starts at the language's side.
           h("strong", {}, h("bdi", {}, bot.name)),
           h("span", { dir: "ltr" }, `@${bot.username}`),
@@ -60,9 +62,8 @@ export function botsScreen(app: App): Screen {
     h("p", { class: "note" }, h("bdi", {}, app.user.name)),
     ...(app.user.has_password ? [] : [h("p", { class: "note" }, t("noPasswordYet"))]),
     open,
-    // CLI-24: one press away. A builder or an admin gets the builder screen; anyone else the account screen,
-    // which says how to become a builder.
-    h("button", { type: "button", class: "primary", onclick: () => app.showPanel(builderView(app.user) === "bots" ? "builder" : "account") }, t("createBot")),
+    // CLI-24: one press away. My bots shows a builder its bots, and anyone else the next step to become one.
+    h("button", { type: "button", class: "primary", onclick: () => app.go("/bots") }, t("createBot")),
     error,
     list,
     // CLI-26: the public pages, from inside the app too.

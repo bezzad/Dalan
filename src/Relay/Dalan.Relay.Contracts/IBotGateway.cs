@@ -55,4 +55,10 @@ public interface IBotGateway
 
     /// <summary>REL-29: the bytes of a file of this bot, or null. The caller disposes the stream.</summary>
     Task<Stream?> OpenFileAsync(long botId, string fileId, CancellationToken cancellationToken);
+
+    /// <summary>REL-51: sets the bot's icon (PNG, JPEG or WebP, at most Relay:MaxBotIconKb). Gives NotAnImage or ImageTooBig when it is refused.</summary>
+    Task<BotError> SetIconAsync(long botId, Stream image, CancellationToken cancellationToken);
+
+    /// <summary>REL-51.</summary>
+    Task RemoveIconAsync(long botId, CancellationToken cancellationToken);
 }
