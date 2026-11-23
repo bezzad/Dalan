@@ -4,12 +4,14 @@ using Dalan.Sites.Names;
 using Dalan.Sites.Tunnel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Dalan.Sites.Proxy;
 
 /// <summary>SITE-08 to SITE-12: a visitor request to "name.(sites domain)" goes through the site's session and back.</summary>
-internal sealed class SiteProxy(TunnelHub hub, SiteBook book, DemoBook demos, IOptionsMonitor<SitesOptions> options, TimeProvider time)
+internal sealed class SiteProxy(
+    TunnelHub hub, SiteBook book, DemoBook demos, IOptionsMonitor<SitesOptions> options, TimeProvider time, IConfiguration configuration)
 {
     /// <summary>Headers of one connection only; they never pass a proxy (RFC 9110 section 7.6.1).</summary>
     private static readonly HashSet<string> HopByHop = new(StringComparer.OrdinalIgnoreCase)
@@ -67,6 +69,13 @@ internal sealed class SiteProxy(TunnelHub hub, SiteBook book, DemoBook demos, IO
         }
 
         var demo = string.IsNullOrEmpty(id) ? null : await demos.FindAsync(id, http.RequestAborted);
+        var siteUrl = configuration["Admin:SiteUrl"]?.TrimEnd('/');
+        if (demo is null && path == "/" && !string.IsNullOrEmpty(siteUrl))
+        {
+            http.Response.Redirect($"{siteUrl}/"); // SITE-21: the bare demo host goes to Dalan.
+            return;
+        }
+
         if (demo is null)
         {
             await PageAsync(http, StatusCodes.Status404NotFound, "demo_not_found");

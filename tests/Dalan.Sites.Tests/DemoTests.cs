@@ -192,6 +192,51 @@ public partial class DemoTests(PostgresServer postgres)
         Assert.Equal("demo_not_found", response.SiteError());
     }
 
+    [Theory]
+    [Trait("Rule", "SITE-21")]
+    [InlineData(null)]
+    [InlineData("dalan_demo=nosuchdemo0000")]
+    public async Task SITE21_root_without_a_demo_goes_to_dalan(string? cookie)
+    {
+        await using var app = await StartDemoAsync(("Admin:SiteUrl", "https://dalan.test"));
+
+        var response = await DemoVisitor(app, cookie).GetAsync("/", Cancel);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("https://dalan.test/", response.Headers.Location?.OriginalString);
+    }
+
+    [Fact]
+    [Trait("Rule", "SITE-21")]
+    public async Task SITE21_root_with_the_cookie_of_a_live_demo_goes_to_the_demo()
+    {
+        await using var app = await StartDemoAsync(("Admin:SiteUrl", "https://dalan.test"));
+        var (_, _, key) = await app.BuilderAsync();
+        var agent = app.Agent(key);
+        var (session, id, _) = await NewDemoAsync(agent);
+
+        var visitor = DemoVisitor(app, $"dalan_demo={id}").GetAsync("/", Cancel);
+        var request = Assert.Single(await agent.PollAsync(session));
+        await agent.AnswerAsync(session, request.GetProperty("id").GetInt64(), 200, "home");
+
+        Assert.Equal("/", request.GetProperty("path").GetString());
+        Assert.Equal("home", await (await visitor).Content.ReadAsStringAsync(Cancel));
+    }
+
+    [Theory]
+    [Trait("Rule", "SITE-21")]
+    [InlineData("https://dalan.test", "/nosuchdemo/")]
+    [InlineData("", "/")]
+    public async Task SITE21_wrong_demo_link_or_no_site_url_keeps_the_404_page(string siteUrl, string path)
+    {
+        await using var app = await StartDemoAsync(("Admin:SiteUrl", siteUrl));
+
+        var response = await DemoVisitor(app).GetAsync(path, Cancel);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("demo_not_found", response.SiteError());
+    }
+
     [Fact]
     [Trait("Rule", "SITE-20")]
     public async Task SITE20_demo_whose_time_is_over_answers_410_and_the_agent_gets_nothing()
