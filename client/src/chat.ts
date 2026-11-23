@@ -3,15 +3,18 @@
 // the bot's status (CLI-19), the "not delivered" mark (CLI-20) and the input.
 import { api, type Bot } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
+import { chatHeader, matchingMessages } from "./chatHeader.ts";
 import { h } from "./dom.ts";
 import {
   buttonAction, commandMessage, currentKeyboard, fileView, fitsSize, ReadPosition, stamp, type FileInfo, type InlineButton, type Message,
 } from "./messages.ts";
 
-export function chatScreen(app: App, username: string): Screen {
+/** `tools`: the theme button, the user menu and the Dalan mark, for the end of the header (CLI-45). */
+export function chatScreen(app: App, username: string, tools: HTMLElement[]): Screen {
   const t = app.language.t.bind(app.language);
-  const title = h("h1", { dir: "auto" }, `@${username}`);
-  const status = h("p", { class: "note status", dir: "auto", role: "status" });
+  /** CLI-45: the words of the search; empty shows every message. */
+  let query = "";
+  const header = chatHeader({ username, t, tools, onSearch: words => { query = words; draw(); } });
   const read = new ReadPosition();
   const pinBar = h("p", { class: "pinned", dir: "auto", hidden: true });
   const older = h("button", { type: "button", class: "link", hidden: true }, t("older"));
@@ -69,7 +72,8 @@ export function chatScreen(app: App, username: string): Screen {
 
     pinBar.hidden = !chat.pinned;
     pinBar.textContent = chat.pinned ? `📌 ${chat.pinned.text || chat.pinned.file?.name || ""}` : "";
-    list.replaceChildren(...messages.map(bubble));
+    const shown = matchingMessages(messages, query);
+    list.replaceChildren(...(shown.length === 0 && query.trim() !== "" ? [h("li", { class: "note" }, t("noMatches"))] : shown.map(bubble)));
     older.hidden = chat.reachedStart || messages.length === 0;
     keyboard.replaceChildren(...currentKeyboard(messages).map(row =>
       h("div", { class: "row" }, ...row.map(text =>
@@ -97,7 +101,8 @@ export function chatScreen(app: App, username: string): Screen {
   async function refreshStatus(): Promise<void> {
     if (!bot) return;
     try {
-      status.textContent = app.language.seen(await api.status(bot.id), new Date());
+      const seen = app.language.seen(await api.status(bot.id), new Date());
+      header.status.textContent = seen ? ` · ${seen}` : "";
     } catch {
       // The next round tries again.
     }
@@ -178,7 +183,7 @@ export function chatScreen(app: App, username: string): Screen {
     try {
       const found = await api.findBot(username);
       bot = found;
-      title.textContent = bot.name;
+      header.showBot(bot.name, api.showcaseIconUrl(bot.id));
       // CLI-25: say it at once, before the user writes.
       if (found.suspended) error.textContent = t("botSuspended");
       void refreshStatus();
@@ -197,11 +202,7 @@ export function chatScreen(app: App, username: string): Screen {
   })();
 
   const element = h("main", { class: "chat" },
-    h("header", {},
-      h("button", { type: "button", class: "link", onclick: () => app.go("/bots") }, t("back")),
-      title,
-      h("span", { class: "note", dir: "ltr" }, `@${username}`)),
-    status,
+    header.element,
     pinBar,
     scroller,
     error,

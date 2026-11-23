@@ -11,14 +11,14 @@ import { chatScreen } from "./chat.ts";
 import { Language, type TextKey } from "./i18n.ts";
 import { Live } from "./live.ts";
 import { loginScreen } from "./login.ts";
-import { pageFor } from "./pages.ts";
+import { initial, pageFor } from "./pages.ts";
 import { h } from "./dom.ts";
 import { builderView } from "./panels.ts";
 import { toastRegion } from "./toast.ts";
-import { headerTools, publicPages, publicScreen, siteBrand, type PublicPage } from "./public.ts";
+import { headerTools, homeMark, publicPages, publicScreen, siteBrand, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
 import { Chats } from "./messages.ts";
-import { Theme } from "./theme.ts";
+import { Theme, themeButton } from "./theme.ts";
 
 const language = new Language(document.documentElement, localStorage);
 const theme = new Theme(document.documentElement, localStorage, matchMedia("(prefers-color-scheme: dark)").matches);
@@ -77,16 +77,20 @@ function guest(): void {
   show(publicPage(page as PublicPage, false));
 }
 
-/** The end of the site header on every page: "Log in" for a visitor, the user menu after login (owner, 2026-11-20). */
-function userArea(): HTMLElement {
+/**
+ * The end of the site header on every page: "Log in" for a visitor, the user menu after login (owner, 2026-11-20).
+ * `face`: the menu shows a round initial instead of the name (the chat header, CLI-45).
+ */
+function userArea(face = false): HTMLElement {
   const t = language.t.bind(language);
   // On a phone the button says only "Log in", so the header stays on one line (CLI-42).
   if (!app) return h("button", { type: "button", class: "primary", "aria-label": t("enter"), onclick: () => showLogin() },
     h("span", { class: "long" }, t("enter")), h("span", { class: "short" }, t("login")));
   const current = app;
   const item = (label: string, onclick: () => void) => h("button", { type: "button", class: "item", onclick }, label);
-  return h("details", { class: "menu user" },
-    h("summary", {}, h("bdi", {}, current.user.name)),
+  return h("details", { class: face ? "menu user face" : "menu user" },
+    h("summary", { "aria-label": current.user.name, title: current.user.name },
+      face ? h("span", { class: "avatar" }, initial(current.user.name)) : h("bdi", {}, current.user.name)),
     h("div", { class: "panel" },
       // "My bots" are the bots this user built; "Chats" the bots they talk to (owner, 2026-11-20).
       item(t("myBots"), () => current.showPanel(builderView(current.user) === "bots" ? "builder" : "account")),
@@ -122,14 +126,15 @@ function route(): void {
   const username = /^\/@([^/]+)$/.exec(decodeURIComponent(location.pathname))?.[1];
   screen = publicPages.includes(page)
     ? { element: publicPage(page as PublicPage, true) }
-    : username ? chatScreen(app, username)
+    // CLI-45: the chat page has its own header, with no site header above it.
+    : username ? chatScreen(app, username, [themeButton(theme, language.t.bind(language)), userArea(true), homeMark(language.t("appName"), navigate)])
     : page === "apps" && panel === null ? appsScreen(app)
     : panel === "account" ? accountScreen(app)
     : panel === "builder" ? builderScreen(app)
     : panel === "admin" ? adminScreen(app)
     : botsScreen(app);
   // The public pages have the site header; the app screens get the same logo and name on top.
-  if (!screen.element.classList.contains("public")) {
+  if (!screen.element.classList.contains("public") && !username) {
     screen.element.prepend(h("header", { class: "site" }, siteBrand(language.t("appName"), navigate), tools()));
   }
   show(screen.element);
