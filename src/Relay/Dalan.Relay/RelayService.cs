@@ -35,6 +35,7 @@ public static class RelayService
 
         services.AddSingleton<IUpdateQueue, InMemoryUpdateQueue>();
         services.AddSingleton<BotRegistry>();
+        services.AddSingleton<BotIcons>();
         services.AddSingleton<BuilderBots>();
         services.AddMcpDoor();
         services.AddSingleton<SuspendedBots>();
@@ -64,6 +65,7 @@ public static class RelayService
         endpoints.MapBotApi();
         endpoints.MapClientApi();
         endpoints.MapPublicShowcase();
+        endpoints.MapPublicBotIcon();
         return endpoints;
     }
 

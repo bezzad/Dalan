@@ -40,6 +40,18 @@ namespace Dalan.Relay.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
+                    b.Property<byte[]>("Icon")
+                        .HasColumnType("bytea")
+                        .HasColumnName("icon");
+
+                    b.Property<string>("IconType")
+                        .HasColumnType("text")
+                        .HasColumnName("icon_type");
+
+                    b.Property<int>("IconVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("icon_version");
+
                     b.Property<DateTimeOffset?>("LastSeenAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_seen_at");
@@ -195,6 +207,10 @@ namespace Dalan.Relay.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<int?>("Duration")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration");
+
                     b.Property<DateTimeOffset>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
@@ -272,14 +288,6 @@ namespace Dalan.Relay.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("description");
-
-                    b.Property<byte[]>("Icon")
-                        .HasColumnType("bytea")
-                        .HasColumnName("icon");
-
-                    b.Property<string>("IconType")
-                        .HasColumnType("text")
-                        .HasColumnName("icon_type");
 
                     b.Property<DateTimeOffset?>("ReviewedAt")
                         .HasColumnType("timestamp with time zone")
@@ -411,6 +419,8 @@ namespace Dalan.Relay.Data.Migrations
 
                                                     b4.Property<string>("Data");
 
+                                                    b4.Property<string>("Style");
+
                                                     b4.Property<string>("Text")
                                                         .IsRequired();
 
@@ -438,6 +448,8 @@ namespace Dalan.Relay.Data.Migrations
                                     b2.Property<string>("ContentType")
                                         .IsRequired();
 
+                                    b2.Property<int?>("Duration");
+
                                     b2.Property<string>("Id");
 
                                     b2.Property<int>("Kind");
@@ -461,6 +473,12 @@ namespace Dalan.Relay.Data.Migrations
                                 {
                                     b2.Property<long>("MessageContentMessageId");
 
+                                    b2.Property<bool>("OneTime");
+
+                                    b2.Property<bool>("Persistent");
+
+                                    b2.Property<bool>("Resize");
+
                                     b2.HasKey("MessageContentMessageId")
                                         .HasName("pk_messages");
 
@@ -479,6 +497,8 @@ namespace Dalan.Relay.Data.Migrations
 
                                             b3.PrimitiveCollection<string>("Buttons")
                                                 .IsRequired();
+
+                                            b3.PrimitiveCollection<string>("Styles");
 
                                             b3.HasKey("ReplyKeyboardMessageContentMessageId", "__synthesizedOrdinal")
                                                 .HasName("pk_messages");

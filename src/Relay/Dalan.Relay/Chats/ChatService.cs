@@ -35,7 +35,8 @@ public enum ChatError
 }
 
 /// <summary>A file a user sends from the client (REL-28).</summary>
-public sealed record UserUpload(Stream Content, string Name, string? ContentType);
+/// <summary><paramref name="VoiceSeconds"/> is set by the client for a recorded voice (REL-28).</summary>
+public sealed record UserUpload(Stream Content, string Name, string? ContentType, int? VoiceSeconds = null);
 
 /// <summary>Saves and changes the messages of a chat. Both doors of Relay (users and bots) end here.</summary>
 public sealed class ChatService(
@@ -109,7 +110,7 @@ public sealed class ChatService(
         long botId, long userId, OutgoingMessage outgoing, CancellationToken cancellationToken)
     {
         if (CheckText(outgoing.Text, outgoing.File is not null) is var error and not ChatError.None) return (error, null);
-        if (!IsValid(outgoing.ReplyKeyboard) || !IsValid(outgoing.InlineKeyboard)) return (ChatError.BadKeyboard, null);
+        if (!IsValid(outgoing.ReplyKeyboard, outgoing.ReplyOptions) || !IsValid(outgoing.InlineKeyboard)) return (ChatError.BadKeyboard, null);
 
         var now = time.GetUtcNow();
         StoredFile? newFile = null;
@@ -119,14 +120,14 @@ public sealed class ChatService(
             var name = string.IsNullOrWhiteSpace(upload.Name) ? "file" : upload.Name;
             if (await files.SaveAsync(content, cancellationToken) is not var (id, size)) return (ChatError.FileTooBig, null);
 
-            newFile = NewFile(id, botId, userId, fromBot: true, upload.Kind, name, FileStore.TypeOf(upload.ContentType, name), size, now);
+            newFile = NewFile(id, botId, userId, fromBot: true, upload.Kind, name, FileStore.TypeOf(upload.ContentType, name), size, now, upload.Duration);
             file = newFile.ToBot();
         }
         else if (outgoing.File is { FileId: { } fileId } again)
         {
             // A bot may send again any file of its own, in any of its chats; the kind is the one it asks for now.
             file = await FindFileAsync(botId, fileId, cancellationToken) is { } known
-                ? known with { Kind = again.Kind }
+                ? known with { Kind = again.Kind, Duration = again.Duration ?? known.Duration }
                 : null;
             if (file is null) return (ChatError.FileNotFound, null);
         }
@@ -145,7 +146,7 @@ public sealed class ChatService(
                 Content = new MessageContent
                 {
                     Text = outgoing.Text,
-                    ReplyKeyboard = ReplyKeyboard.Of(outgoing.ReplyKeyboard),
+                    ReplyKeyboard = ReplyKeyboard.Of(outgoing.ReplyKeyboard, outgoing.ReplyOptions),
                     InlineKeyboard = InlineKeyboard.Of(outgoing.InlineKeyboard),
                     File = file is null ? null : MessageFile.Of(file),
                 },
@@ -272,9 +273,16 @@ public sealed class ChatService(
             : ChatError.None;
     }
 
-    /// <summary>REL-17: rows of button texts, inside the limits.</summary>
-    private bool IsValid(List<List<string>>? keyboard) =>
-        keyboard is null || IsValidShape(keyboard, text => text is not null && IsValidText(text));
+    /// <summary>REL-17: rows of button texts, inside the limits; the styles, when given, have exactly the shape of the rows and are known.</summary>
+    private bool IsValid(List<List<string>>? keyboard, KeyboardOptions? keyboardOptions) =>
+        keyboard is null
+        || (IsValidShape(keyboard, text => text is not null && IsValidText(text))
+            && (keyboardOptions?.Styles is not { } styles
+                || (styles.Count == keyboard.Count
+                    && styles.Select((row, i) => row is not null && row.Count == keyboard[i].Count && row.TrueForAll(IsValidStyle)).All(ok => ok))));
+
+    /// <summary>REL-17, REL-20: no style, or one of the three the clients know.</summary>
+    internal static bool IsValidStyle(string? style) => style is null or "success" or "danger" or "primary";
 
     /// <summary>REL-20: like a reply keyboard, and each button has either callback data or a web link.</summary>
     private bool IsValid(List<List<InlineButton>>? keyboard)
@@ -282,7 +290,7 @@ public sealed class ChatService(
         if (keyboard is null) return true;
 
         var limits = options.CurrentValue;
-        return IsValidShape(keyboard, button => button is not null && IsValidText(button.Text) && (button.CallbackData, button.Url) switch
+        return IsValidShape(keyboard, button => button is not null && IsValidText(button.Text) && IsValidStyle(button.Style) && (button.CallbackData, button.Url) switch
         {
             ({ } data, null) => Encoding.UTF8.GetByteCount(data) is var bytes && bytes > 0 && bytes <= limits.MaxCallbackDataBytes,
             (null, { } url) => url.Length <= limits.MaxButtonUrlLength
@@ -319,20 +327,21 @@ public sealed class ChatService(
         }
 
         var type = FileStore.TypeOf(upload.ContentType, upload.Name);
-        return (ChatError.None, NewFile(id, botId, userId, fromBot: false, KindOf(type), upload.Name, type, size, now));
+        return (ChatError.None, NewFile(id, botId, userId, fromBot: false, KindOf(type, upload.VoiceSeconds), upload.Name, type, size, now, upload.VoiceSeconds));
     }
 
     /// <summary>REL-28: the kind of a user's file comes from its type.</summary>
-    private static FileKind KindOf(string type) => type switch
+    private static FileKind KindOf(string type, int? voiceSeconds) => type switch
     {
         "image/jpeg" or "image/png" or "image/gif" or "image/webp" => FileKind.Photo,
-        _ when type.StartsWith("audio/", StringComparison.Ordinal) => FileKind.Audio,
+        _ when type.StartsWith("audio/", StringComparison.Ordinal) => voiceSeconds is null ? FileKind.Audio : FileKind.Voice,
         _ when type.StartsWith("video/", StringComparison.Ordinal) => FileKind.Video,
         _ => FileKind.Document,
     };
 
     private StoredFile NewFile(
-        string id, long botId, long userId, bool fromBot, FileKind kind, string name, string type, long size, DateTimeOffset now) => new()
+        string id, long botId, long userId, bool fromBot, FileKind kind, string name, string type, long size, DateTimeOffset now,
+        int? duration = null) => new()
     {
         Id = id,
         BotId = botId,
@@ -342,6 +351,7 @@ public sealed class ChatService(
         Name = name,
         ContentType = type,
         Size = size,
+        Duration = duration is >= 0 ? duration : null,
         CreatedAt = now,
         ExpiresAt = now.AddDays(options.CurrentValue.FileRetentionDays),
     };

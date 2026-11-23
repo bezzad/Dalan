@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { ApiError } from "../src/caller.ts";
 import { errorText } from "../src/app.ts";
 import { texts } from "../src/i18n.ts";
-import { BuilderList, builderView, cleanValue, groupSettings, utc, type Setting } from "../src/panels.ts";
+import { botByUsername, builderView, TokenHandOver, cleanValue, groupSettings, utc, type Setting } from "../src/panels.ts";
 
 test("CLI-23 the account screen shows the request button, the waiting note or the bots button", () => {
   assert.equal(builderView({ builder: "none", admin: false, has_phone: true }), "request");
@@ -31,16 +31,24 @@ test("CLI-33 the email code note tells to check the spam folder", () => {
   assert.match(texts.en.emailCodeSent, /spam/);
 });
 
-test("CLI-24 a new token is shown once and never kept in the list", () => {
-  const list = new BuilderList();
+test("CLI-24 a new token reaches its own bot's page once", () => {
+  const hand = new TokenHandOver();
+  hand.give({ id: 5, username: "weather_bot", name: "Weather", token: "5:secret" });
+  assert.equal(hand.take(5)?.token, "5:secret");
+  assert.equal(hand.take(5), null, "a reload does not show it again");
+});
 
-  list.created({ id: 5, username: "weather_bot", name: "Weather", token: "5:secret" }, new Date("2026-11-17T12:00:00Z"));
-  assert.equal(list.shownToken?.token, "5:secret");
-  assert.equal(JSON.stringify(list.bots).includes("secret"), false);
+test("CLI-49 one bot's token is never shown on another bot's page", () => {
+  const hand = new TokenHandOver();
+  hand.give({ id: 9, username: "other_bot", name: "Other", token: "9:secret" });
+  assert.equal(hand.take(4), null);
+  assert.equal(hand.take(9), null, "dropped once another page was opened");
+});
 
-  list.closeToken();
-  assert.equal(list.shownToken, null);
-  assert.deepEqual(list.bots.map(b => b.username), ["weather_bot"]);
+test("CLI-49 the page finds its bot by username, without regard to case", () => {
+  const bots = [{ id: 4, username: "mofidbot" }, { id: 9, username: "Other_Bot" }];
+  assert.equal(botByUsername(bots, "other_bot")?.id, 9);
+  assert.equal(botByUsername(bots, "nobody_bot"), null);
 });
 
 test("CLI-25 settings are grouped by section", () => {
@@ -73,14 +81,3 @@ test("CLI-25 a suspended bot is named in the chat in both languages", () => {
   assert.ok(texts.fa[key].length > 0 && texts.en[key].length > 0);
 });
 
-test("CLI-24 rename keeps the bot in its place; delete drops it and its shown token", () => {
-  const list = new BuilderList();
-  list.created({ id: 1, username: "a_bot", name: "A", token: "1:x" }, new Date());
-  list.created({ id: 2, username: "b_bot", name: "B", token: "2:y" }, new Date());
-  list.renamed({ ...list.bots[0]!, name: "Arcane" });
-  assert.deepEqual(list.bots.map(b => b.name), ["Arcane", "B"]);
-
-  list.deleted(2);
-  assert.deepEqual(list.bots.map(b => b.id), [1]);
-  assert.equal(list.shownToken, null);
-});

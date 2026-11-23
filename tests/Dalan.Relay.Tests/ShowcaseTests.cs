@@ -2,7 +2,12 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Dalan.Relay.Data;
 using Dalan.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Dalan.Relay.Tests;
 
@@ -139,7 +144,7 @@ public class ShowcaseTests(PostgresServer postgres)
 
     [Fact]
     [Trait("Rule", "REL-41")]
-    public async Task REL41_png_icon_is_stored_and_goes_back_to_review()
+    public async Task REL41_icon_through_the_old_address_is_the_bot_icon_and_keeps_the_state()
     {
         await using var world = await StartAsync();
         var botId = await ListedBotAsync(world, "game_bot");
@@ -149,12 +154,14 @@ public class ShowcaseTests(PostgresServer postgres)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var entry = (await OwnEntryAsync(world.Builder, botId))!.Value;
         Assert.True(entry.GetProperty("icon").GetBoolean());
-        Assert.Equal("pending", entry.GetProperty("state").GetString());
+        Assert.Equal("listed", entry.GetProperty("state").GetString());
         var icon = await world.Builder.GetAsync($"/api/builder/bots/{botId}/showcase/icon", Cancel);
         Assert.Equal("image/png", icon.Content.Headers.ContentType?.MediaType);
         Assert.Equal(Png, await icon.Content.ReadAsByteArrayAsync(Cancel));
         var seenByAdmin = await world.Admin.GetAsync($"/api/builder/bots/{botId}/showcase/icon", Cancel);
         Assert.Equal(HttpStatusCode.OK, seenByAdmin.StatusCode);
+        Assert.Equal(Png, await world.App.CreateClient().GetByteArrayAsync($"/api/showcase/{botId}/icon", Cancel));
+        Assert.Equal(Png, await world.App.CreateClient().GetByteArrayAsync($"/api/bots/{botId}/icon", Cancel));
     }
 
     [Theory]
@@ -190,15 +197,48 @@ public class ShowcaseTests(PostgresServer postgres)
 
     [Fact]
     [Trait("Rule", "REL-41")]
-    public async Task REL41_icon_without_an_entry_gets_404()
+    public async Task REL41_icon_needs_no_showcase_entry()
     {
         await using var world = await StartAsync();
         var botId = await CreateBotAsync(world.Builder, "game_bot");
 
         var response = await IconAsync(world.Builder, botId, Png);
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Equal("showcase_not_found", await response.ErrorCodeAsync());
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Null(await OwnEntryAsync(world.Builder, botId));
+        Assert.Equal(Png, await world.Builder.GetByteArrayAsync($"/api/builder/bots/{botId}/showcase/icon", Cancel));
+        Assert.Equal(HttpStatusCode.NotFound, (await world.App.CreateClient().GetAsync($"/api/showcase/{botId}/icon", Cancel)).StatusCode);
+    }
+
+    [Fact]
+    [Trait("Rule", "REL-41")]
+    public async Task REL41_icons_saved_with_a_showcase_entry_move_to_the_bot()
+    {
+        var database = await postgres.NewDatabaseAsync();
+        var options = new DbContextOptionsBuilder<RelayDb>()
+            .UseNpgsql(database, npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", RelayDb.Schema))
+            .UseSnakeCaseNamingConvention().ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning)).Options;
+        await using (var db = new RelayDb(options))
+        {
+            await db.GetService<IMigrator>().MigrateAsync("20261120150640_BotDelete", Cancel);
+            await db.Database.ExecuteSqlRawAsync("""
+                INSERT INTO relay.bots (username, name, owner_user_id, token_hash, created_at, commands)
+                VALUES ('game_bot', 'Game', 1, '\x01', now(), '[]'), ('plain_bot', 'Plain', 1, '\x02', now(), '[]');
+                INSERT INTO relay.showcase (bot_id, description, category, icon, icon_type, state, updated_at)
+                VALUES ((SELECT id FROM relay.bots WHERE username = 'game_bot'), 'A game', 'games', '\x89504e470d0a1a0a01', 'image/png', 1, now()),
+                       ((SELECT id FROM relay.bots WHERE username = 'plain_bot'), 'Refused', 'games', '\x89504e470d0a1a0a02', 'image/png', 2, now());
+                """, Cancel);
+        }
+
+        await using (var db = new RelayDb(options)) await db.Database.MigrateAsync(Cancel);
+
+        await using var after = new RelayDb(options);
+        var game = await after.Bots.AsNoTracking().SingleAsync(b => b.Username == "game_bot", Cancel);
+        var plain = await after.Bots.AsNoTracking().SingleAsync(b => b.Username == "plain_bot", Cancel);
+        Assert.Equal(Png[..9], game.Icon![..9]);
+        Assert.Equal(("image/png", 1), (game.IconType, game.IconVersion));
+        // A refused (or pending) icon was never public, so it does not become the public bot icon.
+        Assert.Equal((null, 0), (plain.IconType, plain.IconVersion));
     }
 
     [Fact]

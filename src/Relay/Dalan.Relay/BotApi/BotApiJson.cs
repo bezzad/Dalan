@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Dalan.Relay.ClientApi;
 using Dalan.Relay.Contracts;
@@ -41,10 +42,14 @@ internal sealed record SenderJson(long Id, string Name, string? Username);
 internal sealed record SendMessageRequest(
     long? UserId,
     string? Text,
-    List<List<string>>? ReplyKeyboard,
+    List<List<JsonElement>>? ReplyKeyboard,
     List<List<InlineButtonJson>>? InlineKeyboard,
     string? FileId,
-    string? Kind);
+    string? Kind,
+    bool? ReplyKeyboardPersistent = null,
+    bool? ReplyKeyboardResize = null,
+    bool? ReplyKeyboardOneTime = null,
+    int? Duration = null);
 
 internal sealed record EditMessageRequest(string? Text, List<List<InlineButtonJson>>? InlineKeyboard);
 
@@ -63,7 +68,8 @@ internal sealed record SentMessageJson(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] List<List<string>>? ReplyKeyboard,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] List<List<InlineButtonJson>>? InlineKeyboard,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] FileJson? File,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DateTimeOffset? Edited)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DateTimeOffset? Edited,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReplyKeyboardOptionsJson? ReplyKeyboardOptions = null)
 {
     public static SentMessageJson Of(BotMessage message) => new(
         message.Id,
@@ -73,5 +79,6 @@ internal sealed record SentMessageJson(
         message.ReplyKeyboard,
         message.InlineKeyboard?.ConvertAll(row => row.ConvertAll(InlineButtonJson.Of)),
         message.File is { } file ? FileJson.Of(file) : null,
-        message.EditDate);
+        message.EditDate,
+        message.ReplyOptions is { } options ? ReplyKeyboardOptionsJson.Of(options) : null);
 }

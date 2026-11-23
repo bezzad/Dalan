@@ -14,10 +14,6 @@ public sealed class ShowcaseEntry
     public required string Description { get; set; }
     public required string Category { get; set; }
 
-    /// <summary>REL-41: PNG, JPEG or WebP; null when the builder sent none.</summary>
-    public byte[]? Icon { get; set; }
-    public string? IconType { get; set; }
-
     public ShowcaseState State { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public DateTimeOffset? ReviewedAt { get; set; }

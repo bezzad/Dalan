@@ -19,41 +19,37 @@ export interface BuilderBot {
   online: boolean;
   last_seen: string | null;
   suspended: boolean;
+  /** REL-51: 0 with no icon. */
+  icon_version: number;
   /** REL-40: null when the bot is not in the showcase. */
   showcase: ShowcaseEntry | null;
 }
 
 export type NewToken = { id: number; username: string; name: string; token: string };
 
-/** CLI-24: the builder's list. A token is kept only until the builder closes it, and never in the list. */
-export class BuilderList {
-  bots: BuilderBot[] = [];
-  shownToken: NewToken | null = null;
+/**
+ * CLI-24 and CLI-49: carries a new token from the create form to its bot's page, in memory only.
+ * Only that bot's page can take it, and only once: a reload or another bot's page never shows it.
+ */
+export class TokenHandOver {
+  private waiting: NewToken | null = null;
 
-  /** A bot was created: it joins the list without its token, and the token is shown. */
-  created(bot: NewToken, now: Date): void {
-    this.bots = [...this.bots, { id: bot.id, username: bot.username, name: bot.name, created_at: now.toISOString(), online: false, last_seen: null, suspended: false, showcase: null }];
-    this.shownToken = bot;
+  give(token: NewToken): void {
+    this.waiting = token;
   }
 
-  rotated(bot: NewToken): void {
-    this.shownToken = bot;
+  /** The token of this bot, once; null for any other bot. A token for another bot is dropped. */
+  take(botId: number): NewToken | null {
+    const token = this.waiting;
+    this.waiting = null;
+    return token?.id === botId ? token : null;
   }
+}
 
-  /** REL-48: the new name from the server. */
-  renamed(bot: BuilderBot): void {
-    this.bots = this.bots.map(b => b.id === bot.id ? bot : b);
-  }
-
-  /** REL-49: the bot is gone, and so is its token if it was shown. */
-  deleted(botId: number): void {
-    this.bots = this.bots.filter(b => b.id !== botId);
-    if (this.shownToken?.id === botId) this.shownToken = null;
-  }
-
-  closeToken(): void {
-    this.shownToken = null;
-  }
+/** CLI-49: the bot of a page address, by username, without regard to case. */
+export function botByUsername<T extends { username: string }>(bots: T[], username: string): T | null {
+  const wanted = username.toLowerCase();
+  return bots.find(bot => bot.username.toLowerCase() === wanted) ?? null;
 }
 
 export type SettingKind = "number" | "switch" | "text";

@@ -95,6 +95,8 @@ export interface Bot {
   id: number;
   username: string;
   name: string;
+  /** REL-51: 0 with no icon, higher after each change. */
+  icon_version: number;
 }
 
 /** REL-33: is the bot's home computer on? */
@@ -115,6 +117,8 @@ export interface Settings {
   reconnect_min_seconds: number;
   reconnect_max_seconds: number;
   status_refresh_seconds: number;
+  /** REL-51 */
+  max_bot_icon_kb: number;
 }
 
 /** SITE-16: one site of "My apps". */
@@ -182,6 +186,12 @@ export const api = {
   /** REL-28: the file is the body; its name and the caption go percent-encoded in headers. */
   sendFile: (botId: number, file: File, caption: string) => call<Message>("POST", `/api/bots/${botId}/files`, file,
     { "X-File-Name": encodeURIComponent(file.name), "X-Caption": encodeURIComponent(caption) }),
+  /** REL-28 and CLI-46: a recorded voice with its length in seconds. */
+  sendVoice: (botId: number, voice: Blob, name: string, seconds: number) => call<Message>("POST", `/api/bots/${botId}/files`, voice,
+    { "X-File-Name": encodeURIComponent(name), "X-Voice-Duration": String(seconds) }),
+  /** REL-51 */
+  setBotIcon: (botId: number, image: Blob) => call<unknown>("PUT", `/api/builder/bots/${botId}/icon`, image),
+  removeBotIcon: (botId: number) => call<unknown>("DELETE", `/api/builder/bots/${botId}/icon`),
   /** REL-29: where the browser loads a file of the chat. */
   fileUrl: (botId: number, fileId: string) => `/api/bots/${botId}/files/${encodeURIComponent(fileId)}`,
   press: (botId: number, messageId: number, data: string) =>
@@ -227,11 +237,9 @@ export const api = {
     const query = new URLSearchParams({ ...(category ? { category } : {}), ...(after ? { after: String(after) } : {}) });
     return call<{ categories: string[]; bots: ShowcaseBot[] }>("GET", `/api/showcase?${query}`);
   },
-  showcaseIconUrl: (botId: number) => `/api/showcase/${botId}/icon`,
   /** REL-40 to REL-42 */
   askShowcase: (botId: number, description: string, category: string) =>
     call<BuilderBot["showcase"]>("PUT", `/api/builder/bots/${botId}/showcase`, { description, category }),
-  setShowcaseIcon: (botId: number, file: File) => call<BuilderBot["showcase"]>("PUT", `/api/builder/bots/${botId}/showcase/icon`, file),
   ownIconUrl: (botId: number) => `/api/builder/bots/${botId}/showcase/icon`,
   leaveShowcase: (botId: number) => call<null>("DELETE", `/api/builder/bots/${botId}/showcase`),
   /** ADM-13 */

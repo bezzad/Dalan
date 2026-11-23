@@ -21,10 +21,10 @@ public static class ClientApp
         OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = NoCache,
     });
 
-    /// <summary>The page itself. Only these addresses exist; any other unknown path is a real 404.</summary>
+    /// <summary>The page itself (CLI-51: one address per screen). Only these addresses exist; any other unknown path is a real 404.</summary>
     public static void MapClientPage(this WebApplication app)
     {
-        foreach (var path in (string[])["/", "/bots", "/apps", "/privacy", "/faq", "/showcase", "/guide", "/guide/bot", "/guide/site", "/@{username}"])
+        foreach (var path in (string[])["/", "/chats", "/bots", "/bots/new", "/bots/{username}", "/account", "/admin", "/apps", "/privacy", "/faq", "/showcase", "/guide", "/guide/bot", "/guide/site", "/@{username}"])
             app.MapGet(path, Page).DisableRateLimiting();
     }
 

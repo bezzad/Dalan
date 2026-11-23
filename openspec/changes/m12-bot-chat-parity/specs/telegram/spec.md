@@ -80,7 +80,7 @@ A user's file message SHALL reach `getUpdates` with the file in Telegram's shape
 ## ADDED Requirements
 
 ### Requirement: TG-23 Bot profile photo
-`setMyProfilePhoto` SHALL take `photo`, an `InputProfilePhoto` of type `static` whose `photo` is `attach://<part name>` of a multipart upload, and set the bot icon (REL-51) with its checks; it returns `true`. Type `animated` SHALL get 400 "Bad Request: animated profile photos are not supported by Dalan". `removeMyProfilePhoto` SHALL remove the icon and return `true`. A picture REL-51 refuses SHALL get 400 "Bad Request: IMAGE_PROCESS_FAILED" when it is not PNG, JPEG or WebP, and 400 "Bad Request: photo is too big" when over the limit.
+`setMyProfilePhoto` SHALL take `photo`, an `InputProfilePhoto` of type `static` with `photo` `attach://<part>`, set the bot icon (REL-51) and return `true`. Type `animated` SHALL get 400 "Bad Request: animated profile photos are not supported by Dalan"; not PNG, JPEG or WebP, 400 "Bad Request: IMAGE_PROCESS_FAILED"; over the limit, 400 "Bad Request: photo is too big". `removeMyProfilePhoto` SHALL remove the icon and return `true`.
 
 #### Scenario: Set the photo
 - **WHEN** the bot calls `setMyProfilePhoto` with `{"type":"static","photo":"attach://p"}` and a JPEG part `p`

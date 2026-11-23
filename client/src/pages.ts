@@ -16,7 +16,18 @@ export interface PublicNumbers {
 }
 
 /** CLI-26: which screen an address shows. Unknown addresses never reach the page: the server answers 404. */
-export type Page = "landing" | "privacy" | "faq" | "showcase" | "guide" | "guideBot" | "guideSite" | "login" | "bots" | "apps" | "chat" | "notFound";
+export type Page = "landing" | "privacy" | "faq" | "showcase" | "guide" | "guideBot" | "guideSite" | "login"
+  | "chats" | "bots" | "botNew" | "botPage" | "account" | "admin" | "apps" | "chat" | "notFound";
+
+/** CLI-51: the screens of a logged-in user, each at its own address. */
+const appPages: Record<string, Page> = { "/chats": "chats", "/bots": "bots", "/bots/new": "botNew", "/account": "account", "/admin": "admin", "/apps": "apps" };
+
+/** CLI-49: the username of a bot's own page (`/bots/<username>`), or null. */
+export function botPageUsername(path: string): string | null {
+  // A bot username starts with a letter (REL-36), so "/bots/7" is no bot page.
+  const name = /^\/bots\/([A-Za-z][A-Za-z0-9_]*)$/.exec(path)?.[1];
+  return name && name !== "new" ? name : null;
+}
 
 export function pageFor(path: string, loggedIn: boolean): Page {
   if (path === "/privacy" || path === "/faq" || path === "/showcase" || path === "/guide") return path.slice(1) as Page;
@@ -24,8 +35,8 @@ export function pageFor(path: string, loggedIn: boolean): Page {
   if (path === "/guide/bot") return "guideBot";
   if (path === "/guide/site") return "guideSite";
   if (path.startsWith("/@")) return loggedIn ? "chat" : "login";
-  if (path === "/bots") return loggedIn ? "bots" : "login";
-  if (path === "/apps") return loggedIn ? "apps" : "login";
+  const screen = appPages[path] ?? (botPageUsername(path) ? "botPage" : null);
+  if (screen) return loggedIn ? screen : "login";
   // CLI-40: an address we do not know is a closed gate, not the landing page.
   return path === "/" || path === "" ? "landing" : "notFound";
 }
@@ -256,6 +267,8 @@ export interface ShowcaseBot {
   description: string;
   category: string;
   icon: boolean;
+  /** REL-51 */
+  icon_version: number;
 }
 
 const stateNames: Record<Lang, Record<ShowcaseState | "none", string>> = {

@@ -68,16 +68,22 @@ internal static class BotApiEndpoints
 
         if (!TryKind(request.Kind, out var kind)) return ApiJson.BadRequest("'kind' must be photo, document, audio, voice or video.");
 
+        if (!TryReplyKeyboard(request, out var replyKeyboard, out var replyOptions))
+        {
+            return ApiJson.BadRequest(
+                """'reply_keyboard' must be rows of buttons; a button is a text or {"text": "Yes", "style": "success"}.""");
+        }
+
         await using var content = upload?.OpenReadStream();
-        var file = content is not null ? new NewFile(kind, content, upload!.FileName, upload.ContentType)
-            : request.FileId is { } fileId ? new NewFile(kind, FileId: fileId)
+        var file = content is not null ? new NewFile(kind, content, upload!.FileName, upload.ContentType, Duration: request.Duration)
+            : request.FileId is { } fileId ? new NewFile(kind, FileId: fileId, Duration: request.Duration)
             : null;
         if (file is null && request.Text is null) return ApiJson.BadRequest("Send a 'text', a 'file' or a 'file_id'.");
 
         var (error, message) = await gateway.SendAsync(
             BotApiFilter.BotId(http),
             userId,
-            new OutgoingMessage(request.Text ?? "", request.ReplyKeyboard, ToButtons(request.InlineKeyboard), file),
+            new OutgoingMessage(request.Text ?? "", replyKeyboard, ToButtons(request.InlineKeyboard), file, replyOptions),
             http.RequestAborted);
         return error == BotError.None ? ApiJson.Ok(SentMessageJson.Of(message!)) : ErrorOf(error, options.CurrentValue);
     }
@@ -162,15 +168,74 @@ internal static class BotApiEndpoints
             return new SendMessageRequest(
                 long.TryParse(form["user_id"], out var userId) ? userId : null,
                 form.TryGetValue("text", out var text) ? text.ToString() : null,
-                Json<List<List<string>>>(form["reply_keyboard"]),
+                Json<List<List<JsonElement>>>(form["reply_keyboard"]),
                 Json<List<List<InlineButtonJson>>>(form["inline_keyboard"]),
                 form.TryGetValue("file_id", out var fileId) ? fileId.ToString() : null,
-                form.TryGetValue("kind", out var kind) ? kind.ToString() : null);
+                form.TryGetValue("kind", out var kind) ? kind.ToString() : null,
+                Flag(form["reply_keyboard_persistent"]),
+                Flag(form["reply_keyboard_resize"]),
+                Flag(form["reply_keyboard_one_time"]),
+                int.TryParse(form["duration"], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var duration) ? duration : null);
         }
         catch (JsonException)
         {
             return null;
         }
+    }
+
+    private static bool? Flag(string? value) => string.IsNullOrEmpty(value) ? null : string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>REL-17: a button is a text or an object with "text" and an optional "style". False when a button is neither.</summary>
+    private static bool TryReplyKeyboard(SendMessageRequest request, out List<List<string>>? rows, out KeyboardOptions? options)
+    {
+        rows = null;
+        options = null;
+        if (request.ReplyKeyboard is not { } given) return true;
+
+        var styles = new List<List<string?>>();
+        rows = [];
+        var anyStyle = false;
+        foreach (var row in given)
+        {
+            if (row is null)
+            {
+                // Not a list of buttons: the core refuses it as a bad keyboard (REL-17).
+                rows.Add(null!);
+                styles.Add(null!);
+                continue;
+            }
+
+            var texts = new List<string>();
+            var rowStyles = new List<string?>();
+            foreach (var button in row)
+            {
+                string? text, style = null;
+                if (button.ValueKind is JsonValueKind.String or JsonValueKind.Null) text = button.GetString();
+                else if (button.ValueKind == JsonValueKind.Object
+                    && button.TryGetProperty("text", out var t) && t.ValueKind == JsonValueKind.String)
+                {
+                    text = t.GetString();
+                    if (button.TryGetProperty("style", out var s) && s.ValueKind != JsonValueKind.Null)
+                    {
+                        if (s.ValueKind != JsonValueKind.String) return false;
+                        style = s.GetString();
+                    }
+                }
+                else return false;
+
+                texts.Add(text!);
+                rowStyles.Add(style);
+                anyStyle |= style is not null;
+            }
+
+            rows.Add(texts);
+            styles.Add(rowStyles);
+        }
+
+        options = new KeyboardOptions(
+            request.ReplyKeyboardPersistent ?? false, request.ReplyKeyboardResize ?? false, request.ReplyKeyboardOneTime ?? false,
+            anyStyle ? styles : null);
+        return true;
     }
 
     private static T? Json<T>(string? value) where T : class =>
@@ -201,7 +266,7 @@ internal static class BotApiEndpoints
             $"for a file caption, {options.MaxCallbackAnswerLength} for a button answer."),
         BotError.BadKeyboard => ApiJson.Error(StatusCodes.Status400BadRequest, "bad_keyboard",
             $"A keyboard must be rows of buttons: at most {options.MaxKeyboardButtons} buttons, each text 1 to " +
-            $"{options.MaxButtonTextLength} characters. An inline button needs exactly one of 'callback_data' " +
+            $"{options.MaxButtonTextLength} characters, and an optional 'style' of success, danger or primary. An inline button needs exactly one of 'callback_data' " +
             $"(1 to {options.MaxCallbackDataBytes} bytes) or 'url' (http or https)."),
         BotError.MessageNotFound => ApiJson.Error(StatusCodes.Status404NotFound, "message_not_found",
             "This chat has no such message, or it was deleted."),

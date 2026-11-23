@@ -149,8 +149,8 @@ export function accountScreen(app: App): Screen {
           ? h("p", { class: "note" }, t("phoneRequired"))
         : view === "waiting"
           ? h("p", { class: "note" }, t("builderWaiting"))
-          : h("button", { type: "button", class: "primary", onclick: () => app.showPanel("builder") }, t("builderBots")),
-      ...(app.user.admin ? [h("button", { type: "button", onclick: () => app.showPanel("admin") }, t("adminScreen"))] : []));
+          : h("button", { type: "button", class: "primary", onclick: () => app.go("/bots") }, t("myBots")),
+      ...(app.user.admin ? [h("button", { type: "button", onclick: () => app.go("/admin") }, t("adminScreen"))] : []));
   }
   showBuilder();
   const builderCard = h("section", { class: "card" },
@@ -158,7 +158,7 @@ export function accountScreen(app: App): Screen {
 
   const element = h("main", { class: "wide cols" },
     h("header", {},
-      h("button", { type: "button", class: "link", onclick: () => app.showPanel(null) }, t("back")),
+      h("button", { type: "button", class: "link", onclick: () => app.go("/chats") }, t("back")),
       h("h1", {}, t("account"))),
     h("p", { class: "note", dir: "auto" }, app.user.name),
     h("div", { class: "scroller" }, pushCard, phoneForm, usernameForm, passwordForm, builderCard));

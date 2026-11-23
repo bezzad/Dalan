@@ -30,6 +30,10 @@ internal static class BuilderEndpoints
             Answer(bots.DeleteAsync(ClientApiFilter.UserId(http), botId, http.RequestAborted)));
         builder.MapPost("/bots/{botId:long}/token", (long botId, HttpContext http, BuilderBots bots) =>
             Answer(bots.RotateAsync(ClientApiFilter.UserId(http), botId, http.RequestAborted)));
+        builder.MapPut("/bots/{botId:long}/icon", (long botId, HttpContext http, BuilderBots bots) =>
+            Answer(bots.SetIconAsync(ClientApiFilter.UserId(http), botId, http.Request.Body, http.RequestAborted)));
+        builder.MapDelete("/bots/{botId:long}/icon", (long botId, HttpContext http, BuilderBots bots) =>
+            Answer(bots.RemoveIconAsync(ClientApiFilter.UserId(http), botId, http.RequestAborted)));
         builder.MapShowcaseForBuilder();
     }
 

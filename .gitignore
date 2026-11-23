@@ -431,3 +431,4 @@ FodyWeavers.xsd
 client/node_modules/
 out/
 client/dist/
+src/Dalan.Host/files/

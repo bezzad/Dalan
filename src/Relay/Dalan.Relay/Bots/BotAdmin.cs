@@ -50,7 +50,7 @@ internal sealed class BotAdmin(
             .OrderBy(e => e.UpdatedAt)
             .Take(limit)
             .Join(db.Bots, e => e.BotId, b => b.Id, (e, b) => new ShowcaseRequest(
-                b.Id, b.Username, b.Name, b.OwnerUserId, b.SuspendedAt != null, e.Description, e.Category, e.Icon != null, e.UpdatedAt))
+                b.Id, b.Username, b.Name, b.OwnerUserId, b.SuspendedAt != null, e.Description, e.Category, b.IconType != null, e.UpdatedAt))
             .ToListAsync(cancellationToken);
     }
 

@@ -1,7 +1,7 @@
 // Rules: CLI-38
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { botRunSteps, guideSteps, librarySamples, siteGuideSteps } from "../src/guide.ts";
+import { botCliCode, botMcpSamples, botRunSteps, guideSteps, librarySamples, siteGuideSteps } from "../src/guide.ts";
 import { pageFor, type PublicNumbers } from "../src/pages.ts";
 
 const numbers: PublicNumbers = { history_messages: 200, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60,
@@ -21,14 +21,31 @@ test("CLI-38 the guide has nine steps with the real addresses", () => {
   }
 });
 
-test("CLI-38 My bots numbers its run steps from 1 and fills in the new token", () => {
+test("CLI-38 a bot's page numbers its run steps from 1 and fills in the bot and its new token", () => {
+  const bot = { id: 7, username: "weather_bot" };
   for (const [lang, n] of [["fa", persian], ["en", english]] as const) {
-    const withToken = botRunSteps(lang, numbers, n, "7:XyZ");
+    const withToken = botRunSteps(lang, numbers, n, bot, "7:XyZ");
     assert.deepEqual(withToken.map(step => step.title), guideSteps(lang, numbers, n).slice(4).map(step => step.title));
     assert.equal(withToken[0]!.code, "curl https://api.example.ir/bot7:XyZ/getMe");
     assert.doesNotMatch(withToken[0]!.text, /12:AbCd/, `${lang} does not talk about the sample`);
-    assert.equal(botRunSteps(lang, numbers, n, null)[0]!.code, "curl https://api.example.ir/bot12:AbCdEfGhIjKlMnOp/getMe");
+    assert.equal(withToken[2]!.code, "https://example.ir/@weather_bot");
+    const noToken = botRunSteps(lang, numbers, n, bot, null);
+    assert.equal(noToken[0]!.code, "curl https://api.example.ir/bot7:<TOKEN>/getMe");
+    assert.doesNotMatch(noToken[0]!.text, /12:AbCd/);
   }
+});
+
+test("CLI-49 the command line and MCP samples name only this bot", () => {
+  const bot = { id: 4, username: "mofidbot" };
+  const cli = botCliCode("https://dalanet.ir", bot);
+  assert.match(cli, /curl -O https:\/\/dalanet\.ir\/dalan\.mjs/);
+  for (const command of ["status 4", "token 4", "icon 4 icon.png"]) assert.match(cli, new RegExp(`node dalan\\.mjs ${command}`));
+  assert.match(cli, /@mofidbot/);
+  const mcp = botMcpSamples("https://dalanet.ir", bot);
+  assert.match(mcp[0]!.code, /https:\/\/dalanet\.ir\/api\/mcp/);
+  assert.equal(JSON.parse(mcp[1]!.code).mcpServers.dalan.url, "https://dalanet.ir/api/mcp");
+  assert.match(mcp[2]!.code, /@mofidbot \(bot_id 4\)/);
+  for (const text of [cli, ...mcp.map(sample => sample.code)]) assert.doesNotMatch(text, /dalan_[A-Za-z0-9]/, "never a real key");
 });
 
 test("CLI-38 every library sample points at Dalan, never at Telegram", () => {

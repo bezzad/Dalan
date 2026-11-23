@@ -16,7 +16,7 @@ internal sealed record ShowcaseBody(string? Description, string? Category);
 /// <summary>REL-40: the entry as its builder sees it.</summary>
 internal sealed record ShowcaseJson(string State, string Description, string Category, bool Icon)
 {
-    public static ShowcaseJson Of(ShowcaseEntry entry) => Of(entry.State, entry.Description, entry.Category, entry.Icon is not null);
+    public static ShowcaseJson Of(ShowcaseEntry entry, bool icon) => Of(entry.State, entry.Description, entry.Category, icon);
 
 #pragma warning disable CA1308 // Lower case names in JSON, like every other enum value of the API.
     public static ShowcaseJson Of(ShowcaseState state, string description, string category, bool icon) =>
@@ -24,7 +24,7 @@ internal sealed record ShowcaseJson(string State, string Description, string Cat
 #pragma warning restore CA1308
 }
 
-internal sealed record PublicBotJson(long Id, string Username, string Name, string Description, string Category, bool Icon);
+internal sealed record PublicBotJson(long Id, string Username, string Name, string Description, string Category, bool Icon, int IconVersion);
 
 internal sealed record PublicShowcaseJson(IReadOnlyList<string> Categories, IEnumerable<PublicBotJson> Bots);
 
@@ -80,7 +80,8 @@ internal static class ShowcaseEndpoints
         await db.SaveChangesAsync(http.RequestAborted);
         await audit.RecordAsync(ClientApiFilter.UserId(http), "showcase.request", BuilderEndpoints.BotTarget(botId), category,
             http.RequestAborted);
-        return ApiJson.Ok(ShowcaseJson.Of(entry));
+        var hasIcon = await db.Bots.AnyAsync(b => b.Id == botId && b.IconType != null, http.RequestAborted);
+        return ApiJson.Ok(ShowcaseJson.Of(entry, hasIcon));
     }
 
     private static async Task<IResult> LeaveAsync(
@@ -98,29 +99,11 @@ internal static class ShowcaseEndpoints
         return Results.NoContent();
     }
 
-    private static async Task<IResult> SetIconAsync(
-        long botId, HttpContext http, IDbContextFactory<RelayDb> dbFactory, BuilderBots builderBots,
-        IOptionsMonitor<RelayOptions> options, TimeProvider time)
+    /// <summary>REL-41: another address of the bot icon (REL-51). The entry's state does not change.</summary>
+    private static async Task<IResult> SetIconAsync(long botId, HttpContext http, BuilderBots bots)
     {
-        var maxBytes = options.CurrentValue.MaxBotIconKb * 1024L;
-        await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
-        if (!await BuilderEndpoints.MayChangeAsync(db, builderBots, http, botId)) return BuilderEndpoints.BotNotFound();
-        if (await db.Showcase.FirstOrDefaultAsync(e => e.BotId == botId, http.RequestAborted) is not { } entry)
-            return NoEntry();
-
-        var bytes = await ReadAtMostAsync(http, maxBytes);
-        if (bytes is null || IconType(bytes) is not { } type)
-        {
-            return ApiJson.Error(StatusCodes.Status400BadRequest, "bad_icon",
-                $"Send the icon as the body: a PNG, JPEG or WebP image of at most {options.CurrentValue.MaxBotIconKb} KB.");
-        }
-
-        entry.Icon = bytes;
-        entry.IconType = type;
-        entry.State = ShowcaseState.Pending;
-        entry.UpdatedAt = time.GetUtcNow();
-        await db.SaveChangesAsync(http.RequestAborted);
-        return ApiJson.Ok(ShowcaseJson.Of(entry));
+        var answer = await bots.SetIconAsync(ClientApiFilter.UserId(http), botId, http.Request.Body, http.RequestAborted);
+        return Results.Json(answer.Body, ApiJson.Options, statusCode: answer.Status);
     }
 
     /// <summary>REL-41: the owner, or an admin who reviews it (ADM-13), sees the icon before it is listed.</summary>
@@ -129,9 +112,9 @@ internal static class ShowcaseEndpoints
     {
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
         if (!await BuilderEndpoints.MayChangeAsync(db, builderBots, http, botId)) return BuilderEndpoints.BotNotFound();
-        var icon = await db.Showcase.AsNoTracking().Where(e => e.BotId == botId && e.Icon != null)
-            .Select(e => new { e.Icon, e.IconType }).FirstOrDefaultAsync(http.RequestAborted);
-        return icon is null ? NoEntry() : Image(http, icon.Icon!, icon.IconType!);
+        var icon = await db.Bots.AsNoTracking().Where(b => b.Id == botId && b.Icon != null)
+            .Select(b => new { b.Icon, b.IconType }).FirstOrDefaultAsync(http.RequestAborted);
+        return icon is null ? BotIconEndpoints.NotFound() : BotIconEndpoints.Image(http, icon.Icon!, icon.IconType!);
     }
 
     /// <summary>REL-43.</summary>
@@ -146,7 +129,7 @@ internal static class ShowcaseEndpoints
             .Where(x => (after == null || x.Bot.Id > after) && (category == "" || x.Entry.Category == category))
             .OrderBy(x => x.Bot.Id)
             .Take(limits.ShowcasePageSize)
-            .Select(x => new PublicBotJson(x.Bot.Id, x.Bot.Username, x.Bot.Name, x.Entry.Description, x.Entry.Category, x.Entry.Icon != null))
+            .Select(x => new PublicBotJson(x.Bot.Id, x.Bot.Username, x.Bot.Name, x.Entry.Description, x.Entry.Category, x.Bot.IconType != null, x.Bot.IconType != null ? x.Bot.IconVersion : 0))
             .ToListAsync(http.RequestAborted);
         return ApiJson.Ok(new PublicShowcaseJson(limits.Categories, bots));
     }
@@ -154,11 +137,11 @@ internal static class ShowcaseEndpoints
     private static async Task<IResult> GetIconAsync(long botId, HttpContext http, IDbContextFactory<RelayDb> dbFactory)
     {
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
-        var icon = await Listed(db).Where(x => x.Bot.Id == botId && x.Entry.Icon != null)
-            .Select(x => new { x.Entry.Icon, x.Entry.IconType }).FirstOrDefaultAsync(http.RequestAborted);
+        var icon = await Listed(db).Where(x => x.Bot.Id == botId && x.Bot.Icon != null)
+            .Select(x => new { x.Bot.Icon, x.Bot.IconType }).FirstOrDefaultAsync(http.RequestAborted);
         return icon is null
             ? ApiJson.Error(StatusCodes.Status404NotFound, "not_found", "This bot is not in the showcase or has no icon.")
-            : Image(http, icon.Icon!, icon.IconType!);
+            : BotIconEndpoints.Image(http, icon.Icon!, icon.IconType!);
     }
 
     /// <summary>REL-43: approved by the admin and not suspended.</summary>
@@ -171,39 +154,5 @@ internal static class ShowcaseEndpoints
     {
         public required Bot Bot { get; init; }
         public required ShowcaseEntry Entry { get; init; }
-    }
-
-    private static IResult Image(HttpContext http, byte[] bytes, string type)
-    {
-        http.Response.Headers.CacheControl = "no-cache";
-        return Results.Bytes(bytes, type);
-    }
-
-    private static IResult NoEntry() => ApiJson.Error(StatusCodes.Status404NotFound, "showcase_not_found",
-        "This bot has no showcase entry or no icon. Send its description and category first.");
-
-    /// <summary>The body, or null when it is empty or longer than <paramref name="maxBytes"/>.</summary>
-    private static async Task<byte[]?> ReadAtMostAsync(HttpContext http, long maxBytes)
-    {
-        if (http.Request.ContentLength > maxBytes) return null;
-        using var buffer = new MemoryStream();
-        var chunk = new byte[16 * 1024];
-        int read;
-        while ((read = await http.Request.Body.ReadAsync(chunk, http.RequestAborted)) > 0)
-        {
-            if (buffer.Length + read > maxBytes) return null;
-            buffer.Write(chunk, 0, read);
-        }
-
-        return buffer.Length == 0 ? null : buffer.ToArray();
-    }
-
-    /// <summary>REL-41: the type from the first bytes, never from the name or the header. No SVG: it can hold a script.</summary>
-    internal static string? IconType(ReadOnlySpan<byte> bytes)
-    {
-        if (bytes.StartsWith((ReadOnlySpan<byte>)[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])) return "image/png";
-        if (bytes.StartsWith((ReadOnlySpan<byte>)[0xFF, 0xD8, 0xFF])) return "image/jpeg";
-        if (bytes.Length >= 12 && bytes[..4].SequenceEqual("RIFF"u8) && bytes[8..12].SequenceEqual("WEBP"u8)) return "image/webp";
-        return null;
     }
 }

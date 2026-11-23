@@ -3,17 +3,16 @@ import { accountScreen } from "./account.ts";
 import { ApiError, api, type AuthSettings, type User } from "./api.ts";
 import { adminScreen } from "./admin.ts";
 import { appsScreen } from "./apps.ts";
-import { loginErrorText, type App, type Panel, type Screen } from "./app.ts";
+import { loginErrorText, type App, type Screen } from "./app.ts";
 import { Backoff } from "./backoff.ts";
 import { botsScreen } from "./bots.ts";
-import { builderScreen } from "./builder.ts";
+import { botPageScreen, myBotsScreen, newBotScreen } from "./builder.ts";
 import { chatScreen } from "./chat.ts";
 import { Language, type TextKey } from "./i18n.ts";
 import { Live } from "./live.ts";
 import { loginScreen } from "./login.ts";
-import { initial, pageFor } from "./pages.ts";
+import { botPageUsername, initial, pageFor } from "./pages.ts";
 import { h } from "./dom.ts";
-import { builderView } from "./panels.ts";
 import { toastRegion } from "./toast.ts";
 import { headerTools, homeMark, publicPages, publicScreen, siteBrand, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
@@ -25,7 +24,6 @@ const theme = new Theme(document.documentElement, localStorage, matchMedia("(pre
 let app: App | null = null;
 let live: Live | null = null;
 let screen: Screen | null = null;
-let panel: Panel | null = null;
 let auth: AuthSettings | null = null;
 
 /** AUTH-16: read once; the login and account screens need it. */
@@ -45,8 +43,11 @@ function show(element: HTMLElement): void {
 function showLogin(error: TextKey | null = null): void {
   live?.stop();
   app = live = screen = null;
-  panel = null;
-  authSettings().then(settings => show(loginScreen(language, settings, user => void enter(user).catch(fail), () => {
+  authSettings().then(settings => show(loginScreen(language, settings, user => {
+    // CLI-51: after login, the address the user asked for; from the landing page, the chats.
+    if (location.pathname === "/") history.replaceState(null, "", "/chats");
+    void enter(user).catch(fail);
+  }, () => {
     language.toggle();
     showLogin();
   }, () => navigate("/"), error)), () => document.body.classList.add("offline"));
@@ -54,7 +55,6 @@ function showLogin(error: TextKey | null = null): void {
 
 /** Goes to an address of the site without a page load. */
 function navigate(path: string): void {
-  panel = null;
   history.pushState(null, "", path);
   render();
 }
@@ -92,12 +92,12 @@ function userArea(face = false): HTMLElement {
     h("summary", { "aria-label": current.user.name, title: current.user.name },
       face ? h("span", { class: "avatar" }, initial(current.user.name)) : h("bdi", {}, current.user.name)),
     h("div", { class: "panel" },
-      // "My bots" are the bots this user built; "Chats" the bots they talk to (owner, 2026-11-20).
-      item(t("myBots"), () => current.showPanel(builderView(current.user) === "bots" ? "builder" : "account")),
-      item(t("chats"), () => navigate("/bots")),
+      // "My bots" are the bots this user built; "Chats" the bots they talk to (owner, 2026-11-20). CLI-51: one address each.
+      item(t("myBots"), () => navigate("/bots")),
+      item(t("chats"), () => navigate("/chats")),
       item(t("myApps"), () => navigate("/apps")),
-      item(t("account"), () => current.showPanel("account")),
-      ...(current.user.admin ? [item(t("adminScreen"), () => current.showPanel("admin"))] : []),
+      item(t("account"), () => navigate("/account")),
+      ...(current.user.admin ? [item(t("adminScreen"), () => navigate("/admin"))] : []),
       item(t("logout"), () => current.logout())));
 }
 
@@ -115,23 +115,30 @@ function publicPage(page: PublicPage, loggedIn: boolean): HTMLElement {
     language,
     loggedIn,
     go: navigate,
-    enter: loggedIn ? () => navigate("/bots") : showLogin,
+    enter: loggedIn ? () => navigate("/chats") : showLogin,
   });
 }
 
-/** Draws the screen of the current address: "/" is the landing page, "/bots" the bot list, "/@name" a chat, and the public pages. */
+/** CLI-51: draws the screen of the current address, and only of the address: "/" the landing page, "/chats", "/bots", "/@name"... */
 function route(): void {
   if (!app) return;
   const page = pageFor(location.pathname, true);
+  // The admin screen is for admins; anyone else gets the chats.
+  if (page === "admin" && !app.user.admin) {
+    history.replaceState(null, "", "/chats");
+    return route();
+  }
   const username = /^\/@([^/]+)$/.exec(decodeURIComponent(location.pathname))?.[1];
   screen = publicPages.includes(page)
     ? { element: publicPage(page as PublicPage, true) }
     // CLI-45: the chat page has its own header, with no site header above it.
     : username ? chatScreen(app, username, [themeButton(theme, language.t.bind(language)), userArea(true), homeMark(language.t("appName"), navigate)])
-    : page === "apps" && panel === null ? appsScreen(app)
-    : panel === "account" ? accountScreen(app)
-    : panel === "builder" ? builderScreen(app)
-    : panel === "admin" ? adminScreen(app)
+    : page === "apps" ? appsScreen(app)
+    : page === "account" ? accountScreen(app)
+    : page === "admin" ? adminScreen(app)
+    : page === "bots" ? myBotsScreen(app)
+    : page === "botNew" ? newBotScreen(app)
+    : page === "botPage" ? botPageScreen(app, botPageUsername(location.pathname)!)
     : botsScreen(app);
   // The public pages have the site header; the app screens get the same logo and name on top.
   if (!screen.element.classList.contains("public") && !username) {
@@ -151,13 +158,8 @@ async function enter(user: User): Promise<void> {
     maxTextLength: settings.max_text_length,
     maxFileSizeMb: settings.max_file_size_mb,
     statusRefreshSeconds: settings.status_refresh_seconds,
+    maxBotIconKb: settings.max_bot_icon_kb,
     go: navigate,
-    showPanel(next) {
-      // The panels live on the bot list address, so the menu can open them from any page.
-      if (location.pathname !== "/bots") history.pushState(null, "", "/bots");
-      panel = next;
-      route();
-    },
     logout() {
       // CLI-21: the next person on this browser must not get this user's notifications.
       void turnOff().catch(() => {}).then(() => api.logout()).finally(showLogin);

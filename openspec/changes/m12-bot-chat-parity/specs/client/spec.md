@@ -90,6 +90,10 @@ The account screen (`/account`) and the My bots screen (`/bots`) SHALL show the 
 - **WHEN** the builder creates `weather_bot` on `/bots/new` with an icon
 - **THEN** the address becomes `/bots/weather_bot`, the token is shown once with Copy, and the bot has the icon
 
+#### Scenario: Token shown once
+- **WHEN** a builder creates a bot
+- **THEN** the token is shown with the copy button on the bot's page, and after closing it or loading the page again the page shows the bot without the token
+
 ### Requirement: CLI-38 Guide to run a bot
 A visitor and a logged-in user SHALL see at `/guide` a choice of plan: a bot or a site. In both languages, `/guide/bot` SHALL show nine steps to run a bot without an AI agent and `/guide/site` four steps (CLI-39), with addresses and numbers from the public settings. A bot's page (CLI-49) SHALL show steps 5 to 9 of the bot guide, numbered from 1, made for that bot. The token test SHALL show where the whole token goes; on the bot's page it SHALL hold the new token while that token is on screen, else `<bot id>:<TOKEN>`.
 
@@ -111,7 +115,7 @@ A visitor and a logged-in user SHALL see at `/guide` a choice of plan: a bot or 
 - **WHEN** the address is `/guide`, `/guide/bot` or `/guide/site`, for a visitor or a logged-in user
 - **THEN** both get the plan choice, the bot guide and the site guide
 
-#### Scenario: The bot's page fills in its token
+#### Scenario: My bots fills in the new token
 - **GIVEN** the page of bot 7 `weather_bot` shows the new token `7:XyZ`
 - **WHEN** its run steps are made
 - **THEN** they are numbered from 1, the first is the token test `curl https://api.example.ir/bot7:XyZ/getMe`, the run step shows `https://example.ir/@weather_bot`, and with no token shown the test is `curl https://api.example.ir/bot7:<TOKEN>/getMe`
@@ -119,7 +123,7 @@ A visitor and a logged-in user SHALL see at `/guide` a choice of plan: a bot or 
 ## ADDED Requirements
 
 ### Requirement: CLI-46 Record a voice
-The input bar SHALL have a 🎤 button when the browser can record and the page is secure; it is shown while the input is empty, in the place of Send. A tap SHALL start recording (after the microphone permission) and show the running time and a cancel button; a second tap SHALL stop and send it at once as a voice (REL-28, `X-Voice-Duration`). The recording SHALL be OGG/Opus: recorded as `audio/ogg` when the browser can; WebM/Opus SHALL be rewritten into OGG on the device; when neither works, the browser's own format is sent with its real type. Cancel, or leaving the chat, SHALL stop the microphone and send nothing. A recording that reaches `max_file_size_mb` SHALL stop and be sent.
+While the input is empty, a 🎤 button SHALL take Send's place when the browser can record. A tap SHALL record and show the time and Cancel; the send button SHALL stop and send it as a voice (REL-28). The voice SHALL be OGG/Opus: recorded so, or WebM/Opus rewritten on the device, else the browser's own format with its real type. Cancel or leaving the chat SHALL stop the microphone and send nothing. At `max_file_size_mb` it SHALL stop and send.
 
 #### Scenario: WebM rewritten
 - **GIVEN** a WebM/Opus recording (saved test sample)
@@ -157,7 +161,7 @@ Message bubbles SHALL use the sizes of Telegram Desktop at the same window width
 - **THEN** the text is 14px, the time 12px, in both themes
 
 ### Requirement: CLI-49 A bot's own page
-`/bots/<username>` SHALL show one of the builder's bots: icon (change and remove, CLI-50), name (rename, REL-48), `@username`, online or last seen, suspended mark, its link `<site_url>/@<username>` with Open and Copy, New token and Delete (both ask first), the showcase part (CLI-29), and the run guide (CLI-38) with three tabs: Telegram bot (library code), CLI (`dalan.mjs` commands with this bot's id) and MCP. Every value on the page SHALL be this bot's. The token SHALL be shown only right after create or New token, with Copy, until Close or leaving the page. A username that is not one of the user's bots SHALL show "bot not found" with a link to `/bots`.
+`/bots/<username>` SHALL show one of the builder's bots: icon (CLI-50), name with rename, status, its link `<site_url>/@<username>` with Open and Copy, New token and Delete (both ask first), the showcase part (CLI-29), and the run guide (CLI-38) in three tabs: Telegram bot, CLI and MCP. Every value SHALL be this bot's. The token SHALL show only right after create or New token, until Close or leaving. Another username SHALL show "bot not found" with a link to `/bots`.
 
 #### Scenario: Only this bot
 - **GIVEN** the builder has bots 4 `mofidbot` and 9 `other_bot`, and just made a new token for `other_bot`
@@ -173,7 +177,7 @@ Message bubbles SHALL use the sizes of Telegram Desktop at the same window width
 - **THEN** the page says the bot was not found and links to `/bots`
 
 ### Requirement: CLI-50 Bot icons
-The bot icon (REL-51) SHALL be shown in the chat header, the chat list, the My bots list, the bot's page and the showcase; a bot with no icon, or an icon that fails to load, SHALL show the first letter of its name. Icons are round, cut to fill (`object-fit: cover`), and their address has `?v=<icon_version>`. The icon picker on `/bots/new` and the bot's page SHALL take PNG, JPEG or WebP, cut the middle square, make it 512 by 512 and lower the JPEG quality until it fits `max_bot_icon_kb`, show it, and upload it.
+The bot icon (REL-51) SHALL show in the chat header, the chat list, My bots, the bot's page and the showcase, round and cut to fill, at `?v=<icon_version>`; with no icon, or one that fails to load, the first letter. The picker on `/bots/new` and the bot's page SHALL take PNG, JPEG or WebP, cut the middle square to 512 by 512, and lower the JPEG quality until it fits `max_bot_icon_kb`.
 
 #### Scenario: No icon
 - **WHEN** a bot with `icon_version` 0 is in the chat list
@@ -184,7 +188,7 @@ The bot icon (REL-51) SHALL be shown in the chat header, the chat list, the My b
 - **THEN** the upload is a 512 by 512 JPEG of the middle 800 by 800, at most `max_bot_icon_kb`
 
 ### Requirement: CLI-51 One address per screen
-Each screen SHALL have its own address, and opening that address (reload, back, a shared link) SHALL show the same screen: `/chats` the chat list, `/@<username>` a chat, `/bots` My bots, `/bots/new` the create form, `/bots/<username>` a bot's page, `/account` the account, `/admin` the admin screen, `/apps` my apps. The user menu items SHALL go to these addresses. `/admin` for a user who is not an admin SHALL go to `/chats`. After login the client SHALL open the address the user asked for, else `/chats`.
+Each screen SHALL have its own address, and opening it (reload, Back, a shared link) SHALL show that screen: `/chats`, `/@<username>`, `/bots`, `/bots/new`, `/bots/<username>`, `/account`, `/admin`, `/apps`. The user menu SHALL go to these addresses. `/admin` for a non-admin SHALL go to `/chats`. After login the client SHALL open the address asked for, else `/chats`.
 
 #### Scenario: Reload keeps the screen
 - **GIVEN** the user is on the account screen

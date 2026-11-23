@@ -63,6 +63,20 @@
 ### Requirement: REL-41 Showcase icon
 The showcase SHALL show the bot's icon (REL-51); it has no icon of its own. `PUT /api/builder/bots/{id}/showcase/icon` SHALL stay as another address of the bot icon `PUT` (REL-51), with its checks, and SHALL NOT change the entry's state; `GET` there SHALL give the bot icon to the owner or an admin. Showcase answers SHALL say `icon` true when the bot has one.
 
+#### Scenario: PNG icon
+- **GIVEN** a bot with a showcase entry
+- **WHEN** the builder sends a PNG image to the showcase icon address
+- **THEN** the bot has the icon, the entry keeps its state, and `GET` gives the same bytes as `image/png`
+
+#### Scenario: Not an image
+- **WHEN** the builder sends an SVG file or a text
+- **THEN** the answer is 400 `bad_icon`
+
+#### Scenario: Too big
+- **GIVEN** `Relay:MaxBotIconKb` is 1
+- **WHEN** the builder sends a 2 KB PNG
+- **THEN** the answer is 400 `bad_icon`
+
 #### Scenario: Icon through the old address
 - **GIVEN** a listed entry
 - **WHEN** the builder sends a PNG to the showcase icon address
@@ -107,7 +121,7 @@ A voice, audio or video file SHALL keep a length in whole seconds when one is gi
 - **THEN** its `file` has no `duration`
 
 ### Requirement: REL-51 Bot icon
-Each bot SHALL have at most one icon. `PUT /api/builder/bots/{id}/icon` with the raw image as the body SHALL set it: only PNG, JPEG or WebP, known by the first bytes, of at most `Relay:MaxBotIconKb` (start 100) KB, else 400 `bad_icon`. `DELETE` on the same address SHALL remove it. Only the owner or an admin may change it (404 `bot_not_found` for others); each change SHALL be in the audit log (`bot.icon`). `GET /api/bots/{id}/icon` SHALL need no session and give the icon of a bot that is not deleted or suspended, else 404 `not_found`. The bot JSON of the chat list, the link page (`by-username`), the builder list and the showcase SHALL have `icon_version`: 0 with no icon, higher after every change.
+A bot SHALL have at most one icon. `PUT /api/builder/bots/{id}/icon` (raw body) SHALL set it: PNG, JPEG or WebP by the first bytes, at most `Relay:MaxBotIconKb` (start 100) KB, else 400 `bad_icon`; `DELETE` removes it. Only the owner or an admin (else 404 `bot_not_found`); audit `bot.icon`. `GET /api/bots/{id}/icon` SHALL need no session; a deleted or suspended bot gets 404 `not_found`. Bot JSON SHALL have `icon_version`: 0 with no icon, higher after each change.
 
 #### Scenario: Set and read
 - **WHEN** the owner sends a PNG icon

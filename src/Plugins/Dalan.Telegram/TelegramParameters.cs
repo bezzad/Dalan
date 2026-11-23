@@ -78,6 +78,13 @@ internal sealed class TelegramParameters
             : _files?.GetFile(name);
     }
 
+    /// <summary>The part that an "attach://&lt;part name&gt;" reference names (TG-23), or null.</summary>
+    public IFormFile? AttachedFile(string? reference)
+    {
+        const string Attach = "attach://";
+        return reference is not null && reference.StartsWith(Attach, StringComparison.Ordinal) ? _files?.GetFile(reference[Attach.Length..]) : null;
+    }
+
     /// <summary>A JSON list, sent as a list or as a string of JSON. False when the parameter is there but is not a list.</summary>
     public bool TryArray(string name, out JsonElement? value)
     {

@@ -22,6 +22,7 @@ internal sealed class BotGateway(
     FileStore files,
     DeliveryMarks marks,
     BotPresence presence,
+    BotIcons icons,
     IOptionsMonitor<RelayOptions> options,
     TimeProvider time,
     IHostApplicationLifetime lifetime) : IBotGateway
@@ -124,6 +125,20 @@ internal sealed class BotGateway(
 
     public async Task<Stream?> OpenFileAsync(long botId, string fileId, CancellationToken cancellationToken) =>
         await chats.FindFileAsync(botId, fileId, cancellationToken) is { } file ? files.Open(file.Id) : null;
+
+    public async Task<BotError> SetIconAsync(long botId, Stream image, CancellationToken cancellationToken)
+    {
+        var (read, bytes) = await icons.ReadAsync(image, cancellationToken);
+        var result = read == IconResult.Ok ? await icons.SetAsync(botId, bytes, cancellationToken) : read;
+        return result switch
+        {
+            IconResult.Ok => BotError.None,
+            IconResult.TooBig => BotError.ImageTooBig,
+            _ => BotError.NotAnImage,
+        };
+    }
+
+    public Task RemoveIconAsync(long botId, CancellationToken cancellationToken) => icons.RemoveAsync(botId, cancellationToken);
 
     private static BotResult<BotMessage> Result((ChatError Error, Message? Message) result) =>
         new(ToBot(result.Error), result.Message?.ToBot());

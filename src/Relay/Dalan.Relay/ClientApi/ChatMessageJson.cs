@@ -17,7 +17,8 @@ public sealed record ChatMessageJson(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DateTimeOffset? Edited = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Pinned = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Deleted = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? NotDelivered = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? NotDelivered = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReplyKeyboardOptionsJson? ReplyKeyboardOptions = null)
 {
     public static ChatMessageJson Of(Message message) => new(
         message.Seq,
@@ -31,22 +32,33 @@ public sealed record ChatMessageJson(
         message.EditedAt,
         message.Pinned ? true : null,
         message.Deleted ? true : null,
-        message.Delivery == DeliveryState.NotDelivered && !message.Deleted ? true : null);
+        message.Delivery == DeliveryState.NotDelivered && !message.Deleted ? true : null,
+        message.Content.ReplyKeyboard?.ToOptions() is { } options ? ReplyKeyboardOptionsJson.Of(options) : null);
+}
+
+/// <summary>REL-17: <see cref="Styles"/> has one style or null per button, in the shape of <c>reply_keyboard</c>.</summary>
+public sealed record ReplyKeyboardOptionsJson(bool Persistent, bool Resize, bool OneTime, List<List<string?>> Styles)
+{
+    public static ReplyKeyboardOptionsJson Of(KeyboardOptions options) =>
+        new(options.Persistent, options.Resize, options.OneTime, options.Styles ?? []);
 }
 
 public sealed record InlineButtonJson(
     string Text,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? CallbackData,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Url)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Url,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Style = null)
 {
-    public static InlineButtonJson Of(InlineButton button) => new(button.Text, button.CallbackData, button.Url);
+    public static InlineButtonJson Of(InlineButton button) => new(button.Text, button.CallbackData, button.Url, button.Style);
 
-    public InlineButton ToButton() => new(Text, CallbackData, Url);
+    public InlineButton ToButton() => new(Text, CallbackData, Url, Style);
 }
 
 /// <summary>A file in a message: <see cref="Type"/> is the content type.</summary>
-public sealed record FileJson(string Id, string Kind, string Name, string Type, long Size)
+public sealed record FileJson(
+    string Id, string Kind, string Name, string Type, long Size,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? Duration = null)
 {
     public static FileJson Of(BotFile file) =>
-        new(file.Id, file.Kind.ToString().ToLowerInvariant(), file.Name, file.ContentType, file.Size);
+        new(file.Id, file.Kind.ToString().ToLowerInvariant(), file.Name, file.ContentType, file.Size, file.Duration);
 }
