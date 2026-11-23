@@ -33,9 +33,9 @@ export function pageFor(path: string, loggedIn: boolean): Page {
 /** CLI-26: the three messages of DESIGN section 13, in this order. Never "free tunnel". */
 export const landing: Record<Lang, { title: string; text: string }[]> = {
   fa: [
-    { title: "برنامه‌ی خود را روی کامپیوتر خودتان اجرا کنید.", text: "نیازی به خرید سرور نیست. ربات یا برنامه روی کامپیوتر خانه یا محل کارتان اجرا می‌شود و فقط به دالان متصل می‌شود. IP عمومی هم لازم نیست." },
+    { title: "برنامه‌ی خود را روی کامپیوتر خودتان اجرا کنید.", text: "نیازی به خرید سرور نیست. بات یا برنامه روی کامپیوتر خانه یا محل کارتان اجرا می‌شود و فقط به دالان متصل می‌شود. IP عمومی هم لازم نیست." },
     { title: "کاربران واقعی، تأییدشده با ایمیل یا پیامک.", text: "هویت همه‌ی کاربران دالان با ایمیل یا پیامک تأیید شده است؛ نیازی نیست خودتان سیستم ورود بسازید." },
-    { title: "حتی در زمان قطعی اینترنت بین‌الملل کار می‌کند.", text: "سرورهای دالان در ایران است؛ ربات شما و کاربرانش بدون اینترنت بین‌الملل هم به هم متصل می‌شوند." },
+    { title: "حتی در زمان قطعی اینترنت بین‌الملل کار می‌کند.", text: "سرورهای دالان در ایران است؛ بات شما و کاربرانش بدون اینترنت بین‌الملل هم به هم متصل می‌شوند." },
   ],
   en: [
     { title: "Run your app from your own computer.", text: "Do not buy a server. Your bot or app stays on your home or office computer and only connects out to Dalan. No public IP is needed." },
@@ -47,9 +47,9 @@ export const landing: Record<Lang, { title: string; text: string }[]> = {
 /** CLI-26: the hero at the top of the landing page. `glow` is drawn in the accent green on its own line. */
 export const hero: Record<Lang, { title: string; glow: string; text: string; plans: string }> = {
   fa: {
-    title: "ربات روی کامپیوتر خودتان؛",
+    title: "بات روی کامپیوتر خودتان؛",
     glow: "در دسترس کاربران سراسر ایران.",
-    text: "دالان کاربران تأییدشده را به ربات یا برنامه‌ای که روی کامپیوتر شما اجرا می‌شود متصل می‌کند؛ بدون نیاز به سرور، IP عمومی یا باز کردن پورت.",
+    text: "دالان کاربران تأییدشده را به بات یا برنامه‌ای که روی کامپیوتر شما اجرا می‌شود متصل می‌کند؛ بدون نیاز به سرور، IP عمومی یا باز کردن پورت.",
     plans: "طرح‌ها را ببینید",
   },
   en: {
@@ -71,8 +71,8 @@ export interface Product {
 /** CLI-26: the plans: the product cards and the words of their traffic pictures. Both are built (CLI-39). */
 export const products: Record<Lang, Product[]> = {
   fa: [
-    { label: "اتصال ربات", title: "مسیری امن میان کاربران و ربات شما.", text: "کاربر در دالان پیام می‌فرستد و ربات روی کامپیوتر شما پیام‌ها را با getUpdates دریافت می‌کند.", soon: false, guide: "/guide/bot",
-      from: "کاربران تأییدشده", branches: [{ via: "getUpdates", to: "@shop_bot" }, { via: "getUpdates", to: "@game_bot" }], frame: "کامپیوتر شما · فقط اتصال خروجی", guards: ["محدودیت تعداد درخواست", "بررسی ضدربات پیش از ارسال پیامک", "ثبت گزارش دسترسی‌ها"] },
+    { label: "اتصال بات", title: "مسیری امن میان کاربران و بات شما.", text: "کاربر در دالان پیام می‌فرستد و بات روی کامپیوتر شما پیام‌ها را با getUpdates دریافت می‌کند.", soon: false, guide: "/guide/bot",
+      from: "کاربران تأییدشده", branches: [{ via: "getUpdates", to: "@shop_bot" }, { via: "getUpdates", to: "@game_bot" }], frame: "کامپیوتر شما · فقط اتصال خروجی", guards: ["محدودیت تعداد درخواست", "بررسی امنیتی پیش از ارسال پیامک", "ثبت گزارش دسترسی‌ها"] },
     { label: "سایت‌ها", title: "سایت روی کامپیوتر شما، با یک آدرس ثابت.", text: "یک برنامه‌ی کوچک روی کامپیوتر شما به دالان متصل می‌شود و سایت محلی‌تان را در اختیار بازدیدکنندگان قرار می‌دهد.", soon: false, guide: "/guide/site",
       from: "بازدیدکنندگان", branches: [{ via: "/", to: "localhost:3000" }, { via: "/api", to: "localhost:8080" }], frame: "کامپیوتر شما", guards: ["HTTPS", "زیردامنه‌ی ثابت", "ثبت گزارش دسترسی‌ها"] },
   ],
@@ -89,22 +89,22 @@ export interface OfferGroup { title: string; text: string; items: { text: string
 /** CLI-37: what you get. The first three groups are built today; in the last one only the local site is built (CLI-39), the rest says "soon". */
 export const offers: Record<Lang, OfferGroup[]> = {
   fa: [
-    { title: "پیام‌رسانی ربات", text: "انتقال پیام میان کاربران و رباتی که روی کامپیوتر شما اجرا می‌شود.", items: [
+    { title: "پیام‌رسانی بات", text: "انتقال پیام میان کاربران و باتی که روی کامپیوتر شما اجرا می‌شود.", items: [
       { text: "Bot API سازگار با تلگرام؛ کافی است آدرس سرور را تغییر دهید" },
       { text: "دریافت پیام با getUpdates؛ کامپیوتر شما فقط اتصال خروجی برقرار می‌کند" },
       { text: "پشتیبانی از دکمه، منوی دستورات، فایل، پیام سنجاق‌شده و ویرایش پیام" },
-      { text: "نمایش وضعیت آنلاین بودن ربات و علامت «تحویل نشد»" },
+      { text: "نمایش وضعیت آنلاین بودن بات و علامت «تحویل نشد»" },
       { text: "اعلان (Web Push) برای کاربران" },
-      { text: "ویترین ربات‌ها، تا کاربران جدید ربات شما را پیدا کنند" },
+      { text: "ویترین بات‌ها، تا کاربران جدید بات شما را پیدا کنند" },
     ] },
     { title: "کاربران و امنیت", text: "کاربران واقعی، بدون نیاز به ساخت سیستم ورود.", items: [
       { text: "کاربران تأییدشده با گیت‌هاب، ایمیل یا کد پیامکی" },
-      { text: "ربات هرگز شماره‌ی موبایل کاربر را نمی‌بیند" },
-      { text: "محدودیت تعداد درخواست در همه‌ی بخش‌ها و بررسی ضدربات پیش از هر پیامک" },
-      { text: "توکن ربات و کلید دسترسی به‌صورت هش‌شده (hash) نگهداری می‌شوند" },
+      { text: "بات هرگز شماره‌ی موبایل کاربر را نمی‌بیند" },
+      { text: "محدودیت تعداد درخواست در همه‌ی بخش‌ها و بررسی امنیتی پیش از هر پیامک" },
+      { text: "توکن بات و کلید دسترسی به‌صورت هش‌شده (hash) نگهداری می‌شوند" },
       { text: "ثبت IP، پورت و زمان هر اتصال، مطابق قانون" },
     ] },
-    { title: "ابزارهای توسعه‌دهنده", text: "ربات بسازید و مدیریت کنید؛ به‌صورت دستی یا با کمک هوش مصنوعی.", items: [
+    { title: "ابزارهای توسعه‌دهنده", text: "بات بسازید و مدیریت کنید؛ به‌صورت دستی یا با کمک هوش مصنوعی.", items: [
       { text: "ابزار خط فرمان dalan.mjs" },
       { text: "سرور MCP برای دستیارهای هوش مصنوعی" },
       { text: "کلید دسترسی که هر زمان بخواهید قابل حذف است" },
@@ -164,15 +164,15 @@ export const notOffered: Record<Lang, string> = {
 
 /** CLI-26: what Dalan really does for safety (CLAUDE.md rules 5, 7, 8 and 13). */
 export const security: Record<Lang, string[]> = {
-  fa: ["کاربران تأییدشده با ایمیل یا پیامک", "ربات هرگز شماره‌ی کاربر را نمی‌بیند", "توکن ربات به‌صورت هش‌شده", "رمز عبور با الگوریتم هش امن",
-    "محدودیت تعداد درخواست در همه‌ی بخش‌ها", "بررسی ضدربات پیش از هر پیامک", "ثبت گزارش فعالیت‌های مدیر", "سرور در ایران", "بدون اسکریپت و فونت خارجی", "فقط HTTPS"],
+  fa: ["کاربران تأییدشده با ایمیل یا پیامک", "بات هرگز شماره‌ی کاربر را نمی‌بیند", "توکن بات به‌صورت هش‌شده", "رمز عبور با الگوریتم هش امن",
+    "محدودیت تعداد درخواست در همه‌ی بخش‌ها", "بررسی امنیتی پیش از هر پیامک", "ثبت گزارش فعالیت‌های مدیر", "سرور در ایران", "بدون اسکریپت و فونت خارجی", "فقط HTTPS"],
   en: ["Users verified by email or SMS", "Bots never see phone numbers", "Hashed bot tokens", "Slow password hashing", "Rate limits on every door",
     "Proof of work before each SMS", "Admin audit log", "Servers inside the country", "No foreign scripts or fonts", "HTTPS only"],
 };
 
 /** CLI-26: the closing call of the landing page. */
 export const closing: Record<Lang, { title: string; glow: string; text: string }> = {
-  fa: { title: "همین حالا شروع کنید.", glow: "ربات خود را راه‌اندازی کنید.", text: "وارد شوید و اولین ربات خود را بسازید، یا ربات‌های ویترین را ببینید." },
+  fa: { title: "همین حالا شروع کنید.", glow: "بات خود را راه‌اندازی کنید.", text: "وارد شوید و اولین بات خود را بسازید، یا بات‌های ویترین را ببینید." },
   en: { title: "Your turn.", glow: "Put your bot online.", text: "Log in and make your first bot, or look at the bots in the showcase." },
 };
 
@@ -188,12 +188,12 @@ export const labels: Record<Lang, Record<"plans" | "plansTitle" | "getStarted" |
 export function privacyPoints(lang: Lang, numbers: PublicNumbers, n: (value: number) => string): string[] {
   const m = n(numbers.history_messages), d = n(numbers.history_days), f = n(numbers.file_days), a = n(numbers.access_log_days);
   return lang === "fa" ? [
-    "یک ربات فقط زمانی در ویترین نمایش داده می‌شود که توسعه‌دهنده‌اش درخواست دهد و مدیر دالان آن را تأیید کند. هر ربات در ابتدا خصوصی است.",
-    "ربات شناسه و نام شما در دالان را می‌بیند، اما هرگز شماره‌ی موبایل شما را نمی‌بیند.",
+    "یک بات فقط زمانی در ویترین نمایش داده می‌شود که توسعه‌دهنده‌اش درخواست دهد و مدیر دالان آن را تأیید کند. هر بات در ابتدا خصوصی است.",
+    "بات شناسه و نام شما در دالان را می‌بیند، اما هرگز شماره‌ی موبایل شما را نمی‌بیند.",
     "پیام‌ها بدون رمزنگاری سرتاسری از سرور دالان عبور می‌کنند؛ بنابراین دالان از نظر فنی می‌تواند آن‌ها را بخواند.",
     `از هر گفت‌وگو فقط ${m} پیام آخر، و نه قدیمی‌تر از ${d} روز، نگهداری می‌شود. فایل‌ها پس از ${f} روز حذف می‌شوند.`,
-    "کامپیوتری که ربات روی آن اجرا می‌شود متعلق به سازنده‌ی ربات است. دالان فقط پیام‌ها را میان دو طرف منتقل می‌کند و مسئولیتی در قبال روشن بودن آن کامپیوتر ندارد.",
-    `دالان آدرس IP، پورت و زمان اتصال کاربران و ربات‌ها را ${a} روز نگهداری می‌کند تا بتواند به شکایت‌های قانونی پاسخ دهد.`,
+    "کامپیوتری که بات روی آن اجرا می‌شود متعلق به سازنده‌ی بات است. دالان فقط پیام‌ها را میان دو طرف منتقل می‌کند و مسئولیتی در قبال روشن بودن آن کامپیوتر ندارد.",
+    `دالان آدرس IP، پورت و زمان اتصال کاربران و بات‌ها را ${a} روز نگهداری می‌کند تا بتواند به شکایت‌های قانونی پاسخ دهد.`,
   ] : [
     "A bot is in the showcase only if its builder asks and the admin approves. Every bot starts private.",
     "A bot sees your Dalan id and name, but never your mobile number.",
@@ -209,14 +209,14 @@ export function faqItems(lang: Lang, numbers: PublicNumbers, n: (value: number) 
   const answers = privacyPoints(lang, numbers, n);
   const e = n(numbers.update_expiry_seconds);
   answers[4] += lang === "fa"
-    ? ` در بالای گفت‌وگو می‌بینید ربات آخرین بار چه زمانی آنلاین بوده است. پیامی که ربات در ${e} ثانیه دریافت نکند، با علامت «تحویل نشد» مشخص می‌شود.`
+    ? ` در بالای گفت‌وگو می‌بینید بات آخرین بار چه زمانی آنلاین بوده است. پیامی که بات در ${e} ثانیه دریافت نکند، با علامت «تحویل نشد» مشخص می‌شود.`
     : ` The chat shows when the bot was last online. A message the bot does not read within ${e} seconds is marked "not delivered".`;
   const questions = lang === "fa" ? [
-    "آیا ربات من به‌طور خودکار به همه نمایش داده می‌شود؟",
-    "آیا ربات شماره‌ی موبایل مرا می‌بیند؟",
+    "آیا بات من به‌طور خودکار به همه نمایش داده می‌شود؟",
+    "آیا بات شماره‌ی موبایل مرا می‌بیند؟",
     "آیا دالان پیام‌های مرا می‌خواند؟",
     "پیام‌هایم تا چه مدت نگهداری می‌شوند؟",
-    "اگر ربات پاسخ ندهد چه می‌شود؟",
+    "اگر بات پاسخ ندهد چه می‌شود؟",
     "چرا دالان آدرس IP مرا نگه می‌دارد؟",
   ] : [
     "Is my bot shown to everyone by itself?",
@@ -278,10 +278,10 @@ export function initial(name: string): string {
  * the builder gives the key to the agent's settings, not to the chat.
  */
 export function readyPrompt(lang: Lang, site: string, botApi: string): string {
-  return lang === "fa" ? `پروژه‌ی من را به دالان متصل کن. دالان ربات یا برنامه‌ی تحت وب را از کامپیوتر خانه، بدون IP عمومی، اجرا می‌کند.
+  return lang === "fa" ? `پروژه‌ی من را به دالان متصل کن. دالان بات یا برنامه‌ی تحت وب را از کامپیوتر خانه، بدون IP عمومی، اجرا می‌کند.
 اول این صفحه را بخوان: ${site}/llms.txt
-- اگر ربات تلگرام است، فقط آدرس سرور را ${botApi} قرار بده و توکن را با توکن دالان جایگزین کن.
-- برای ساختن ربات و توکن، از سرور MCP دالان استفاده کن: ${site}/api/mcp (کلید دسترسی در متغیر DALAN_KEY است).
+- اگر بات تلگرام است، فقط آدرس سرور را ${botApi} قرار بده و توکن را با توکن دالان جایگزین کن.
+- برای ساختن بات و توکن، از سرور MCP دالان استفاده کن: ${site}/api/mcp (کلید دسترسی در متغیر DALAN_KEY است).
 - یا از ابزار خط فرمان: ${site}/dalan.mjs
 کلید یا توکن را هرگز در مخزن کد نگذار.` : `Connect my project to Dalan. Dalan runs a bot or web app from a home computer with no public IP.
 First read: ${site}/llms.txt

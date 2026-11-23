@@ -6,9 +6,11 @@
 //    then Account > Builder bots > Create bot. Copy the token that is shown once.
 //    Or, without the screen, in the local database:
 //      docker compose exec postgres psql -U dalan -c "INSERT INTO relay.bots (username, name, owner_user_id, token_hash, created_at) VALUES ('demo', 'Demo bot', 0, sha256('local-demo-secret-not-for-production'), now()) RETURNING id"
-// 2. Run it with the token, or with the id that came back from SQL (1 on a new database):
-//      node scripts/demo-bot.mjs <token or id>
-// 3. Open http://localhost:5000/@demo and press Start.
+// 2. From the repository folder, run it with the whole token (only the token: no "bot" before it, no "/getMe" after it),
+//    or with the id that came back from SQL (1 on a new database):
+//      node scripts/demo-bot.mjs 12:AbCdEfGhIjKlMnOp
+//    Against the live server: DALAN_API=https://api.dalanet.ir node scripts/demo-bot.mjs <token>
+// 3. Open http://localhost:5000/@<bot username> (or https://dalanet.ir/@<bot username>) and press Start.
 const api = process.env.DALAN_API ?? "http://localhost:5000";
 const argument = process.argv[2] ?? "1";
 const token = argument.includes(":") ? argument : `${argument}:local-demo-secret-not-for-production`;

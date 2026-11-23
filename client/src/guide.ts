@@ -63,28 +63,42 @@ systemctl --user enable --now my-bot
 loginctl enable-linger "$USER"
 journalctl --user -u my-bot -f`;
 
-export function guideSteps(lang: Lang, numbers: PublicNumbers, n: (value: number) => string): GuideStep[] {
+/** CLI-38: a sample in the token's real shape, so the reader sees where the token goes. */
+const sampleToken = "12:AbCdEfGhIjKlMnOp";
+
+/** CLI-38: "My bots" shows steps 5 to 9, numbered from 1; while a new token is on screen, the test line has it. */
+export function botRunSteps(lang: Lang, numbers: PublicNumbers, n: (value: number) => string, token: string | null): GuideStep[] {
+  return guideSteps(lang, numbers, n, token).slice(4);
+}
+
+export function guideSteps(lang: Lang, numbers: PublicNumbers, n: (value: number) => string, token: string | null = null): GuideStep[] {
   const api = numbers.bot_api_url;
   const site = numbers.site_url;
-  const check = `curl ${api}/bot<token>/getMe`;
+  const check = `curl ${api}/bot${token ?? sampleToken}/getMe`;
+  const testFa = token
+    ? "این دستور توکن جدید شما را دارد. آن را اجرا کنید؛ پاسخ باید شامل \"ok\":true و نام بات باشد:"
+    : `توکن کامل خود را درست پس از bot بگذارید، بدون فاصله، / یا <>. در نمونه‌ی زیر، ${sampleToken} توکن است. پاسخ باید شامل "ok":true و نام بات باشد:`;
+  const testEn = token
+    ? "This command has your new token in it. Run it; it must answer with \"ok\":true and the bot's name:"
+    : `Put your whole token right after bot, with no space, / or <>. In this sample the token is ${sampleToken}. It must answer with "ok":true and the bot's name:`;
   const link = `${site}/@your_bot`;
   const expiry = n(numbers.update_expiry_seconds);
   return lang === "fa" ? [
     { title: "وارد شوید", text: "دکمه‌ی «ورود یا ثبت‌نام» را در بالای صفحه انتخاب کنید و با ایمیل، گیت‌هاب یا شماره‌ی موبایل وارد شوید." },
-    { title: "شماره‌ی موبایل خود را تأیید کنید", text: "برای ساختن ربات، شماره‌ی موبایل تأییدشده لازم است. از منوی کاربر، «حساب کاربری» را باز کنید، شماره را وارد کنید و کد پیامکی را بنویسید." },
-    { title: "درخواست دسترسی توسعه‌دهنده بدهید", text: "در همان صفحه‌ی «حساب کاربری»، دکمه‌ی «درخواست دسترسی توسعه‌دهنده» را انتخاب کنید. مدیر دالان درخواست را بررسی و تأیید می‌کند. پس از تأیید، بخش «ربات‌های من» فعال می‌شود." },
-    { title: "ربات بسازید و توکن آن را کپی کنید", text: "در «ربات‌های من» نام کاربری و نام ربات را وارد کنید. توکن فقط همان یک بار نمایش داده می‌شود؛ آن را کپی کنید و در جای امنی نگه دارید. اگر آن را گم کردید، «توکن جدید» را انتخاب کنید؛ توکن قبلی بلافاصله از کار می‌افتد." },
-    { title: "توکن را آزمایش کنید", text: "پاسخ این دستور باید شامل \"ok\":true و نام ربات باشد:", code: check },
-    { title: "آدرس سرور را در کد تغییر دهید", text: `ربات شما با هر کتابخانه‌ی ربات تلگرام کار می‌کند. کافی است آدرس سرور را از api.telegram.org به ${api} تغییر دهید و توکن دالان را قرار دهید. بقیه‌ی کد تغییری نمی‌کند. کتابخانه‌ی خود را انتخاب کنید:`, samples: librarySamples(api) },
-    { title: "ربات را روی کامپیوتر خودتان اجرا کنید", text: "ربات را مانند همیشه اجرا کنید. دالان فقط از long polling (getUpdates) پشتیبانی می‌کند و webhook ندارد؛ بنابراین به IP عمومی و باز کردن پورت نیازی نیست. کاربران با این لینک به ربات دسترسی دارند:", code: link },
-    { title: "ربات را همیشه روشن نگه دارید (اختیاری)", text: "در لینوکس، این دستورها ربات را پس از راه‌اندازی مجدد سیستم هم روشن نگه می‌دارند و توکن را بیرون از کد نگهداری می‌کنند. نام پوشه و دستور اجرا را با ربات خود جایگزین کنید. در ویندوز و مک، برنامه را باز نگه دارید یا آن را با ابزار اجرای خودکار سیستم‌عامل اجرا کنید.", code: service },
-    { title: "اگر کار نکرد", text: `پاسخ 401 یعنی توکن نادرست است یا تغییر کرده است. اگر پیام کاربر با علامت «تحویل نشد» مشخص شد، ربات آن را در ${expiry} ثانیه دریافت نکرده است؛ ربات باید پیوسته getUpdates را فراخوانی کند. متدی که دالان پشتیبانی نمی‌کند، پاسخ ok=false همراه با توضیح برمی‌گرداند. فهرست متدها در llms.txt آمده است.` },
+    { title: "شماره‌ی موبایل خود را تأیید کنید", text: "برای ساختن بات، شماره‌ی موبایل تأییدشده لازم است. از منوی کاربر، «حساب کاربری» را باز کنید، شماره را وارد کنید و کد پیامکی را بنویسید." },
+    { title: "درخواست دسترسی توسعه‌دهنده بدهید", text: "در همان صفحه‌ی «حساب کاربری»، دکمه‌ی «درخواست دسترسی توسعه‌دهنده» را انتخاب کنید. مدیر دالان درخواست را بررسی و تأیید می‌کند. پس از تأیید، بخش «بات‌های من» فعال می‌شود." },
+    { title: "بات بسازید و توکن آن را کپی کنید", text: "در «بات‌های من» نام کاربری و نام بات را وارد کنید. توکن فقط همان یک بار نمایش داده می‌شود؛ آن را کپی کنید و در جای امنی نگه دارید. اگر آن را گم کردید، «توکن جدید» را انتخاب کنید؛ توکن قبلی بلافاصله از کار می‌افتد." },
+    { title: "توکن را آزمایش کنید", text: testFa, code: check },
+    { title: "آدرس سرور را در کد تغییر دهید", text: `بات شما با هر کتابخانه‌ی بات تلگرام کار می‌کند. کافی است آدرس سرور را از api.telegram.org به ${api} تغییر دهید و توکن دالان را قرار دهید. بقیه‌ی کد تغییری نمی‌کند. کتابخانه‌ی خود را انتخاب کنید:`, samples: librarySamples(api) },
+    { title: "بات را روی کامپیوتر خودتان اجرا کنید", text: "بات را مانند همیشه اجرا کنید. دالان فقط از long polling (getUpdates) پشتیبانی می‌کند و webhook ندارد؛ بنابراین به IP عمومی و باز کردن پورت نیازی نیست. کاربران با این لینک به بات دسترسی دارند:", code: link },
+    { title: "بات را همیشه روشن نگه دارید (اختیاری)", text: "در لینوکس، این دستورها بات را پس از راه‌اندازی مجدد سیستم هم روشن نگه می‌دارند و توکن را بیرون از کد نگهداری می‌کنند. نام پوشه و دستور اجرا را با بات خود جایگزین کنید. در ویندوز و مک، برنامه را باز نگه دارید یا آن را با ابزار اجرای خودکار سیستم‌عامل اجرا کنید.", code: service },
+    { title: "اگر کار نکرد", text: `پاسخ 401 یعنی توکن نادرست است یا تغییر کرده است. اگر پیام کاربر با علامت «تحویل نشد» مشخص شد، بات آن را در ${expiry} ثانیه دریافت نکرده است؛ بات باید پیوسته getUpdates را فراخوانی کند. متدی که دالان پشتیبانی نمی‌کند، پاسخ ok=false همراه با توضیح برمی‌گرداند. فهرست متدها در llms.txt آمده است.` },
   ] : [
     { title: "Log in", text: "Press \"Log in or sign up\" at the top and use your email, GitHub or mobile number." },
     { title: "Verify your mobile number", text: "Building bots needs a verified mobile number. User menu, \"Account\": give the number and type the SMS code." },
     { title: "Ask to become a builder", text: "On the same \"Account\" screen press \"Ask to become a builder\". The admin of Dalan approves the request. Then \"My bots\" opens." },
     { title: "Create a bot and copy its token", text: "In \"My bots\" give the bot a username and a name. The token is shown only this one time: copy it and keep it safe. If you lose it, press \"New token\"; the old token stops at once." },
-    { title: "Test the token", text: "This command must answer with \"ok\":true and the bot's name:", code: check },
+    { title: "Test the token", text: testEn, code: check },
     { title: "Change the server address in your code", text: `Your bot works with any Telegram bot library. Change only the server address from api.telegram.org to ${api} and use the Dalan token. The rest of the code stays the same. Pick your library:`, samples: librarySamples(api) },
     { title: "Run it on your own computer", text: "Start the bot as always. Dalan has only long polling (getUpdates), no webhooks, so you need no public IP and no open port. Users reach the bot with this link:", code: link },
     { title: "Keep it running (optional)", text: "On Linux these commands keep the bot running after a restart, with the token outside the code. Change the folder and the start command to your bot's. On Windows and macOS keep the program open, or start it with the system's own start-up tool.", code: service },

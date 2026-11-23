@@ -42,5 +42,5 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 ## Language
 - Persian (right to left) and English. Use logical CSS properties only (inline-start, inline-end). Latin names inside Persian text go in `<bdi>`.
 - Short, plain words.
-- Persian is a little formal and uses the common word, never a literal translation (CLI-43): ربات, اتصال ربات, برنامه, برنامه‌ی رابط دالان, توسعه‌دهنده, مدیر, رمز عبور, جدید, طرح‌ها, گزارش, پوسته, پرسش‌های متداول, گفت‌وگو. «می‌» and «ها» always with a zero-width non-joiner.
+- Persian is a little formal and uses the common word, never a literal translation (CLI-43): بات, اتصال بات, برنامه, برنامه‌ی رابط دالان, توسعه‌دهنده, مدیر, رمز عبور, جدید, طرح‌ها, گزارش, پوسته, پرسش‌های متداول, گفت‌وگو. «می‌» and «ها» always with a zero-width non-joiner.
 - English text, titles, meta and SEO never name Iran (sanctions, search engines); say "inside the country" or "when outside links are down". Persian may say ایران (CLI-41).

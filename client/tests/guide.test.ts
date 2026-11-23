@@ -1,7 +1,7 @@
 // Rules: CLI-38
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { guideSteps, librarySamples, siteGuideSteps } from "../src/guide.ts";
+import { botRunSteps, guideSteps, librarySamples, siteGuideSteps } from "../src/guide.ts";
 import { pageFor, type PublicNumbers } from "../src/pages.ts";
 
 const numbers: PublicNumbers = { history_messages: 200, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60,
@@ -13,10 +13,21 @@ test("CLI-38 the guide has nine steps with the real addresses", () => {
   for (const [lang, n] of [["fa", persian], ["en", english]] as const) {
     const steps = guideSteps(lang, numbers, n);
     assert.equal(steps.length, 9);
-    assert.equal(steps[4]!.code, "curl https://api.example.ir/bot<token>/getMe");
+    assert.equal(steps[4]!.code, "curl https://api.example.ir/bot12:AbCdEfGhIjKlMnOp/getMe");
+    assert.match(steps[4]!.text, /bot/, `${lang} says where the token goes`);
     assert.equal(steps[5]!.samples?.length, 7);
     assert.ok(steps[6]!.code!.startsWith("https://example.ir/@"));
     assert.ok(steps[8]!.text.includes(n(60)), `${lang} says the expiry`);
+  }
+});
+
+test("CLI-38 My bots numbers its run steps from 1 and fills in the new token", () => {
+  for (const [lang, n] of [["fa", persian], ["en", english]] as const) {
+    const withToken = botRunSteps(lang, numbers, n, "7:XyZ");
+    assert.deepEqual(withToken.map(step => step.title), guideSteps(lang, numbers, n).slice(4).map(step => step.title));
+    assert.equal(withToken[0]!.code, "curl https://api.example.ir/bot7:XyZ/getMe");
+    assert.doesNotMatch(withToken[0]!.text, /12:AbCd/, `${lang} does not talk about the sample`);
+    assert.equal(botRunSteps(lang, numbers, n, null)[0]!.code, "curl https://api.example.ir/bot12:AbCdEfGhIjKlMnOp/getMe");
   }
 });
 
