@@ -16,7 +16,7 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
   let query = "";
   const header = chatHeader({ username, t, tools, onSearch: words => { query = words; draw(); } });
   const read = new ReadPosition();
-  const pinBar = h("p", { class: "pinned", dir: "auto", hidden: true });
+  const pinBar = h("button", { type: "button", class: "pinned", dir: "auto", hidden: true });
   const older = h("button", { type: "button", class: "link", hidden: true }, t("older"));
   const list = h("ol", { class: "messages" });
   const scroller = h("div", { class: "scroller" }, older, list);
@@ -57,7 +57,7 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
 
   function bubble(message: Message): HTMLElement {
     const time = stamp(message, app.language.time(message.date), { edited: t("edited"), notDelivered: t("notDelivered") });
-    return h("li", { class: message.from },
+    return h("li", { class: message.from, "data-id": String(message.id) },
       ...(message.file ? [fileElement(message.file)] : []),
       ...(message.text ? [h("p", { dir: "auto" }, message.text)] : []),
       ...(message.inline_keyboard ?? []).map(row => h("div", { class: "row inline" }, ...row.map(button => inlineButton(message, button)))),
@@ -156,6 +156,28 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
     }
   });
   start.addEventListener("click", () => void send("/start"));
+  // CLI-14: the bar takes the user to the pinned message, loading older pages when it is not here yet.
+  pinBar.addEventListener("click", async () => {
+    const pinned = bot ? app.chats.of(bot.id).pinned : null;
+    if (!bot || !pinned) return;
+    header.clearSearch();
+    error.textContent = note.textContent = "";
+    try {
+      const found = await app.chats.find(bot.id, pinned.id);
+      draw(true);
+      const item = found ? list.querySelector<HTMLElement>(`li[data-id="${pinned.id}"]`) : null;
+      if (!item) {
+        note.textContent = t("pinnedGone");
+        return;
+      }
+      following = false;
+      item.scrollIntoView({ block: "center", behavior: "smooth" });
+      item.classList.add("flash");
+      window.setTimeout(() => item.classList.remove("flash"), 1200);
+    } catch (failure) {
+      error.textContent = t(errorText(failure));
+    }
+  });
   menuButton.addEventListener("click", () => { menu.hidden = !menu.hidden; });
   attach.addEventListener("click", () => picker.click());
   // CLI-16: the text in the input is the caption. A file over the limit is not sent.

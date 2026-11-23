@@ -69,8 +69,20 @@ internal sealed class TelegramBot(HttpClient http, string token)
 
     public Task<HttpResponseMessage> PollAsync(string query) => http.GetAsync(Url("getUpdates", query), Cancel);
 
-    public static async Task<Answer> ReadAsync(HttpResponseMessage response) =>
-        new(response, await response.Content.ReadFromJsonAsync<JsonElement>(Cancel));
+    /// <summary>The answer as JSON. A body that is not JSON fails with its status, so a rare failure on a busy machine says why.</summary>
+    public static async Task<Answer> ReadAsync(HttpResponseMessage response)
+    {
+        var text = await response.Content.ReadAsStringAsync(Cancel);
+        try
+        {
+            return new(response, JsonElement.Parse(text));
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidOperationException(
+                $"Not JSON: HTTP {(int)response.StatusCode} {response.StatusCode}, {text.Length} characters: {text[..Math.Min(text.Length, 300)]}", exception);
+        }
+    }
 
     /// <summary>The list of updates of one getUpdates call.</summary>
     public async Task<JsonElement[]> UpdatesAsync(string query = "timeout=0")
