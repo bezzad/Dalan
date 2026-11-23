@@ -18,6 +18,8 @@ export interface ChatHeader {
   status: HTMLElement;
   /** The bot's name, and its showcase icon; with no icon (or a failed one) its first letter. */
   showBot(name: string, iconUrl: string | null): void;
+  /** Closes the search and shows every message again (CLI-14: before going to the pinned message). */
+  clearSearch(): void;
 }
 
 export function chatHeader(options: {
@@ -57,6 +59,7 @@ export function chatHeader(options: {
   return {
     element: h("header", { class: "bot" }, who, box, open, ...options.tools),
     status,
+    clearSearch: () => { if (!box.hidden) closeSearch(); },
     showBot(name, iconUrl) {
       title.textContent = name;
       const letter = () => h("span", { class: "avatar", "aria-hidden": "true" }, initial(name));

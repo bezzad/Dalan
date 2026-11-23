@@ -209,6 +209,14 @@ export class Chats {
     }));
   }
 
+  /** CLI-14: loads older pages until the message is here. False when it is not in the history (or was deleted). */
+  async find(botId: number, messageId: number): Promise<boolean> {
+    const chat = this.of(botId);
+    const here = () => chat.visible.some(message => message.id === messageId);
+    while (!here() && !chat.reachedStart && chat.messages.length > 0) await this.loadOlder(botId);
+    return here();
+  }
+
   /** Loads the page before the oldest message that is here. */
   async loadOlder(botId: number): Promise<void> {
     const chat = this.of(botId);

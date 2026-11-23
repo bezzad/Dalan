@@ -183,6 +183,24 @@ test("CLI-14 the pinned message of the newest page answer is the bar, even when 
   assert.equal(chat.pinned?.id, 1);
 });
 
+test("CLI-14 a click on the bar loads older pages until the pinned message is there", async () => {
+  const pinned = { ...m(2), pinned: true };
+  const { chats } = server([m(1), pinned, m(3), m(4), m(5), m(6)], 2, pinned);
+  await chats.open(7);
+
+  assert.equal(await chats.find(7, 2), true);
+  assert.ok(ids(chats.of(7).visible).includes(2));
+  assert.equal(await chats.find(7, 5), true, "a loaded message needs no page");
+});
+
+test("CLI-14 a pinned message older than the history loads to the start and is not found", async () => {
+  const { chats } = server([m(3), m(4), m(5)], 2, { ...m(1), pinned: true });
+  await chats.open(7);
+
+  assert.equal(await chats.find(7, 1), false);
+  assert.ok(chats.of(7).reachedStart);
+});
+
 test("CLI-14 the pin moves to the newly pinned message", () => {
   const chat = new Chat();
   chat.add([m(1), { ...m(2), pinned: true }]);

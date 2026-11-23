@@ -263,7 +263,11 @@ main > .scroller, main > .bots { margin-inline: calc(-1 * var(--gutter)); paddin
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.messages li { display: flex; flex-direction: column; gap: 6px; }
+/* CLI-14: the bar is a button that goes to the pinned message; the message is marked for a moment. */
+button.pinned { display: block; width: 100%; min-height: 0; color: var(--text); font: inherit; text-align: start; cursor: pointer; }
+button.pinned[hidden] { display: none; }
+.messages li.flash { outline: 2px solid var(--brand); outline-offset: 2px; }
+.messages li { display: flex; flex-direction: column; gap: 6px; transition: outline-color .3s; }
 .messages img, .messages video { max-width: 100%; max-height: 50dvh; border-radius: 10px; }
 .messages audio { max-width: 100%; }
 .messages a { color: var(--brand); overflow-wrap: anywhere; }
