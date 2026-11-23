@@ -33,14 +33,14 @@ export function pageFor(path: string, loggedIn: boolean): Page {
 /** CLI-26: the three messages of DESIGN section 13, in this order. Never "free tunnel". */
 export const landing: Record<Lang, { title: string; text: string }[]> = {
   fa: [
-    { title: "برنامه‌ی خود را روی کامپیوتر خودتان اجرا کنید.", text: "نیازی به خرید سرور نیست. بات یا برنامه روی کامپیوتر خانه یا محل کارتان اجرا می‌شود و فقط به دالان متصل می‌شود. IP عمومی هم لازم نیست." },
-    { title: "کاربران واقعی، تأییدشده با ایمیل یا پیامک.", text: "هویت همه‌ی کاربران دالان با ایمیل یا پیامک تأیید شده است؛ نیازی نیست خودتان سیستم ورود بسازید." },
-    { title: "حتی در زمان قطعی اینترنت بین‌الملل کار می‌کند.", text: "سرورهای دالان در ایران است؛ بات شما و کاربرانش بدون اینترنت بین‌الملل هم به هم متصل می‌شوند." },
+    { title: "برنامه‌ی خود را روی کامپیوتر خودتان اجرا کنید", text: "نیازی به خرید سرور نیست. بات یا برنامه روی کامپیوتر خانه یا محل کارتان اجرا می‌شود و فقط به دالان متصل می‌شود. IP عمومی هم لازم نیست." },
+    { title: "کاربران واقعی، تأییدشده با ایمیل یا پیامک", text: "هویت همه‌ی کاربران دالان با ایمیل یا پیامک تأیید شده است؛ نیازی نیست خودتان سیستم ورود بسازید." },
+    { title: "حتی در زمان قطعی اینترنت بین‌الملل کار می‌کند", text: "سرورهای دالان در ایران است؛ بات شما و کاربرانش بدون اینترنت بین‌الملل هم به هم متصل می‌شوند." },
   ],
   en: [
-    { title: "Run your app from your own computer.", text: "Do not buy a server. Your bot or app stays on your home or office computer and only connects out to Dalan. No public IP is needed." },
-    { title: "Get real users, verified by email or SMS.", text: "Every Dalan user is verified by email or SMS. You do not need to build a login." },
-    { title: "Keep working when outside links are down.", text: "Dalan's servers are inside the country. Your bot and its users still reach each other when links to the outside world are down." },
+    { title: "Run your app from your own computer", text: "Do not buy a server. Your bot or app stays on your home or office computer and only connects out to Dalan. No public IP is needed." },
+    { title: "Get real users, verified by email or SMS", text: "Every Dalan user is verified by email or SMS. You do not need to build a login." },
+    { title: "Keep working when outside links are down", text: "Dalan's servers are inside the country. Your bot and its users still reach each other when links to the outside world are down." },
   ],
 };
 
@@ -48,13 +48,13 @@ export const landing: Record<Lang, { title: string; text: string }[]> = {
 export const hero: Record<Lang, { title: string; glow: string; text: string; plans: string }> = {
   fa: {
     title: "بات روی کامپیوتر خودتان؛",
-    glow: "در دسترس کاربران سراسر ایران.",
+    glow: "در دسترس کاربران سراسر ایران",
     text: "دالان کاربران تأییدشده را به بات یا برنامه‌ای که روی کامپیوتر شما اجرا می‌شود متصل می‌کند؛ بدون نیاز به سرور، IP عمومی یا باز کردن پورت.",
     plans: "طرح‌ها را ببینید",
   },
   en: {
     title: "Your bot on your computer,",
-    glow: "reachable from anywhere.",
+    glow: "reachable from anywhere",
     text: "Dalan brings verified users to the bot or app on your own computer. No server, no public IP, no open port.",
     plans: "See the plans",
   },
@@ -71,15 +71,15 @@ export interface Product {
 /** CLI-26: the plans: the product cards and the words of their traffic pictures. Both are built (CLI-39). */
 export const products: Record<Lang, Product[]> = {
   fa: [
-    { label: "اتصال بات", title: "مسیری امن میان کاربران و بات شما.", text: "کاربر در دالان پیام می‌فرستد و بات روی کامپیوتر شما پیام‌ها را با getUpdates دریافت می‌کند.", soon: false, guide: "/guide/bot",
+    { label: "اتصال بات", title: "مسیری امن میان کاربران و بات شما", text: "کاربر در دالان پیام می‌فرستد و بات روی کامپیوتر شما پیام‌ها را با getUpdates دریافت می‌کند.", soon: false, guide: "/guide/bot",
       from: "کاربران تأییدشده", branches: [{ via: "getUpdates", to: "@shop_bot" }, { via: "getUpdates", to: "@game_bot" }], frame: "کامپیوتر شما · فقط اتصال خروجی", guards: ["محدودیت تعداد درخواست", "بررسی امنیتی پیش از ارسال پیامک", "ثبت گزارش دسترسی‌ها"] },
-    { label: "سایت‌ها", title: "سایت روی کامپیوتر شما، با یک آدرس ثابت.", text: "یک برنامه‌ی کوچک روی کامپیوتر شما به دالان متصل می‌شود و سایت محلی‌تان را در اختیار بازدیدکنندگان قرار می‌دهد.", soon: false, guide: "/guide/site",
+    { label: "سایت‌ها", title: "سایت روی کامپیوتر شما، با یک آدرس ثابت", text: "یک برنامه‌ی کوچک روی کامپیوتر شما به دالان متصل می‌شود و سایت محلی‌تان را در اختیار بازدیدکنندگان قرار می‌دهد.", soon: false, guide: "/guide/site",
       from: "بازدیدکنندگان", branches: [{ via: "/", to: "localhost:3000" }, { via: "/api", to: "localhost:8080" }], frame: "کامپیوتر شما", guards: ["HTTPS", "زیردامنه‌ی ثابت", "ثبت گزارش دسترسی‌ها"] },
   ],
   en: [
-    { label: "Bot relay", title: "A passage between users and your bot.", text: "Users write in Dalan. The bot on your computer picks up messages with getUpdates.", soon: false, guide: "/guide/bot",
+    { label: "Bot relay", title: "A passage between users and your bot", text: "Users write in Dalan. The bot on your computer picks up messages with getUpdates.", soon: false, guide: "/guide/bot",
       from: "Verified users", branches: [{ via: "getUpdates", to: "@shop_bot" }, { via: "getUpdates", to: "@game_bot" }], frame: "Your computer · outgoing only", guards: ["Rate limits", "Proof of work before SMS", "Access log"] },
-    { label: "Sites", title: "A site on your computer, at a fixed address.", text: "A small program on your computer connects out to Dalan and shows your local site to visitors.", soon: false, guide: "/guide/site",
+    { label: "Sites", title: "A site on your computer, at a fixed address", text: "A small program on your computer connects out to Dalan and shows your local site to visitors.", soon: false, guide: "/guide/site",
       from: "Visitors", branches: [{ via: "/", to: "localhost:3000" }, { via: "/api", to: "localhost:8080" }], frame: "Your computer", guards: ["HTTPS", "Fixed subdomain", "Access log"] },
   ],
 };
@@ -172,16 +172,16 @@ export const security: Record<Lang, string[]> = {
 
 /** CLI-26: the closing call of the landing page. */
 export const closing: Record<Lang, { title: string; glow: string; text: string }> = {
-  fa: { title: "همین حالا شروع کنید.", glow: "بات خود را راه‌اندازی کنید.", text: "وارد شوید و اولین بات خود را بسازید، یا بات‌های ویترین را ببینید." },
-  en: { title: "Your turn.", glow: "Put your bot online.", text: "Log in and make your first bot, or look at the bots in the showcase." },
+  fa: { title: "همین حالا شروع کنید", glow: "بات خود را راه‌اندازی کنید", text: "وارد شوید و اولین بات خود را بسازید، یا بات‌های ویترین را ببینید." },
+  en: { title: "Your turn", glow: "Put your bot online", text: "Log in and make your first bot, or look at the bots in the showcase." },
 };
 
 /** CLI-26: the small labels above the landing sections and the words of the footer. */
 export const labels: Record<Lang, Record<"plans" | "plansTitle" | "getStarted" | "offers" | "offersTitle" | "why" | "security" | "soon" | "resources" | "product" | "start", string>> = {
-  fa: { plans: "طرح‌ها", plansTitle: "چه چیزی را می‌خواهید آنلاین کنید؟", getStarted: "شروع کنید", offers: "امکانات", offersTitle: "هر آنچه برای ارتباط کاربران با کامپیوتر شما لازم است.",
-    why: "چرا دالان؟", security: "امنیت، از همان ابتدا.", soon: "به‌زودی", resources: "منابع", product: "محصولات", start: "رایگان امتحان کنید" },
-  en: { plans: "Plans", plansTitle: "What do you want to put online?", getStarted: "Get started", offers: "What you get", offersTitle: "Everything between your users and your computer.",
-    why: "Why Dalan", security: "Security from day one.", soon: "Soon", resources: "Resources", product: "Product", start: "Try it (free)" },
+  fa: { plans: "طرح‌ها", plansTitle: "چه چیزی را می‌خواهید آنلاین کنید؟", getStarted: "شروع کنید", offers: "امکانات", offersTitle: "هر آنچه برای ارتباط کاربران با کامپیوتر شما لازم است",
+    why: "چرا دالان؟", security: "امنیت، از همان ابتدا", soon: "به‌زودی", resources: "منابع", product: "محصولات", start: "رایگان امتحان کنید" },
+  en: { plans: "Plans", plansTitle: "What do you want to put online?", getStarted: "Get started", offers: "What you get", offersTitle: "Everything between your users and your computer",
+    why: "Why Dalan", security: "Security from day one", soon: "Soon", resources: "Resources", product: "Product", start: "Try it (free)" },
 };
 
 /** CLI-27: the six points of DESIGN section 13. `n` writes a number in the page's digits. */
