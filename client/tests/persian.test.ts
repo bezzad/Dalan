@@ -29,11 +29,11 @@ const persian: [string, string][] = [
   ["readyPrompt", pages.readyPrompt("fa", numbers.site_url, numbers.bot_api_url)],
 ];
 
-// A Persian letter, so that «ربات» or «دسکتاپ» never match «بات» or «اپ».
+// A Persian letter, so that «دسکتاپ» never matches «اپ».
 const letter = "[\\u0600-\\u06FF]";
 const word = (text: string) => new RegExp(`(?<!${letter})${text}(?!${letter})`);
 const literal: [string, RegExp][] = [
-  ["بات", new RegExp(`(?<!${letter})بات`)], ["رله", /رله/], ["اپ", word("اپ")], ["ایجنت", /ایجنت/], ["ادمین", /ادمین/],
+  ["ربات", /ربات/], ["رله", /رله/], ["اپ", word("اپ")], ["ایجنت", /ایجنت/], ["ادمین", /ادمین/],
   ["پلن", /پلن/], ["لاگ", word("لاگ")], ["تم:", /(?<![؀-ۿ])تم:/], ["گواه کار", /گواه کار/],
   ["محدودیت سرعت", /محدودیت سرعت/], ["سوال‌های رایج", /سوال‌های رایج/], ["گفتگو", /گفتگو/],
 ];

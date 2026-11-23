@@ -5,8 +5,8 @@ import { errorText, type App, type Screen } from "./app.ts";
 import { h } from "./dom.ts";
 import { toast } from "./toast.ts";
 import { stepCards } from "./codeView.ts";
-import { guideSteps } from "./guide.ts";
-import { categoryName, showcaseStateName } from "./pages.ts";
+import { botRunSteps } from "./guide.ts";
+import { categoryName, showcaseStateName, type PublicNumbers } from "./pages.ts";
 import { BuilderList, type BuilderBot, type NewToken } from "./panels.ts";
 
 export function builderScreen(app: App): Screen {
@@ -14,6 +14,8 @@ export function builderScreen(app: App): Screen {
   const state = new BuilderList();
   const list = h("ul", { class: "rows" });
   const tokenCard = h("section", { class: "card token", hidden: true });
+  const runSteps = h("div", { class: "steps" });
+  let settings: PublicNumbers | null = null;
 
   const failed = (failure: unknown) => {
     toast(failure instanceof ApiError && failure.code === "bad_request" ? t("badBot") : t(errorText(failure)), "error");
@@ -37,6 +39,7 @@ export function builderScreen(app: App): Screen {
 
   // CLI-24: the token is in no list and is gone once closed; the server shows it only in this one answer.
   function drawToken(token: NewToken | null): void {
+    drawRun();
     tokenCard.hidden = token === null;
     if (!token) return tokenCard.replaceChildren();
     tokenCard.replaceChildren(
@@ -190,12 +193,20 @@ export function builderScreen(app: App): Screen {
 
   return { element };
 
-  /** CLI-38: the guide's steps after the token, in this screen, so the builder needs no other page. */
+  /** CLI-38: the guide's steps after the token, numbered from 1, in this screen, so the builder needs no other page. */
   function runPart(): HTMLElement {
+    api.publicSettings().then(values => {
+      settings = values;
+      drawRun();
+    }, failed);
+    return h("section", { class: "guide" }, h("h2", {}, t("guideRun")), runSteps,
+      h("p", {}, h("a", { href: "/guide", onclick: event => { event.preventDefault(); app.go("/guide"); } }, t("guideTitle"))));
+  }
+
+  // CLI-38: while a new token is on screen, the token test has it, ready to copy.
+  function drawRun(): void {
+    if (!settings) return;
     const n = (value: number) => app.language.number(value);
-    const part = h("section", { class: "guide" }, h("h2", {}, t("guideRun")));
-    api.publicSettings().then(values => part.append(...stepCards(guideSteps(app.language.current, values, n).slice(4), 5, t, n),
-      h("p", {}, h("a", { href: "/guide", onclick: event => { event.preventDefault(); app.go("/guide"); } }, t("guideTitle")))), failed);
-    return part;
+    runSteps.replaceChildren(...stepCards(botRunSteps(app.language.current, settings, n, state.shownToken?.token ?? null), 1, t, n));
   }
 }
