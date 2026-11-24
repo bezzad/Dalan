@@ -4,8 +4,11 @@ import { errorText } from "./app.ts";
 import { h } from "./dom.ts";
 import { botFace } from "./icon.ts";
 import { gate } from "./logo.ts";
-import { stepCards } from "./codeView.ts";
 import { guideSteps, siteGuideSteps } from "./guide.ts";
+import { openKeyModal } from "./keyModal.ts";
+import type { BuilderState } from "./panels.ts";
+import { stepper } from "./stepper.ts";
+import { botDone, siteDone } from "./steps.ts";
 import type { Language } from "./i18n.ts";
 import { themeButton, type Theme } from "./theme.ts";
 import { about, categoryName, closing, faqItems, hero, initial, labels, landing, notOffered, offers, privacyPoints, products, security, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
@@ -20,6 +23,8 @@ export interface PublicContext {
   loggedIn: boolean;
   /** CLI-57: the logged-in user's email, or null for a visitor or a user with none. */
   email: string | null;
+  /** CLI-64, CLI-66: the logged-in user for the guides, or null for a visitor. */
+  user: GuideUser | null;
   /** Goes to an address of the site without a page load. */
   go(path: string): void;
   /** A visitor gets the login screen; a logged-in user goes to the bot list. */
@@ -29,6 +34,23 @@ export interface PublicContext {
 }
 
 let numbers: Promise<PublicNumbers> | null = null;
+
+/** CLI-64: what the stepper needs to know about the person. */
+export type GuideUser = { name: string; username: string | null; builder: BuilderState; admin: boolean; has_phone: boolean };
+
+/** CLI-64: the site guide's done list from the server. A call that fails counts as "not known", never as an error. */
+async function siteFacts(user: GuideUser): Promise<{ done: boolean[]; hasKey: boolean }> {
+  const [keys, mine] = await Promise.all([api.accessKeys().catch(() => []), api.mySites().catch(() => null)]);
+  const sitesOnline = mine?.sites.filter(site => site.online).length ?? 0;
+  return { done: siteDone({ user, keys: keys.length, sitesOnline }), hasKey: keys.length > 0 };
+}
+
+/** CLI-64: the bot guide's done list; a visitor has nothing done. */
+async function botFacts(user: GuideUser | null): Promise<boolean[]> {
+  if (!user) return [];
+  const bots = await api.builderBots().catch(() => []);
+  return botDone({ user, bots: bots.length });
+}
 
 // Small line icons, drawn in the page (rule 7: nothing from another host). Each is a list of SVG path data on a 24 by 24 grid.
 const icons = {
@@ -213,11 +235,24 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
       break;
     case "guideBot":
       body.append(h("h2", { class: "title" }, t("guideTitle")));
-      withNumbers(values => body.append(...stepCards(guideSteps(lang, values, n), 1, t, n)));
+      // CLI-64: a logged-in person sees what is already done; a visitor sees the same steps, the first one open.
+      withNumbers(values => void botFacts(context.user).then(done =>
+        body.append(stepper({ steps: guideSteps(lang, values, n), done, t, n }))));
       break;
     case "guideSite":
       body.append(h("h2", { class: "title" }, t("guideSiteTitle")));
-      withNumbers(values => body.append(...stepCards(siteGuideSteps(lang, values), 1, t, n)));
+      // CLI-66: a visitor logs in first; the steps come after the login, at this same address (CLI-63).
+      if (!context.user) {
+        body.append(h("section", { class: "card" },
+          h("p", {}, t("guideLoginFirst")),
+          h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => context.enter() }, t("login")))));
+        break;
+      }
+      withNumbers(values => void siteFacts(context.user!).then(facts => body.append(stepper({
+        steps: siteGuideSteps(lang, values), done: facts.done, t, n, hasKey: facts.hasKey,
+        // CLI-65: the key is made in a modal on this page; the step turns green after it.
+        makeKey: made => void openKeyModal(t, made),
+      }))));
       break;
   }
 

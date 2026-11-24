@@ -25,6 +25,11 @@ public sealed class TunnelClient(
     /// <summary>The wait before the first new try; it doubles up to 30 seconds (AGT-06).</summary>
     public TimeSpan FirstWait { get; init; } = TimeSpan.FromSeconds(1);
 
+    /// <summary>AGT-16: opens the first site's address in a browser, once per run (null: never). A failure never stops the agent.</summary>
+    public Action<string>? OpenBrowser { get; init; }
+
+    private bool _opened;
+
     /// <summary>How the last connection was served: "websocket" or "polling" (for tests and the status line).</summary>
     public string? Transport { get; private set; }
 
@@ -158,6 +163,20 @@ public sealed class TunnelClient(
         }
 
         output.WriteLine(_demoId is null ? "Press Ctrl+C to stop." : "Press Ctrl+C to stop and end the demo.");
+
+        // AGT-16: the first time only, never again after a reconnect.
+        if (!_opened && OpenBrowser is { } open && session.Sites.Count > 0)
+        {
+            _opened = true;
+            try
+            {
+                open(session.Sites[0].Url);
+            }
+            catch (Exception)
+            {
+                // The site is online; a browser that does not open is only a missing convenience.
+            }
+        }
     }
 
     /// <summary>AGT-15: one line per site of the key's builder: name, address, online or offline.</summary>

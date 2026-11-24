@@ -60,3 +60,19 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - A title, heading, label or button never ends with a full stop (CLI-44). Sentences in paragraphs, notes and toasts keep theirs.
 - Persian is a little formal and uses the common word, never a literal translation (CLI-43). Glossary: «بات» (not «ربات»), «اتصال بات» (not «رله»), «برنامه» (not «اپ»), «برنامه‌ی رابط دالان» (not «ایجنت»), «توسعه‌دهنده» for the builder role, «مدیر» (not «ادمین»), «رمز عبور», «جدید» (not «تازه»), «طرح‌ها» (not «پلن»), «گزارش» (not «لاگ»), «پوسته» (not «تم»), «پرسش‌های متداول», «گفت‌وگو». «می‌» and «ها» always with a zero-width non-joiner.
 - English text, titles, meta and SEO never name Iran (sanctions, search engines); say "inside the country" or "when outside links are down". Persian may say ایران (CLI-41).
+
+## Login screen (CLI-62, CLI-36)
+- The Dalan gate on top (64px), the name under it, then one card.
+- The card opens with the password form. A line "or" separates it from the other ways: SMS (phone icon), email (envelope icon), GitHub (its mark), one equal button each, in the order of CLI-36. The development login is a small link under the card.
+- Every icon is drawn in the page (rule 7).
+
+## Guides as steppers (CLI-64 to CLI-66)
+- A guide is a list of step cards (`ol.stepper`). The step to do now is open, with Back and Next. A step already done is green with a check and "Done", closed, and opens on a press.
+- What is done comes from the server (logged in, builder, a key, a site online, a bot made), never from a guess. A step the server cannot know is done by Next.
+- The key step has a button that opens a modal (`dialog.modal`) on the same page: it makes the key and shows the login command once, with Copy. It never leaves the page.
+- A visitor on the site guide sees only "Log in first" and a Log in button; after the login the same address shows the steps (CLI-63).
+
+## Navigation and phone (CLI-68, CLI-69)
+- Going to another address scrolls to the top; an address with a #part goes to that part. Back and Forward keep the browser's place.
+- The viewport is scale 1 with no pinch zoom; every field is 16px or more, so a phone never zooms on focus.
+- Examples never name a personal or company project: `mysite` and `shop` (CLI-67).

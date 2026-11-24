@@ -58,7 +58,7 @@ function screen(page: "landing" | "about" | "contact", lang: "fa" | "en", email:
   const language = new Language({ lang: "", dir: "" }, storage());
   if (lang === "en") language.toggle();
   return publicScreen(page, {
-    language, loggedIn: email !== null, email, go: () => {}, enter: () => {}, tools: document.createElement("div") }) as unknown as FakeElement;
+    language, loggedIn: email !== null, email, user: null, go: () => {}, enter: () => {}, tools: document.createElement("div") }) as unknown as FakeElement;
 }
 
 const landing = (lang: "fa" | "en") => screen("landing", lang);

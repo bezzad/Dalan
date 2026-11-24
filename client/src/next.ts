@@ -35,6 +35,11 @@ export function takeNext(storage?: Storage): string | null {
   }
 }
 
+/** CLI-68: a link to another address starts at the top, unless it names a #part. */
+export function startsAtTop(path: string): boolean {
+  return !path.includes("#");
+}
+
 /** CLI-63: the address someone asked for: `?next=` first, then the kept path; null when neither is accepted. */
 export function askedNext(search: string, kept: string | null): string | null {
   return safeNext(new URLSearchParams(search).get("next")) ?? safeNext(kept);

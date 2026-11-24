@@ -2,13 +2,13 @@
 
 ## Why
 
-The owner ran Levelwise (an Astro site with a PocketBase backend) through Dalan on 2026-11-24 and found these gaps:
+The owner ran A real app (an Astro site with a PocketBase backend) through Dalan on 2026-11-24 and found these gaps:
 
 1. **Crash on 204 and 304.** The proxy writes a body for answers that may not have one, so the visitor's connection breaks. Browsers get 304 each time they check a cached file.
-2. **A first visit breaks the page.** Levelwise's service worker asks for 1018 files at once. Over `Sites:MaxPendingPerAddress` (50) the page's own CSS, JS and fonts get 429. Many mobile users also share one address (CGNAT).
+2. **A first visit breaks the page.** Mysite's service worker asks for 1018 files at once. Over `Sites:MaxPendingPerAddress` (50) the page's own CSS, JS and fonts get 429. Many mobile users also share one address (CGNAT).
 3. **No streaming.** An answer must be complete before it is sent. Server-Sent Events never end, so PocketBase realtime (OAuth sign-in, live support chat) always gets 504.
 4. **A stopped agent looks slow, not off.** After Ctrl+C or a dropped connection the session lives until `Sites:SessionIdleSeconds`, so visitors wait 30 seconds and see "did not answer in time".
-5. **The agent prints a wrong local link.** `Online: http://levelwise.localhost` has no `:5000`.
+5. **The agent prints a wrong local link.** `Online: http://mysite.localhost` has no `:5000`.
 6. **The name is not reserved.** The "site name" field in My apps only builds the command; another builder can take the name first, and the page never says the name is yours.
 7. **Test or service?** `dalan http` runs in the terminal. Closing it, logging out or a restart takes the site offline, and the guide does not say so.
 

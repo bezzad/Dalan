@@ -179,4 +179,4 @@ ngrok's own ratio (about 0.6% of users pay) suggests that 200 paying customers n
 - [ ] What does one OTP SMS cost at Kavenegar and SMS.ir today?
 - [ ] What does traffic cost per GB at the chosen data centre?
 - [ ] Which payment gateway, and what registration does it need?
-- [ ] Do the plan prices above feel right to the owner and the first known users (Valorians, Levelwise)?
+- [ ] Do the plan prices above feel right to the owner and the first known users (a friend's game, a personal site)?

@@ -21,10 +21,10 @@ public class AgentServiceTests(PostgresServer postgres)
         var (browser, _, key) = await app.BuilderAsync();
         var file = string.Concat(Enumerable.Range(0, 300_000).Select(i => (char)('a' + i % 26)));
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
-        var run = app.RealAgent(key, FakeLocalApp.Text(file), webSocket: webSocket).RunAsync([new("levelwise", 3000)], stop.Token);
-        await browser.WaitOnlineAsync("levelwise");
+        var run = app.RealAgent(key, FakeLocalApp.Text(file), webSocket: webSocket).RunAsync([new("mysite", 3000)], stop.Token);
+        await browser.WaitOnlineAsync("mysite");
 
-        var page = await app.Visitor("levelwise").GetStringAsync("/big.txt", Cancel);
+        var page = await app.Visitor("mysite").GetStringAsync("/big.txt", Cancel);
 
         Assert.Equal(file.Length, page.Length);
         Assert.Equal(file, page);
@@ -43,11 +43,11 @@ public class AgentServiceTests(PostgresServer postgres)
         var events = new EventStream();
         var local = new FakeLocalApp(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(events) }));
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
-        var run = app.RealAgent(key, local, webSocket: webSocket).RunAsync([new("levelwise", 3000)], stop.Token);
-        await browser.WaitOnlineAsync("levelwise");
+        var run = app.RealAgent(key, local, webSocket: webSocket).RunAsync([new("mysite", 3000)], stop.Token);
+        await browser.WaitOnlineAsync("mysite");
 
         events.Write("data: 1\n\n");
-        var response = await app.Visitor("levelwise").GetAsync("/events", HttpCompletionOption.ResponseHeadersRead, Cancel);
+        var response = await app.Visitor("mysite").GetAsync("/events", HttpCompletionOption.ResponseHeadersRead, Cancel);
         var stream = await response.Content.ReadAsStreamAsync(Cancel);
         var first = await stream.ReadSomeAsync();
         events.Write("data: 2\n\n");
@@ -72,12 +72,12 @@ public class AgentServiceTests(PostgresServer postgres)
         var events = new EventStream();
         var local = new FakeLocalApp(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(events) }));
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
-        var run = app.RealAgent(key, local, webSocket: webSocket).RunAsync([new("levelwise", 3000)], stop.Token);
-        await browser.WaitOnlineAsync("levelwise");
+        var run = app.RealAgent(key, local, webSocket: webSocket).RunAsync([new("mysite", 3000)], stop.Token);
+        await browser.WaitOnlineAsync("mysite");
         using var leave = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
 
         events.Write("data: 1\n\n");
-        var response = await app.Visitor("levelwise").GetAsync("/events", HttpCompletionOption.ResponseHeadersRead, leave.Token);
+        var response = await app.Visitor("mysite").GetAsync("/events", HttpCompletionOption.ResponseHeadersRead, leave.Token);
         await (await response.Content.ReadAsStreamAsync(Cancel)).ReadSomeAsync();
         await leave.CancelAsync();
         response.Dispose();
@@ -101,16 +101,16 @@ public class AgentServiceTests(PostgresServer postgres)
         var (browser, _, key) = await app.BuilderAsync();
         var output = new StringWriter();
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
-        var run = app.RealAgent(key, FakeLocalApp.Text("hi"), output, webSocket: false).RunAsync([new("levelwise", 3000)], stop.Token);
-        await browser.WaitOnlineAsync("levelwise");
+        var run = app.RealAgent(key, FakeLocalApp.Text("hi"), output, webSocket: false).RunAsync([new("mysite", 3000)], stop.Token);
+        await browser.WaitOnlineAsync("mysite");
 
         await stop.CancelAsync();
         await run;
-        var response = await app.Visitor("levelwise").GetAsync("/", Cancel);
+        var response = await app.Visitor("mysite").GetAsync("/", Cancel);
 
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
         Assert.Equal("site_offline", response.SiteError());
-        Assert.Null(app.Services.GetRequiredService<TunnelHub>().Find("levelwise"));
+        Assert.Null(app.Services.GetRequiredService<TunnelHub>().Find("mysite"));
         Assert.Contains("offline", output.ToString(), StringComparison.Ordinal);
     }
 
@@ -207,21 +207,21 @@ public class AgentServiceTests(PostgresServer postgres)
         var (browser, _, key) = await app.BuilderAsync();
         await browser.PostAsJsonAsync("/api/sites", new { name = "shop" }, Cancel);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
-        var run = app.RealAgent(key, FakeLocalApp.Text("hi")).RunAsync([new("levelwise", 3000)], stop.Token);
-        await browser.WaitOnlineAsync("levelwise");
+        var run = app.RealAgent(key, FakeLocalApp.Text("hi")).RunAsync([new("mysite", 3000)], stop.Token);
+        await browser.WaitOnlineAsync("mysite");
         using var setup = new Setup(ServiceSystem.Linux);
 
         var sites = await TunnelClient.StatusAsync(app.CreateClient(), key);
         var service = setup.Installer.Status();
 
-        Assert.Contains($"levelwise  https://levelwise.{Domain}  online", sites, StringComparison.Ordinal);
+        Assert.Contains($"mysite  https://mysite.{Domain}  online", sites, StringComparison.Ordinal);
         Assert.Contains($"shop  https://shop.{Domain}  offline", sites, StringComparison.Ordinal);
         Assert.Equal("Service: not installed (dalan service install)", service);
         await stop.CancelAsync();
         await run;
     }
 
-    private static readonly AgentConfig Saved = new("https://tunnel.test", "dalan_key", [new SiteEntry("levelwise", 3000)]);
+    private static readonly AgentConfig Saved = new("https://tunnel.test", "dalan_key", [new SiteEntry("mysite", 3000)]);
 
     /// <summary>A home folder of its own and a recorded system: no real systemctl, launchctl or reg runs.</summary>
     private sealed class Setup : IDisposable

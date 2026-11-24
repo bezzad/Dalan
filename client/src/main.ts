@@ -11,7 +11,7 @@ import { chatScreen } from "./chat.ts";
 import { Language, type TextKey } from "./i18n.ts";
 import { Live } from "./live.ts";
 import { loginScreen, markReturning } from "./login.ts";
-import { askedNext, loginTarget, rememberNext, takeNext } from "./next.ts";
+import { askedNext, loginTarget, rememberNext, startsAtTop, takeNext } from "./next.ts";
 import { botPageUsername, initial, pageFor } from "./pages.ts";
 import { h } from "./dom.ts";
 import { toastRegion } from "./toast.ts";
@@ -60,6 +60,8 @@ function showLogin(error: TextKey | null = null): void {
 function navigate(path: string): void {
   history.pushState(null, "", path);
   render();
+  // CLI-68: a new page starts at the top; an address with a #part goes to that part (show() does it).
+  if (startsAtTop(path)) window.scrollTo(0, 0);
 }
 
 function render(): void {
@@ -125,6 +127,7 @@ function publicPage(page: PublicPage, loggedIn: boolean): HTMLElement {
     language,
     loggedIn,
     email: app?.user.email ?? null,
+    user: app?.user ?? null,
     go: navigate,
     enter: loggedIn ? () => navigate("/chats") : showLogin,
   });

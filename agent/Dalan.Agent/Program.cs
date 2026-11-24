@@ -91,7 +91,13 @@ static async Task<int> RunAsync(Command command, AgentConfig config, IReadOnlyLi
     using var http = new HttpClient { BaseAddress = new Uri(server), Timeout = TimeSpan.FromMinutes(2) };
     using var handler = LocalForwarder.RealHandler();
     using var local = new LocalForwarder(handler);
-    var client = new TunnelClient(http, config.Key, TunnelClient.RealWebSocket, local, Console.Out);
+    // AGT-16: "dalan http" on a desktop opens the site once; the service, start and demo never do.
+    var opener = BrowserOpener.ShouldOpen(command.Kind, command.NoOpen, Console.IsOutputRedirected, OperatingSystem.IsWindows(),
+        OperatingSystem.IsMacOS(), Environment.GetEnvironmentVariable);
+    var client = new TunnelClient(http, config.Key, TunnelClient.RealWebSocket, local, Console.Out)
+    {
+        OpenBrowser = opener ? BrowserOpener.OpenReal : null,
+    };
     Console.WriteLine($"Connecting to {server} ...");
     await client.RunAsync(sites, stop.Token, demoPort);
     return 0;

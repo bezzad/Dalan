@@ -6,8 +6,8 @@
 The user menu SHALL open "My apps" at `/apps`. For a builder it SHALL list their sites (name, address as a link, online or offline) with a delete that asks first, and refresh the list every 10 seconds while the screen is open. It SHALL show a step-by-step guide: 1) install the agent, 2) log in with a key made here by one button (the full `dalan login` command, shown once, with Copy), 3) choose a port and a name, with a "Reserve" button that claims the name at once and says when it is taken, 4) try it with `dalan http <port> --name <name>` (it runs while the terminal is open; Ctrl+C stops it), with an example for two sites, 5) keep it online with `dalan service install`, and `dalan status` to check. Every action SHALL end in a toast. A user who is not a builder SHALL see how to become one instead.
 
 #### Scenario: Guide commands
-- **WHEN** the guide is drawn for the name `levelwise` and port `3000`
-- **THEN** it shows `dalan http 3000 --name levelwise` and `dalan service install`
+- **WHEN** the guide is drawn for the name `mysite` and port `3000`
+- **THEN** it shows `dalan http 3000 --name mysite` and `dalan service install`
 
 #### Scenario: Reserve
 - **WHEN** a builder reserves the name in the guide

@@ -2,7 +2,7 @@
 // install, log in, reserve a name (SITE-24), try it, keep it online as a service (AGT-14).
 import { api, type MySites, type Site } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
-import { httpCommand, installCommands, loginCommand, serviceCommands } from "./appGuide.ts";
+import { defaultSiteName, httpCommand, installCommands, loginCommand, serviceCommands } from "./appGuide.ts";
 import { h } from "./dom.ts";
 import { builderView } from "./panels.ts";
 import { toast } from "./toast.ts";
@@ -100,11 +100,11 @@ export function appsScreen(app: App): Screen {
 
     // Step 3: the port and the name; the name can be kept now (SITE-24). Step 4 follows what the user types.
     const port = h("input", { id: "app-port", type: "number", min: "1", max: "65535", value: "3000", dir: "ltr" });
-    const name = h("input", { id: "site-name", type: "text", dir: "ltr", autocapitalize: "none", autocomplete: "off", value: "myapp" });
+    const name = h("input", { id: "site-name", type: "text", dir: "ltr", autocapitalize: "none", autocomplete: "off", value: defaultSiteName(app.user) });
     const nameNote = h("p", { class: "note" });
     const run = h("div", {});
     const update = () => {
-      const site = { port: Number(port.value) || 3000, name: name.value.trim().toLowerCase() || "myapp" };
+      const site = { port: Number(port.value) || 3000, name: name.value.trim().toLowerCase() || "mysite" };
       nameNote.textContent = t("siteNameNote").replace("{url}", `${mine.scheme}://${site.name}.${mine.domain || "…"}`);
       run.replaceChildren(codeBlock(httpCommand([site])));
     };

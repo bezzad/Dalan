@@ -1,8 +1,54 @@
-// Rules: CLI-64, CLI-67
+// Rules: CLI-64, CLI-65, CLI-66, CLI-67
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { botDone, siteDone, stepStates } from "../src/steps.ts";
 import { defaultSiteName } from "../src/appGuide.ts";
+import { siteGuideSteps } from "../src/guide.ts";
+import { texts } from "../src/i18n.ts";
+
+const numbers = { history_messages: 200, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60,
+  site_url: "https://example.ir", bot_api_url: "https://api.example.ir", contact_max_length: 2000 };
+const source = (file: string) => readFileSync(new URL(file, import.meta.url), "utf8");
+
+test("CLI-65 the key step says it is for the first site, and opens a modal on the same page", () => {
+  for (const lang of ["fa", "en"] as const) {
+    const steps = siteGuideSteps(lang, numbers);
+    assert.equal(steps.length, 5);
+    assert.equal(steps.filter(step => step.key).length, 1, lang);
+    assert.equal(steps[2]!.key, true, lang);
+  }
+  assert.match(siteGuideSteps("en", numbers)[2]!.text, /first time you hand us a site/);
+  assert.match(siteGuideSteps("fa", numbers)[2]!.text, /اولین بار است سایتی/);
+  const modal = source("../src/keyModal.ts");
+  assert.match(modal, /showModal\(\)/);
+  assert.match(modal, /api\.makeKey/);
+  assert.match(modal, /loginCommand\(/);
+  assert.doesNotMatch(modal, /navigate|location|app\.go/);
+  for (const key of ["keyLink", "keyLinkAgain", "keyModalNote"] as const) assert.ok(texts.fa[key] && texts.en[key], key);
+});
+
+test("CLI-64 the stepper opens the first step not done, marks done steps and has Back and Next", () => {
+  const view = source("../src/stepper.ts");
+  assert.match(view, /stepStates\(isDone\(\)\)/);
+  assert.match(view, /t\("stepDone"\)/);
+  assert.match(view, /t\("stepNext"\)/);
+  assert.match(view, /t\("stepBack"\)/);
+  const page = source("../src/public.ts");
+  assert.match(page, /api\.accessKeys\(\)/);
+  assert.match(page, /api\.mySites\(\)/);
+  assert.match(page, /api\.builderBots\(\)/);
+});
+
+test("CLI-66 a visitor of the site guide gets the log in line and no steps", () => {
+  const page = source("../src/public.ts");
+  const guest = page.slice(page.indexOf('case "guideSite"'));
+  assert.ok(guest.indexOf("guideLoginFirst") < guest.indexOf("siteGuideSteps"));
+  assert.match(guest, /if \(!context\.user\)/);
+  assert.match(guest, /context\.enter\(\)/);
+  assert.match(texts.en.guideLoginFirst, /Log in first/);
+  assert.ok(texts.fa.guideLoginFirst.length > 0);
+});
 
 test("CLI-64 the first step not done is the current one; steps before are done, after are todo", () => {
   assert.deepEqual(stepStates([true, false, true, false]), ["done", "current", "done", "todo"]);
