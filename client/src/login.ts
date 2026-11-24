@@ -2,7 +2,7 @@
 // password (AUTH-14) and the development login (AUTH-06).
 import { ApiError, api, type AuthSettings, type User } from "./api.ts";
 import { errorText } from "./app.ts";
-import { latinDigits } from "./digits.ts";
+import { latinDigits, phoneNumber } from "./digits.ts";
 import { h } from "./dom.ts";
 import type { Language, TextKey } from "./i18n.ts";
 import { solve } from "./pow.ts";
@@ -70,7 +70,7 @@ export function loginScreen(
   const channels = {
     sms: {
       title: "loginTitle", note: "loginNote", sent: "codeSent", change: "changePhone", newName: "nameNeeded", label: "phone",
-      input: phoneInput, clean: latinDigits,
+      input: phoneInput, clean: phoneNumber,
       ask: async (to: string) => {
         const { challenge, difficulty } = await api.challenge({ phone: to });
         return api.sendCode(to, challenge, await solve(challenge, difficulty));
@@ -149,7 +149,7 @@ export function loginScreen(
     return form("passwordLoginTitle", "loginName", "login", [
       h("label", { for: "login" }, t("loginName")), login,
       h("label", { for: "password" }, t("password")), secret,
-    ], async () => onLogin(await api.passwordLogin(latinDigits(login.value), secret.value)));
+    ], async () => onLogin(await api.passwordLogin(phoneNumber(login.value), secret.value)));
   }
 
   function dev(): HTMLElement {
@@ -158,7 +158,7 @@ export function loginScreen(
     return form("devLoginTitle", "devLoginNote", "login", [
       h("label", { for: "phone" }, t("phone")), phone,
       h("label", { for: "name" }, t("name")), name,
-    ], async () => onLogin(await api.devLogin(latinDigits(phone.value), name.value)));
+    ], async () => onLogin(await api.devLogin(phoneNumber(phone.value), name.value)));
   }
 
   /** The GitHub button and the "or" line, on the first card only. A plain link: the server sends the browser to GitHub. */
