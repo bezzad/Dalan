@@ -7,7 +7,7 @@ The owner (2026-11-24): every phone should read the login code from the SMS by i
 ## What Changes
 
 - CLI-59: on the SMS code screen the client asks the browser for the code (WebOTP: `navigator.credentials.get({ otp: { transport: ["sms"] } })`). When the browser gives it, the client fills the field and logs in. A browser without WebOTP, or a user who types the code, works as before. The request ends when the user leaves the screen or sends the form.
-- The SMS.ir template ends with the line `@dalanet.ir #CODE#` (the site domain); docs/SERVER.md says so. Both Android and iOS bind the code to that domain.
+- The SMS ends with the line `@dalanet.ir #<code>` (template line `@dalanet.ir ##CODE#`); docs/SERVER.md says so. Both Android and iOS bind the code to that domain.
 
 ## Capabilities
 

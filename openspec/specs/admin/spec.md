@@ -97,7 +97,7 @@ Every call under `/api/admin/` SHALL need a session (AUTH-03) of a user who is a
 - **THEN** the list holds `Admin:AccessLogRetentionDays` with value `180`, kind `number`, and `Relay:BotOnlineSeconds`, `Relay:ClientStatusRefreshSeconds`, `Relay:LatestCommandWins` (kind `switch`) and `Notification:Push:AllowedHosts` (kind `text`)
 
 #### Scenario: Secrets are never listed
-- **GIVEN** `Notification:Kavenegar:ApiKey` is set
+- **GIVEN** `Notification:SmsIr:ApiKey` is set
 - **WHEN** an admin lists the settings
 - **THEN** no entry has the key, `Identity:SigningKey`, `Notification:Push:PrivateKey`, `Dalan:TrustedProxies` or `Identity:AdminPhones`, and no value in the answer is the API key
 
