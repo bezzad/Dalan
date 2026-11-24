@@ -556,6 +556,13 @@ label.button.file input { position: absolute; inset: 0; opacity: 0; cursor: poin
 .page .content:not(:has(.hero)) { width: 100%; max-width: 760px; padding-block-start: var(--space-m); }
 .page .content > .card { max-width: none; flex: none; }
 .page .content > .bots { flex: none; overflow: visible; }
+/* CLI-57: the contact form. A locked email looks locked. */
+.contact textarea { min-height: 8em; }
+.contact input[readonly] { color: var(--muted); }
+.contact > button[type="submit"] { align-self: flex-start; }
+/* ADM-17: a message the admin has not read yet. */
+.admin .card.unread { border-inline-start: 4px solid var(--brand); }
+.admin .card p.text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .page h2.title { font-size: var(--text-title); }
 .page ol { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 8px; }
 .page p { color: var(--muted); }

@@ -1,6 +1,7 @@
 using Dalan.Admin.AccessLog;
 using Dalan.Admin.AdminApi;
 using Dalan.Admin.Audit;
+using Dalan.Admin.Contact;
 using Dalan.Admin.Settings;
 using Dalan.Admin.Contracts;
 using Dalan.Admin.Data;
@@ -40,6 +41,7 @@ public static class AdminService
         endpoints.MapAdminApi();
         endpoints.MapPublicSettings();
         endpoints.MapLlmsTxt();
+        endpoints.MapContact();
         return endpoints;
     }
 

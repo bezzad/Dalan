@@ -7,7 +7,7 @@ import { texts } from "../src/i18n.ts";
 import * as pages from "../src/pages.ts";
 
 const numbers: pages.PublicNumbers = { history_messages: 200, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60,
-  site_url: "https://dalanet.ir", bot_api_url: "https://api.dalanet.ir" };
+  site_url: "https://dalanet.ir", bot_api_url: "https://api.dalanet.ir", contact_max_length: 2000 };
 const n = (value: number) => new Intl.NumberFormat("fa-IR").format(value);
 
 /** Every string inside a value, with the path to it. */

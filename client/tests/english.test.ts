@@ -9,7 +9,7 @@ import * as pages from "../src/pages.ts";
 
 const iran = /iran/i;
 const numbers: pages.PublicNumbers = { history_messages: 200, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60,
-  site_url: "https://dalanet.ir", bot_api_url: "https://api.dalanet.ir" };
+  site_url: "https://dalanet.ir", bot_api_url: "https://api.dalanet.ir", contact_max_length: 2000 };
 const n = (value: number) => String(value);
 
 /** Every string inside a value, with the path to it. */

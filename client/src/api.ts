@@ -70,6 +70,18 @@ export interface AccessRow {
   at: string;
 }
 
+/** ADM-17 */
+export interface ContactMessage {
+  id: number;
+  user_id: number | null;
+  email: string;
+  text: string;
+  address: string;
+  port: number | null;
+  at: string;
+  read: boolean;
+}
+
 /** ADM-09 */
 export interface AuditRow {
   id: number;
@@ -239,6 +251,11 @@ export const api = {
     (await call<{ rows: AuditRow[] }>("GET", `/api/admin/audit${before ? `?before=${before}` : ""}`)).rows,
   /** ADM-14 */
   publicSettings: () => call<PublicNumbers>("GET", "/api/public/settings"),
+  /** ADM-17 */
+  contact: (email: string, text: string) => call<{ id: number }>("POST", "/api/contact", { email, text }),
+  contactMessages: async (before?: number) =>
+    (await call<{ rows: ContactMessage[] }>("GET", `/api/admin/contact${before ? `?before=${before}` : ""}`)).rows,
+  markMessage: (id: number, read: boolean) => call<ContactMessage>("POST", `/api/admin/contact/${id}/read`, { read }),
   /** REL-43 */
   showcase: (category: string, after?: number) => {
     const query = new URLSearchParams({ ...(category ? { category } : {}), ...(after ? { after: String(after) } : {}) });

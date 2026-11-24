@@ -41,6 +41,9 @@ public interface IUserAdmin
     /// <summary>AUTH-20: a suspended user is logged out everywhere at once. Null when the user does not exist.</summary>
     Task<AdminUser?> SetSuspendedAsync(long userId, bool suspended, CancellationToken cancellationToken);
 
+    /// <summary>ADM-17: one user by id, or null.</summary>
+    Task<AdminUser?> FindAsync(long userId, CancellationToken cancellationToken);
+
     /// <summary>An Iranian mobile number in any form as +989121234567, or null.</summary>
     string? NormalizePhone(string? input);
 

@@ -123,6 +123,55 @@ namespace Dalan.Admin.Data.Migrations
                     b.ToTable("audit_log", "admin");
                 });
 
+            modelBuilder.Entity("Dalan.Admin.Contact.ContactMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<IPAddress>("Address")
+                        .IsRequired()
+                        .HasColumnType("inet")
+                        .HasColumnName("address");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<int?>("Port")
+                        .HasColumnType("integer")
+                        .HasColumnName("port");
+
+                    b.Property<bool>("Read")
+                        .HasColumnType("boolean")
+                        .HasColumnName("read");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("text");
+
+                    b.Property<long?>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_contact_messages");
+
+                    b.HasIndex("Address", "At")
+                        .HasDatabaseName("ix_contact_messages_address_at");
+
+                    b.ToTable("contact_messages", "admin");
+                });
+
             modelBuilder.Entity("Dalan.Admin.Settings.SettingRow", b =>
                 {
                     b.Property<string>("Key")

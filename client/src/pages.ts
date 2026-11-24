@@ -13,10 +13,12 @@ export interface PublicNumbers {
   /** ADM-15: the addresses, for the ready prompt. */
   site_url: string;
   bot_api_url: string;
+  /** ADM-17: the longest contact message. */
+  contact_max_length: number;
 }
 
 /** CLI-26: which screen an address shows. Unknown addresses never reach the page: the server answers 404. */
-export type Page = "landing" | "privacy" | "faq" | "showcase" | "guide" | "guideBot" | "guideSite" | "login"
+export type Page = "landing" | "privacy" | "faq" | "showcase" | "guide" | "about" | "contact" | "guideBot" | "guideSite" | "login"
   | "chats" | "bots" | "botNew" | "botPage" | "account" | "admin" | "apps" | "chat" | "notFound";
 
 /** CLI-51: the screens of a logged-in user, each at its own address. */
@@ -30,7 +32,8 @@ export function botPageUsername(path: string): string | null {
 }
 
 export function pageFor(path: string, loggedIn: boolean): Page {
-  if (path === "/privacy" || path === "/faq" || path === "/showcase" || path === "/guide") return path.slice(1) as Page;
+  // CLI-56, CLI-57: about and contact are public too.
+  if (["/privacy", "/faq", "/showcase", "/guide", "/about", "/contact"].includes(path)) return path.slice(1) as Page;
   // CLI-38: the guide of each plan.
   if (path === "/guide/bot") return "guideBot";
   if (path === "/guide/site") return "guideSite";
@@ -52,6 +55,22 @@ export const landing: Record<Lang, { title: string; text: string }[]> = {
     { title: "Run your app from your own computer", text: "Do not buy a server. Your bot or app stays on your home or office computer and only connects out to Dalan. No public IP is needed." },
     { title: "Get real users, verified by email or SMS", text: "Every Dalan user is verified by email or SMS. You do not need to build a login." },
     { title: "Keep working when outside links are down", text: "Dalan's servers are inside the country. Your bot and its users still reach each other when links to the outside world are down." },
+  ],
+};
+
+/** CLI-56: what Dalan does, for the about page. One language is shown at a time; no owner name. */
+export const about: Record<Lang, { title: string; text: string }[]> = {
+  fa: [
+    { title: "دالان چیست؟", text: "دالان یک بستر ارتباطی ایرانی است. بات یا برنامه‌ای که روی کامپیوتر خانه یا محل کار شما اجرا می‌شود، فقط به دالان متصل می‌شود و کاربران از طریق دالان با آن گفت‌وگو می‌کنند. نیازی به خرید سرور، IP عمومی یا باز کردن پورت نیست." },
+    { title: "چه خدماتی می‌دهیم؟", text: "اتصال بات: پیام کاربران را به بات شما می‌رساند و پاسخ بات را به کاربران برمی‌گرداند؛ بات‌های نوشته‌شده برای API بات تلگرام با کمترین تغییر روی دالان کار می‌کنند. سایت‌ها: وب‌سایتی که روی کامپیوتر شما اجرا می‌شود، با یک آدرس عمومی در دسترس همه قرار می‌گیرد." },
+    { title: "چرا دالان؟", text: "سرورهای دالان در ایران است؛ بنابراین بات‌ها و سایت‌ها در زمان قطعی اینترنت بین‌الملل هم در دسترس کاربران می‌مانند. هویت همه‌ی کاربران با ایمیل یا پیامک تأیید می‌شود و شماره‌ی موبایل کاربران هرگز به بات‌ها داده نمی‌شود." },
+    { title: "برای چه کسانی؟", text: "برای برنامه‌نویسان، کسب‌وکارهای کوچک و هر کسی که می‌خواهد بات یا برنامه‌ی خود را بدون هزینه‌ی سرور در اختیار کاربران ایرانی قرار دهد." },
+  ],
+  en: [
+    { title: "What is Dalan?", text: "Dalan is a relay platform. Your bot or app runs on your home or office computer and connects only out to Dalan; users talk to it through Dalan. You do not need to buy a server, have a public IP or open a port." },
+    { title: "What we offer", text: "Bot relay: Dalan brings your users' messages to your bot and its answers back to them; bots written for the Telegram Bot API work on Dalan with few changes. Sites: a website that runs on your computer gets a public address that everyone can open." },
+    { title: "Why Dalan", text: "Dalan's servers are inside the country, so bots and sites stay reachable when links to the outside world are down. Every user is verified by email or SMS, and a bot never gets a user's phone number." },
+    { title: "Who it is for", text: "Developers, small businesses and anyone who wants to bring a bot or an app to their users without paying for a server." },
   ],
 };
 
