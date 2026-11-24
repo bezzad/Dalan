@@ -264,7 +264,8 @@ main > .scroller, main > .bots { margin-inline: calc(-1 * var(--gutter)); paddin
   border-end-end-radius: 4px;
   background: var(--mine);
 }
-.messages p { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* CLI-58: each line takes its direction from its own first strong letter, like Telegram; no language guess. */
+.messages p { white-space: pre-wrap; overflow-wrap: anywhere; unicode-bidi: plaintext; text-align: start; }
 .messages time { display: block; color: var(--muted); font-size: var(--message-time); line-height: 1.2; text-align: end; }
 
 /* CLI-07: under the input, each row as sent; a row's buttons share its width, so a row of 3 has wider buttons than a row of 5. */
@@ -345,9 +346,9 @@ button.pinned[hidden] { display: none; }
 /* CLI-54: Telegram's formatting, drawn from entities. */
 .messages code, .messages pre { font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace; font-size: .92em; }
 .messages code { padding: 0 3px; border-radius: 4px; background: color-mix(in srgb, var(--text) 8%, transparent); }
-.messages pre { margin: 2px 0; padding: 6px 8px; border-radius: 6px; background: color-mix(in srgb, var(--text) 8%, transparent); white-space: pre-wrap; overflow-wrap: anywhere; direction: ltr; text-align: left; }
+.messages pre { margin: 2px 0; padding: 6px 8px; border-radius: 6px; background: color-mix(in srgb, var(--text) 8%, transparent); white-space: pre-wrap; overflow-wrap: anywhere; unicode-bidi: isolate; direction: ltr; text-align: left; }
 .messages pre code { padding: 0; background: none; }
-.messages blockquote { margin: 2px 0; padding: 2px 8px; border-inline-start: 3px solid var(--brand); border-radius: 4px; background: var(--brand-soft); }
+.messages blockquote { margin: 2px 0; padding: 2px 8px; unicode-bidi: plaintext; text-align: start; border-inline-start: 3px solid var(--brand); border-radius: 4px; background: var(--brand-soft); }
 .messages blockquote.expandable:not(.open) { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
 .messages .spoiler:not(.open) { border-radius: 4px; background: var(--muted); color: transparent; cursor: pointer; user-select: none; }
 .messages .spoiler:not(.open) * { color: transparent; background: none; }
