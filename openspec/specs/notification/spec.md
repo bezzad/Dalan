@@ -6,7 +6,7 @@ How the server sends messages to people outside the app. For now: the login SMS,
 ## Requirements
 
 ### Requirement: NTF-01 SMS goes through one small contract
-Other services SHALL send an SMS only through the contract `ISmsSender` of `Dalan.Notification.Contracts`. The setting `Notification:SmsProvider` SHALL choose the sender: `kavenegar`, `log`, or empty. With an empty setting every send SHALL fail. The `log` sender writes the SMS to the log and sends nothing; with it outside the Development environment the server SHALL refuse to start. An unknown provider name SHALL also stop the start.
+Other services SHALL send an SMS only through `ISmsSender` of `Dalan.Notification.Contracts`. `Notification:SmsProvider` SHALL choose the sender: `smsir`, `log`, or empty (every send fails). The `log` sender writes the SMS to the log and sends nothing; outside Development it SHALL send only to `Notification:LogSmsPhones`, and with that list empty the server SHALL refuse to start. An unknown provider name SHALL also stop the start.
 
 #### Scenario: No provider
 - **GIVEN** `Notification:SmsProvider` is empty
@@ -18,23 +18,33 @@ Other services SHALL send an SMS only through the contract `ISmsSender` of `Dala
 - **WHEN** a login code is sent
 - **THEN** the send succeeds and the log has the code
 
+#### Scenario: Log sender on a server
+- **GIVEN** `Notification:SmsProvider` is `log` in the Production environment and `Notification:LogSmsPhones` lists `09121234567`
+- **WHEN** a login code is sent to `+989121234567`, and another to a number not in the list
+- **THEN** the first succeeds and the log has its code; the second fails and its code is not in the log
+
 #### Scenario: Log sender outside Development
-- **WHEN** the server starts in the Production environment with `Notification:SmsProvider` set to `log`
+- **WHEN** the server starts in the Production environment with `Notification:SmsProvider` set to `log` and `Notification:LogSmsPhones` empty
 - **THEN** it does not start, and the error says why
 
 #### Scenario: Unknown provider
-- **WHEN** the server starts with `Notification:SmsProvider` set to `pigeon`
+- **WHEN** the server starts with `Notification:SmsProvider` set to `pigeon` or `kavenegar`
 - **THEN** it does not start, and the error says why
 
-### Requirement: NTF-02 Kavenegar sender
-The `kavenegar` sender SHALL send a login code with one HTTP call to `<Notification:Kavenegar:BaseUrl>/v1/<ApiKey>/verify/lookup.json` with `receptor` (the number as `09…`), `token` (the code) and `template` (`Notification:Kavenegar:Template`). An answer that is not a success, a network error, or no answer in `Notification:Kavenegar:TimeoutSeconds` (start 10) SHALL count as a failed send. The API key SHALL NOT be written to the log.
+### Requirement: NTF-02 SMS.ir sender
+The `smsir` sender SHALL send a code with one `POST <Notification:SmsIr:BaseUrl>/v1/send/verify`: header `x-api-key`, body `{"mobile", "templateId": <Notification:SmsIr:TemplateId>, "parameters": [{"name": <Notification:SmsIr:CodeParameter>, "value": <code>}]}`. Only HTTP 200 with `status` 1 SHALL count as sent; anything else, or no answer in `Notification:SmsIr:TimeoutSeconds` (start 10), SHALL fail and log both statuses. The key SHALL NOT be logged.
 
 #### Scenario: Send
-- **WHEN** the code `123456` is sent to `+989121234567`
-- **THEN** the provider gets one call to `/v1/<key>/verify/lookup.json` with `receptor=09121234567`, `token=123456` and the template name
+- **GIVEN** `Notification:SmsIr:TemplateId` is `123456` and `Notification:SmsIr:CodeParameter` is `CODE`
+- **WHEN** the code `654321` is sent to `+989121234567`
+- **THEN** the provider gets one `POST /v1/send/verify` with the key in `x-api-key` and the body `{"mobile":"09121234567","templateId":123456,"parameters":[{"name":"CODE","value":"654321"}]}`, and the send succeeds
 
 #### Scenario: Provider refuses
-- **WHEN** the provider answers with an error status
+- **WHEN** the provider answers 400 with `{"status":113,"message":"…"}`
+- **THEN** the send fails and the log has `400` and `113`
+
+#### Scenario: Not a success inside a 200
+- **WHEN** the provider answers 200 with a `status` other than 1, or with a body that is not JSON
 - **THEN** the send fails
 
 #### Scenario: Provider is down
@@ -43,7 +53,7 @@ The `kavenegar` sender SHALL send a login code with one HTTP call to `<Notificat
 
 #### Scenario: Key stays out of the log
 - **WHEN** a send succeeds and another fails
-- **THEN** no log line holds the API key
+- **THEN** the log does not contain the API key
 
 ### Requirement: NTF-03 Push subscriptions
 Notification SHALL store push subscriptions in `notification.push_subscriptions` (user, endpoint, `p256dh`, `auth`, time). An endpoint SHALL be unique: saving it again moves it to the new user. A user SHALL have at most `Notification:Push:MaxSubscriptionsPerUser` (start 10); saving one more removes the oldest.
