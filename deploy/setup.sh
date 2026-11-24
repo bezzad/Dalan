@@ -4,7 +4,7 @@
 # deploy/install.sh copies this folder and the Caddy binary to the server and runs it.
 #
 # Usage: setup.sh <site domain> <api domain> <deploy public key file>
-# Optional settings.env next to this script (install.sh writes it): ADMIN_PHONES, SMS (log or kavenegar), KAVENEGAR_KEY,
+# Optional settings.env next to this script (install.sh writes it): ADMIN_PHONES, SMS (log or smsir), SMSIR_KEY,
 #   ROTATE_SECRETS=1, GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET. They are written into dalan.env, each run. SMS=log sends login codes only to ADMIN_PHONES, into the log.
 #   SITES_DOMAIN (the users' sites, for example dalancloud.ir, and the demo links on the domain itself; empty: both are off)
 #   and TUNNEL_DOMAIN (default tunnel.<site domain>)
@@ -82,9 +82,9 @@ if [ ! -f "$env_file" ]; then
   (umask 027 && cat > "$env_file" <<'ENV'
 # Dalan server secrets. Made by deploy/setup.sh; never commit this file.
 # After a change by hand: sudo systemctl restart dalan
-# SMS and admin phones: install.sh sets them (ADMIN_PHONES, SMS, KAVENEGAR_KEY), or by hand:
-# Notification__SmsProvider=kavenegar
-# Notification__Kavenegar__ApiKey=
+# SMS and admin phones: install.sh sets them (ADMIN_PHONES, SMS, SMSIR_KEY), or by hand:
+# Notification__SmsProvider=smsir
+# Notification__SmsIr__ApiKey=
 # Identity__AdminPhones=
 ENV
   )
@@ -124,14 +124,14 @@ if [ "${ROTATE_SECRETS:-}" = 1 ]; then
 fi
 
 [ -z "${ADMIN_PHONES:-}" ] || set_env Identity__AdminPhones "$ADMIN_PHONES"
-[ -z "${KAVENEGAR_KEY:-}" ] || set_env Notification__Kavenegar__ApiKey "$KAVENEGAR_KEY"
+[ -z "${SMSIR_KEY:-}" ] || set_env Notification__SmsIr__ApiKey "$SMSIR_KEY"
 case "${SMS:-}" in
   "") ;;
   log) set_env Notification__SmsProvider log
        set_env Notification__LogSmsPhones "${ADMIN_PHONES:?SMS=log needs ADMIN_PHONES}" ;;
-  kavenegar) set_env Notification__SmsProvider kavenegar
-             set_env Notification__LogSmsPhones ;;
-  *) echo "SMS must be log or kavenegar, not '$SMS'" >&2; exit 2 ;;
+  smsir) set_env Notification__SmsProvider smsir
+         set_env Notification__LogSmsPhones ;;
+  *) echo "SMS must be log or smsir, not '$SMS'" >&2; exit 2 ;;
 esac
 # OPS-14: "Log in with GitHub". The callback address must be the one in the GitHub OAuth app.
 if [ -n "${GITHUB_CLIENT_ID:-}" ] && [ -n "${GITHUB_CLIENT_SECRET:-}" ]; then

@@ -37,8 +37,8 @@
 
 #### Scenario: Settings from install.sh
 - **GIVEN** `/etc/dalan/dalan.env` exists
-- **WHEN** `install.sh` runs with `ADMIN_PHONES` and `SMS=log`, and later with `SMS=kavenegar` and `KAVENEGAR_KEY`
-- **THEN** each setting is in the file once, the log sender sends only to `ADMIN_PHONES`, the log sender numbers are removed for Kavenegar, the secrets are unchanged, and an unknown `SMS` value stops the script
+- **WHEN** `install.sh` runs with `ADMIN_PHONES` and `SMS=log`, and later with `SMS=smsir` and `SMSIR_KEY`
+- **THEN** each setting is in the file once, the log sender sends only to `ADMIN_PHONES`, the log sender numbers are removed for SMS.ir, the secrets are unchanged, and an unknown `SMS` value stops the script
 
 #### Scenario: Secrets made again
 - **GIVEN** the secrets were seen by someone else

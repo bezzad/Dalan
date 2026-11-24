@@ -29,10 +29,10 @@ public sealed class SettingsCatalog(IConfiguration configuration)
     private static readonly HashSet<string> Hidden = new(StringComparer.OrdinalIgnoreCase)
     {
         // Secrets.
-        "Identity:SigningKey", "Notification:Kavenegar:ApiKey", "Notification:Smtp:Password", "Notification:Push:PrivateKey", "Notification:Push:PublicKey",
+        "Identity:SigningKey", "Notification:SmsIr:ApiKey", "Notification:Smtp:Password", "Notification:Push:PrivateKey", "Notification:Push:PublicKey",
         "Identity:GitHub:ClientSecret",
         // A stolen admin session must not open these.
-        "Identity:DevLogin", "Identity:AdminPhones", "Notification:SmsProvider", "Notification:LogSmsPhones", "Notification:Kavenegar:BaseUrl",
+        "Identity:DevLogin", "Identity:AdminPhones", "Notification:SmsProvider", "Notification:LogSmsPhones", "Notification:SmsIr:BaseUrl",
         "Notification:EmailProvider", "Notification:LogEmailAddresses", "Notification:Smtp:Host", "Notification:Smtp:Port",
         "Notification:Smtp:StartTls", "Notification:Smtp:UserName", "Notification:Smtp:From",
         "Identity:GitHub:ClientId", "Identity:GitHub:CallbackUrl", "Identity:GitHub:WebUrl", "Identity:GitHub:ApiUrl",

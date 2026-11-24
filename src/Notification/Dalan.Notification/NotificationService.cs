@@ -21,8 +21,8 @@ public static class NotificationService
         services.AddOptions<NotificationOptions>().BindConfiguration("Notification");
         services.AddSingleton<NoSmsSender>();
         services.AddSingleton<LogSmsSender>();
-        // NTF-02: no request log for this client, because the API key is part of the address.
-        services.AddHttpClient<KavenegarSmsSender>().RemoveAllLoggers();
+        // NTF-02: no request log for this client, so the API key header stays out of the log.
+        services.AddHttpClient<SmsIrSmsSender>().RemoveAllLoggers();
         // A new one for each use, so the HTTP client under it is renewed by the factory.
         services.AddTransient(SmsSender);
         services.AddSingleton<NoEmailSender>();
@@ -72,8 +72,8 @@ public static class NotificationService
         {
             case "":
                 return services.GetRequiredService<NoSmsSender>();
-            case "kavenegar":
-                return services.GetRequiredService<KavenegarSmsSender>();
+            case "smsir":
+                return services.GetRequiredService<SmsIrSmsSender>();
             case "log" when services.GetRequiredService<IHostEnvironment>().IsDevelopment()
                          || !string.IsNullOrWhiteSpace(services.GetRequiredService<IOptions<NotificationOptions>>().Value.LogSmsPhones):
                 return services.GetRequiredService<LogSmsSender>();
@@ -83,7 +83,7 @@ public static class NotificationService
                     "The log sender writes login codes to the log and sends no SMS. Set a real provider, or list the test numbers.");
             default:
                 throw new InvalidOperationException(
-                    $"Notification:SmsProvider is '{provider}'. Known providers: kavenegar, log, or empty.");
+                    $"Notification:SmsProvider is '{provider}'. Known providers: smsir, log, or empty.");
         }
     }
 

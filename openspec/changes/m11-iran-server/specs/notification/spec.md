@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: NTF-01 SMS goes through one small contract
-Other services SHALL send an SMS only through the contract `ISmsSender` of `Dalan.Notification.Contracts`. The setting `Notification:SmsProvider` SHALL choose the sender: `kavenegar`, `log`, or empty. With an empty setting every send SHALL fail. The `log` sender writes the SMS to the log and sends nothing. Outside the Development environment it SHALL send only to the numbers in `Notification:LogSmsPhones` (for tests on a server before a provider is ready), and with that list empty the server SHALL refuse to start. An unknown provider name SHALL also stop the start.
+Other services SHALL send an SMS only through the contract `ISmsSender` of `Dalan.Notification.Contracts`. The setting `Notification:SmsProvider` SHALL choose the sender: `smsir`, `log`, or empty. With an empty setting every send SHALL fail. The `log` sender writes the SMS to the log and sends nothing. Outside the Development environment it SHALL send only to the numbers in `Notification:LogSmsPhones` (for tests on a server before a provider is ready), and with that list empty the server SHALL refuse to start. An unknown provider name SHALL also stop the start.
 
 #### Scenario: No provider
 - **GIVEN** `Notification:SmsProvider` is empty

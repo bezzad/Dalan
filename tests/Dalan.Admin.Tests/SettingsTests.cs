@@ -31,7 +31,7 @@ public class SettingsTests(PostgresServer postgres)
     [Trait("Rule", "ADM-06")]
     public async Task ADM06_secrets_are_never_listed()
     {
-        await using var app = await AdminApp.StartAsync(postgres, ("Notification:Kavenegar:ApiKey", "kavenegar-secret-value"));
+        await using var app = await AdminApp.StartAsync(postgres, ("Notification:SmsIr:ApiKey", "smsir-secret-value"));
         var (admin, _) = await app.AdminAsync();
 
         var response = await admin.GetAsync("/api/admin/settings", AdminApp.Cancel);
@@ -41,7 +41,7 @@ public class SettingsTests(PostgresServer postgres)
         foreach (var hidden in new[]
         {
             "Identity:SigningKey", "Identity:DevLogin", "Identity:AdminPhones", "Notification:SmsProvider",
-            "Notification:Kavenegar:ApiKey", "Notification:Kavenegar:BaseUrl", "Notification:Push:PublicKey",
+            "Notification:SmsIr:ApiKey", "Notification:SmsIr:BaseUrl", "Notification:Push:PublicKey",
             "Notification:Push:PrivateKey", "Relay:FileFolder", "Dalan:TrustedProxies", "Dalan:Version",
             "ConnectionStrings:Dalan",
         })
@@ -49,7 +49,7 @@ public class SettingsTests(PostgresServer postgres)
             Assert.DoesNotContain(hidden, keys);
         }
 
-        Assert.DoesNotContain("kavenegar-secret-value", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("smsir-secret-value", text, StringComparison.Ordinal);
         Assert.DoesNotContain(AdminApp.AdminPhone, text, StringComparison.Ordinal);
     }
 
