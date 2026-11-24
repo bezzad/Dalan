@@ -499,6 +499,8 @@ None of these is planned work. They are recorded so the design does not block th
 | Bots per showcase page | 50 | Assumed (milestone 9) |
 | A pressed button waits for the bot | 15 seconds | Assumed (milestone 13) |
 | Formatted parts per message | 100 | Assumed (milestone 13, Telegram's limit) |
+| Contact message length | 2000 characters | Assumed (milestone 14) |
+| Contact messages per address | 5 per 24 hours | Assumed (milestone 14) |
 | Access key lifetime | 90 days | Assumed (milestone 10) |
 | Access keys per user | 10 | Assumed (milestone 10) |
 | Site storage per bot (Layer 2) | 200 MB | Agreed in discussion |

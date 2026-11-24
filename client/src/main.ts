@@ -116,6 +116,7 @@ function publicPage(page: PublicPage, loggedIn: boolean): HTMLElement {
     tools: tools(),
     language,
     loggedIn,
+    email: app?.user.email ?? null,
     go: navigate,
     enter: loggedIn ? () => navigate("/chats") : showLogin,
   });

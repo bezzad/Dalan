@@ -1,10 +1,10 @@
-// Rules: CLI-26, CLI-27, CLI-28, CLI-29, CLI-30, CLI-37
+// Rules: CLI-26, CLI-27, CLI-28, CLI-29, CLI-30, CLI-37, CLI-56
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { botPageUsername, categoryName, faqItems, initial, landing, notOffered, offers, products, security, pageFor, privacyPoints, readyPrompt, showcaseStateName, type PublicNumbers } from "../src/pages.ts";
+import { about, botPageUsername, categoryName, faqItems, initial, landing, notOffered, offers, products, security, pageFor, privacyPoints, readyPrompt, showcaseStateName, type PublicNumbers } from "../src/pages.ts";
 
 const numbers: PublicNumbers = { history_messages: 200, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60,
-  site_url: "https://dalanet.ir", bot_api_url: "https://api.dalanet.ir" };
+  site_url: "https://dalanet.ir", bot_api_url: "https://api.dalanet.ir", contact_max_length: 2000 };
 const persian = (value: number) => new Intl.NumberFormat("fa-IR").format(value);
 const english = (value: number) => String(value);
 
@@ -66,6 +66,17 @@ test("CLI-26 the address and the login decide the screen", () => {
   const paths = ["/", "/bots", "/apps", "/privacy", "/faq", "/showcase", "/@bot"];
   assert.deepEqual(paths.map(path => pageFor(path, false)), ["landing", "login", "login", "privacy", "faq", "showcase", "login"]);
   assert.deepEqual(paths.map(path => pageFor(path, true)), ["landing", "bots", "apps", "privacy", "faq", "showcase", "chat"]);
+});
+
+test("CLI-56 about and contact open for a visitor and for a logged-in user", () => {
+  for (const loggedIn of [false, true]) assert.deepEqual(["/about", "/contact"].map(path => pageFor(path, loggedIn)), ["about", "contact"]);
+});
+
+test("CLI-56 the about texts say the same parts in each language and name no owner", () => {
+  assert.equal(about.fa.length, about.en.length);
+  assert.ok(about.fa.every(part => /[\u0600-\u06FF]/.test(part.title + part.text)));
+  assert.ok(about.en.every(part => !/[\u0600-\u06FF]/.test(part.title + part.text)));
+  assert.doesNotMatch(JSON.stringify(about), /tunnel|تونل/i);
 });
 
 test("CLI-51 each screen has its own address", () => {

@@ -17,6 +17,21 @@ public class ClientAppTests(PostgresServer postgres)
     }
 
     [Theory]
+    [Trait("Rule", "CLI-56")]
+    [Trait("Rule", "CLI-57")]
+    [InlineData("/about")]
+    [InlineData("/contact")]
+    public async Task CLI56_about_and_contact_pages_are_served(string path)
+    {
+        await using var app = await StartAsync();
+
+        var response = await app.CreateClient().GetAsync(path, Cancel);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Theory]
     [Trait("Rule", "CLI-01")]
     [InlineData("/")]
     [InlineData("/bots")]
