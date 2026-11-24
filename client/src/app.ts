@@ -16,9 +16,18 @@ export interface App {
   statusRefreshSeconds: number;
   /** REL-51: the size limit of a bot icon. */
   maxBotIconKb: number;
+  /** CLI-53: how long a pressed button waits for the bot. */
+  pressWaitSeconds: number;
   /** CLI-51: goes to the screen of an address ("/chats", "/bots/new", "/@name") without a page load. */
   go(path: string): void;
   logout(): void;
+}
+
+/** LIVE-09: the data of an "answer" event. */
+export interface PressAnswer {
+  callback_id: string;
+  text?: string;
+  show_alert: boolean;
 }
 
 /** What the open screen does with live events. */
@@ -26,8 +35,8 @@ export interface Screen {
   element: HTMLElement;
   /** A redraw when a message of this chat arrived or changed. */
   onMessage?(botId: number): void;
-  /** CLI-13: the bot answered a press with a text. */
-  onAnswer?(botId: number, text: string, showAlert: boolean): void;
+  /** CLI-13 and CLI-53: the bot answered a press, maybe with a text. */
+  onAnswer?(botId: number, answer: PressAnswer): void;
   /** LIVE-10: the user read a chat on some device. */
   onRead?(botId: number): void;
 }

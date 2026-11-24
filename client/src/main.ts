@@ -16,7 +16,7 @@ import { h } from "./dom.ts";
 import { toastRegion } from "./toast.ts";
 import { headerTools, homeMark, publicPages, publicScreen, siteBrand, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
-import { Chats } from "./messages.ts";
+import { Chats, manifestFor } from "./messages.ts";
 import { Theme, themeButton } from "./theme.ts";
 
 const language = new Language(document.documentElement, localStorage);
@@ -33,6 +33,8 @@ async function authSettings(): Promise<AuthSettings> {
 
 function show(element: HTMLElement): void {
   document.title = language.t("appName");
+  // CLI-55: Install on a bot's chat installs that bot; every other screen links the main manifest again.
+  document.querySelector("link[rel=manifest]")?.setAttribute("href", manifestFor(location.pathname));
   // Shown by the style sheet while the server cannot be reached.
   document.body.dataset["connecting"] = language.t("connecting");
   document.body.replaceChildren(element, toastRegion());
@@ -159,6 +161,7 @@ async function enter(user: User): Promise<void> {
     maxFileSizeMb: settings.max_file_size_mb,
     statusRefreshSeconds: settings.status_refresh_seconds,
     maxBotIconKb: settings.max_bot_icon_kb,
+    pressWaitSeconds: settings.press_wait_seconds,
     go: navigate,
     logout() {
       // CLI-21: the next person on this browser must not get this user's notifications.
@@ -176,9 +179,7 @@ async function enter(user: User): Promise<void> {
       app?.chats.receive(botId, message);
       screen?.onMessage?.(botId);
     },
-    onAnswer(botId, answer) {
-      if (answer.text) screen?.onAnswer?.(botId, answer.text, answer.show_alert);
-    },
+    onAnswer: (botId, answer) => screen?.onAnswer?.(botId, answer),
     onRead: botId => screen?.onRead?.(botId),
     onDown: () => document.body.classList.add("offline"),
     onLoggedOut: showLogin,

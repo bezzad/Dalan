@@ -50,7 +50,7 @@
 ## ADDED Requirements
 
 ### Requirement: REL-52 Reply to a message
-A message MAY reply to an earlier message of the same chat. The user sends `reply_to` (a message id) in the JSON of `POST /api/bots/{bot id}/messages`, or the header `X-Reply-To` with a file (REL-28); a bot sends `reply_to` in `POST /v1/messages`. The target SHALL be a message of that chat that is not deleted; else 404 `message_not_found` and nothing is stored. The message SHALL keep a copy of the target as it is then: `reply_to` with `id`, `from` ("user" or "bot"), `text` and `file`, in history, in the event stream, in the bot's update (REL-07) and in the `/v1` answer. A later edit or delete of the target SHALL NOT change the copy.
+A message MAY reply to a message of its chat: the user sends `reply_to` (a message id) in the JSON of REL-15 or the header `X-Reply-To` with a file (REL-28); a bot sends `reply_to` in `POST /v1/messages`. A target that is missing or deleted SHALL get 404 `message_not_found`, and nothing is stored. The message SHALL keep a copy of the target as it is then (`reply_to`: `id`, `from`, `text`, `file`) in history, events, updates and answers.
 
 #### Scenario: User replies to the bot
 - **GIVEN** bot message 2 says "Which session?"
@@ -62,12 +62,17 @@ A message MAY reply to an earlier message of the same chat. The user sends `repl
 - **WHEN** the bot posts a message with `reply_to` 3
 - **THEN** the user's history has the bot message with `reply_to.id` 3 and `reply_to.from` "user"
 
+#### Scenario: The copy stays
+- **GIVEN** bot message 4 replies to user message 3 "hello"
+- **WHEN** the bot edits message 4
+- **THEN** message 4 still has `reply_to.text` "hello"
+
 #### Scenario: No such message
 - **WHEN** the user or the bot replies to a message that does not exist, is deleted, or is of another chat
 - **THEN** the response is 404 `message_not_found` and nothing is stored
 
 ### Requirement: REL-53 Text formatting
-`POST /v1/messages` and REL-23 SHALL accept optional `entities` for the text or caption: a list of `{type, offset, length}` with `url` for `text_link` and optional `language` for `pre`. Offsets and lengths count UTF-16 code units. Types: `bold`, `italic`, `underline`, `strikethrough`, `spoiler`, `code`, `pre`, `text_link`, `blockquote`, `expandable_blockquote`. Each entity SHALL be inside the text with a length above 0; two entities SHALL be apart or one inside the other; `url` SHALL be http or https within `Relay:MaxButtonUrlLength`; at most `Relay:MaxTextEntities` (start 100). Else 400 `bad_entities` and nothing is stored. The entities SHALL be stored and returned in history, in the event stream, to the bot and in the `/v1` answer.
+`POST /v1/messages` and REL-23 SHALL accept `entities` (Telegram's `{type, offset, length, url, language}`, in UTF-16 units) of types `bold`, `italic`, `underline`, `strikethrough`, `spoiler`, `code`, `pre`, `text_link`, `blockquote`, `expandable_blockquote`. Each SHALL lie inside the text; two SHALL be apart or nested; a `text_link` needs an http(s) `url`; at most `Relay:MaxTextEntities` (start 100). Else 400 `bad_entities`, nothing stored. They SHALL be kept and given out with the message.
 
 #### Scenario: Bold word
 - **WHEN** the bot posts "hi Ali" with `entities` `[{"type":"bold","offset":3,"length":3}]`

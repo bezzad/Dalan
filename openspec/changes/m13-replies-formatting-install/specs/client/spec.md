@@ -34,7 +34,7 @@ The client SHALL show the inline keyboard of a message under that message, each 
 ## ADDED Requirements
 
 ### Requirement: CLI-52 Reply in the chat
-The user SHALL start a reply to a message by its menu (right-click, or a long press on a phone) → Reply, by a double-click, or by a swipe to the left on a touch screen. A bar above the input SHALL show who wrote the message and its first line, with ✕ (and Esc) to cancel. The next message or file SHALL go with `reply_to` (REL-52) and the bar closes. A message that replies SHALL show the quote at its top: the writer ("You" or the bot's name) and the first line of the text, or the file name. A click on the quote SHALL go to that message like the pinned bar (CLI-14); a target that is deleted SHALL show "Deleted message".
+The user SHALL start a reply by a message's menu (right-click or long press) → Reply, a double-click, or a swipe to the left. A bar above the input SHALL show the quote, with ✕ and Esc to cancel; the next message or file SHALL carry `reply_to` (REL-52). A message that replies SHALL show the quote on top: the writer ("You" or the bot's name) and the first line, or the file name. A click on a quote SHALL go to that message like CLI-14.
 
 #### Scenario: Reply to an answer
 - **GIVEN** bot message 2 "Which session?"
@@ -50,6 +50,11 @@ The user SHALL start a reply to a message by its menu (right-click, or a long pr
 - **GIVEN** a message replies to a bot message "line one\nline two"
 - **WHEN** the chat is shown
 - **THEN** the quote shows the bot's name and "line one"
+
+#### Scenario: Target deleted
+- **GIVEN** a message replies to message 2, and message 2 was deleted
+- **WHEN** the chat is shown
+- **THEN** the quote says "Deleted message"
 
 ### Requirement: CLI-53 Press in progress
 After a tap on a `callback_data` button, that button SHALL show a moving skeleton and every button of that message SHALL be locked, until an `answer` event for that press arrives, the message comes again with a higher version, the press fails, or `press_wait_seconds` (REL-18) pass. With reduced motion, the skeleton SHALL not move.

@@ -42,6 +42,9 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - 🎤 takes Send's place while the input is empty; voices and audio use Dalan's own player (CLI-16, CLI-46).
 - 📎, paste and drop open one card above the input; the input is the caption (CLI-47).
 - Bot icons are round, cut to fill; no icon shows the first letter (CLI-50).
+- Reply: a message's menu (right-click, long press), a double-click or a swipe left. The bar above the input shows the quote with ✕; a bubble that replies shows the quote on top, and a click on it goes to the message (CLI-52).
+- A pressed inline button shows a moving skeleton; the buttons of its message are locked until the bot answers (CLI-53).
+- Bot formatting is drawn from entities, never as HTML: bold, italic, code, spoiler (tap to show), quotes (CLI-54).
 
 ## Toasts
 - **Every action the user takes ends in a toast**: saved, created, copied, sent, deleted, and every error. Use `toast(text, kind)` from `client/src/toast.ts`; kind `ok` (green dot), `error` (red dot, stays longer), `info` (grey dot).

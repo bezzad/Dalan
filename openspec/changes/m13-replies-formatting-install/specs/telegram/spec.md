@@ -69,7 +69,7 @@ An `InlineKeyboardMarkup` (`inline_keyboard`: rows of buttons with `text`, an op
 ## ADDED Requirements
 
 ### Requirement: TG-24 Replies
-The send methods SHALL take `reply_parameters` (`message_id`, `allow_sending_without_reply`) or the older `reply_to_message_id` and `allow_sending_without_reply`, and send the message as a reply (REL-52). A target that does not exist SHALL get 400 "Bad Request: message to be replied not found", unless `allow_sending_without_reply` is true: then the message is sent without the reply. A `Message` that replies SHALL carry `reply_to_message`: the copied message, with `from` the bot or the user (in a send answer the user's `first_name` is empty), its text or caption, and its file.
+The send methods SHALL take `reply_parameters` (`message_id`, `allow_sending_without_reply`) or the older `reply_to_message_id`, and send a reply (REL-52). A missing target SHALL get 400 "Bad Request: message to be replied not found", unless `allow_sending_without_reply` is true: then it is sent without the reply. A `Message` that replies SHALL carry `reply_to_message`: the copy, with `from` the bot or the user (empty `first_name` in a send answer), its text or caption and file.
 
 #### Scenario: User replies
 - **GIVEN** the bot's message 2 "Which session?" and the user's reply to it
@@ -86,7 +86,7 @@ The send methods SHALL take `reply_parameters` (`message_id`, `allow_sending_wit
 - **THEN** the first gets 400 "Bad Request: message to be replied not found", the second is sent with no `reply_to_message`
 
 ### Requirement: TG-25 Formatting
-`parse_mode` "HTML" SHALL turn Telegram's HTML tags into entities (REL-53): `b`, `strong`, `i`, `em`, `u`, `ins`, `s`, `strike`, `del`, `tg-spoiler`, `span class="tg-spoiler"`, `a href`, `code`, `pre` (with `<code class="language-x">` inside: `language`), `blockquote` (with `expandable`: `expandable_blockquote`) and `tg-emoji` (text kept), and `&lt;`, `&gt;`, `&amp;`, `&quot;` and numeric references into characters. A link that is not http or https SHALL keep its text without a link. An unknown or broken tag SHALL get 400 with a `description` that starts with "Bad Request: can't parse entities". Without `parse_mode`, `entities` (text) or `caption_entities` (caption) SHALL be taken as given. `parse_mode` "MarkdownV2" and "Markdown" SHALL keep the text as sent. A returned `Message` SHALL carry `entities` (text) or `caption_entities` (caption).
+`parse_mode` "HTML" SHALL turn Telegram's tags and character references into text and entities (REL-53); tag list in design.md, decision 4. A link that is not http(s) SHALL keep only its text. An unknown or broken tag SHALL get 400 "Bad Request: can't parse entities…". Without it, `entities` or `caption_entities` SHALL be taken as given, kinds Dalan does not draw left out. "MarkdownV2" and "Markdown" SHALL keep the text as sent. A returned `Message` SHALL carry `entities` or `caption_entities`.
 
 #### Scenario: Bold and link
 - **WHEN** the bot calls `sendMessage` with text `<b>Buy</b> &amp; <a href="https://dalanet.ir">see</a>` and `parse_mode` "HTML"

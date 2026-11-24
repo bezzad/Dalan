@@ -9,9 +9,13 @@ Dalan speaks the Telegram Bot API (snapshot 10.4). Change only two things in an 
 - Server address: {api} (calls go to {api}/bot<token>/<method>, like Telegram)
 - Token: the Dalan token of the bot (create it below)
 
-Served: getMe, getUpdates (long polling; webhooks are not served), sendMessage with reply and inline keyboards, editMessageText, editMessageReplyMarkup, deleteMessage, pinChatMessage, unpinChatMessage, unpinAllChatMessages, answerCallbackQuery, setMyCommands, getMyCommands, deleteMyCommands, sendPhoto, sendDocument, sendAudio, sendVideo, sendVoice, getFile, setMyProfilePhoto (a static picture, PNG, JPEG or WebP, becomes the bot's icon), removeMyProfilePhoto, sendChatAction, deleteWebhook. Any other method answers ok=false with a clear description. parse_mode is ignored (plain text).
+Served: getMe, getUpdates (long polling; webhooks are not served), sendMessage with reply and inline keyboards, editMessageText, editMessageCaption, editMessageReplyMarkup, deleteMessage, pinChatMessage, unpinChatMessage, unpinAllChatMessages, answerCallbackQuery, setMyCommands, getMyCommands, deleteMyCommands, sendPhoto, sendDocument, sendAudio, sendVideo, sendVoice, getFile, setMyProfilePhoto (a static picture, PNG, JPEG or WebP, becomes the bot's icon), removeMyProfilePhoto, sendChatAction, deleteWebhook. Any other method answers ok=false with a clear description.
 
-A keyboard button may have `style` (`success`, `danger` or `primary`; another value is a 400). A reply keyboard keeps `is_persistent`, `resize_keyboard` and `one_time_keyboard`. `duration` (seconds) on sendVoice, sendAudio and sendVideo is kept and shown.
+Formatting: `parse_mode` "HTML" works with Telegram's tags (b, i, u, s, tg-spoiler, a, code, pre, blockquote); `entities` and `caption_entities` work too. "MarkdownV2" and "Markdown" are not parsed: the text shows as sent.
+
+Replies: `reply_parameters` (or `reply_to_message_id`) makes a reply; a user's reply reaches the bot with `reply_to_message`.
+
+A keyboard button may have `style` (`success`, `danger` or `primary`; another value is a 400). A reply keyboard keeps `is_persistent`, `resize_keyboard` and `one_time_keyboard`. An inline button with `switch_inline_query`, `switch_inline_query_current_chat` or `switch_inline_query_chosen_chat` puts `@bot query` in the user's input (Dalan has no inline mode). `duration` (seconds) on sendVoice, sendAudio and sendVideo is kept and shown.
 
 A bot never gets a user's phone number, only id, name and username.
 
@@ -19,8 +23,9 @@ A bot never gets a user's phone number, only id, name and username.
 
 Header on every call: `Authorization: Bearer <bot token>`. Base: {api}
 
-- `GET /v1/updates?offset=<last update_id + 1>&timeout=30` long polls (the server cuts a timeout over its maximum). An update is confirmed by the next call's offset. Each update has `update_id` and a `message` (`id`, `from` {`id`, `name`, `username`}, `text`, `date`) or a `callback`.
-- `POST /v1/messages` with JSON `{"user_id": 5, "text": "Hi"}` sends a message. Optional: `reply_keyboard` (rows; a button is a text or `{"text": "Yes", "style": "success"}`), `reply_keyboard_persistent`, `reply_keyboard_resize`, `reply_keyboard_one_time`, `inline_keyboard` (buttons may have `style`), and `duration` (seconds) with a voice, audio or video file.
+- `GET /v1/updates?offset=<last update_id + 1>&timeout=30` long polls (the server cuts a timeout over its maximum). An update is confirmed by the next call's offset. Each update has `update_id` and a `message` (`id`, `from` {`id`, `name`, `username`}, `text`, `date`, and `reply_to` {`id`, `from`, `text`} when it replies) or a `callback`.
+- `POST /v1/messages` with JSON `{"user_id": 5, "text": "Hi"}` sends a message. Optional: `reply_keyboard` (rows; a button is a text or `{"text": "Yes", "style": "success"}`), `reply_keyboard_persistent`, `reply_keyboard_resize`, `reply_keyboard_one_time`, `inline_keyboard` (a button has `callback_data`, `url` or `switch_query`, and may have `style`), `entities` (Telegram's, like `[{"type": "bold", "offset": 0, "length": 2}]`), `reply_to` (a message id), and `duration` (seconds) with a voice, audio or video file.
+- `PATCH /v1/messages/<user_id>/<message_id>` with `text`, `entities` and `inline_keyboard` edits a bot message (`text` is the caption of a file message).
 - Errors are JSON `{"error": "<code>", "message": "<what went wrong and how to fix it>"}`.
 
 A user message waits for the bot only a short time (`update_expiry_seconds` in {site}/api/public/settings); after that it is marked "not delivered". Keep the bot polling.
