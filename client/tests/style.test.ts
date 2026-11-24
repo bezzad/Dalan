@@ -1,4 +1,4 @@
-// Rules: CLI-48, CLI-13, CLI-07
+// Rules: CLI-48, CLI-13, CLI-07, CLI-58
 // Reads the style sheet: message sizes like Telegram Desktop, and button colours readable in both themes.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -53,4 +53,15 @@ test("CLI-13 every button style has readable text in light and dark (WCAG AA)", 
 test("CLI-07 a keyboard row never wraps, and its buttons share the width", () => {
   assert.match(css, /\.keyboard \.row\.keys \{ flex-wrap: nowrap; \}/);
   assert.match(css, /\.keyboard \.row\.keys > button \{ flex: 1 1 0;/);
+});
+
+test("CLI-58 each line of a message and of a blockquote takes its own direction; code stays left to right", () => {
+  for (const selector of [".messages p", ".messages blockquote"]) {
+    const start = css.indexOf(`${selector} {`);
+    assert.ok(start >= 0, selector);
+    const body = css.slice(start, css.indexOf("}", start));
+    assert.match(body, /unicode-bidi: plaintext;/, selector);
+    assert.match(body, /text-align: start;/, selector);
+  }
+  assert.match(css, /\.messages pre \{[^}]*unicode-bidi: isolate;[^}]*direction: ltr;[^}]*text-align: left;/);
 });
