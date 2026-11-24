@@ -42,14 +42,16 @@ Result: users `dalan` (service) and `deploy` (builds and deploys; may only `sudo
 Admin phone and SMS go in as settings of the same command. Run it again to change them, or to move to new domains; it restarts the server by itself:
 
 ```bash
-# Before Kavenegar is ready: login codes go to the server log, only for ADMIN_PHONES.
+# Before SMS.ir is ready: login codes go to the server log, only for ADMIN_PHONES.
 ADMIN_PHONES=<your mobile; several are comma separated> SMS=log bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
 # Read a code on the server:
 journalctl -u dalan | grep "login code"
-# When Kavenegar is ready (template dalan-login). read -s keeps the key out of the shell history:
-read -rs KAVENEGAR_KEY && export KAVENEGAR_KEY
-SMS=kavenegar bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
+# SMS.ir (the API key from the panel, "توسعه‌دهندگان"). read -s keeps the key out of the shell history:
+read -rs SMSIR_KEY && export SMSIR_KEY
+SMS=smsir bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
 ```
+
+The number of the approved OTP template (SMS.ir panel, "ارسال سریع") goes in the admin panel as `Notification:SmsIr:TemplateId`; the code variable of the template text is `Notification:SmsIr:CodeParameter` (start `CODE`, for `#CODE#`). Until SMS.ir approves the template every send fails with SMS.ir status 113 in the log.
 
 Without an SMS provider nobody can log in: the first login is always by SMS.
 
@@ -216,7 +218,7 @@ Restore: `sudo systemctl stop dalan`, then `sudo -u postgres pg_restore --clean 
 
 The drill blocks every new outbound connection from the server, as if international links were cut. Users, bots and SSH still come in.
 
-1. Optional allow list `/etc/dalan/drill-allow.txt`, one range per line, for the domestic network (for example the Iranian ranges from ipdeny.com, `ir-aggregated.zone`). Without it even Kavenegar and DNS are blocked, which shows what SMS login needs.
+1. Optional allow list `/etc/dalan/drill-allow.txt`, one range per line, for the domestic network (for example the Iranian ranges from ipdeny.com, `ir-aggregated.zone`). Without it even SMS.ir and DNS are blocked, which shows what SMS login needs.
 2. `sudo /opt/dalan/tools/drill.sh start`. It stops by itself after 60 minutes (`DRILL_MINUTES` in `/etc/dalan/drill.env`).
 3. By hand, on a phone on Iranian mobile data with no VPN: open `https://dalanet.ir`, log in by SMS, open ArcaneBot, send a message, press buttons, get replies. ArcaneBot runs on its home machine with only two changes: server address `https://api.dalanet.ir` and the token from "My bots".
 4. `sudo /opt/dalan/tools/drill.sh stop`. It prints each blocked address and port. Expected: push services (Google, Apple, Mozilla, Microsoft) and Let's Encrypt. Anything else is a bug to fix.

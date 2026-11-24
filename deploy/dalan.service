@@ -19,9 +19,9 @@ Environment=Relay__FileFolder=/var/lib/dalan/files
 # Must hold the key that signs sessions (without it every restart logs all users out): Identity__SigningKey=<key>
 #   Make one (PKCS#8) with: openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 | openssl pkcs8 -topk8 -nocrypt -outform DER | base64 -w0
 # Must hold the SMS provider, or nobody can log in by SMS:
-#   Notification__SmsProvider=kavenegar
-#   Notification__Kavenegar__ApiKey=<key>
-#   (the OTP template in the Kavenegar panel is named by Notification:Kavenegar:Template, start "dalan-login")
+#   Notification__SmsProvider=smsir
+#   Notification__SmsIr__ApiKey=<key>
+#   (the number of the approved OTP template in the SMS.ir panel goes in Notification:SmsIr:TemplateId, set in the admin panel)
 # Push notifications (off without them). Make the pair once with: node scripts/vapid-keys.mjs
 #   Notification__Push__PublicKey=<key>
 #   Notification__Push__PrivateKey=<key>

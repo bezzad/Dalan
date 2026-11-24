@@ -522,7 +522,7 @@ None of these is planned work. They are recorded so the design does not block th
 
 **Open questions:**
 
-- [ ] SMS provider: the Kavenegar sender is built (milestone 4), SMS.ir stays the second choice. Still to do by the owner: a Kavenegar account, an approved OTP template named `dalan-login` with one token, and the API key on the server. Prices and delivery speed were not compared.
+- [x] SMS provider: SMS.ir (plan bought 2026-11-24; Kavenegar dropped, its licence steps were too hard). Template `dalan-otp` approved 2026-11-24, ID `743739` in the server's `Notification__SmsIr__TemplateId`.
 - [x] Which hosting provider, after comparing traffic cost, extra disk and DNS? webdade (80.244.7.112), DNS at ArvanCloud (2026-11-21).
 - [x] Buy the separate sites domain before Layer 2 (decided 2026-11-20): `dalans.ir`, pointed at the server (2026-11-21). `Sites:Domain` is set by `SITES_DOMAIN=dalans.ir` in `install.sh`.
 - [ ] Buy a foreign backup domain (candidate: `dalanet.net`)?

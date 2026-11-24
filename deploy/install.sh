@@ -9,8 +9,8 @@
 # Settings (environment):
 #   CADDY_VERSION   default: the version CI tests
 #   ADMIN_PHONES    admin mobile numbers, comma separated
-#   SMS             log (codes only to ADMIN_PHONES, in the server log; before the provider is ready) or kavenegar
-#   KAVENEGAR_KEY   the Kavenegar API key
+#   SMS             log (codes only to ADMIN_PHONES, in the server log; before the provider is ready) or smsir
+#   SMSIR_KEY       the SMS.ir API key
 #   ROTATE_SECRETS  1: new database password, signing key (everyone logs in again) and push keys
 #   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET   the GitHub OAuth app for "Log in with GitHub" (OPS-14; docs/SERVER.md)
 #   PULL_DEPLOY=1   the server builds and deploys main itself (OPS-16): also downloads the .NET SDK (the version in
@@ -76,7 +76,7 @@ if [ "${PULL_DEPLOY:-}" = 1 ]; then
 fi
 cp "$key" "$work/dalan-setup/deploy.pub"
 # A file, not the command line, so the key is not visible in the server's process list.
-(umask 077 && for name in ADMIN_PHONES SMS KAVENEGAR_KEY ROTATE_SECRETS GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET SITES_DOMAIN TUNNEL_DOMAIN PULL_DEPLOY; do
+(umask 077 && for name in ADMIN_PHONES SMS SMSIR_KEY ROTATE_SECRETS GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET SITES_DOMAIN TUNNEL_DOMAIN PULL_DEPLOY; do
   [ -z "${!name:-}" ] || printf '%s=%q\n' "$name" "${!name}"
 done > "$work/dalan-setup/settings.env")
 
