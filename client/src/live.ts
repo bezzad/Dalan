@@ -8,7 +8,7 @@ export interface LiveHandlers {
   onOpen(): void;
   onMessage(botId: number, message: Message): void;
   /** LIVE-09: the bot answered a press of this user. */
-  onAnswer(botId: number, answer: { text?: string; show_alert: boolean }): void;
+  onAnswer(botId: number, answer: { callback_id: string; text?: string; show_alert: boolean }): void;
   /** LIVE-10: the user read a chat on some device. */
   onRead(botId: number, unread: number): void;
   /** The stream is down and the client is waiting to try again. */
@@ -40,7 +40,7 @@ export class Live {
       this.handlers.onMessage(data.bot_id, data.message);
     });
     source.addEventListener("answer", event => {
-      const data = JSON.parse(event.data) as { bot_id: number; text?: string; show_alert: boolean };
+      const data = JSON.parse(event.data) as { bot_id: number; callback_id: string; text?: string; show_alert: boolean };
       this.handlers.onAnswer(data.bot_id, data);
     });
     source.addEventListener("read", event => {

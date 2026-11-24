@@ -1,14 +1,18 @@
 // The chat with one bot: history, live messages, reply buttons (CLI-07), inline buttons (CLI-13),
 // the pinned bar (CLI-14), the command menu (CLI-15), files (CLI-16), the read position (CLI-18),
-// the bot's status (CLI-19), the "not delivered" mark (CLI-20), voice (CLI-46), paste and drop (CLI-47) and the input.
+// the bot's status (CLI-19), the "not delivered" mark (CLI-20), voice (CLI-46), paste and drop (CLI-47), replies (CLI-52),
+// presses in progress (CLI-53), formatted text (CLI-54) and the input.
 import { api, type Bot } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { chatHeader, matchingMessages } from "./chatHeader.ts";
 import { h } from "./dom.ts";
+import { formatNodes, formatTree } from "./format.ts";
 import { botIconUrl } from "./icon.ts";
+import { toast } from "./toast.ts";
 import {
-  buttonAction, clock, commandMessage, fileView, firstFile, fitsSize, KeyboardState, ReadPosition, replyKeyboard, stamp,
-  type ButtonStyle, type FileInfo, type InlineButton, type Message,
+  buttonAction, clock, commandMessage, fileView, fillText, firstFile, fitsSize, isReplySwipe, KeyboardState, PressState, quoteLine,
+  ReadPosition, replyKeyboard, stamp,
+  type ButtonStyle, type FileInfo, type InlineButton, type Message, type ReplyInfo,
 } from "./messages.ts";
 import { recorderType, voiceFile } from "./ogg.ts";
 
@@ -47,6 +51,12 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
   const recCancel = h("button", { type: "button" }, t("cancel"));
   const recSend = h("button", { type: "button", class: "primary", "aria-label": t("stopRecord"), title: t("stopRecord") }, "➤");
   const recBar = h("div", { class: "row recording", hidden: true }, h("span", { class: "rec-dot", "aria-hidden": "true" }), recTime, recCancel, recSend);
+  // CLI-52: the message the next send replies to, shown in a bar above the input.
+  const replyBar = h("div", { class: "reply-bar", hidden: true });
+  // CLI-52: Reply and Copy for one message, from its menu (right-click or a long press).
+  const messageMenu = h("div", { class: "message-menu", role: "menu", hidden: true });
+  const presses = new PressState();
+  let replyTarget: Message | null = null;
   let bot: Bot | null = null;
   let waitingFile: File | null = null;
   /** True while the newest message is in view; then new messages and loaded pictures keep it in view. */
@@ -89,23 +99,126 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
   /** CLI-13: a button's colour class; none for no style. */
   const styled = (base: string, style: ButtonStyle | null | undefined) => style ? `${base} style-${style}` : base;
 
-  function inlineButton(message: Message, button: InlineButton): HTMLElement {
+  /** `index`: the button's place in the message; `waiting`: the index of the button in progress (CLI-53), or null. */
+  function inlineButton(message: Message, button: InlineButton, index: number, waiting: number | null): HTMLElement {
     const action = buttonAction(button);
     // A link opens in a new tab and does not tell the bot's site where it came from. It has Telegram's ↗ mark.
     if ("open" in action) {
       return h("a", { class: styled("button", button.style), href: action.open, target: "_blank", rel: "noopener noreferrer", dir: "auto" },
         button.text, h("span", { class: "link-mark", "aria-hidden": "true" }, "↗"));
     }
-    return h("button", { type: "button", class: styled("", button.style), dir: "auto", onclick: () => void press(message.id, action.press) }, button.text);
+    // CLI-13: a switch button puts "@bot query" in the input, as Telegram does in the current chat.
+    if ("fill" in action) {
+      return h("button", { type: "button", class: styled("", button.style), dir: "auto", onclick: () => fill(action.fill) }, button.text);
+    }
+    // CLI-53: while a press waits for the bot, every button of the message is locked and the pressed one moves.
+    return h("button", {
+      type: "button", class: styled(waiting === index ? "waiting" : "", button.style), dir: "auto", disabled: waiting !== null,
+      "aria-busy": waiting === index ? "true" : "false", title: waiting === index ? t("pressWait") : false,
+      onclick: () => void press(message, index, action.press),
+    }, button.text);
+  }
+
+  /** CLI-52: who wrote a quoted message. */
+  const writer = (from: "user" | "bot") => from === "user" ? t("you") : bot?.name ?? "";
+
+  /** CLI-52: the quote at the top of a message that replies; a click goes to the message. */
+  function quote(reply: ReplyInfo): HTMLElement {
+    const target = bot ? app.chats.of(bot.id).messages.find(m => m.id === reply.id) : undefined;
+    const line = target?.deleted ? t("deletedMessage") : quoteLine(reply);
+    return h("button", { type: "button", class: "quote", dir: "auto", onclick: () => void goTo(reply.id, "replyGone") },
+      h("strong", {}, writer(reply.from)), h("span", {}, line));
   }
 
   function bubble(message: Message): HTMLElement {
     const time = stamp(message, app.language.time(message.date), { edited: t("edited"), notDelivered: t("notDelivered") });
-    return h("li", { class: message.from, "data-id": String(message.id) },
+    const waiting = presses.pending(message, Date.now());
+    let index = 0;
+    const item = h("li", { class: message.from, "data-id": String(message.id) },
+      ...(message.reply_to ? [quote(message.reply_to)] : []),
       ...(message.file ? [fileElement(message.file)] : []),
-      ...(message.text ? [h("p", { dir: "auto" }, message.text)] : []),
-      ...(message.inline_keyboard ?? []).map(row => h("div", { class: "row inline" }, ...row.map(button => inlineButton(message, button)))),
+      ...(message.text ? [h("p", { dir: "auto" }, ...formatNodes(formatTree(message.text, message.entities)))] : []),
+      ...(message.inline_keyboard ?? []).map(row => h("div", { class: "row inline" },
+        ...row.map(button => inlineButton(message, button, index++, waiting)))),
       h("time", { datetime: message.date }, time));
+    // CLI-52: Reply from the message's menu, a double-click, or a swipe to the left.
+    item.addEventListener("contextmenu", event => {
+      if ((event.target as Element).closest("a, button, input, audio, video")) return;
+      event.preventDefault();
+      openMenu(message, event.clientX, event.clientY);
+    });
+    item.addEventListener("dblclick", event => {
+      if ((event.target as Element).closest("a, button, input")) return;
+      window.getSelection()?.removeAllRanges();
+      startReply(message);
+    });
+    let touch: { x: number; y: number } | null = null;
+    item.addEventListener("touchstart", event => {
+      const first = event.touches[0];
+      touch = event.touches.length === 1 && first ? { x: first.clientX, y: first.clientY } : null;
+    }, { passive: true });
+    item.addEventListener("touchend", event => {
+      const last = event.changedTouches[0];
+      if (touch && last && isReplySwipe(last.clientX - touch.x, last.clientY - touch.y)) startReply(message);
+      touch = null;
+    });
+    return item;
+  }
+
+  /** CLI-52: the small menu of one message. */
+  function openMenu(message: Message, x: number, y: number): void {
+    const close = () => { messageMenu.hidden = true; };
+    const item = (label: string, action: () => void) =>
+      h("button", { type: "button", role: "menuitem", onclick: () => { close(); action(); } }, label);
+    messageMenu.replaceChildren(
+      item(t("reply"), () => startReply(message)),
+      ...(message.text ? [item(t("copy"), () => void navigator.clipboard.writeText(message.text)
+        .then(() => toast(t("copied")), () => toast(t("failed"), "error")))] : []));
+    messageMenu.style.left = `${Math.min(x, window.innerWidth - 180)}px`;
+    messageMenu.style.top = `${Math.min(y, window.innerHeight - 100)}px`;
+    messageMenu.hidden = false;
+    messageMenu.querySelector("button")?.focus();
+    // Any click or key elsewhere closes it.
+    const away = (event: Event) => {
+      if (event instanceof KeyboardEvent && event.key !== "Escape") return;
+      if (event.target instanceof Node && messageMenu.contains(event.target) && event.type !== "keydown") return;
+      close();
+      document.removeEventListener("pointerdown", away, true);
+      document.removeEventListener("keydown", away, true);
+      scroller.removeEventListener("scroll", away);
+    };
+    document.addEventListener("pointerdown", away, true);
+    document.addEventListener("keydown", away, true);
+    scroller.addEventListener("scroll", away);
+  }
+
+  /** CLI-52: the next message replies to this one. */
+  function startReply(message: Message): void {
+    if (message.deleted || form.hidden) return;
+    replyTarget = message;
+    const reply: ReplyInfo = { id: message.id, from: message.from, text: message.text, ...(message.file ? { file: message.file } : {}) };
+    replyBar.replaceChildren(
+      h("span", { class: "reply-mark", "aria-hidden": "true" }, "↩"),
+      h("button", { type: "button", class: "quote", dir: "auto", onclick: () => void goTo(message.id, "replyGone") },
+        h("strong", {}, writer(message.from)), h("span", {}, quoteLine(reply))),
+      h("button", { type: "button", class: "close", "aria-label": t("cancelReply"), title: t("cancelReply"), onclick: cancelReply }, "✕"));
+    replyBar.hidden = false;
+    input.focus();
+  }
+
+  function cancelReply(): void {
+    replyTarget = null;
+    replyBar.hidden = true;
+    replyBar.replaceChildren();
+  }
+
+  /** CLI-13: a switch button's text goes in the input. */
+  function fill(query: string): void {
+    if (!bot || form.hidden) return;
+    input.value = fillText(bot.username, query);
+    drawSendButton();
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
   }
 
   /** CLI-07: the reply keyboard under the input, each row as the bot sent it. */
@@ -185,7 +298,7 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
   };
   document.addEventListener("visibilitychange", onVisible);
 
-  /** Runs a call to the server, shows its error, and draws the answer. */
+  /** Runs a call to the server, shows its error, and draws the answer. A sent message ends the reply (CLI-52). */
   async function run(work: () => Promise<Message | void>): Promise<void> {
     if (!bot) return;
     error.textContent = note.textContent = "";
@@ -195,6 +308,8 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
       if (message) {
         app.chats.receive(bot.id, message);
         input.value = "";
+        // Only the reply that was sent ends; one the user picked while it was on its way stays.
+        if (message.reply_to && message.reply_to.id === replyTarget?.id) cancelReply();
         following = true;
         draw();
       }
@@ -206,8 +321,51 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
     }
   }
 
-  const send = (text: string) => text.trim() === "" ? Promise.resolve() : run(() => api.send(bot!.id, text));
-  const press = (messageId: number, data: string) => run(async () => { await api.press(bot!.id, messageId, data); });
+  /** CLI-52: the id the next send replies to, if any. */
+  const replyId = () => replyTarget?.id;
+  const send = (text: string) => {
+    const replyTo = replyId();
+    return text.trim() === "" ? Promise.resolve() : run(() => api.send(bot!.id, text, replyTo));
+  };
+
+  /** CLI-53: the press waits, with the buttons of its message locked, until the bot answers, changes the message, or the time is over. */
+  async function press(message: Message, index: number, data: string): Promise<void> {
+    if (!bot || presses.pending(message, Date.now()) !== null) return;
+    error.textContent = note.textContent = "";
+    const token = presses.start(message, index, Date.now(), app.pressWaitSeconds);
+    draw();
+    window.setTimeout(() => { if (element.isConnected) draw(); }, app.pressWaitSeconds * 1000 + 50);
+    try {
+      // A fast bot may have answered before this call came back: then the wait ends here.
+      if (presses.sent(message.id, token, (await api.press(bot.id, message.id, data)).id)) draw();
+    } catch (failure) {
+      presses.end(message.id, token);
+      error.textContent = t(errorText(failure));
+      draw();
+    }
+  }
+
+  /** CLI-14 and CLI-52: goes to a message, loading older pages when it is not here yet. */
+  async function goTo(id: number, gone: "pinnedGone" | "replyGone"): Promise<void> {
+    if (!bot) return;
+    header.clearSearch();
+    error.textContent = note.textContent = "";
+    try {
+      const found = await app.chats.find(bot.id, id);
+      draw(true);
+      const item = found ? list.querySelector<HTMLElement>(`li[data-id="${id}"]`) : null;
+      if (!item) {
+        note.textContent = t(gone);
+        return;
+      }
+      following = false;
+      item.scrollIntoView({ block: "center", behavior: "smooth" });
+      item.classList.add("flash");
+      window.setTimeout(() => item.classList.remove("flash"), 1200);
+    } catch (failure) {
+      error.textContent = t(errorText(failure));
+    }
+  }
 
   // CLI-16 and CLI-47: one card for 📎, paste and drop. A file over the limit is not taken.
   function attachFile(file: File | null): void {
@@ -243,8 +401,9 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
     const file = waitingFile;
     if (file) {
       const caption = input.value;
+      const replyTo = replyId();
       dropFile();
-      void run(() => api.sendFile(bot!.id, file, caption));
+      void run(() => api.sendFile(bot!.id, file, caption, replyTo));
     } else void send(input.value);
   }
 
@@ -260,6 +419,11 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
       event.preventDefault();
       submit();
     }
+    // CLI-52: Esc drops the reply.
+    if (event.key === "Escape" && replyTarget) {
+      event.preventDefault();
+      cancelReply();
+    }
   });
   input.addEventListener("input", drawSendButton);
   // CLI-47: a pasted file goes to the card; pasted text stays text.
@@ -271,26 +435,9 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
   });
   start.addEventListener("click", () => void send("/start"));
   // CLI-14: the bar takes the user to the pinned message, loading older pages when it is not here yet.
-  pinBar.addEventListener("click", async () => {
+  pinBar.addEventListener("click", () => {
     const pinned = bot ? app.chats.of(bot.id).pinned : null;
-    if (!bot || !pinned) return;
-    header.clearSearch();
-    error.textContent = note.textContent = "";
-    try {
-      const found = await app.chats.find(bot.id, pinned.id);
-      draw(true);
-      const item = found ? list.querySelector<HTMLElement>(`li[data-id="${pinned.id}"]`) : null;
-      if (!item) {
-        note.textContent = t("pinnedGone");
-        return;
-      }
-      following = false;
-      item.scrollIntoView({ block: "center", behavior: "smooth" });
-      item.classList.add("flash");
-      window.setTimeout(() => item.classList.remove("flash"), 1200);
-    } catch (failure) {
-      error.textContent = t(errorText(failure));
-    }
+    if (pinned) void goTo(pinned.id, "pinnedGone");
   });
   menuButton.addEventListener("click", () => { menu.hidden = !menu.hidden; });
   keyToggle.addEventListener("click", () => {
@@ -346,7 +493,8 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
     const seconds = Math.max(1, Math.round((performance.now() - done.started) / 1000));
     const recorded = new Uint8Array(await new Blob(done.chunks).arrayBuffer());
     const voice = voiceFile(recorded, done.recorder.mimeType || done.chunks[0]?.type || "");
-    void run(() => api.sendVoice(bot!.id, new Blob([voice.bytes as BlobPart], { type: voice.type }), voice.name, seconds));
+    const replyTo = replyId();
+    void run(() => api.sendVoice(bot!.id, new Blob([voice.bytes as BlobPart], { type: voice.type }), voice.name, seconds, replyTo));
   }
 
   mic.addEventListener("click", async () => {
@@ -442,10 +590,12 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
     note,
     menu,
     pending,
+    replyBar,
     start,
     form,
     recBar,
-    keyboard);
+    keyboard,
+    messageMenu);
 
   // CLI-47: a file dropped anywhere on the chat.
   element.addEventListener("dragover", event => {
@@ -461,11 +611,13 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
   return {
     element,
     onMessage: botId => { if (botId === bot?.id) draw(); },
-    // CLI-13: the bot's answer to a press.
-    onAnswer(botId, text, showAlert) {
+    // CLI-13 and CLI-53: the bot's answer to a press ends its wait, and its text is shown.
+    onAnswer(botId, answer) {
       if (botId !== bot?.id) return;
-      if (showAlert) alert(text);
-      else note.textContent = text;
+      if (presses.answered(answer.callback_id)) draw();
+      if (!answer.text) return;
+      if (answer.show_alert) alert(answer.text);
+      else note.textContent = answer.text;
     },
   };
 }

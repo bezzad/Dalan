@@ -8,6 +8,26 @@ export interface InlineButton {
   callback_data?: string;
   url?: string;
   style?: ButtonStyle;
+  /** REL-20: a tap puts "@username " and this text in the input. */
+  switch_query?: string;
+}
+
+/** REL-53: one formatted part of a text; offsets and lengths count UTF-16 code units, as JavaScript strings do. */
+export interface Entity {
+  type: string;
+  offset: number;
+  length: number;
+  url?: string;
+  language?: string;
+}
+
+/** REL-52: a copy of the message replied to. */
+export interface ReplyInfo {
+  id: number;
+  from: "user" | "bot";
+  text: string;
+  file?: FileInfo;
+  entities?: Entity[];
 }
 
 /** REL-17: sent only when a flag or a style is set. `styles` has the shape of the rows. */
@@ -49,6 +69,10 @@ export interface Message {
   deleted?: boolean;
   /** REL-31: a user message the bot never got. */
   not_delivered?: boolean;
+  /** REL-53 */
+  entities?: Entity[];
+  /** REL-52 */
+  reply_to?: ReplyInfo;
 }
 
 /** One answer of the messages call: a page and the pinned message of the chat. */
@@ -145,8 +169,88 @@ export function firstFile(files: ArrayLike<File>, rename: (file: File, name: str
 }
 
 /** CLI-13: what a tap on an inline button does. */
-export function buttonAction(button: InlineButton): { press: string } | { open: string } {
-  return button.url !== undefined ? { open: button.url } : { press: button.callback_data ?? "" };
+export function buttonAction(button: InlineButton): { press: string } | { open: string } | { fill: string } {
+  if (button.url !== undefined) return { open: button.url };
+  if (button.switch_query !== undefined) return { fill: button.switch_query };
+  return { press: button.callback_data ?? "" };
+}
+
+/** CLI-13: the input after a tap on a switch button, as in Telegram's current chat. */
+export function fillText(username: string, query: string): string {
+  return `@${username} ${query}`;
+}
+
+/** CLI-52: the line a quote shows: the first line of the text, else the file name. */
+export function quoteLine(reply: ReplyInfo): string {
+  const line = reply.text.split("\n").find(part => part.trim() !== "") ?? "";
+  return line.trim() || reply.file?.name || "";
+}
+
+/** CLI-52: a swipe to the left, mostly sideways, starts a reply. */
+export function isReplySwipe(dx: number, dy: number): boolean {
+  return dx <= -60 && Math.abs(dy) < Math.abs(dx) / 2;
+}
+
+/**
+ * CLI-53: the press each message waits for. A press ends with the bot's answer to it, a newer copy of its message,
+ * a failure, or when its time is over. In memory only.
+ */
+export class PressState {
+  private readonly waits = new Map<number, { token: number; button: number; version: number; until: number; id: string | null }>();
+  /** Answers that came before the server gave the press id (a fast bot). */
+  private readonly early = new Set<string>();
+  private tokens = 0;
+
+  /**
+   * The user tapped button `button` (its index in the message) of this message. The token names this press, so a late
+   * answer of an older press of the same message never touches a newer one.
+   */
+  start(message: Message, button: number, now: number, waitSeconds: number): number {
+    const token = ++this.tokens;
+    this.waits.set(message.id, { token, button, version: message.version, until: now + waitSeconds * 1000, id: null });
+    return token;
+  }
+
+  /** The server took the press and gave it this id. True when that ended the wait (the bot had answered already). */
+  sent(messageId: number, token: number, pressId: string): boolean {
+    const wait = this.waits.get(messageId);
+    const answered = this.early.delete(pressId);
+    if (wait?.token !== token) return false;
+    if (answered) return this.waits.delete(messageId);
+    wait.id = pressId;
+    return false;
+  }
+
+  /** The press failed. */
+  end(messageId: number, token: number): void {
+    if (this.waits.get(messageId)?.token === token) this.waits.delete(messageId);
+  }
+
+  /** LIVE-09: the bot answered this press. True when a wait ended. */
+  answered(pressId: string): boolean {
+    for (const [messageId, wait] of this.waits) {
+      if (wait.id === pressId) return this.waits.delete(messageId);
+    }
+    if (this.waits.size > 0) this.early.add(pressId);
+    return false;
+  }
+
+  /** The index of the button in progress, or null; a newer copy of the message or the end of the time ends the wait. */
+  pending(message: Message, now: number): number | null {
+    const wait = this.waits.get(message.id);
+    if (!wait) return null;
+    if (message.version > wait.version || now >= wait.until) {
+      this.waits.delete(message.id);
+      return null;
+    }
+    return wait.button;
+  }
+}
+
+/** CLI-55: the manifest a page links; a bot's chat links its own, so Install there installs that bot. */
+export function manifestFor(path: string): string {
+  const username = /^\/@([A-Za-z0-9_]+)$/.exec(path)?.[1];
+  return username ? `/@${username}/manifest.webmanifest` : "/manifest.webmanifest";
 }
 
 /** CLI-16: how a file is shown. A voice and an audio get Dalan's own player. */

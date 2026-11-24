@@ -27,11 +27,14 @@ public enum ChatError
     MessageNotFound,
     NotEditable,
     NoText,
+    NoCaption,
     NotModified,
     FileTooBig,
     FileNotFound,
     UploadLimit,
     BotSuspended,
+    ReplyNotFound,
+    BadEntities,
 }
 
 /// <summary>A file a user sends from the client (REL-28).</summary>
@@ -51,15 +54,22 @@ public sealed class ChatService(
     IOptionsMonitor<RelayOptions> options,
     TimeProvider time)
 {
-    /// <summary>A user writes to a bot, with an optional file. The first message starts the chat (REL-05).</summary>
+    /// <summary>
+    /// A user writes to a bot, with an optional file. The first message starts the chat (REL-05).
+    /// <paramref name="replyTo"/> (REL-52) is a message of this chat that it replies to.
+    /// </summary>
     public async Task<(ChatError Error, Message? Message)> ReceiveFromUserAsync(
-        long botId, long userId, string text, UserUpload? upload, CancellationToken cancellationToken)
+        long botId, long userId, string text, UserUpload? upload, CancellationToken cancellationToken, long? replyTo = null)
     {
         if (suspendedBots.Contains(botId)) return (ChatError.BotSuspended, null);
         if (CheckText(text, upload is not null) is var error and not ChatError.None) return (error, null);
 
         var sender = await users.FindAsync(userId, cancellationToken);
         if (sender is null) return (ChatError.UnknownUser, null);
+
+        MessageReply? reply = null;
+        if (replyTo is { } targetSeq && (reply = await FindReplyAsync(botId, userId, targetSeq, cancellationToken)) is null)
+            return (ChatError.ReplyNotFound, null);
 
         var now = time.GetUtcNow();
         StoredFile? file = null;
@@ -85,7 +95,7 @@ public sealed class ChatService(
                     BotId = botId,
                     UserId = userId,
                     Direction = Direction.FromUser,
-                    Content = new MessageContent { Text = text, File = file is null ? null : MessageFile.Of(file.ToBot()) },
+                    Content = new MessageContent { Text = text, File = file is null ? null : MessageFile.Of(file.ToBot()), ReplyTo = reply },
                     CreatedAt = now,
                     Delivery = DeliveryState.Pending,
                 },
@@ -105,12 +115,20 @@ public sealed class ChatService(
         return (ChatError.None, message);
     }
 
-    /// <summary>A bot writes to a user who has started it (REL-08, REL-17, REL-20, REL-27).</summary>
+    /// <summary>A bot writes to a user who has started it (REL-08, REL-17, REL-20, REL-27, REL-52, REL-53).</summary>
     public async Task<(ChatError Error, Message? Message)> SendFromBotAsync(
         long botId, long userId, OutgoingMessage outgoing, CancellationToken cancellationToken)
     {
         if (CheckText(outgoing.Text, outgoing.File is not null) is var error and not ChatError.None) return (error, null);
         if (!IsValid(outgoing.ReplyKeyboard, outgoing.ReplyOptions) || !IsValid(outgoing.InlineKeyboard)) return (ChatError.BadKeyboard, null);
+        if (!TextEntities.TryCheck(outgoing.Entities, outgoing.Text, options.CurrentValue, out var entities)) return (ChatError.BadEntities, null);
+
+        MessageReply? reply = null;
+        if (outgoing.ReplyTo is { } targetSeq
+            && (reply = await FindReplyAsync(botId, userId, targetSeq, cancellationToken)) is null && !outgoing.AllowWithoutReply)
+        {
+            return (ChatError.ReplyNotFound, null);
+        }
 
         var now = time.GetUtcNow();
         StoredFile? newFile = null;
@@ -149,6 +167,8 @@ public sealed class ChatService(
                     ReplyKeyboard = ReplyKeyboard.Of(outgoing.ReplyKeyboard, outgoing.ReplyOptions),
                     InlineKeyboard = InlineKeyboard.Of(outgoing.InlineKeyboard),
                     File = file is null ? null : MessageFile.Of(file),
+                    Entities = entities,
+                    ReplyTo = reply,
                 },
                 CreatedAt = now,
             },
@@ -159,13 +179,14 @@ public sealed class ChatService(
         return message is null ? (ChatError.ChatNotActive, null) : (ChatError.None, message);
     }
 
-    /// <summary>REL-23: null text keeps the text; the inline keyboard is always replaced.</summary>
+    /// <summary>REL-23: null text keeps the text and its entities; the inline keyboard is always replaced.</summary>
     public async Task<(ChatError Error, Message? Message)> EditAsync(
-        long botId, long userId, long seq, string? text, List<List<InlineButton>>? inlineKeyboard,
-        CancellationToken cancellationToken)
+        long botId, long userId, long seq, MessageEdit edit, CancellationToken cancellationToken)
     {
-        if (text is not null && CheckText(text, withFile: false) is var error and not ChatError.None) return (error, null);
-        if (!IsValid(inlineKeyboard)) return (ChatError.BadKeyboard, null);
+        var text = edit.Text;
+        if (!IsValid(edit.InlineKeyboard)) return (ChatError.BadKeyboard, null);
+        List<MessageEntity>? entities = null;
+        if (text is not null && !TextEntities.TryCheck(edit.Entities, text, options.CurrentValue, out entities)) return (ChatError.BadEntities, null);
 
         Message? edited = null;
         var result = await ChangeAsync(botId, userId, async db =>
@@ -173,19 +194,33 @@ public sealed class ChatService(
             edited = await FindAsync(db, botId, userId, seq, cancellationToken);
             if (edited is null) return (ChatError.MessageNotFound, []);
             if (edited.Direction != Direction.FromBot) return (ChatError.NotEditable, []);
-            if (text is not null && edited.Content.File is not null) return (ChatError.NoText, []);
 
-            var keyboard = InlineKeyboard.Of(inlineKeyboard is { Count: > 0 } ? inlineKeyboard : null);
+            var hasFile = edited.Content.File is not null;
+            if (text is not null)
+            {
+                if (edit.Part == EditPart.Text && hasFile) return (ChatError.NoText, []);
+                if (edit.Part == EditPart.Caption && !hasFile) return (ChatError.NoCaption, []);
+                if (CheckText(text, hasFile) is var error and not ChatError.None) return (error, []);
+            }
+
+            var keyboard = InlineKeyboard.Of(edit.InlineKeyboard is { Count: > 0 } ? edit.InlineKeyboard : null);
             var newText = text ?? edited.Content.Text;
-            if (newText == edited.Content.Text && Same(keyboard, edited.Content.InlineKeyboard)) return (ChatError.NotModified, []);
+            // Kept lists are copied: EF Core does not let a tracked list item move to the new content object.
+            var newEntities = text is null ? MessageEntity.Of(MessageEntity.ToBot(edited.Content.Entities)) : entities;
+            if (newText == edited.Content.Text && Same(newEntities, edited.Content.Entities) && Same(keyboard, edited.Content.InlineKeyboard))
+                return (ChatError.NotModified, []);
 
-            // A new content object, so EF Core writes the whole jsonb document again.
+            // A new content object, so EF Core writes the whole jsonb document again. Every kept part is a copy:
+            // EF Core drops a tracked owned object that moves to a new owner.
+            var old = edited.Content;
             edited.Content = new MessageContent
             {
                 Text = newText,
-                ReplyKeyboard = edited.Content.ReplyKeyboard,
+                ReplyKeyboard = ReplyKeyboard.Of(old.ReplyKeyboard?.ToRows(), old.ReplyKeyboard?.ToOptions()),
                 InlineKeyboard = keyboard,
-                File = edited.Content.File,
+                File = old.File is null ? null : MessageFile.Of(old.File.ToBot()),
+                Entities = newEntities,
+                ReplyTo = old.ReplyTo?.Copy(),
             };
             edited.EditedAt = time.GetUtcNow();
             return (ChatError.None, [edited]);
@@ -284,19 +319,20 @@ public sealed class ChatService(
     /// <summary>REL-17, REL-20: no style, or one of the three the clients know.</summary>
     internal static bool IsValidStyle(string? style) => style is null or "success" or "danger" or "primary";
 
-    /// <summary>REL-20: like a reply keyboard, and each button has either callback data or a web link.</summary>
+    /// <summary>REL-20: like a reply keyboard, and each button has exactly one of callback data, a web link and a switch query.</summary>
     private bool IsValid(List<List<InlineButton>>? keyboard)
     {
         if (keyboard is null) return true;
 
         var limits = options.CurrentValue;
-        return IsValidShape(keyboard, button => button is not null && IsValidText(button.Text) && IsValidStyle(button.Style) && (button.CallbackData, button.Url) switch
-        {
-            ({ } data, null) => Encoding.UTF8.GetByteCount(data) is var bytes && bytes > 0 && bytes <= limits.MaxCallbackDataBytes,
-            (null, { } url) => url.Length <= limits.MaxButtonUrlLength
-                && Uri.TryCreate(url, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp),
-            _ => false,
-        });
+        return IsValidShape(keyboard, button => button is not null && IsValidText(button.Text) && IsValidStyle(button.Style)
+            && (button.CallbackData, button.Url, button.SwitchQuery) switch
+            {
+                ({ } data, null, null) => Encoding.UTF8.GetByteCount(data) is var bytes && bytes > 0 && bytes <= limits.MaxCallbackDataBytes,
+                (null, { } url, null) => TextEntities.IsWebLink(url, limits),
+                (null, null, { } query) => query.Length <= limits.MaxTextLength,
+                _ => false,
+            });
     }
 
     private bool IsValidShape<T>(List<List<T>> keyboard, Predicate<T> isValid) =>
@@ -308,6 +344,18 @@ public sealed class ChatService(
 
     private static bool Same(InlineKeyboard? a, InlineKeyboard? b) =>
         JsonSerializer.Serialize(a?.ToRows()) == JsonSerializer.Serialize(b?.ToRows());
+
+    private static bool Same(List<MessageEntity>? a, List<MessageEntity>? b) =>
+        JsonSerializer.Serialize(MessageEntity.ToBot(a) ?? []) == JsonSerializer.Serialize(MessageEntity.ToBot(b) ?? []);
+
+    /// <summary>REL-52: a copy of a message of this chat that is not deleted, or null.</summary>
+    private async Task<MessageReply?> FindReplyAsync(long botId, long userId, long seq, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var target = await db.Messages.AsNoTracking().FirstOrDefaultAsync(
+            m => m.BotId == botId && m.UserId == userId && m.Seq == seq && !m.Deleted, cancellationToken);
+        return target is null ? null : MessageReply.Of(target);
+    }
 
     /// <summary>REL-28: saves a user's file to disk inside the size limit and the daily limit.</summary>
     private async Task<(ChatError, StoredFile?)> SaveUserFileAsync(

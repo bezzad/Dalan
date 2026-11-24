@@ -100,9 +100,9 @@ public class SendMessageTests(PostgresServer postgres)
         await using var _1 = app;
 
         (await bot.PostJsonAsync("sendMessage",
-            new { chat_id = user, text = "<b>hi</b>", parse_mode = "HTML", disable_notification = true })).IsOk();
+            new { chat_id = user, text = "*hi*", parse_mode = "MarkdownV2", disable_notification = true })).IsOk();
 
-        Assert.Equal("<b>hi</b>", (await app.MessagesAsync())[^1].Content.Text);
+        Assert.Equal("*hi*", (await app.MessagesAsync())[^1].Content.Text);
     }
 
     [Fact]
@@ -198,7 +198,7 @@ public class SendMessageTests(PostgresServer postgres)
 
     [Theory]
     [Trait("Rule", "TG-08")]
-    [InlineData("""{"inline_keyboard":[[{"text":"A","switch_inline_query":"a"}]]}""")]
+    [InlineData("""{"inline_keyboard":[[{"text":"A","pay":true}]]}""")]
     [InlineData("""{"force_reply":true}""")]
     [InlineData("""{"keyboard":[[{"text":"Phone","request_contact":true}]]}""")]
     [InlineData("""{"keyboard":[[{"text":"App","web_app":{"url":"https://example.ir"}}]]}""")]

@@ -119,6 +119,8 @@ export interface Settings {
   status_refresh_seconds: number;
   /** REL-51 */
   max_bot_icon_kb: number;
+  /** CLI-53 */
+  press_wait_seconds: number;
 }
 
 /** SITE-16: one site of "My apps". */
@@ -152,6 +154,9 @@ export interface Command {
 
 const call = createCaller((path, init) => fetch(path, init));
 
+/** REL-52: a file that replies says so in a header. */
+const replyHeader = (replyTo?: number): Record<string, string> => replyTo === undefined ? {} : { "X-Reply-To": String(replyTo) };
+
 export const api = {
   me: () => call<User>("GET", "/api/me"),
   authSettings: () => call<AuthSettings>("GET", "/api/auth/settings"),
@@ -178,17 +183,19 @@ export const api = {
   bots: async () => (await call<{ bots: ListedBot[] }>("GET", "/api/bots")).bots,
   findBot: (username: string) =>
     call<Bot & { started: boolean; suspended: boolean }>("GET", `/api/bots/by-username/${encodeURIComponent(username)}`),
-  send: (botId: number, text: string) => call<Message>("POST", `/api/bots/${botId}/messages`, { text }),
+  /** REL-15; `replyTo` (REL-52) is the message it replies to. */
+  send: (botId: number, text: string, replyTo?: number) =>
+    call<Message>("POST", `/api/bots/${botId}/messages`, replyTo === undefined ? { text } : { text, reply_to: replyTo }),
   messages: (botId: number, range: { after?: number; before?: number }) => {
     const query = new URLSearchParams(Object.entries(range).map(([name, value]) => [name, String(value)]));
     return call<Page>("GET", `/api/bots/${botId}/messages?${query}`);
   },
   /** REL-28: the file is the body; its name and the caption go percent-encoded in headers. */
-  sendFile: (botId: number, file: File, caption: string) => call<Message>("POST", `/api/bots/${botId}/files`, file,
-    { "X-File-Name": encodeURIComponent(file.name), "X-Caption": encodeURIComponent(caption) }),
+  sendFile: (botId: number, file: File, caption: string, replyTo?: number) => call<Message>("POST", `/api/bots/${botId}/files`, file,
+    { "X-File-Name": encodeURIComponent(file.name), "X-Caption": encodeURIComponent(caption), ...replyHeader(replyTo) }),
   /** REL-28 and CLI-46: a recorded voice with its length in seconds. */
-  sendVoice: (botId: number, voice: Blob, name: string, seconds: number) => call<Message>("POST", `/api/bots/${botId}/files`, voice,
-    { "X-File-Name": encodeURIComponent(name), "X-Voice-Duration": String(seconds) }),
+  sendVoice: (botId: number, voice: Blob, name: string, seconds: number, replyTo?: number) => call<Message>("POST", `/api/bots/${botId}/files`, voice,
+    { "X-File-Name": encodeURIComponent(name), "X-Voice-Duration": String(seconds), ...replyHeader(replyTo) }),
   /** REL-51 */
   setBotIcon: (botId: number, image: Blob) => call<unknown>("PUT", `/api/builder/bots/${botId}/icon`, image),
   removeBotIcon: (botId: number) => call<unknown>("DELETE", `/api/builder/bots/${botId}/icon`),

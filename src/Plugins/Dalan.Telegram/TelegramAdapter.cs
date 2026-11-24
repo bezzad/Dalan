@@ -56,8 +56,9 @@ public static class TelegramAdapter
             "SENDAUDIO" => await call.SendAsync(FileKind.Audio),
             "SENDVOICE" => await call.SendAsync(FileKind.Voice),
             "SENDVIDEO" => await call.SendAsync(FileKind.Video),
-            "EDITMESSAGETEXT" => await call.EditAsync(withText: true),
-            "EDITMESSAGEREPLYMARKUP" => await call.EditAsync(withText: false),
+            "EDITMESSAGETEXT" => await call.EditAsync(EditPart.Text),
+            "EDITMESSAGECAPTION" => await call.EditAsync(EditPart.Caption),
+            "EDITMESSAGEREPLYMARKUP" => await call.EditAsync(null),
             "DELETEMESSAGE" => await call.ChangeAsync(Change.Delete),
             "DELETEMESSAGES" => await call.DeleteManyAsync(),
             "PINCHATMESSAGE" => await call.ChangeAsync(Change.Pin),
@@ -150,22 +151,91 @@ public static class TelegramAdapter
                 else file = new NewFile(fileKind, FileId: fileId, Duration: duration);
             }
 
-            var text = (file is null ? parameters.Text("text") : parameters.Text("caption")) ?? "";
-            var (error, message) = await gateway.SendAsync(bot.Id, userId, new OutgoingMessage(text, keyboard, inline, file, keyboardOptions), cancellationToken);
+            if (Formatted(file is null ? "text" : "caption", out var text, out var entities) is { } formatProblem)
+                return TelegramJson.BadRequest(formatProblem);
+            if (ReplyParameters(out var replyTo, out var withoutReply) is { } replyProblem) return TelegramJson.BadRequest(replyProblem);
+
+            var outgoing = new OutgoingMessage(text ?? "", keyboard, inline, file, keyboardOptions, entities, replyTo, withoutReply);
+            var (error, message) = await gateway.SendAsync(bot.Id, userId, outgoing, cancellationToken);
             return error == BotError.None ? TelegramJson.Ok(MessageJson.Sent(bot, message!)) : ErrorOf(error, "send", file is not null);
         }
 
-        /// <summary>TG-16: editMessageText (<paramref name="withText"/>) and editMessageReplyMarkup.</summary>
-        public async Task<IResult> EditAsync(bool withText)
+        /// <summary>TG-16: editMessageText, editMessageCaption and editMessageReplyMarkup (<paramref name="part"/> null).</summary>
+        public async Task<IResult> EditAsync(EditPart? part)
         {
             if (parameters.Has("inline_message_id")) return TelegramJson.BadRequest("inline messages are not supported by Dalan");
             if (parameters.Number("chat_id") is not { } userId) return TelegramJson.BadRequest("chat not found");
             if (parameters.Number("message_id") is not { } messageId) return TelegramJson.BadRequest("message to edit not found");
             if (ReplyMarkup.ReadInline(parameters, out var inline) is { } problem) return TelegramJson.BadRequest(problem);
 
-            var text = withText ? parameters.Text("text") ?? "" : null;
-            var (error, message) = await gateway.EditAsync(bot.Id, userId, messageId, text, inline, cancellationToken);
-            return error == BotError.None ? TelegramJson.Ok(MessageJson.Sent(bot, message!)) : ErrorOf(error, "edit", withFile: false);
+            string? text = null;
+            List<TextEntity>? entities = null;
+            if (part is not null && Formatted(part == EditPart.Caption ? "caption" : "text", out text, out entities) is { } formatProblem)
+                return TelegramJson.BadRequest(formatProblem);
+
+            // A missing caption removes it, as in Telegram; editMessageText always has a text.
+            var edit = new MessageEdit(part is null ? null : text ?? "", entities, inline, part ?? EditPart.Any);
+            var (error, message) = await gateway.EditAsync(bot.Id, userId, messageId, edit, cancellationToken);
+            return error == BotError.None ? TelegramJson.Ok(MessageJson.Sent(bot, message!)) : ErrorOf(error, "edit", part == EditPart.Caption);
+        }
+
+        /// <summary>
+        /// TG-25: the text or caption in <paramref name="field"/> with its entities: from parse_mode "HTML", else from
+        /// "entities" / "caption_entities". Kinds Dalan does not draw (mention, url, custom_emoji...) are left out.
+        /// </summary>
+        private string? Formatted(string field, out string? text, out List<TextEntity>? entities)
+        {
+            text = parameters.Text(field);
+            entities = null;
+            var mode = parameters.Text("parse_mode");
+            if (text is not null && string.Equals(mode, "HTML", StringComparison.OrdinalIgnoreCase))
+            {
+                if (TelegramHtml.Parse(text, out var plain, out var parsed) is { } problem) return $"can't parse entities: {problem}";
+
+                text = plain;
+                entities = parsed.Count > 0 ? parsed : null;
+                return null;
+            }
+
+            var entitiesField = field == "caption" ? "caption_entities" : "entities";
+            if (!parameters.TryArray(entitiesField, out var given)) return $"can't parse {entitiesField}: it must be a JSON list";
+            if (given is not { } list) return null;
+
+            try
+            {
+                entities = [.. list.Deserialize<List<EntityJson>>(TelegramJson.ReadOptions)!
+                    .Where(e => e is not null && TelegramEntityKinds.Contains(e.Type))
+                    .Select(e => new TextEntity(e.Type, e.Offset, e.Length, e.Url, e.Language))];
+            }
+            catch (JsonException)
+            {
+                return $"can't parse {entitiesField}: each one needs type, offset and length";
+            }
+
+            if (entities.Count == 0) entities = null;
+            return null;
+        }
+
+        private static readonly HashSet<string> TelegramEntityKinds = new(StringComparer.Ordinal)
+        {
+            "bold", "italic", "underline", "strikethrough", "spoiler", "code", "pre", "text_link", "blockquote", "expandable_blockquote",
+        };
+
+        /// <summary>TG-24: reply_parameters, or the older reply_to_message_id and allow_sending_without_reply.</summary>
+        private string? ReplyParameters(out long? replyTo, out bool withoutReply)
+        {
+            replyTo = parameters.Number("reply_to_message_id");
+            withoutReply = parameters.Flag("allow_sending_without_reply");
+            if (!parameters.TryObject("reply_parameters", out var given)) return "can't parse reply parameters: they must be a JSON object";
+            if (given is not { } reply) return null;
+
+            if (reply.TryGetProperty("chat_id", out _)) return "replies to messages of other chats are not supported by Dalan";
+            if (!reply.TryGetProperty("message_id", out var id) || !id.TryGetInt64(out var messageId))
+                return "can't parse reply parameters: message_id is missing";
+
+            replyTo = messageId;
+            if (reply.TryGetProperty("allow_sending_without_reply", out var allow)) withoutReply = allow.ValueKind == JsonValueKind.True;
+            return null;
         }
 
         /// <summary>TG-17 and TG-18.</summary>
@@ -330,10 +400,14 @@ public static class TelegramAdapter
             BotError.TextTooLong => TelegramJson.BadRequest(withFile ? "message caption is too long" : "message is too long"),
             BotError.BadKeyboard => TelegramJson.BadRequest(
                 "the keyboard has too many buttons, a button text is empty or too long, a button style is not success, danger or primary, " +
-                "or an inline button has not exactly one of callback_data and an http(s) url"),
+                "or an inline button has not exactly one of callback_data, an http(s) url and a switch_inline_query"),
             BotError.MessageNotFound => TelegramJson.BadRequest($"message to {action} not found"),
             BotError.NotEditable => TelegramJson.BadRequest("message can't be edited"),
             BotError.NoText => TelegramJson.BadRequest("there is no text in the message to edit"),
+            BotError.NoCaption => TelegramJson.BadRequest("there is no caption in the message to edit"),
+            BotError.ReplyNotFound => TelegramJson.BadRequest("message to be replied not found"),
+            BotError.BadEntities => TelegramJson.BadRequest(
+                "can't parse entities: an entity is outside the text, two entities cross, there are too many, or a text_link has no http(s) url"),
             BotError.NotModified => TelegramJson.BadRequest(
                 "message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message"),
             BotError.FileTooBig => TelegramJson.Error(StatusCodes.Status413PayloadTooLarge, "Request Entity Too Large"),

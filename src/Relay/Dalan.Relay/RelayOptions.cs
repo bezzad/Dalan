@@ -46,6 +46,8 @@ public sealed class RelayOptions
     public int MaxBotNameLength { get; set; }
     public int MaxBotDescriptionLength { get; set; }
     public int MaxBotIconKb { get; set; }
+    public int ClientPressWaitSeconds { get; set; }
+    public int MaxTextEntities { get; set; }
 
     /// <summary>REL-40: comma separated keys, like "games,tools".</summary>
     public string ShowcaseCategories { get; set; } = "";

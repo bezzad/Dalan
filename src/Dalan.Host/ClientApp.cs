@@ -28,9 +28,22 @@ public static class ClientApp
             app.MapGet(path, Page).DisableRateLimiting();
     }
 
+    private const string MainManifest = "href=\"/manifest.webmanifest\"";
+
     private static IResult Page(HttpContext http)
     {
         http.Response.Headers.CacheControl = NoCache;
+
+        // REL-54: a bot's page links that bot's manifest, so Install there installs the bot. Usernames are only
+        // letters, digits and _, so the value can go into the page as it is.
+        if (http.Request.RouteValues["username"] is string username && http.Request.Path.StartsWithSegments("/@" + username)
+            && username.Length <= 64 && username.All(c => char.IsAsciiLetterOrDigit(c) || c == '_'))
+        {
+            using var reader = new StreamReader(Files.GetFileInfo("index.html").CreateReadStream());
+            var page = reader.ReadToEnd().Replace(MainManifest, $"href=\"/@{username}/manifest.webmanifest\"", StringComparison.Ordinal);
+            return Results.Text(page, "text/html; charset=utf-8");
+        }
+
         return Results.Stream(Files.GetFileInfo("index.html").CreateReadStream(), "text/html; charset=utf-8");
     }
 }

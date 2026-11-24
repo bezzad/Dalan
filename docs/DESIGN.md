@@ -497,6 +497,8 @@ None of these is planned work. They are recorded so the design does not block th
 | Showcase icon | 100 KB, PNG, JPEG or WebP | Assumed (milestone 9) |
 | Showcase categories | games, tools, education, news, shopping, other | Assumed (milestone 9) |
 | Bots per showcase page | 50 | Assumed (milestone 9) |
+| A pressed button waits for the bot | 15 seconds | Assumed (milestone 13) |
+| Formatted parts per message | 100 | Assumed (milestone 13, Telegram's limit) |
 | Access key lifetime | 90 days | Assumed (milestone 10) |
 | Access keys per user | 10 | Assumed (milestone 10) |
 | Site storage per bot (Layer 2) | 200 MB | Agreed in discussion |
