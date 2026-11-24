@@ -64,7 +64,7 @@ public class RichTests(PostgresServer postgres)
 
     [Theory]
     [Trait("Rule", "TG-14")]
-    [InlineData("switch_inline_query")]
+    [InlineData("callback_game")]
     [InlineData("web_app")]
     [InlineData("login_url")]
     public async Task TG14_inline_button_kind_dalan_does_not_have_is_400(string field)

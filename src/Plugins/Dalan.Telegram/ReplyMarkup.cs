@@ -6,10 +6,9 @@ namespace Dalan.Telegram;
 /// <summary>TG-08 and TG-14: Telegram's reply_markup, turned into the keyboards of the core.</summary>
 internal static class ReplyMarkup
 {
-    // Inline buttons that ask for something Dalan does not have (inline mode, games, payments, web apps, logins).
+    // Inline buttons that ask for something Dalan does not have (games, payments, web apps, logins).
     private static readonly string[] UnsupportedInlineFields =
     [
-        "switch_inline_query", "switch_inline_query_current_chat", "switch_inline_query_chosen_chat",
         "login_url", "web_app", "callback_game", "pay", "copy_text",
     ];
 
@@ -113,7 +112,10 @@ internal static class ReplyMarkup
         return null;
     }
 
-    /// <summary>An inline button: text and callback_data or url. The core checks the limits (REL-20).</summary>
+    /// <summary>
+    /// An inline button: text and callback_data, url or a switch query. The core checks the limits (REL-20).
+    /// TG-14: Dalan has no inline mode and no other chats, so the three switch kinds all fill the input of this chat.
+    /// </summary>
     private static string? InlineButtonOf(JsonElement button, out InlineButton value)
     {
         value = new InlineButton("");
@@ -124,7 +126,11 @@ internal static class ReplyMarkup
             if (UnsupportedInlineFields.Contains(field.Name)) return $"inline keyboard button field {field.Name} is not supported by Dalan";
         }
 
-        value = new InlineButton(text, StringOf(button, "callback_data"), StringOf(button, "url"), StyleOf(button));
+        var switchQuery = StringOf(button, "switch_inline_query_current_chat") ?? StringOf(button, "switch_inline_query");
+        if (switchQuery is null && button.TryGetProperty("switch_inline_query_chosen_chat", out var chosen))
+            switchQuery = chosen.ValueKind == JsonValueKind.Object ? StringOf(chosen, "query") ?? "" : "";
+
+        value = new InlineButton(text, StringOf(button, "callback_data"), StringOf(button, "url"), StyleOf(button), switchQuery);
         return null;
     }
 

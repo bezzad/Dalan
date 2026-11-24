@@ -56,10 +56,10 @@ internal sealed record UpdateJson(long UpdateId, MessageJson? Message, CallbackQ
         var from = UserJson.Of(update.From);
         return new UpdateJson(
             update.Id,
-            update.Message is { } message ? MessageJson.Received(update.From, message) : null,
+            update.Message is { } message ? MessageJson.Received(bot, update.From, message) : null,
             update.Callback is { } callback
                 ? new CallbackQueryJson(
-                    callback.Id, from, MessageJson.Sent(bot, callback.Message),
+                    callback.Id, from, MessageJson.Sent(bot, callback.Message, update.From),
                     update.From.Id.ToString(CultureInfo.InvariantCulture), callback.Data)
                 : null);
     }
@@ -85,24 +85,41 @@ internal sealed record MessageJson(
     FileJson? Voice,
     FileJson? Video,
     string? Caption,
-    InlineMarkupJson? ReplyMarkup)
+    IReadOnlyList<EntityJson>? CaptionEntities,
+    InlineMarkupJson? ReplyMarkup,
+    MessageJson? ReplyToMessage)
 {
-    public static MessageJson Received(BotUser user, BotMessage message) => Of(
-        message,
-        UserJson.Of(user),
-        new ChatJson(user.Id, ChatJson.Private, user.Name, user.Username),
-        message.File is null ? BotCommands.Find(message.Text) : null);
+    /// <summary>A user's message: its entities are the commands in it (TG-06).</summary>
+    public static MessageJson Received(BotInfo bot, BotUser user, BotMessage message)
+    {
+        var chat = new ChatJson(user.Id, ChatJson.Private, user.Name, user.Username);
+        return Of(message, UserJson.Of(user), chat, message.File is null ? BotCommands.Find(message.Text) : null, Reply(bot, user, chat, message));
+    }
 
-    public static MessageJson Sent(BotInfo bot, BotMessage message) => Of(
-        message,
-        new UserJson(bot.Id, true, bot.Name, bot.Username),
-        new ChatJson(message.UserId, ChatJson.Private),
-        entities: null);
+    /// <summary>
+    /// A bot's message. <paramref name="user"/> is the user of the chat when known; a reply to the user's message
+    /// then names them (TG-24), else its first_name is empty.
+    /// </summary>
+    public static MessageJson Sent(BotInfo bot, BotMessage message, BotUser? user = null)
+    {
+        var chat = new ChatJson(message.UserId, ChatJson.Private);
+        return Of(message, BotUser(bot), chat, EntityJson.Of(message.Entities), Reply(bot, user ?? new BotUser(message.UserId, "", null), chat, message));
+    }
 
-    private static MessageJson Of(BotMessage message, UserJson from, ChatJson chat, IReadOnlyList<EntityJson>? entities)
+    private static UserJson BotUser(BotInfo bot) => new(bot.Id, true, bot.Name, bot.Username);
+
+    /// <summary>TG-24: the copy of the message replied to, without a reply of its own.</summary>
+    private static MessageJson? Reply(BotInfo bot, BotUser user, ChatJson chat, BotMessage message) =>
+        message.ReplyTo is { } target
+            ? Of(target, target.FromBot ? BotUser(bot) : UserJson.Of(user), chat,
+                target.FromBot ? EntityJson.Of(target.Entities) : target.File is null ? BotCommands.Find(target.Text) : null, null)
+            : null;
+
+    private static MessageJson Of(BotMessage message, UserJson from, ChatJson chat, IReadOnlyList<EntityJson>? entities, MessageJson? reply)
     {
         var file = message.File;
         FileJson? Of(FileKind kind) => file?.Kind == kind ? FileJson.Of(file) : null;
+        var caption = file is not null && message.Text.Length > 0 ? message.Text : null;
         return new MessageJson(
             message.Id,
             from,
@@ -110,14 +127,16 @@ internal sealed record MessageJson(
             message.Date.ToUnixTimeSeconds(),
             message.EditDate?.ToUnixTimeSeconds(),
             file is null ? message.Text : null,
-            entities,
+            file is null ? entities : null,
             Of(FileKind.Photo) is { } photo ? [photo] : null,
             Of(FileKind.Document),
             Of(FileKind.Audio),
             Of(FileKind.Voice),
             Of(FileKind.Video),
-            file is not null && message.Text.Length > 0 ? message.Text : null,
-            message.InlineKeyboard is { } rows ? InlineMarkupJson.Of(rows) : null);
+            caption,
+            caption is not null ? entities : null,
+            message.InlineKeyboard is { } rows ? InlineMarkupJson.Of(rows) : null,
+            reply);
     }
 }
 
@@ -144,10 +163,11 @@ internal sealed record TelegramFileJson(string FileId, string FileUniqueId, long
 internal sealed record InlineMarkupJson(List<List<InlineButtonJson>> InlineKeyboard)
 {
     public static InlineMarkupJson Of(List<List<InlineButton>> rows) =>
-        new(rows.ConvertAll(row => row.ConvertAll(b => new InlineButtonJson(b.Text, b.CallbackData, b.Url, b.Style))));
+        new(rows.ConvertAll(row => row.ConvertAll(b => new InlineButtonJson(b.Text, b.CallbackData, b.Url, b.Style, b.SwitchQuery))));
 }
 
-internal sealed record InlineButtonJson(string Text, string? CallbackData, string? Url, string? Style = null);
+/// <summary>TG-14: a switch button comes back as switch_inline_query_current_chat, what it does in Dalan.</summary>
+internal sealed record InlineButtonJson(string Text, string? CallbackData, string? Url, string? Style = null, string? SwitchInlineQueryCurrentChat = null);
 
 internal sealed record CommandJson(string Command, string Description);
 
@@ -173,4 +193,9 @@ internal sealed record ChatJson(long Id, string Type, string? FirstName = null, 
     public const string Private = "private";
 }
 
-internal sealed record EntityJson(string Type, int Offset, int Length);
+/// <summary>Telegram's MessageEntity (TG-06, TG-25). <see cref="Url"/> is for text_link, <see cref="Language"/> for pre.</summary>
+internal sealed record EntityJson(string Type, int Offset, int Length, string? Url = null, string? Language = null)
+{
+    public static List<EntityJson>? Of(List<TextEntity>? entities) =>
+        entities is { Count: > 0 } ? entities.ConvertAll(e => new EntityJson(e.Type, e.Offset, e.Length, e.Url, e.Language)) : null;
+}

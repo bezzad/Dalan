@@ -421,6 +421,8 @@ namespace Dalan.Relay.Data.Migrations
 
                                                     b4.Property<string>("Style");
 
+                                                    b4.Property<string>("SwitchQuery");
+
                                                     b4.Property<string>("Text")
                                                         .IsRequired();
 
@@ -441,6 +443,34 @@ namespace Dalan.Relay.Data.Migrations
                                     b2.Navigation("Rows");
                                 });
 
+                            b1.OwnsMany("Dalan.Relay.Chats.MessageEntity", "Entities", b2 =>
+                                {
+                                    b2.Property<long>("MessageContentMessageId");
+
+                                    b2.Property<int>("__synthesizedOrdinal")
+                                        .ValueGeneratedOnAdd();
+
+                                    b2.Property<string>("Language");
+
+                                    b2.Property<int>("Length");
+
+                                    b2.Property<int>("Offset");
+
+                                    b2.Property<string>("Type")
+                                        .IsRequired();
+
+                                    b2.Property<string>("Url");
+
+                                    b2.HasKey("MessageContentMessageId", "__synthesizedOrdinal")
+                                        .HasName("pk_messages");
+
+                                    b2.ToTable("messages", "relay");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("MessageContentMessageId")
+                                        .HasConstraintName("fk_messages_messages_message_content_message_id");
+                                });
+
                             b1.OwnsOne("Dalan.Relay.Chats.MessageFile", "File", b2 =>
                                 {
                                     b2.Property<long>("MessageContentMessageId");
@@ -450,7 +480,8 @@ namespace Dalan.Relay.Data.Migrations
 
                                     b2.Property<int?>("Duration");
 
-                                    b2.Property<string>("Id");
+                                    b2.Property<string>("Id")
+                                        .IsRequired();
 
                                     b2.Property<int>("Kind");
 
@@ -467,6 +498,90 @@ namespace Dalan.Relay.Data.Migrations
                                     b2.WithOwner()
                                         .HasForeignKey("MessageContentMessageId")
                                         .HasConstraintName("fk_messages_messages_message_content_message_id");
+                                });
+
+                            b1.OwnsOne("Dalan.Relay.Chats.MessageReply", "ReplyTo", b2 =>
+                                {
+                                    b2.Property<long>("MessageContentMessageId");
+
+                                    b2.Property<DateTimeOffset>("Date");
+
+                                    b2.Property<bool>("FromBot");
+
+                                    b2.Property<long>("Seq");
+
+                                    b2.Property<string>("Text")
+                                        .IsRequired();
+
+                                    b2.HasKey("MessageContentMessageId")
+                                        .HasName("pk_messages");
+
+                                    b2.ToTable("messages", "relay");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("MessageContentMessageId")
+                                        .HasConstraintName("fk_messages_messages_message_content_message_id");
+
+                                    b2.OwnsMany("Dalan.Relay.Chats.MessageEntity", "Entities", b3 =>
+                                        {
+                                            b3.Property<long>("MessageReplyMessageContentMessageId");
+
+                                            b3.Property<int>("__synthesizedOrdinal")
+                                                .ValueGeneratedOnAdd();
+
+                                            b3.Property<string>("Language");
+
+                                            b3.Property<int>("Length");
+
+                                            b3.Property<int>("Offset");
+
+                                            b3.Property<string>("Type")
+                                                .IsRequired();
+
+                                            b3.Property<string>("Url");
+
+                                            b3.HasKey("MessageReplyMessageContentMessageId", "__synthesizedOrdinal")
+                                                .HasName("pk_messages");
+
+                                            b3.ToTable("messages", "relay");
+
+                                            b3.WithOwner()
+                                                .HasForeignKey("MessageReplyMessageContentMessageId")
+                                                .HasConstraintName("fk_messages_messages_message_reply_message_content_message_id");
+                                        });
+
+                                    b2.OwnsOne("Dalan.Relay.Chats.MessageFile", "File", b3 =>
+                                        {
+                                            b3.Property<long>("MessageReplyMessageContentMessageId");
+
+                                            b3.Property<string>("ContentType")
+                                                .IsRequired();
+
+                                            b3.Property<int?>("Duration");
+
+                                            b3.Property<string>("Id")
+                                                .IsRequired();
+
+                                            b3.Property<int>("Kind");
+
+                                            b3.Property<string>("Name")
+                                                .IsRequired();
+
+                                            b3.Property<long>("Size");
+
+                                            b3.HasKey("MessageReplyMessageContentMessageId")
+                                                .HasName("pk_messages");
+
+                                            b3.ToTable("messages", "relay");
+
+                                            b3.WithOwner()
+                                                .HasForeignKey("MessageReplyMessageContentMessageId")
+                                                .HasConstraintName("fk_messages_messages_message_reply_message_content_message_id");
+                                        });
+
+                                    b2.Navigation("Entities");
+
+                                    b2.Navigation("File");
                                 });
 
                             b1.OwnsOne("Dalan.Relay.Chats.ReplyKeyboard", "ReplyKeyboard", b2 =>
@@ -513,11 +628,15 @@ namespace Dalan.Relay.Data.Migrations
                                     b2.Navigation("Rows");
                                 });
 
+                            b1.Navigation("Entities");
+
                             b1.Navigation("File");
 
                             b1.Navigation("InlineKeyboard");
 
                             b1.Navigation("ReplyKeyboard");
+
+                            b1.Navigation("ReplyTo");
                         });
 
                     b.Navigation("Content")

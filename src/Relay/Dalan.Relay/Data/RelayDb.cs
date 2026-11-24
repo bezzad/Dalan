@@ -40,6 +40,12 @@ public sealed class RelayDb(DbContextOptions<RelayDb> options) : DbContext(optio
                 content.OwnsOne(c => c.InlineKeyboard, keyboard =>
                     keyboard.OwnsMany(k => k.Rows, row => row.OwnsMany(r => r.Buttons)));
                 content.OwnsOne(c => c.File);
+                content.OwnsMany(c => c.Entities);
+                content.OwnsOne(c => c.ReplyTo, reply =>
+                {
+                    reply.OwnsOne(r => r.File);
+                    reply.OwnsMany(r => r.Entities);
+                });
             });
             message.HasOne<Membership>().WithMany().HasForeignKey(m => new { m.BotId, m.UserId });
             message.HasIndex(m => new { m.BotId, m.UserId, m.Seq }).IsUnique();

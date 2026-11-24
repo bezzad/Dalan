@@ -93,10 +93,8 @@ internal sealed class BotGateway(
         long botId, long userId, OutgoingMessage message, CancellationToken cancellationToken) =>
         Result(await chats.SendFromBotAsync(botId, userId, message, cancellationToken));
 
-    public async Task<BotResult<BotMessage>> EditAsync(
-        long botId, long userId, long messageId, string? text, List<List<InlineButton>>? inlineKeyboard,
-        CancellationToken cancellationToken) =>
-        Result(await chats.EditAsync(botId, userId, messageId, text, inlineKeyboard, cancellationToken));
+    public async Task<BotResult<BotMessage>> EditAsync(long botId, long userId, long messageId, MessageEdit edit, CancellationToken cancellationToken) =>
+        Result(await chats.EditAsync(botId, userId, messageId, edit, cancellationToken));
 
     public async Task<BotError> DeleteAsync(long botId, long userId, long messageId, CancellationToken cancellationToken) =>
         ToBot(await chats.DeleteAsync(botId, userId, messageId, cancellationToken));
@@ -152,7 +150,10 @@ internal sealed class BotGateway(
         ChatError.MessageNotFound => BotError.MessageNotFound,
         ChatError.NotEditable => BotError.NotEditable,
         ChatError.NoText => BotError.NoText,
+        ChatError.NoCaption => BotError.NoCaption,
         ChatError.NotModified => BotError.NotModified,
+        ChatError.ReplyNotFound => BotError.ReplyNotFound,
+        ChatError.BadEntities => BotError.BadEntities,
         ChatError.FileTooBig => BotError.FileTooBig,
         ChatError.FileNotFound => BotError.FileNotFound,
         _ => BotError.ChatNotActive,

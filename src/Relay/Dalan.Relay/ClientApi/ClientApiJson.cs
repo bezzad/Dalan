@@ -9,7 +9,7 @@ internal sealed record BotsResponse(IEnumerable<BotJson> Bots);
 
 internal sealed record FoundBotJson(long Id, string Username, string Name, bool Started, bool Suspended, int IconVersion);
 
-internal sealed record UserMessageRequest(string? Text);
+internal sealed record UserMessageRequest(string? Text, long? ReplyTo = null);
 
 internal sealed record MessagesResponse(IEnumerable<ChatMessageJson> Messages, ChatMessageJson? Pinned);
 
@@ -43,4 +43,4 @@ internal sealed record CommandJson(string Command, string Description);
 /// <summary>REL-18: what the client must know and may not hard-code.</summary>
 internal sealed record ClientSettingsJson(
     int MaxTextLength, int MaxCaptionLength, int MaxFileSizeMb, int SyncPageSize, int ReconnectMinSeconds, int ReconnectMaxSeconds,
-    int StatusRefreshSeconds, int MaxBotIconKb);
+    int StatusRefreshSeconds, int MaxBotIconKb, int PressWaitSeconds);

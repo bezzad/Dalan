@@ -19,7 +19,9 @@ internal sealed record UpdateJson(
         return new UpdateJson(
             update.Id,
             update.Message is { } message
-                ? new IncomingMessageJson(message.Id, from, message.Text, message.Date, message.File is { } file ? FileJson.Of(file) : null)
+                ? new IncomingMessageJson(
+                    message.Id, from, message.Text, message.Date, message.File is { } file ? FileJson.Of(file) : null,
+                    message.ReplyTo is { } reply ? ReplyJson.Of(reply) : null)
                 : null,
             update.Callback is { } callback
                 ? new CallbackJson(callback.Id, from, SentMessageJson.Of(callback.Message), callback.Data)
@@ -32,7 +34,8 @@ internal sealed record IncomingMessageJson(
     SenderJson From,
     string Text,
     DateTimeOffset Date,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] FileJson? File);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] FileJson? File,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReplyJson? ReplyTo = null);
 
 internal sealed record CallbackJson(string Id, SenderJson From, SentMessageJson Message, string Data);
 
@@ -49,9 +52,11 @@ internal sealed record SendMessageRequest(
     bool? ReplyKeyboardPersistent = null,
     bool? ReplyKeyboardResize = null,
     bool? ReplyKeyboardOneTime = null,
-    int? Duration = null);
+    int? Duration = null,
+    List<EntityJson>? Entities = null,
+    long? ReplyTo = null);
 
-internal sealed record EditMessageRequest(string? Text, List<List<InlineButtonJson>>? InlineKeyboard);
+internal sealed record EditMessageRequest(string? Text, List<List<InlineButtonJson>>? InlineKeyboard, List<EntityJson>? Entities = null);
 
 internal sealed record PinRequest(long? MessageId);
 
@@ -69,7 +74,9 @@ internal sealed record SentMessageJson(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] List<List<InlineButtonJson>>? InlineKeyboard,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] FileJson? File,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DateTimeOffset? Edited,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReplyKeyboardOptionsJson? ReplyKeyboardOptions = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReplyKeyboardOptionsJson? ReplyKeyboardOptions = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] List<EntityJson>? Entities = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReplyJson? ReplyTo = null)
 {
     public static SentMessageJson Of(BotMessage message) => new(
         message.Id,
@@ -80,5 +87,7 @@ internal sealed record SentMessageJson(
         message.InlineKeyboard?.ConvertAll(row => row.ConvertAll(InlineButtonJson.Of)),
         message.File is { } file ? FileJson.Of(file) : null,
         message.EditDate,
-        message.ReplyOptions is { } options ? ReplyKeyboardOptionsJson.Of(options) : null);
+        message.ReplyOptions is { } options ? ReplyKeyboardOptionsJson.Of(options) : null,
+        EntityJson.Of(message.Entities),
+        message.ReplyTo is { } reply ? ReplyJson.Of(reply) : null);
 }

@@ -18,7 +18,9 @@ public sealed record ChatMessageJson(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Pinned = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Deleted = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? NotDelivered = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReplyKeyboardOptionsJson? ReplyKeyboardOptions = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReplyKeyboardOptionsJson? ReplyKeyboardOptions = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] List<EntityJson>? Entities = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReplyJson? ReplyTo = null)
 {
     public static ChatMessageJson Of(Message message) => new(
         message.Seq,
@@ -33,7 +35,34 @@ public sealed record ChatMessageJson(
         message.Pinned ? true : null,
         message.Deleted ? true : null,
         message.Delivery == DeliveryState.NotDelivered && !message.Deleted ? true : null,
-        message.Content.ReplyKeyboard?.ToOptions() is { } options ? ReplyKeyboardOptionsJson.Of(options) : null);
+        message.Content.ReplyKeyboard?.ToOptions() is { } options ? ReplyKeyboardOptionsJson.Of(options) : null,
+        EntityJson.Of(MessageEntity.ToBot(message.Content.Entities)),
+        message.Content.ReplyTo?.ToBot(message.UserId) is { } reply ? ReplyJson.Of(reply) : null);
+}
+
+/// <summary>REL-53: one formatted part of a text.</summary>
+public sealed record EntityJson(
+    string Type, int Offset, int Length,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Url = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Language = null)
+{
+    public static List<EntityJson>? Of(List<TextEntity>? entities) =>
+        entities?.ConvertAll(e => new EntityJson(e.Type, e.Offset, e.Length, e.Url, e.Language));
+
+    public static List<TextEntity>? ToEntities(List<EntityJson>? entities) =>
+        entities?.ConvertAll(e => e is null ? null! : new TextEntity(e.Type, e.Offset, e.Length, e.Url, e.Language));
+}
+
+/// <summary>REL-52: the copy of the message replied to. <see cref="From"/> is "user" or "bot".</summary>
+public sealed record ReplyJson(
+    long Id,
+    string From,
+    string Text,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] FileJson? File = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] List<EntityJson>? Entities = null)
+{
+    public static ReplyJson Of(BotMessage reply) => new(
+        reply.Id, reply.FromBot ? "bot" : "user", reply.Text, reply.File is { } file ? FileJson.Of(file) : null, EntityJson.Of(reply.Entities));
 }
 
 /// <summary>REL-17: <see cref="Styles"/> has one style or null per button, in the shape of <c>reply_keyboard</c>.</summary>
@@ -47,11 +76,12 @@ public sealed record InlineButtonJson(
     string Text,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? CallbackData,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Url,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Style = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Style = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? SwitchQuery = null)
 {
-    public static InlineButtonJson Of(InlineButton button) => new(button.Text, button.CallbackData, button.Url, button.Style);
+    public static InlineButtonJson Of(InlineButton button) => new(button.Text, button.CallbackData, button.Url, button.Style, button.SwitchQuery);
 
-    public InlineButton ToButton() => new(Text, CallbackData, Url, Style);
+    public InlineButton ToButton() => new(Text, CallbackData, Url, Style, SwitchQuery);
 }
 
 /// <summary>A file in a message: <see cref="Type"/> is the content type.</summary>

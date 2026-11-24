@@ -83,7 +83,9 @@ internal static class BotApiEndpoints
         var (error, message) = await gateway.SendAsync(
             BotApiFilter.BotId(http),
             userId,
-            new OutgoingMessage(request.Text ?? "", replyKeyboard, ToButtons(request.InlineKeyboard), file, replyOptions),
+            new OutgoingMessage(
+                request.Text ?? "", replyKeyboard, ToButtons(request.InlineKeyboard), file, replyOptions,
+                EntityJson.ToEntities(request.Entities), request.ReplyTo),
             http.RequestAborted);
         return error == BotError.None ? ApiJson.Ok(SentMessageJson.Of(message!)) : ErrorOf(error, options.CurrentValue);
     }
@@ -95,8 +97,8 @@ internal static class BotApiEndpoints
         if (await ApiJson.ReadAsync<EditMessageRequest>(http) is not { } request)
             return ApiJson.BadRequest("""Send JSON like {"text": "new text", "inline_keyboard": [...]}.""");
 
-        var (error, message) = await gateway.EditAsync(
-            BotApiFilter.BotId(http), userId, messageId, request.Text, ToButtons(request.InlineKeyboard), http.RequestAborted);
+        var edit = new MessageEdit(request.Text, EntityJson.ToEntities(request.Entities), ToButtons(request.InlineKeyboard));
+        var (error, message) = await gateway.EditAsync(BotApiFilter.BotId(http), userId, messageId, edit, http.RequestAborted);
         return error == BotError.None ? ApiJson.Ok(SentMessageJson.Of(message!)) : ErrorOf(error, options.CurrentValue);
     }
 
@@ -175,7 +177,9 @@ internal static class BotApiEndpoints
                 Flag(form["reply_keyboard_persistent"]),
                 Flag(form["reply_keyboard_resize"]),
                 Flag(form["reply_keyboard_one_time"]),
-                int.TryParse(form["duration"], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var duration) ? duration : null);
+                int.TryParse(form["duration"], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var duration) ? duration : null,
+                Json<List<EntityJson>>(form["entities"]),
+                long.TryParse(form["reply_to"], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var replyTo) ? replyTo : null);
         }
         catch (JsonException)
         {
@@ -267,7 +271,13 @@ internal static class BotApiEndpoints
         BotError.BadKeyboard => ApiJson.Error(StatusCodes.Status400BadRequest, "bad_keyboard",
             $"A keyboard must be rows of buttons: at most {options.MaxKeyboardButtons} buttons, each text 1 to " +
             $"{options.MaxButtonTextLength} characters, and an optional 'style' of success, danger or primary. An inline button needs exactly one of 'callback_data' " +
-            $"(1 to {options.MaxCallbackDataBytes} bytes) or 'url' (http or https)."),
+            $"(1 to {options.MaxCallbackDataBytes} bytes), 'url' (http or https) or 'switch_query' (text put in the user's input)."),
+        BotError.BadEntities => ApiJson.Error(StatusCodes.Status400BadRequest, "bad_entities",
+            $"'entities' must be at most {options.MaxTextEntities} items of {{type, offset, length}} inside the text (UTF-16 units), " +
+            "of type bold, italic, underline, strikethrough, spoiler, code, pre, text_link (with an http or https 'url'), blockquote or " +
+            "expandable_blockquote; two entities must be apart, or one inside the other."),
+        BotError.ReplyNotFound => ApiJson.Error(StatusCodes.Status404NotFound, "message_not_found",
+            "The message in 'reply_to' is not in this chat, or it was deleted."),
         BotError.MessageNotFound => ApiJson.Error(StatusCodes.Status404NotFound, "message_not_found",
             "This chat has no such message, or it was deleted."),
         BotError.NotEditable => ApiJson.Error(StatusCodes.Status400BadRequest, "not_editable",

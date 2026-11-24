@@ -44,7 +44,60 @@ public sealed class Message
 
     public BotMessage ToBot() => new(
         Seq, UserId, Direction == Direction.FromBot, Content.Text, CreatedAt, EditedAt, Content.File?.ToBot(),
-        Content.ReplyKeyboard?.ToRows(), Content.InlineKeyboard?.ToRows(), Content.ReplyKeyboard?.ToOptions());
+        Content.ReplyKeyboard?.ToRows(), Content.InlineKeyboard?.ToRows(), Content.ReplyKeyboard?.ToOptions(),
+        MessageEntity.ToBot(Content.Entities), Content.ReplyTo?.ToBot(UserId));
+}
+
+/// <summary>REL-52: a copy of the message replied to, as it was when the reply was sent.</summary>
+public sealed class MessageReply
+{
+    public long Seq { get; set; }
+    public bool FromBot { get; set; }
+    public string Text { get; set; } = "";
+    public DateTimeOffset Date { get; set; }
+    public List<MessageEntity>? Entities { get; set; }
+    public MessageFile? File { get; set; }
+
+    public static MessageReply Of(Message target) => new()
+    {
+        Seq = target.Seq,
+        FromBot = target.Direction == Direction.FromBot,
+        Text = target.Content.Text,
+        Date = target.CreatedAt,
+        Entities = target.Content.Entities,
+        File = target.Content.File,
+    };
+
+    /// <summary>A new object with new lists, for a new content object (EF Core does not move tracked list items).</summary>
+    public MessageReply Copy() => new()
+    {
+        Seq = Seq,
+        FromBot = FromBot,
+        Text = Text,
+        Date = Date,
+        Entities = MessageEntity.Of(MessageEntity.ToBot(Entities)),
+        File = File is null ? null : MessageFile.Of(File.ToBot()),
+    };
+
+    public BotMessage ToBot(long userId) => new(Seq, userId, FromBot, Text, Date, File: File?.ToBot(), Entities: MessageEntity.ToBot(Entities));
+}
+
+/// <summary>REL-53: stored form of <see cref="TextEntity"/>.</summary>
+public sealed class MessageEntity
+{
+    public string Type { get; set; } = "";
+    public int Offset { get; set; }
+    public int Length { get; set; }
+    public string? Url { get; set; }
+    public string? Language { get; set; }
+
+    /// <summary>Null for none, so the JSON stays as small as before.</summary>
+    public static List<MessageEntity>? Of(List<TextEntity>? entities) => entities is { Count: > 0 }
+        ? entities.ConvertAll(e => new MessageEntity { Type = e.Type, Offset = e.Offset, Length = e.Length, Url = e.Url, Language = e.Language })
+        : null;
+
+    public static List<TextEntity>? ToBot(List<MessageEntity>? entities) =>
+        entities?.ConvertAll(e => new TextEntity(e.Type, e.Offset, e.Length, e.Url, e.Language));
 }
 
 /// <summary>Stored as jsonb.</summary>
@@ -61,6 +114,12 @@ public sealed class MessageContent
 
     /// <summary>A copy of the file's data (REL-27, REL-28). The bytes are on disk under <see cref="MessageFile.Id"/>.</summary>
     public MessageFile? File { get; set; }
+
+    /// <summary>REL-53: how parts of the text or caption are drawn; null for none.</summary>
+    public List<MessageEntity>? Entities { get; set; }
+
+    /// <summary>REL-52: the message this one replies to, as it was then.</summary>
+    public MessageReply? ReplyTo { get; set; }
 }
 
 /// <summary>
@@ -117,12 +176,15 @@ public sealed class InlineKeyboard
     {
         Rows = rows.ConvertAll(row => new InlineRow
         {
-            Buttons = row.ConvertAll(b => new InlineKeyboardButton { Text = b.Text, Data = b.CallbackData, Url = b.Url, Style = b.Style }),
+            Buttons = row.ConvertAll(b => new InlineKeyboardButton
+            {
+                Text = b.Text, Data = b.CallbackData, Url = b.Url, Style = b.Style, SwitchQuery = b.SwitchQuery,
+            }),
         }),
     };
 
     public List<List<InlineButton>> ToRows() =>
-        Rows.ConvertAll(row => row.Buttons.ConvertAll(b => new InlineButton(b.Text, b.Data, b.Url, b.Style)));
+        Rows.ConvertAll(row => row.Buttons.ConvertAll(b => new InlineButton(b.Text, b.Data, b.Url, b.Style, b.SwitchQuery)));
 }
 
 public sealed class InlineRow
@@ -136,6 +198,9 @@ public sealed class InlineKeyboardButton
     public string? Data { get; set; }
     public string? Url { get; set; }
     public string? Style { get; set; }
+
+    /// <summary>REL-20: text a tap puts in the input after "@username ".</summary>
+    public string? SwitchQuery { get; set; }
 }
 
 public sealed class MessageFile

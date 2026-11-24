@@ -44,7 +44,8 @@ internal static class ClientApiEndpoints
         var relay = options.CurrentValue;
         return ApiJson.Ok(new ClientSettingsJson(
             relay.MaxTextLength, relay.MaxCaptionLength, relay.MaxFileSizeMb, relay.MaxMessagesPerSync,
-            relay.ClientReconnectMinSeconds, relay.ClientReconnectMaxSeconds, relay.ClientStatusRefreshSeconds, relay.MaxBotIconKb));
+            relay.ClientReconnectMinSeconds, relay.ClientReconnectMaxSeconds, relay.ClientStatusRefreshSeconds, relay.MaxBotIconKb,
+            relay.ClientPressWaitSeconds));
     }
 
     /// <summary>REL-14: the bots this user has a chat with, newest chat first.</summary>
@@ -98,10 +99,11 @@ internal static class ClientApiEndpoints
     private static async Task<IResult> SendMessageAsync(
         long botId, HttpContext http, ChatService chats, IOptionsMonitor<RelayOptions> options)
     {
-        if (await ApiJson.ReadAsync<UserMessageRequest>(http) is not { Text: { } text })
-            return ApiJson.BadRequest("""Send JSON like {"text": "hello"} with Content-Type application/json.""");
+        if (await ApiJson.ReadAsync<UserMessageRequest>(http) is not { Text: { } text } request)
+            return ApiJson.BadRequest("""Send JSON like {"text": "hello", "reply_to": 2} with Content-Type application/json; "reply_to" is optional.""");
 
-        return Sent(await chats.ReceiveFromUserAsync(botId, ClientApiFilter.UserId(http), text, null, http.RequestAborted), options);
+        return Sent(await chats.ReceiveFromUserAsync(
+            botId, ClientApiFilter.UserId(http), text, null, http.RequestAborted, request.ReplyTo), options);
     }
 
     /// <summary>
@@ -130,9 +132,19 @@ internal static class ClientApiEndpoints
             voiceSeconds = seconds;
         }
 
+        // REL-52: the message this file replies to.
+        long? replyTo = null;
+        if (headers.TryGetValue("X-Reply-To", out var target))
+        {
+            if (!long.TryParse(target.ToString(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var seq))
+                return ApiJson.BadRequest("The header X-Reply-To must be the id of a message of this chat.");
+
+            replyTo = seq;
+        }
+
         BotApiEndpoints.AllowFileUpload(http, files);
         var upload = new UserUpload(http.Request.Body, name, http.Request.ContentType, voiceSeconds);
-        return Sent(await chats.ReceiveFromUserAsync(botId, ClientApiFilter.UserId(http), caption, upload, http.RequestAborted), options);
+        return Sent(await chats.ReceiveFromUserAsync(botId, ClientApiFilter.UserId(http), caption, upload, http.RequestAborted, replyTo), options);
     }
 
     /// <summary>REL-29: only a file that a message of this user's chat carries.</summary>
@@ -206,6 +218,8 @@ internal static class ClientApiEndpoints
             $"You sent {options.CurrentValue.UserUploadMbPerDay} MB of files in the last 24 hours. Try again later."),
         ChatError.UnknownBot => BotNotFound(),
         ChatError.BotSuspended => ApiJson.BotSuspended(),
+        ChatError.ReplyNotFound => ApiJson.Error(StatusCodes.Status404NotFound, "message_not_found",
+            "The message you reply to is not in this chat, or it was deleted."),
         _ => ApiJson.Error(StatusCodes.Status401Unauthorized, "unauthorized",
             "This account does not exist any more. Log in again."),
     };

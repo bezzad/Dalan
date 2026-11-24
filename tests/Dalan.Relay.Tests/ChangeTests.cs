@@ -101,14 +101,18 @@ public class ChangeTests(PostgresServer postgres)
 
     [Fact]
     [Trait("Rule", "REL-23")]
-    public async Task REL23_text_of_a_file_message_cannot_be_edited()
+    public async Task REL23_text_of_a_file_message_edits_its_caption()
     {
         await using var app = await RelayApp.StartAsync(postgres);
         var chat = await Chat.StartAsync(app);
-        var response = await chat.BotUploadAsync([1, 2, 3], "a.pdf", "document", "caption");
+        var response = await chat.BotUploadAsync([1, 2, 3], "a.jpg", "photo", "cat");
         var id = (await response.Content.ReadFromJsonAsync<JsonElement>(Cancel)).GetProperty("id").GetInt64();
 
-        Assert.Equal("no_text", await ErrorOfAsync(chat.EditAsync(id, new { text = "x" }), HttpStatusCode.BadRequest));
+        Assert.Equal(HttpStatusCode.OK, (await chat.EditAsync(id, new { text = "dog" })).StatusCode);
+
+        var message = await chat.MessageAsync(id);
+        Assert.Equal("dog", message.GetProperty("text").GetString());
+        Assert.Equal("photo", message.GetProperty("file").GetProperty("kind").GetString());
     }
 
     [Fact]
