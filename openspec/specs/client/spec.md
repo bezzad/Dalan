@@ -2,7 +2,9 @@
 
 ## Purpose
 The web app people use: a small PWA in plain TypeScript, Persian first, served by the same process, that loads nothing from a foreign host.
+
 ## Requirements
+
 ### Requirement: CLI-01 The server serves the client
 The server SHALL serve the PWA page at `/`, `/bots`, `/apps`, `/privacy`, `/faq`, `/showcase`, `/guide`, `/guide/bot`, `/guide/site` and `/@<bot username>`, and its files (scripts, styles, font, icons) from the same origin. The page SHALL be sent with `Cache-Control: no-cache`, so a new release is seen at the next open. Any other unknown path SHALL get 404.
 
@@ -444,17 +446,27 @@ The client SHALL have a light and a dark theme, the device's theme on the first 
 - **THEN** the language and theme buttons are both 36 by 36 pixels, side by side in the header
 
 ### Requirement: CLI-36 One simple login card
-The login screen SHALL be one card, like ngrok: a "Log in with GitHub" button that opens `/api/auth/github` (only when `github_login` is on), a line "or", then the email form (or the SMS form when `email_login` is off), and at the bottom small links to the other ways. When the address has `login_error` (AUTH-29) the card SHALL show its text and remove it from the address. The GitHub mark SHALL be inline.
+The login screen SHALL be one card with one equal button per way: SMS, GitHub (`/api/auth/github`, when `github_login` is on) and email (when `email_login` is on). Without `dalan.returning` in local storage the order SHALL be SMS, GitHub, email; after any login the client SHALL set it, and the order SHALL be GitHub, email, SMS. SMS and email SHALL open their form with a "back" button. Password and dev login SHALL be small links. A `login_error` (AUTH-29) SHALL show and leave the address.
+
+#### Scenario: New browser
+- **GIVEN** `github_login` and `email_login` are true and local storage has no `dalan.returning`
+- **WHEN** the login screen opens
+- **THEN** the buttons are, in order, SMS, GitHub, email
+
+#### Scenario: Returning browser
+- **GIVEN** the person logged in before on this browser
+- **WHEN** the login screen opens
+- **THEN** the buttons are, in order, GitHub, email, SMS
 
 #### Scenario: GitHub on
 - **GIVEN** `github_login` is true
 - **WHEN** the login screen opens
-- **THEN** the first button is "Log in with GitHub" and links to `/api/auth/github`, and the email field is below it
+- **THEN** a "Log in with GitHub" button links to `/api/auth/github`
 
 #### Scenario: GitHub off
 - **GIVEN** `github_login` is false
 - **WHEN** the login screen opens
-- **THEN** there is no GitHub button and no "or" line
+- **THEN** there is no GitHub button
 
 #### Scenario: Error from GitHub
 - **WHEN** the page opens at `/?login_error=github_unavailable`
@@ -587,3 +599,62 @@ The chat page SHALL have one header, in this order: the bot's icon (its showcase
 - **WHEN** the search has `clock`
 - **THEN** only "the clock" and `Clock.png` are shown (text or file name, any case); with an empty search, Escape or ✕, all three are shown
 
+### Requirement: CLI-58 Each line takes its own direction
+In a message's text, each line SHALL take its direction from its own first strong letter: a Persian, Arabic or Hebrew letter makes it right to left, a Latin letter left to right. Each line SHALL line up at its own start (right for a right-to-left line). Lines inside a blockquote SHALL do the same. A code block (`pre`) SHALL stay left to right. The client SHALL NOT guess the language; it uses the Unicode bidi rule.
+
+#### Scenario: Latin first line, then Persian
+- **WHEN** a bot sends `🧵 Dalan [a37dcb87] · sms-ir` on the first line and `نیازی به تشخیص زبان نیست.` on the next
+- **THEN** the first line is left to right at the left, and the second is right to left at the right, with the dot at its left end
+
+#### Scenario: Persian first line, then Latin
+- **WHEN** a message has `برنامه:` on the first line and `git push origin main` on the next
+- **THEN** the first line is right to left and the second left to right
+
+#### Scenario: Code stays left to right
+- **WHEN** a message has a code block with Persian text in it
+- **THEN** the code block is left to right
+
+### Requirement: CLI-59 The phone reads the SMS code by itself
+The SMS code field SHALL have `autocomplete="one-time-code"`. When the browser has WebOTP (`OTPCredential`), the SMS code screen SHALL ask for the code with `navigator.credentials.get({ otp: { transport: ["sms"] } })`, put the code in the field and send the form. The request SHALL be aborted when the form is sent or the screen is left. The login SMS SHALL end with the line `@<site domain> #<code>`.
+
+#### Scenario: Android reads the code
+- **GIVEN** a browser with WebOTP
+- **WHEN** the SMS code screen opens and the browser gives the code `123456`
+- **THEN** the field holds `123456` and the form is sent
+
+#### Scenario: Browser without WebOTP
+- **GIVEN** a browser without `OTPCredential`
+- **WHEN** the SMS code screen opens
+- **THEN** no credential request is made, and the user types the code
+
+#### Scenario: Refused or left
+- **WHEN** the browser refuses the request, or the user leaves the screen first
+- **THEN** nothing is filled and no error is shown
+
+#### Scenario: iOS
+- **GIVEN** an iPhone and an SMS that ends with `@dalanet.ir #123456`
+- **WHEN** the user taps the code field
+- **THEN** iOS offers `123456` over the keyboard
+
+### Requirement: CLI-60 Any usual phone format works
+Before it sends a phone number (SMS login, password login, development login, verify your mobile), the client SHALL turn an Iranian mobile written in any usual way into `09XXXXXXXXX`: with `+98`, `0098`, `98` or no `0` at the start; with spaces, dashes, dots or brackets; with Persian or Arabic digits (CLI-12); with invisible direction marks. Other text SHALL only get Latin digits, so the server's answer stays the same.
+
+#### Scenario: Copied from contacts
+- **WHEN** the user types `+98 914 914 9202`, `0098-914-914-9202`, `(0914) 914 9202` or `9149149202`
+- **THEN** the client sends `09149149202`
+
+#### Scenario: Not an Iranian mobile
+- **WHEN** the user types `+1 555 123 4567` as a phone
+- **THEN** the client sends it as typed, and the server refuses it as before
+
+### Requirement: CLI-61 Send the code again
+The code screen SHALL have a "Send again" button, off with a countdown (`m:ss`) for `retry_in` seconds of the sent code, then on. Pressing it SHALL ask a new code for the same phone or email (with a new proof, CLI-10) and start the countdown again. A 429 with `Retry-After` on asking a code SHALL show "Try again in m:ss" with the seconds of the header. No text SHALL send the person to "tomorrow".
+
+#### Scenario: Countdown
+- **GIVEN** a code was sent with `retry_in` 120
+- **WHEN** the code screen opens
+- **THEN** "Send again" is off and shows `2:00`, and it is on after 120 seconds
+
+#### Scenario: Too soon
+- **WHEN** asking a code gets 429 `sms_wait` with `Retry-After: 1680`
+- **THEN** the screen shows "Try again in 28:00"

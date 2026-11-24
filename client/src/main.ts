@@ -10,7 +10,7 @@ import { botPageScreen, myBotsScreen, newBotScreen } from "./builder.ts";
 import { chatScreen } from "./chat.ts";
 import { Language, type TextKey } from "./i18n.ts";
 import { Live } from "./live.ts";
-import { loginScreen } from "./login.ts";
+import { loginScreen, markReturning } from "./login.ts";
 import { botPageUsername, initial, pageFor } from "./pages.ts";
 import { h } from "./dom.ts";
 import { toastRegion } from "./toast.ts";
@@ -116,6 +116,7 @@ function publicPage(page: PublicPage, loggedIn: boolean): HTMLElement {
     tools: tools(),
     language,
     loggedIn,
+    email: app?.user.email ?? null,
     go: navigate,
     enter: loggedIn ? () => navigate("/chats") : showLogin,
   });
@@ -150,6 +151,8 @@ function route(): void {
 }
 
 async function enter(user: User): Promise<void> {
+  // CLI-36: the next login screen of this browser puts the fast ways first.
+  markReturning();
   const settings = await api.settings();
   app = {
     language,

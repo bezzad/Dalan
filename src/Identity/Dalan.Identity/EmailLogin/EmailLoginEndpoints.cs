@@ -58,13 +58,13 @@ internal static class EmailLoginEndpoints
             CodeOutcome.Sent => AuthJson.Ok(new
             {
                 ExpiresIn = settings.EmailCodeSeconds,
-                RetryIn = settings.EmailWaitSeconds,
+                RetryIn = AuthJson.Seconds(wait),
                 CodeDigits = settings.EmailCodeDigits,
             }),
             CodeOutcome.Wait => AuthJson.TooManyRequests(http, "email_wait", wait,
                 $"A code was just sent to this address. Wait {AuthJson.Seconds(wait)} second(s) before asking again."),
-            CodeOutcome.Limit => AuthJson.Error(StatusCodes.Status429TooManyRequests, "email_limit",
-                "Too many codes were sent today. Log in with your password, or try again tomorrow."),
+            CodeOutcome.Limit => AuthJson.TooManyRequests(http, "email_limit", wait,
+                $"Too many codes were asked from this address. Wait {AuthJson.Seconds(wait)} second(s), or log in with your password."),
             _ => AuthJson.Error(StatusCodes.Status503ServiceUnavailable, "email_unavailable",
                 "The email could not be sent now. Try again in a few minutes, or log in another way."),
         };

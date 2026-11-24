@@ -110,6 +110,12 @@ internal sealed class UserAdmin(
 
     public string? NormalizeEmail(string? input) => EmailAddress.Normalize(input);
 
+    public async Task<AdminUser?> FindAsync(long userId, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return await FindAsync(db, userId, cancellationToken);
+    }
+
     private static Task<AdminUser?> FindAsync(IdentityDb db, long userId, CancellationToken cancellationToken) =>
         Shape(db.Users.Where(u => u.Id == userId)).FirstOrDefaultAsync(cancellationToken);
 

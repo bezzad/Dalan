@@ -8,7 +8,7 @@ using static Dalan.Sites.Tests.SitesApp;
 
 namespace Dalan.Sites.Tests;
 
-/// <summary>Milestone 14 on the agent: streamed answers, stop, service and status.</summary>
+/// <summary>Milestone 15 on the agent: streamed answers, stop, service and status.</summary>
 public class AgentServiceTests(PostgresServer postgres)
 {
     [Theory]

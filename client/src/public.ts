@@ -1,4 +1,4 @@
-// The public pages (CLI-26 to CLI-28, CLI-38): landing, privacy, FAQ, showcase and the guides. They open with or without login.
+// The public pages (CLI-26 to CLI-28, CLI-38, CLI-56, CLI-57): landing, privacy, FAQ, showcase, the guides, about and contact. They open with or without login.
 import { api } from "./api.ts";
 import { errorText } from "./app.ts";
 import { h } from "./dom.ts";
@@ -8,16 +8,18 @@ import { stepCards } from "./codeView.ts";
 import { guideSteps, siteGuideSteps } from "./guide.ts";
 import type { Language } from "./i18n.ts";
 import { themeButton, type Theme } from "./theme.ts";
-import { categoryName, closing, faqItems, hero, initial, labels, landing, notOffered, offers, privacyPoints, products, security, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
+import { about, categoryName, closing, faqItems, hero, initial, labels, landing, notOffered, offers, privacyPoints, products, security, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
 
-export type PublicPage = "landing" | "privacy" | "faq" | "showcase" | "guide" | "guideBot" | "guideSite" | "notFound";
+export type PublicPage = "landing" | "privacy" | "faq" | "showcase" | "guide" | "guideBot" | "guideSite" | "about" | "contact" | "notFound";
 
 /** Every public page: the same for a visitor and a logged-in user. */
-export const publicPages: readonly string[] = ["landing", "privacy", "faq", "showcase", "guide", "guideBot", "guideSite", "notFound"];
+export const publicPages: readonly string[] = ["landing", "privacy", "faq", "showcase", "guide", "guideBot", "guideSite", "about", "contact", "notFound"];
 
 export interface PublicContext {
   language: Language;
   loggedIn: boolean;
+  /** CLI-57: the logged-in user's email, or null for a visitor or a user with none. */
+  email: string | null;
   /** Goes to an address of the site without a page load. */
   go(path: string): void;
   /** A visitor gets the login screen; a logged-in user goes to the bot list. */
@@ -180,6 +182,14 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
       withNumbers(values => body.append(...faqItems(language.current, values, n).map(item =>
         h("section", { class: "card" }, h("h2", {}, item.question), h("p", {}, item.answer)))));
       break;
+    case "about":
+      // CLI-56: only the current language.
+      body.append(h("h2", { class: "title" }, t("about")), ...about[lang].map(part =>
+        h("section", { class: "card" }, h("h2", {}, part.title), h("p", {}, part.text))));
+      break;
+    case "contact":
+      body.append(h("h2", { class: "title" }, t("contact")), contactForm());
+      break;
     case "showcase":
       body.append(h("h2", { class: "title" }, t("showcase")));
       showcase(body);
@@ -273,6 +283,34 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
       link(product.guide, labels[lang].getStarted, "button primary"));
   }
 
+  /** CLI-57: an email to answer to (the user's own, locked, when they have one) and the text. */
+  function contactForm(): HTMLElement {
+    const own = context.email;
+    const email = h("input", {
+      id: "contact-email", type: "email", dir: "ltr", autocomplete: "email", required: true, placeholder: "sara@example.com",
+      readonly: own !== null, value: own ?? "" });
+    const text = h("textarea", { id: "contact-text", dir: "auto", rows: "6", required: true });
+    withNumbers(values => text.setAttribute("maxlength", String(values.contact_max_length)));
+    const send = h("button", { type: "submit", class: "primary" }, t("send"));
+    const done = h("p", { class: "note", role: "status" });
+    return h("form", {
+      class: "card contact",
+      onsubmit: event => {
+        event.preventDefault();
+        error.textContent = done.textContent = "";
+        send.disabled = true;
+        api.contact(email.value.trim(), text.value).then(() => {
+          text.value = "";
+          done.textContent = t("contactSent");
+        }, failed).finally(() => { send.disabled = false; });
+      },
+    },
+    h("p", {}, t("contactNote")),
+    h("label", { for: "contact-email" }, t("email")), email,
+    h("label", { for: "contact-text" }, t("contactText")), text,
+    send, done);
+  }
+
   // CLI-28: listed bots, a category filter and "more" while a full page came back.
   function showcase(target: HTMLElement): void {
     const list = h("ul", { class: "bots showcase" });
@@ -321,13 +359,14 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
     load(true).catch(failed);
   }
 
-  // CLI-42: FAQ and privacy live here, not in the header.
+  // CLI-42: FAQ and privacy live here, not in the header. CLI-56: about and contact too.
   const column = (title: string, ...items: Node[]) => h("div", { class: "column" }, h("span", { class: "label" }, title), ...items);
   const footer = h("footer", { class: "site" },
     h("div", { class: "columns" },
       column(labels[lang].product, ...products[lang].map(product => link(product.guide, product.label)), link("/showcase", t("showcase"))),
       column(labels[lang].resources, link("/guide", t("guide")), link("/faq", t("faq")), link("/privacy", t("privacy")),
-        h("a", { href: "/llms.txt" }, "llms.txt"), h("a", { href: "/dalan.mjs" }, "dalan.mjs"))),
+        h("a", { href: "/llms.txt" }, "llms.txt"), h("a", { href: "/dalan.mjs" }, "dalan.mjs")),
+      column(t("appName"), link("/about", t("about")), link("/contact", t("contact")))),
     h("div", { class: "wordmark", "aria-hidden": "true" }, t("appName")));
   return h("main", { class: "public" }, header, error, h("div", { class: "scroller page" }, body, footer));
 }

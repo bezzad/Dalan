@@ -110,7 +110,7 @@ echo "$signing" | base64 -d | openssl pkey -inform DER -noout 2>/dev/null || fai
 [[ "$(echo "$signing" | base64 -d | od -An -tx1 -N 19 | tr -d ' \n')" == 30818702010030130607*2a8648ce3d0201* ]] || fail "signing key is not PKCS#8"
 grep -qE '^Notification__Push__PublicKey=B[A-Za-z0-9_-]{86}$' "$env_file" || fail "no push public key"
 grep -qE '^Notification__Push__PrivateKey=[A-Za-z0-9_-]{43}$' "$env_file" || fail "no push private key"
-grep -q '^# Notification__Kavenegar__ApiKey=' "$env_file" || fail "no line for the SMS key"
+grep -q '^# Notification__SmsIr__ApiKey=' "$env_file" || fail "no line for the SMS key"
 echo "PASS OPS-10 first run makes the secrets"
 
 # Rule: OPS-13 mail on a new server
@@ -132,7 +132,7 @@ grep -qF '_dmarc.dalanet.ir               v=DMARC1; p=none' "$tmp/out1" || fail 
 echo "PASS OPS-13 mail on a new server"
 
 # Rule: OPS-10 second run keeps dalan.env
-echo 'Notification__Kavenegar__ApiKey=owner-key' >> "$env_file"
+echo 'Notification__SmsIr__ApiKey=owner-key' >> "$env_file"
 before=$(sha256sum < "$env_file")
 : > "$state/commands.log"; rm "$state/genkey"
 bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out2" || { cat "$tmp/out2"; fail "second run failed"; }
@@ -171,15 +171,15 @@ echo "PASS OPS-09 a new domain needs only a new run"
 printf 'ADMIN_PHONES=09121234567\nSMS=log\n' > "$src/settings.env"
 bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || fail "run with settings failed"
 for line in Identity__AdminPhones=09121234567 Notification__SmsProvider=log Notification__LogSmsPhones=09121234567 \
-            Notification__Kavenegar__ApiKey=owner-key "Identity__SigningKey=$signing"; do
+            Notification__SmsIr__ApiKey=owner-key "Identity__SigningKey=$signing"; do
   [ "$(grep -cx "$line" "$env_file")" = 1 ] || fail "dalan.env should have $line once: $(grep -v -i 'password\|key=' "$env_file")"
 done
-printf 'SMS=kavenegar\nKAVENEGAR_KEY=new-key\n' > "$src/settings.env"
-bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || fail "run with kavenegar failed"
-for line in Notification__SmsProvider=kavenegar Notification__Kavenegar__ApiKey=new-key Identity__AdminPhones=09121234567; do
+printf 'SMS=smsir\nSMSIR_KEY=new-key\n' > "$src/settings.env"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || fail "run with smsir failed"
+for line in Notification__SmsProvider=smsir Notification__SmsIr__ApiKey=new-key Identity__AdminPhones=09121234567; do
   [ "$(grep -cx "$line" "$env_file")" = 1 ] || fail "dalan.env should have $line once"
 done
-grep -q '^Notification__LogSmsPhones=' "$env_file" && fail "log sender numbers kept with kavenegar"
+grep -q '^Notification__LogSmsPhones=' "$env_file" && fail "log sender numbers kept with smsir"
 [ "$(stat -c %a "$env_file")" = 640 ] || fail "dalan.env mode changed"
 printf 'SMS=pigeon\n' > "$src/settings.env"
 bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null 2>&1 && fail "unknown SMS provider accepted"
@@ -251,7 +251,7 @@ password=$(sed -nE 's/.*Password=(.*)/\1/p' "$env_file")
 grep -qF "ALTER ROLE dalan LOGIN PASSWORD '$password'" "$state/commands.log" || fail "database password not changed"
 signing=$(sed -nE 's/^Identity__SigningKey=(.*)/\1/p' "$env_file")
 echo "$signing" | base64 -d | openssl pkey -inform DER -noout 2>/dev/null || fail "new signing key is not a key"
-grep -qx 'Notification__Kavenegar__ApiKey=new-key' "$env_file" || fail "other settings lost"
+grep -qx 'Notification__SmsIr__ApiKey=new-key' "$env_file" || fail "other settings lost"
 [ "$(stat -c %a "$env_file")" = 640 ] || fail "dalan.env mode changed"
 echo "PASS OPS-10 secrets can be made again"
 
@@ -285,11 +285,11 @@ for f in caddy setup.sh drill.sh backup.sh Caddyfile caddy.service deploy.pub; d
 grep -q "ssh -t admin@server sudo bash /tmp/dalan-setup/setup.sh 'dalanet.ir' 'api.dalanet.ir' /tmp/dalan-setup/deploy.pub" "$inst/remote.log" || fail "setup not run: $(cat "$inst/remote.log")"
 [ -f "$inst/copied/settings.env" ] && [ ! -s "$inst/copied/settings.env" ] || fail "settings.env should be empty without settings"
 rm -rf "$inst/copied" "$inst/remote.log"
-ADMIN_PHONES=09121234567 SMS=log KAVENEGAR_KEY='a b' PATH="$inst/bin:$PATH" \
+ADMIN_PHONES=09121234567 SMS=log SMSIR_KEY='a b' PATH="$inst/bin:$PATH" \
   bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null || fail "install.sh with settings failed"
-( . "$inst/copied/settings.env" && [ "$ADMIN_PHONES" = 09121234567 ] && [ "$SMS" = log ] && [ "$KAVENEGAR_KEY" = 'a b' ] ) \
+( . "$inst/copied/settings.env" && [ "$ADMIN_PHONES" = 09121234567 ] && [ "$SMS" = log ] && [ "$SMSIR_KEY" = 'a b' ] ) \
   || fail "settings not passed: $(cat "$inst/copied/settings.env")"
-grep -q 'KAVENEGAR\|0912' "$inst/remote.log" && fail "settings on the command line"
+grep -q 'SMSIR\|0912' "$inst/remote.log" && fail "settings on the command line"
 echo "PASS OPS-09 install.sh copies Caddy and runs setup"
 
 # Rule: OPS-14 GitHub settings set the GitHub lines and keep the rest

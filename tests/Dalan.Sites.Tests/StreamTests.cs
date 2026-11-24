@@ -10,7 +10,7 @@ using static Dalan.Sites.Tests.SitesApp;
 
 namespace Dalan.Sites.Tests;
 
-/// <summary>Milestone 14: answers with no body, the line per address, streamed answers, session end and reserved names.</summary>
+/// <summary>Milestone 15: answers with no body, the line per address, streamed answers, session end and reserved names.</summary>
 public class StreamTests(PostgresServer postgres)
 {
     [Theory]

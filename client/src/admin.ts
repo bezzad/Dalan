@@ -1,5 +1,5 @@
-// The admin screen (CLI-25): settings, builder requests, users, bots, the access log and the audit log.
-import { ApiError, api, type AccessRow, type AdminBot, type AdminUser, type ShowcaseRequest } from "./api.ts";
+// The admin screen (CLI-25): settings, builder requests, users, bots, contact messages (ADM-18), the access log and the audit log.
+import { ApiError, api, type AccessRow, type AdminBot, type AdminUser, type ContactMessage, type ShowcaseRequest } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { h } from "./dom.ts";
 import { toast } from "./toast.ts";
@@ -7,10 +7,10 @@ import type { TextKey } from "./i18n.ts";
 import { categoryName, initial } from "./pages.ts";
 import { cleanValue, groupSettings, utc, type Setting } from "./panels.ts";
 
-type Tab = "settings" | "requests" | "users" | "bots" | "showcase" | "access" | "audit";
+type Tab = "settings" | "requests" | "users" | "bots" | "showcase" | "messages" | "access" | "audit";
 const Tabs: [Tab, TextKey][] = [
   ["settings", "tabSettings"], ["requests", "tabRequests"], ["users", "tabUsers"],
-  ["bots", "tabBots"], ["showcase", "showcase"], ["access", "tabAccess"], ["audit", "tabAudit"],
+  ["bots", "tabBots"], ["showcase", "showcase"], ["messages", "tabMessages"], ["access", "tabAccess"], ["audit", "tabAudit"],
 ];
 
 export function adminScreen(app: App): Screen {
@@ -153,6 +153,39 @@ export function adminScreen(app: App): Screen {
     body.replaceChildren(...(entries.length === 0 ? [h("p", { class: "note" }, t("noShowcaseRequests"))] : entries.map(showcaseCard)));
   }
 
+  // ---- contact messages (ADM-18) ----
+  function messageCard(message: ContactMessage): HTMLElement {
+    const card = h("div", { class: message.read ? "card" : "card unread" });
+    card.append(
+      h("strong", { dir: "ltr" }, h("a", { href: `mailto:${message.email}` }, message.email)),
+      h("span", { class: "note", dir: "ltr" }, [
+        message.user_id ? `${t("userWord")} #${message.user_id}` : "",
+        message.port ? `${message.address}:${message.port}` : message.address,
+        local(message.at),
+      ].filter(Boolean).join(" · ")),
+      h("p", { dir: "auto", class: "text" }, message.text),
+      h("div", { class: "row wrap" },
+        action(message.read ? "markUnread" : "markRead", async () =>
+          card.replaceWith(messageCard(await api.markMessage(message.id, !message.read))))));
+    return card;
+  }
+
+  async function showMessages(): Promise<void> {
+    const list = h("div", { class: "column" });
+    const more = h("button", { type: "button" }, t("olderRows"));
+    let before: number | undefined;
+    async function page(): Promise<void> {
+      const rows = await api.contactMessages(before);
+      list.append(...rows.map(messageCard));
+      if (list.childElementCount === 0) list.append(h("p", { class: "note" }, t("noMessages")));
+      before = rows.at(-1)?.id;
+      more.hidden = rows.length === 0;
+    }
+    more.addEventListener("click", () => void page().catch(failed));
+    await page();
+    body.replaceChildren(list, more);
+  }
+
   // ---- access log (ADM-10) ----
   function accessLine(row: AccessRow): HTMLElement {
     const who = row.actor === "phone" ? row.phone ?? "" : row.actor === "email" ? row.email ?? ""
@@ -212,7 +245,7 @@ export function adminScreen(app: App): Screen {
     error.textContent = "";
     body.replaceChildren();
     const shows: Record<Tab, () => void | Promise<void>> = {
-      settings: showSettings, requests: showRequests, users: showUsers, bots: showBots, showcase: showShowcase, access: () => showAccess(), audit: showAudit,
+      settings: showSettings, requests: showRequests, users: showUsers, bots: showBots, showcase: showShowcase, messages: showMessages, access: () => showAccess(), audit: showAudit,
     };
     Promise.resolve(shows[tab]()).catch(failed);
   }

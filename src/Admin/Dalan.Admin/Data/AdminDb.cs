@@ -1,5 +1,6 @@
 using Dalan.Admin.AccessLog;
 using Dalan.Admin.Audit;
+using Dalan.Admin.Contact;
 using Dalan.Admin.Settings;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,6 +13,7 @@ public sealed class AdminDb(DbContextOptions<AdminDb> options) : DbContext(optio
     public DbSet<AccessLogEntry> AccessLog => Set<AccessLogEntry>();
     public DbSet<SettingRow> Settings => Set<SettingRow>();
     public DbSet<AuditEntry> Audit => Set<AuditEntry>();
+    public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -41,5 +43,12 @@ public sealed class AdminDb(DbContextOptions<AdminDb> options) : DbContext(optio
         });
 
         modelBuilder.Entity<AuditEntry>(entry => entry.ToTable("audit_log"));
+
+        modelBuilder.Entity<ContactMessage>(message =>
+        {
+            message.ToTable("contact_messages");
+            // ADM-17: "how many did this address send today".
+            message.HasIndex(m => new { m.Address, m.At });
+        });
     }
 }

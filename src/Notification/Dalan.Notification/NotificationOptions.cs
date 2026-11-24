@@ -3,13 +3,13 @@ namespace Dalan.Notification;
 /// <summary>Section "Notification" of the settings. Starting values are in appsettings.json; nothing here is a default.</summary>
 public sealed class NotificationOptions
 {
-    /// <summary>"kavenegar", "log" or empty: no SMS can be sent (NTF-01).</summary>
+    /// <summary>"smsir", "log" or empty: no SMS can be sent (NTF-01).</summary>
     public string? SmsProvider { get; set; }
 
     /// <summary>NTF-01: outside Development the "log" sender works only for these numbers (comma separated), for tests before a provider is ready.</summary>
     public string? LogSmsPhones { get; set; }
 
-    public KavenegarOptions Kavenegar { get; set; } = new();
+    public SmsIrOptions SmsIr { get; set; } = new();
 
     /// <summary>"smtp", "log" or empty: no email can be sent (NTF-10).</summary>
     public string? EmailProvider { get; set; }
@@ -22,15 +22,19 @@ public sealed class NotificationOptions
     public PushOptions Push { get; set; } = new();
 }
 
-public sealed class KavenegarOptions
+/// <summary>NTF-02: SMS.ir "verify" (fast send).</summary>
+public sealed class SmsIrOptions
 {
     public string BaseUrl { get; set; } = "";
 
     /// <summary>A secret: it lives only in the server's environment.</summary>
     public string ApiKey { get; set; } = "";
 
-    /// <summary>Name of the OTP template in the Kavenegar panel. It has one token: the code.</summary>
-    public string Template { get; set; } = "";
+    /// <summary>Number of the approved OTP template in the SMS.ir panel ("ارسال سریع").</summary>
+    public int TemplateId { get; set; }
+
+    /// <summary>Name of the code variable in the template text: CODE for #CODE#.</summary>
+    public string CodeParameter { get; set; } = "";
 
     public int TimeoutSeconds { get; set; }
 }

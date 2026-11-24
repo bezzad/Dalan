@@ -5,7 +5,7 @@ import { botCliCode, botMcpSamples, botRunSteps, guideSteps, librarySamples, sit
 import { pageFor, type PublicNumbers } from "../src/pages.ts";
 
 const numbers: PublicNumbers = { history_messages: 200, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60,
-  site_url: "https://example.ir", bot_api_url: "https://api.example.ir" };
+  site_url: "https://example.ir", bot_api_url: "https://api.example.ir", contact_max_length: 2000 };
 const persian = (value: number) => new Intl.NumberFormat("fa-IR").format(value);
 const english = (value: number) => String(value);
 

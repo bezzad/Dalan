@@ -115,27 +115,36 @@ A request that another site makes in the user's browser SHALL NOT change anythin
 - **THEN** the response is 400 `bad_proof`
 
 ### Requirement: SEC-07 SMS limits per phone number
-The server SHALL send at most one SMS to a number in each `Identity:SmsWaitSeconds` (start 60) and at most `Identity:SmsPerPhonePerDay` (start 5) in any 24 hours. A call too soon SHALL get 429 `sms_wait` with a `Retry-After` header that says how many seconds are left. A call over the daily limit SHALL get 429 `sms_limit`. One number's SMS SHALL NOT use up another number's limit.
+The server SHALL send at most one SMS to a number in each `Identity:SmsWaitSeconds` (start 120); after `Identity:SmsPerPhonePerDay` (start 5) in any 24 hours, in each `Identity:SmsLongWaitSeconds` (start 1800). Numbers in `Identity:AdminPhones` SHALL never get the long wait. Too soon SHALL get 429 `sms_wait` with `Retry-After` (seconds left). A sent code's answer SHALL have `retry_in`, the seconds before the next one. Numbers SHALL NOT share limits.
 
 #### Scenario: Second SMS too soon
-- **GIVEN** an SMS went to a number 20 seconds ago
+- **GIVEN** an SMS went to a number 20 seconds ago and the wait is 60
 - **WHEN** a client asks another one for the same number, with a valid proof
 - **THEN** the response is 429 `sms_wait` with `Retry-After: 40` and no SMS is sent
 
 #### Scenario: After the wait
-- **GIVEN** an SMS went to a number 60 seconds ago
+- **GIVEN** an SMS went to a number 60 seconds ago and the wait is 60
 - **WHEN** a client asks another one
 - **THEN** the SMS is sent
 
 #### Scenario: Daily limit
-- **GIVEN** 5 SMS went to a number in the last 24 hours
+- **GIVEN** 5 SMS went to a number in the last 24 hours, the last one 2 minutes ago
 - **WHEN** a client asks a sixth
-- **THEN** the response is 429 `sms_limit`
+- **THEN** the response is 429 `sms_wait` with `Retry-After: 1680`, and after that time the SMS is sent
+
+#### Scenario: The fifth SMS says the long wait
+- **WHEN** the fifth SMS in 24 hours is sent to a number
+- **THEN** its answer has `retry_in` 1800
 
 #### Scenario: A day later
-- **GIVEN** a number that reached the daily limit
-- **WHEN** 24 hours pass
-- **THEN** an SMS is sent again
+- **GIVEN** a number that got 5 SMS, the last one more than 24 hours ago
+- **WHEN** a client asks an SMS
+- **THEN** the SMS is sent, and its `retry_in` is the short wait
+
+#### Scenario: Admin number
+- **GIVEN** the number is in `Identity:AdminPhones` and got 5 SMS in the last 24 hours
+- **WHEN** a client asks a sixth after the short wait
+- **THEN** the SMS is sent
 
 #### Scenario: Another number
 - **GIVEN** one number is waiting
@@ -143,12 +152,12 @@ The server SHALL send at most one SMS to a number in each `Identity:SmsWaitSecon
 - **THEN** the SMS is sent
 
 ### Requirement: SEC-08 SMS limit per address and the daily budget
-The server SHALL send at most `Identity:SmsPerIpPerDay` (start 200) SMS for calls from one client address in any 24 hours; over it the answer SHALL be 429 `sms_limit`. The server SHALL send at most `Identity:SmsPerDay` (start 1000) SMS in total in any 24 hours; over it the answer SHALL be 503 `sms_unavailable` and the server SHALL write an error log line, so the admin sees it.
+The server SHALL send at most `Identity:SmsPerIpPerDay` (start 200) SMS for calls from one client address in any 24 hours; over it the answer SHALL be 429 `sms_limit` with a `Retry-After` header: the seconds until the oldest of those SMS is 24 hours old. The server SHALL send at most `Identity:SmsPerDay` (start 1000) SMS in total in any 24 hours; over it the answer SHALL be 503 `sms_unavailable` and the server SHALL write an error log line, so the admin sees it.
 
 #### Scenario: Address limit
-- **GIVEN** the limit per address is 2 and one address got 2 SMS sent to two numbers
+- **GIVEN** the limit per address is 2 and one address got 2 SMS sent to two numbers, the first one an hour ago
 - **WHEN** the same address asks an SMS for a third number
-- **THEN** the response is 429 `sms_limit`
+- **THEN** the response is 429 `sms_limit` with `Retry-After: 82800`
 
 #### Scenario: Another address
 - **GIVEN** one address is over its limit
@@ -231,7 +240,7 @@ Every file download (REL-29) SHALL carry its stored content type, `X-Content-Typ
 - **THEN** the response has type `image/png` and is not an attachment
 
 ### Requirement: SEC-13 Email code limits
-The server SHALL send at most one login email to an address in each `Identity:EmailWaitSeconds` (start 60), else 429 `email_wait` with `Retry-After`. It SHALL send at most `Identity:EmailPerAddressPerDay` (start 5) to one address and `Identity:EmailPerIpPerDay` (start 200) for one client address in any 24 hours, else 429 `email_limit`. It SHALL send at most `Identity:EmailPerDay` (start 1000) in total, else 503 `email_unavailable`. Email counters are apart from SMS counters.
+Email codes SHALL follow SEC-07 with `Identity:EmailWaitSeconds` (start 60), `Identity:EmailPerAddressPerDay` (start 5) and `Identity:EmailLongWaitSeconds` (start 1800); too soon gets 429 `email_wait` with `Retry-After`. Over `Identity:EmailPerIpPerDay` (start 200) per client address in 24 hours: 429 `email_limit` with `Retry-After`. Over `Identity:EmailPerDay` (start 1000) in total: 503 `email_unavailable`. Email counters are apart from SMS counters.
 
 #### Scenario: Second email too soon
 - **GIVEN** an email code went to an address 20 seconds ago
@@ -239,9 +248,9 @@ The server SHALL send at most one login email to an address in each `Identity:Em
 - **THEN** the response is 429 `email_wait` with `Retry-After: 40`
 
 #### Scenario: Daily limit
-- **GIVEN** 5 email codes went to an address in the last 24 hours
-- **WHEN** a client asks a sixth
-- **THEN** the response is 429 `email_limit`
+- **GIVEN** 2 is the cap and 2 email codes went to an address, the last one 60 seconds ago
+- **WHEN** a client asks a third
+- **THEN** the response is 429 `email_wait` with `Retry-After: 1740`
 
 #### Scenario: Budget is used up
 - **GIVEN** the daily email budget is 1 and 1 email was sent

@@ -213,7 +213,7 @@ Two levels (owner, 2026-11-18):
 
 **SMS protection.** SMS costs money, so it is the main abuse target.
 
-- At most 1 SMS per minute per phone number, plus a daily cap per number.
+- At most 1 SMS per 2 minutes per phone number; after 5 in a day, 1 per 30 minutes (never for admin numbers). Never "try tomorrow".
 - A small proof-of-work challenge in the browser before each SMS. Valorians has a working example in `src/lib/pow.ts`.
 - A per-IP cap that is high and only a safety net. A company can have 1,000 people behind one IP, so IP cannot be the main control.
 - A global daily SMS budget with an alert to the admin.
@@ -287,7 +287,7 @@ In Layer 2 the builder's frontend and backend stay unchanged. The page is served
 2. Otherwise the server puts the HTTP request in the bot's queue with a request ID.
 3. The Agent reads it, calls the local backend, and returns the response.
 
-**Dalan Agent.** A small program from Dalan that the builder runs beside the unchanged backend: `dalan login <key>` once, then `dalan http 3000 --name levelwise` (more `<port> --name <name>` pairs for more sites in one agent; `dalan start` runs the saved ones). It connects out to `tunnel.dalanet.ir` by WebSocket, or by long polling when WebSocket is blocked. The builder writes no polling code. Built in Layer 2 milestone 1 (decisions 60 to 63). `dalan http` is for trying: it runs while the terminal is open. `dalan service install` keeps the saved sites online in the background and after a restart; `dalan status` shows them. A name can be reserved in "My apps" before any agent runs (milestone 14).
+**Dalan Agent.** A small program from Dalan that the builder runs beside the unchanged backend: `dalan login <key>` once, then `dalan http 3000 --name levelwise` (more `<port> --name <name>` pairs for more sites in one agent; `dalan start` runs the saved ones). It connects out to `tunnel.dalanet.ir` by WebSocket, or by long polling when WebSocket is blocked. The builder writes no polling code. Built in Layer 2 milestone 1 (decisions 60 to 63). `dalan http` is for trying: it runs while the terminal is open. `dalan service install` keeps the saved sites online in the background and after a restart; `dalan status` shows them. A name can be reserved in "My apps" before any agent runs (milestone 15).
 
 **Demo link.** `dalan demo 3000` gives a test link with no name to claim: `https://dalans.ir/<random id>/`, open for 24 hours, at most 3 live demos per builder, ended at once by Ctrl+C. The first visit sets a cookie, so the app's own links (`/app.js`) keep going to the same demo. All demos share one origin, so a demo is for tests, not for real accounts (decision 67).
 
@@ -304,7 +304,7 @@ In Layer 2 the builder's frontend and backend stay unchanged. The page is served
 
 **SDK (`dalan.js`) is optional.** It offers extras only: bot online/offline events, user info, asking for push permission, later payments, and a default "service unavailable" banner that the builder can switch off. Without the SDK, an API call gets a clear error (`BOT_OFFLINE` or `TIMEOUT`) and a page load gets Dalan's own offline page.
 
-**Limits:** a size cap per request and per answer, and a time cap for the first part of an answer. Answers stream (milestone 14, decision 68), so Server-Sent Events and big downloads work. No WebSocket from the visitor to the app yet. Many requests of one address at once wait in a line instead of failing (a service worker or a page with many files).
+**Limits:** a size cap per request and per answer, and a time cap for the first part of an answer. Answers stream (milestone 15, decision 69), so Server-Sent Events and big downloads work. No WebSocket from the visitor to the app yet. Many requests of one address at once wait in a line instead of failing (a service worker or a page with many files).
 
 **Approved for Layer 2 (owner, 2026-11-16; not built yet):**
 
@@ -467,8 +467,8 @@ None of these is planned work. They are recorded so the design does not block th
 | Setting | Starting value | Source |
 | --- | --- | --- |
 | Update expiry | 60 seconds | Owner |
-| SMS per phone number | 1 per minute | Owner |
-| SMS per phone number per day | 5 | Assumed |
+| SMS per phone number | 1 per 2 minutes | Owner (2026-11-24) |
+| SMS per phone number per day at the short wait | 5, then 1 per 30 minutes; admin numbers never | Owner (2026-11-24) |
 | SMS per client address per day | 200 | Assumed (high: a safety net only) |
 | SMS for the whole server per day | 1,000 | Assumed |
 | SMS code | 6 digits, 2 minutes, 5 tries | Assumed |
@@ -499,13 +499,15 @@ None of these is planned work. They are recorded so the design does not block th
 | Bots per showcase page | 50 | Assumed (milestone 9) |
 | A pressed button waits for the bot | 15 seconds | Assumed (milestone 13) |
 | Formatted parts per message | 100 | Assumed (milestone 13, Telegram's limit) |
+| Contact message length | 2000 characters | Assumed (milestone 15) |
+| Contact messages per address | 5 per 24 hours | Assumed (milestone 15) |
 | Access key lifetime | 90 days | Assumed (milestone 10) |
 | Access keys per user | 10 | Assumed (milestone 10) |
 | Site storage per bot (Layer 2) | 200 MB | Agreed in discussion |
-| Site requests of one visitor address at the agent at once (Layer 2) | 200 | Assumed; first 20, then 50; raised in milestone 14 because Levelwise's service worker asks for about 1000 files at once and many mobile users share one address |
-| Site requests of one address waiting in line (Layer 2) | 1000 | Assumed (milestone 14) |
-| One streamed site answer (Layer 2) | 500 MB | Assumed (milestone 14) |
-| Part of a streamed answer, and parts on the way (Layer 2) | 64 KB, 8 | Assumed (milestone 14) |
+| Site requests of one visitor address at the agent at once (Layer 2) | 200 | Assumed; first 20, then 50; raised in milestone 15 because Levelwise's service worker asks for about 1000 files at once and many mobile users share one address |
+| Site requests of one address waiting in line (Layer 2) | 1000 | Assumed (milestone 15) |
+| One streamed site answer (Layer 2) | 500 MB | Assumed (milestone 15) |
+| Part of a streamed answer, and parts on the way (Layer 2) | 64 KB, 8 | Assumed (milestone 15) |
 | Site request timeout, for the first part of the answer (Layer 2) | 30 seconds | Assumed |
 
 **Confirmed by the owner on 2026-11-16:**
@@ -523,7 +525,7 @@ None of these is planned work. They are recorded so the design does not block th
 
 **Open questions:**
 
-- [ ] SMS provider: the Kavenegar sender is built (milestone 4), SMS.ir stays the second choice. Still to do by the owner: a Kavenegar account, an approved OTP template named `dalan-login` with one token, and the API key on the server. Prices and delivery speed were not compared.
+- [x] SMS provider: SMS.ir (plan bought 2026-11-24; Kavenegar dropped, its licence steps were too hard). Template `dalan-otp` approved 2026-11-24, ID `743739` in the server's `Notification__SmsIr__TemplateId`.
 - [x] Which hosting provider, after comparing traffic cost, extra disk and DNS? webdade (80.244.7.112), DNS at ArvanCloud (2026-11-21).
 - [x] Buy the separate sites domain before Layer 2 (decided 2026-11-20): `dalans.ir`, pointed at the server (2026-11-21). `Sites:Domain` is set by `SITES_DOMAIN=dalans.ir` in `install.sh`.
 - [ ] Buy a foreign backup domain (candidate: `dalanet.net`)?

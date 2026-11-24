@@ -262,7 +262,7 @@ public class EmailLoginTests(PostgresServer postgres)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True((await JsonAsync(response)).GetProperty("has_phone").GetBoolean());
         Assert.Equal(HttpStatusCode.OK, (await browser.PostAsync("/api/account/builder", null, Cancel)).StatusCode);
-        app.Time.Advance(TimeSpan.FromSeconds(60));
+        app.Time.Advance(TimeSpan.FromSeconds(120));
         var bySms = await app.LoginBySmsAsync(Phone);
         Assert.Equal(Email, (await JsonAsync(await bySms.GetAsync("/api/me", Cancel))).GetProperty("email").GetString());
     }
@@ -347,9 +347,10 @@ public class EmailLoginTests(PostgresServer postgres)
 
     [Fact]
     [Trait("Rule", "SEC-13")]
-    public async Task SEC13_daily_limit_per_address()
+    public async Task SEC13_after_the_cap_the_wait_is_long()
     {
-        await using var app = await StartAsync(postgres, ("Identity:EmailPerAddressPerDay", "2"));
+        await using var app = await StartAsync(postgres,
+            ("Identity:EmailWaitSeconds", "60"), ("Identity:EmailPerAddressPerDay", "2"), ("Identity:EmailLongWaitSeconds", "1800"));
         for (var i = 0; i < 2; i++)
         {
             (await DalanApp.AskEmailCodeAsync(app.Browser(), Email)).EnsureSuccessStatusCode();
@@ -358,7 +359,8 @@ public class EmailLoginTests(PostgresServer postgres)
 
         var response = await DalanApp.AskEmailCodeAsync(app.Browser(), Email);
 
-        Assert.Equal("email_limit", await ErrorCodeAsync(response));
+        Assert.Equal("email_wait", await ErrorCodeAsync(response));
+        Assert.Equal("1740", response.Headers.RetryAfter!.ToString());
     }
 
     [Fact]

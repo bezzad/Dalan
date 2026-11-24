@@ -1,4 +1,4 @@
-// Rules: CLI-35, CLI-42, CLI-26
+// Rules: CLI-35, CLI-42, CLI-26, CLI-56, CLI-57
 // The header (language and theme buttons, three links, the ☰ menu), the footer links, and a landing page with no install steps.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -54,11 +54,14 @@ function storage() {
   return { getItem: (key: string) => store.get(key) ?? null, setItem: (key: string, value: string) => void store.set(key, value) };
 }
 
-function landing(lang: "fa" | "en"): FakeElement {
+function screen(page: "landing" | "about" | "contact", lang: "fa" | "en", email: string | null = null): FakeElement {
   const language = new Language({ lang: "", dir: "" }, storage());
   if (lang === "en") language.toggle();
-  return publicScreen("landing", { language, loggedIn: false, go: () => {}, enter: () => {}, tools: document.createElement("div") }) as unknown as FakeElement;
+  return publicScreen(page, {
+    language, loggedIn: email !== null, email, go: () => {}, enter: () => {}, tools: document.createElement("div") }) as unknown as FakeElement;
 }
+
+const landing = (lang: "fa" | "en") => screen("landing", lang);
 
 const byTag = (root: FakeElement, tag: string) => all(root).filter(element => element.tag === tag);
 const hasClass = (element: FakeElement, name: string) => element.className.split(" ").includes(name);
@@ -146,4 +149,37 @@ test("CLI-26 the landing page has the plans with their guides and no install ste
     // Every list of the landing page with icons uses the shared ticks class.
     for (const list of byTag(content, "ul").filter(list => byTag(list, "svg").length)) assert.ok(hasClass(list, "ticks"), list.className);
   }
+});
+
+test("CLI-56 every public page links about and contact in the footer", () => {
+  for (const lang of ["fa", "en"] as const) {
+    for (const page of ["landing", "about", "contact"] as const) {
+      const footer = byTag(screen(page, lang), "footer")[0]!;
+      for (const href of ["/about", "/contact"]) assert.ok(hrefs(footer).includes(href), `${page} ${lang} footer has ${href}`);
+    }
+  }
+});
+
+test("CLI-56 the about page shows only the current language", () => {
+  const persianLetters = /[\u0600-\u06FF]/;
+  const fa = all(screen("about", "fa")).find(element => hasClass(element, "content"))!.textContent;
+  const en = all(screen("about", "en")).find(element => hasClass(element, "content"))!.textContent;
+  assert.match(fa, /دالان چیست؟/);
+  assert.doesNotMatch(fa, /What is Dalan/);
+  assert.match(en, /What is Dalan\?/);
+  assert.doesNotMatch(en, persianLetters);
+});
+
+test("CLI-57 a visitor types the email; a user with an email gets it filled and read only", () => {
+  const email = (page: FakeElement) => all(page).find(element => element.tag === "input" && element.getAttribute("type") === "email")!;
+  const visitor = email(screen("contact", "en"));
+  assert.ok(visitor.attributes.has("required"));
+  assert.ok(!visitor.attributes.has("readonly"));
+  assert.equal(visitor.getAttribute("value"), "");
+  const sara = email(screen("contact", "fa", "sara@example.com"));
+  assert.ok(sara.attributes.has("readonly"));
+  assert.equal(sara.getAttribute("value"), "sara@example.com");
+  const page = screen("contact", "en");
+  assert.equal(byTag(page, "textarea").length, 1);
+  assert.ok(byTag(page, "button").some(button => button.getAttribute("type") === "submit"));
 });

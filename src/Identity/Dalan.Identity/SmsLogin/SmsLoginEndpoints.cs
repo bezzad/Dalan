@@ -33,7 +33,7 @@ internal static class SmsLoginEndpoints
 
     private static async Task<IResult> SendAsync(
         HttpContext http, ProofOfWork proofOfWork, SmsCodes codes, ISmsSender sender, IAccessLog accessLog,
-        IDbContextFactory<IdentityDb> dbFactory, IOptionsMonitor<IdentityOptions> options)
+        IDbContextFactory<IdentityDb> dbFactory, IOptionsMonitor<IdentityOptions> options, UserAdmin users)
     {
         var request = await AuthJson.ReadAsync<SmsRequest>(http);
         if (PhoneNumber.Normalize(request?.Phone) is not { } phone) return BadPhone();
@@ -49,7 +49,8 @@ internal static class SmsLoginEndpoints
 
         var ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         var (outcome, wait) = await codes.SendAsync(
-            phone, ip, (code, cancellationToken) => sender.SendLoginCodeAsync(phone, code, cancellationToken), http.RequestAborted);
+            phone, ip, (code, cancellationToken) => sender.SendLoginCodeAsync(phone, code, cancellationToken), http.RequestAborted,
+            noCap: users.IsAdminPhone(phone));
 
         // ADM-04: the person who gets the SMS may not be the one who asked for it.
         if (outcome == CodeOutcome.Sent)
@@ -61,13 +62,13 @@ internal static class SmsLoginEndpoints
             CodeOutcome.Sent => AuthJson.Ok(new
             {
                 ExpiresIn = settings.SmsCodeSeconds,
-                RetryIn = settings.SmsWaitSeconds,
+                RetryIn = AuthJson.Seconds(wait),
                 CodeDigits = settings.SmsCodeDigits,
             }),
             CodeOutcome.Wait => AuthJson.TooManyRequests(http, "sms_wait", wait,
                 $"A code was just sent to this number. Wait {AuthJson.Seconds(wait)} second(s) before asking again."),
-            CodeOutcome.Limit => AuthJson.Error(StatusCodes.Status429TooManyRequests, "sms_limit",
-                "Too many codes were sent today. Log in with your password, or try again tomorrow."),
+            CodeOutcome.Limit => AuthJson.TooManyRequests(http, "sms_limit", wait,
+                $"Too many codes were asked from this address. Wait {AuthJson.Seconds(wait)} second(s), or log in with your password."),
             _ => AuthJson.Error(StatusCodes.Status503ServiceUnavailable, "sms_unavailable",
                 "The SMS could not be sent now. Try again in a few minutes, or log in with your password."),
         };

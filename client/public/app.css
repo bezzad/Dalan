@@ -219,10 +219,11 @@ button.link { min-height: 0; padding: 4px 6px; border: 0; background: none; colo
 .login .card form { display: flex; flex-direction: column; gap: 8px; }
 .login .card > .links { justify-content: center; margin-inline: -24px; padding: 12px 24px 0; border-top: 1px solid var(--line); }
 .login .card > .links button.link { align-self: center; }
-.login a.button.github { gap: 10px; min-height: 44px; border-radius: 10px; background: var(--surface); font-weight: 600; }
-.login a.button.github svg { width: 20px; height: 20px; flex: none; }
-.or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 14px; }
-.or::before, .or::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+/* CLI-36: one equal button per way to log in. */
+.login .ways { display: flex; flex-direction: column; gap: 10px; }
+.login .ways .error:empty { display: none; }
+.login .button.way { gap: 10px; min-height: 44px; border-radius: 10px; background: var(--surface); font-weight: 600; }
+.login .button.way svg { width: 20px; height: 20px; flex: none; }
 .scroller > .card { max-width: none; flex: none; }
 
 /* Bot list */
@@ -264,7 +265,8 @@ main > .scroller, main > .bots { margin-inline: calc(-1 * var(--gutter)); paddin
   border-end-end-radius: 4px;
   background: var(--mine);
 }
-.messages p { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* CLI-58: each line takes its direction from its own first strong letter, like Telegram; no language guess. */
+.messages p { white-space: pre-wrap; overflow-wrap: anywhere; unicode-bidi: plaintext; text-align: start; }
 .messages time { display: block; color: var(--muted); font-size: var(--message-time); line-height: 1.2; text-align: end; }
 
 /* CLI-07: under the input, each row as sent; a row's buttons share its width, so a row of 3 has wider buttons than a row of 5. */
@@ -345,9 +347,9 @@ button.pinned[hidden] { display: none; }
 /* CLI-54: Telegram's formatting, drawn from entities. */
 .messages code, .messages pre { font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace; font-size: .92em; }
 .messages code { padding: 0 3px; border-radius: 4px; background: color-mix(in srgb, var(--text) 8%, transparent); }
-.messages pre { margin: 2px 0; padding: 6px 8px; border-radius: 6px; background: color-mix(in srgb, var(--text) 8%, transparent); white-space: pre-wrap; overflow-wrap: anywhere; direction: ltr; text-align: left; }
+.messages pre { margin: 2px 0; padding: 6px 8px; border-radius: 6px; background: color-mix(in srgb, var(--text) 8%, transparent); white-space: pre-wrap; overflow-wrap: anywhere; unicode-bidi: isolate; direction: ltr; text-align: left; }
 .messages pre code { padding: 0; background: none; }
-.messages blockquote { margin: 2px 0; padding: 2px 8px; border-inline-start: 3px solid var(--brand); border-radius: 4px; background: var(--brand-soft); }
+.messages blockquote { margin: 2px 0; padding: 2px 8px; unicode-bidi: plaintext; text-align: start; border-inline-start: 3px solid var(--brand); border-radius: 4px; background: var(--brand-soft); }
 .messages blockquote.expandable:not(.open) { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
 .messages .spoiler:not(.open) { border-radius: 4px; background: var(--muted); color: transparent; cursor: pointer; user-select: none; }
 .messages .spoiler:not(.open) * { color: transparent; background: none; }
@@ -556,6 +558,13 @@ label.button.file input { position: absolute; inset: 0; opacity: 0; cursor: poin
 .page .content:not(:has(.hero)) { width: 100%; max-width: 760px; padding-block-start: var(--space-m); }
 .page .content > .card { max-width: none; flex: none; }
 .page .content > .bots { flex: none; overflow: visible; }
+/* CLI-57: the contact form. A locked email looks locked. */
+.contact textarea { min-height: 8em; }
+.contact input[readonly] { color: var(--muted); }
+.contact > button[type="submit"] { align-self: flex-start; }
+/* ADM-17: a message the admin has not read yet. */
+.admin .card.unread { border-inline-start: 4px solid var(--brand); }
+.admin .card p.text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .page h2.title { font-size: var(--text-title); }
 .page ol { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 8px; }
 .page p { color: var(--muted); }

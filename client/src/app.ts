@@ -64,6 +64,8 @@ export function errorText(error: unknown): TextKey {
     case "sms_limit": return "smsLimit";
     case "sms_unavailable": return "smsUnavailable";
     case "bad_email": return "badEmail";
+    case "bad_text": return "badContactText";
+    case "too_many_messages": return "tooManyMessages";
     case "email_wait": return "emailWait";
     case "email_limit": return "emailLimit";
     case "email_unavailable": return "emailUnavailable";

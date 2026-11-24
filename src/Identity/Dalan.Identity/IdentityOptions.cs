@@ -38,7 +38,10 @@ public sealed class IdentityOptions
     /// <summary>Time between two SMS to one number (SEC-07).</summary>
     public int SmsWaitSeconds { get; set; }
 
+    /// <summary>SEC-07: SMS to one number in 24 hours with the short wait; after that the wait is <see cref="SmsLongWaitSeconds"/>.</summary>
     public int SmsPerPhonePerDay { get; set; }
+
+    public int SmsLongWaitSeconds { get; set; }
 
     /// <summary>High on purpose: many people can share one address (SEC-08).</summary>
     public int SmsPerIpPerDay { get; set; }
@@ -56,6 +59,8 @@ public sealed class IdentityOptions
     public int EmailWaitSeconds { get; set; }
 
     public int EmailPerAddressPerDay { get; set; }
+
+    public int EmailLongWaitSeconds { get; set; }
 
     public int EmailPerIpPerDay { get; set; }
 

@@ -13,16 +13,22 @@ public class SmsSenderTests
     private const string ApiKey = "SECRET-KEY-123";
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
-    /// <summary>Plays the provider: keeps each call and answers as the test says.</summary>
-    private sealed class FakeProvider(HttpStatusCode status = HttpStatusCode.OK, bool down = false) : HttpMessageHandler
+    /// <summary>Plays SMS.ir: keeps each call and answers as the test says.</summary>
+    private sealed class FakeProvider(
+        HttpStatusCode status = HttpStatusCode.OK, string body = """{"data":{"messageId":1,"cost":1},"status":1,"message":"ok"}""", bool down = false)
+        : HttpMessageHandler
     {
-        public List<(HttpMethod Method, string Path, string Body)> Calls { get; } = [];
+        public List<(HttpMethod Method, string Path, string? Key, string Body)> Calls { get; } = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            Calls.Add((request.Method, request.RequestUri!.AbsolutePath, await request.Content!.ReadAsStringAsync(cancellationToken)));
+            Calls.Add((
+                request.Method,
+                request.RequestUri!.AbsolutePath,
+                request.Headers.TryGetValues("x-api-key", out var keys) ? keys.Single() : null,
+                await request.Content!.ReadAsStringAsync(cancellationToken)));
             if (down) throw new HttpRequestException("The provider cannot be reached.");
-            return new HttpResponseMessage(status) { Content = new StringContent("""{"return":{"status":200}}""") };
+            return new HttpResponseMessage(status) { Content = new StringContent(body) };
         }
     }
 
@@ -32,10 +38,11 @@ public class SmsSenderTests
         {
             ["Notification:SmsProvider"] = provider,
             ["Notification:LogSmsPhones"] = logSmsPhones,
-            ["Notification:Kavenegar:BaseUrl"] = "https://sms.test",
-            ["Notification:Kavenegar:ApiKey"] = ApiKey,
-            ["Notification:Kavenegar:Template"] = "dalan-login",
-            ["Notification:Kavenegar:TimeoutSeconds"] = "10",
+            ["Notification:SmsIr:BaseUrl"] = "https://sms.test",
+            ["Notification:SmsIr:ApiKey"] = ApiKey,
+            ["Notification:SmsIr:TemplateId"] = "123456",
+            ["Notification:SmsIr:CodeParameter"] = "CODE",
+            ["Notification:SmsIr:TimeoutSeconds"] = "10",
             ["Identity:DevLogin"] = "false",
         },
         web =>
@@ -103,6 +110,7 @@ public class SmsSenderTests
     [Trait("Rule", "NTF-01")]
     [InlineData("log", "Production", "Notification:LogSmsPhones")]
     [InlineData("pigeon", "Development", "pigeon")]
+    [InlineData("kavenegar", "Development", "kavenegar")]
     public async Task NTF01_wrong_provider_setting_stops_the_start(string provider, string environment, string errorSays)
     {
         await using var app = App(provider, environment);
@@ -115,25 +123,39 @@ public class SmsSenderTests
 
     [Fact]
     [Trait("Rule", "NTF-02")]
-    public async Task NTF02_kavenegar_gets_one_call_with_the_number_the_code_and_the_template()
+    public async Task NTF02_smsir_gets_one_verify_call_with_the_key_the_number_the_template_and_the_code()
     {
         var provider = new FakeProvider();
-        await using var app = App("kavenegar", "Production", provider);
+        await using var app = App("smsir", "Production", provider);
 
         var sent = await SendAsync(app);
 
         Assert.True(sent);
         var call = Assert.Single(provider.Calls);
         Assert.Equal(HttpMethod.Post, call.Method);
-        Assert.Equal($"/v1/{ApiKey}/verify/lookup.json", call.Path);
-        Assert.Equal("receptor=09121234567&token=123456&template=dalan-login", call.Body);
+        Assert.Equal("/v1/send/verify", call.Path);
+        Assert.Equal(ApiKey, call.Key);
+        Assert.Equal("""{"mobile":"09121234567","templateId":123456,"parameters":[{"name":"CODE","value":"123456"}]}""", call.Body);
     }
 
     [Fact]
     [Trait("Rule", "NTF-02")]
-    public async Task NTF02_error_status_is_a_failed_send()
+    public async Task NTF02_refusal_is_a_failed_send_and_the_log_says_both_statuses()
     {
-        await using var app = App("kavenegar", fake: new FakeProvider(HttpStatusCode.Forbidden));
+        await using var app = App("smsir", fake: new FakeProvider(HttpStatusCode.BadRequest, """{"data":null,"status":113,"message":"x"}"""));
+
+        Assert.False(await SendAsync(app));
+        Assert.Contains(app.Logs.Lines, line => line.Text.Contains("400", StringComparison.Ordinal) && line.Text.Contains("113", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [Trait("Rule", "NTF-02")]
+    [InlineData("""{"data":null,"status":0,"message":"x"}""")]
+    [InlineData("<html>busy</html>")]
+    [InlineData("")]
+    public async Task NTF02_a_200_without_status_1_is_a_failed_send(string body)
+    {
+        await using var app = App("smsir", fake: new FakeProvider(HttpStatusCode.OK, body));
 
         Assert.False(await SendAsync(app));
     }
@@ -142,7 +164,7 @@ public class SmsSenderTests
     [Trait("Rule", "NTF-02")]
     public async Task NTF02_network_error_is_a_failed_send()
     {
-        await using var app = App("kavenegar", fake: new FakeProvider(down: true));
+        await using var app = App("smsir", fake: new FakeProvider(down: true));
 
         Assert.False(await SendAsync(app));
     }
@@ -152,9 +174,9 @@ public class SmsSenderTests
     public async Task NTF02_api_key_stays_out_of_the_log()
     {
         var down = new FakeProvider(down: true);
-        await using var failing = App("kavenegar", fake: down);
-        await using var working = App("kavenegar", fake: new FakeProvider());
-        await using var refusing = App("kavenegar", fake: new FakeProvider(HttpStatusCode.Forbidden));
+        await using var failing = App("smsir", fake: down);
+        await using var working = App("smsir", fake: new FakeProvider());
+        await using var refusing = App("smsir", fake: new FakeProvider(HttpStatusCode.Unauthorized, """{"data":null,"status":10,"message":"x"}"""));
 
         await SendAsync(failing);
         await SendAsync(working);

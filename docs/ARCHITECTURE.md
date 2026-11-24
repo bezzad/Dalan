@@ -118,7 +118,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 - GitHub login: `GET /api/auth/github` sets a state cookie (`__Host-dalan_github`, `SameSite=Lax`) and sends the browser to GitHub; `GET /api/auth/github/callback` checks the state, calls GitHub with `HttpClient` (no package; a call with no answer is sent again, `Identity:GitHub:Tries`), finds the user by `github_id`, else by the primary verified email, else makes one, writes the access log row and sends the browser to `/`. Errors go to `/?login_error=<code>`. On when `Identity:GitHub:ClientId` and `ClientSecret` are set; the callback URL is a setting (`Identity:GitHub:CallbackUrl`).
 - Passwords: Argon2id in PHC text form; only a few hashes run at once. Password tries are limited per login name and per client address, in memory.
 - Keys for the MACs (proof of work, SMS codes) are derived from `Identity:SigningKey`, so there is no second secret.
-- SMS providers live in Notification behind `ISmsSender`; setting `Notification:SmsProvider` (`kavenegar`, `log` for Development only, or empty).
+- SMS providers live in Notification behind `ISmsSender`; setting `Notification:SmsProvider` (`smsir`, `log` for Development or `Notification:LogSmsPhones` only, or empty).
 - Security events (login, failed login, SMS sent or refused, refresh reuse, password change) are log lines until the audit table comes with Admin.
 - **Admins** are the users whose phone is in `Identity:AdminPhones` (file or environment only, never the panel).
 - **Builders**: `identity.users.builder` is `none`, `requested` or `approved`; the admin approves. Only a user with a phone may ask (`phone_required`).
@@ -130,7 +130,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 
 - `admin.settings` holds only the values the admin changed. The host adds them as the last configuration source (`AddAdminSettings`), loaded before traffic; Admin starts first.
 - A change reloads that source; every service reads settings through `IOptionsMonitor`, so it applies at once. A few settings are read only at start and are marked "after restart".
-- Not in the panel: secrets, `Identity:DevLogin`, `Identity:AdminPhones`, `Dalan:TrustedProxies`, `Notification:SmsProvider`, `Notification:Kavenegar:BaseUrl`, `Relay:FileFolder` and the other `Dalan` keys. Change those in `/etc/dalan/dalan.env`.
+- Not in the panel: secrets, `Identity:DevLogin`, `Identity:AdminPhones`, `Dalan:TrustedProxies`, `Notification:SmsProvider`, `Notification:SmsIr:BaseUrl`, `Relay:FileFolder` and the other `Dalan` keys. Change those in `/etc/dalan/dalan.env`.
 - With more than one server, each one must reload on a shared signal.
 
 ## 8. Scale
@@ -220,7 +220,8 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 65 | 2026-11-21 | GitHub Actions minutes ran out: the gate is `scripts/ci.sh` on the owner's computer (the same steps as `ci.yml`, which now runs only by hand); the server builds main itself every minute (`git ls-remote` of main only); the Windows agent comes from a CI run by hand |
 | 66 | 2026-11-21 | The repository is public (the owner cannot pay GitHub; public repositories run Actions free). A CI run by hand builds the Windows and macOS agents (`macos-26`, `macos-26-intel`) with Native AOT, each on its own system |
 | 67 | 2026-11-22 | A demo link is a path on one shared host (`dalans.ir/<id>/`) with a cookie for the app's own links, not a new subdomain: no new name to claim and no new certificate per demo. The price is one shared origin, so demos are for tests only |
-| 68 | 2026-11-24 | Site answers stream: the agent sends parts as the app writes them, with a window of parts and an ack per part over WebSocket (a POST that returns after the write over long polling), and the server tells the agent to stop when the visitor leaves. Needed for Server-Sent Events (PocketBase realtime, OAuth). WebSocket from visitors is still left out |
+| 68 | 2026-11-24 | The SMS provider is SMS.ir, not Kavenegar (its licence steps were too hard); Kavenegar code removed. Plain `HttpClient`, not the `IPE.SmsIR` package. Sent = HTTP 200 and `status` 1 |
+| 69 | 2026-11-24 | Site answers stream: the agent sends parts as the app writes them, with a window of parts and an ack per part over WebSocket (a POST that returns after the write over long polling), and the server tells the agent to stop when the visitor leaves. Needed for Server-Sent Events (PocketBase realtime, OAuth). WebSocket from visitors is still left out |
 
 ## 11. Client address and access log
 
