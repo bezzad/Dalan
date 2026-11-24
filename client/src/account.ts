@@ -2,7 +2,7 @@
 // and the mobile number of a level 1 user (CLI-34).
 import { api } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
-import { latinDigits } from "./digits.ts";
+import { latinDigits, phoneNumber } from "./digits.ts";
 import { h } from "./dom.ts";
 import { toast } from "./toast.ts";
 import type { TextKey } from "./i18n.ts";
@@ -110,7 +110,7 @@ export function accountScreen(app: App): Screen {
     h("label", { for: "phone" }, t("phone")), phone, phoneCodeLabel, phoneCode,
   ], async () => {
     if (sentTo === null) {
-      const number = latinDigits(phone.value);
+      const number = phoneNumber(phone.value);
       const { challenge, difficulty } = await api.challenge({ phone: number });
       await api.sendCode(number, challenge, await solve(challenge, difficulty));
       sentTo = number;
