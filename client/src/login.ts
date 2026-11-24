@@ -1,16 +1,19 @@
-// The login screen: one card of buttons, one per way (CLI-36). GitHub (AUTH-27), email code (AUTH-24, AUTH-25), SMS code
-// (AUTH-11, AUTH-12), password (AUTH-14) and the development login (AUTH-06). Send again with a countdown (CLI-61).
+// The login screen: the Dalan gate, then one card: the password form first (CLI-62), under it one button per other way
+// (CLI-36). GitHub (AUTH-27), email code (AUTH-24, AUTH-25), SMS code (AUTH-11, AUTH-12), password (AUTH-14) and the
+// development login (AUTH-06). Send again with a countdown (CLI-61).
 import { ApiError, api, type AuthSettings, type User } from "./api.ts";
 import { errorText } from "./app.ts";
 import { latinDigits, phoneNumber } from "./digits.ts";
 import { h } from "./dom.ts";
 import type { Language, LangStorage, TextKey } from "./i18n.ts";
+import { gate } from "./logo.ts";
+import { rememberNext } from "./next.ts";
 import { solve } from "./pow.ts";
 import { readSmsCode } from "./webOtp.ts";
 
 type Channel = "sms" | "email";
 type Way = Channel | "github";
-type Mode = Channel | "password" | "dev";
+type Mode = Channel | "dev";
 
 /** CLI-36: set after any login on this browser; it stays after logout. */
 const ReturningKey = "dalan.returning";
@@ -36,6 +39,12 @@ export function markReturning(storage?: LangStorage): void {
 export function loginOrder(settings: AuthSettings, returning: boolean): Way[] {
   const order: Way[] = returning ? ["github", "email", "sms"] : ["sms", "github", "email"];
   return order.filter(way => way === "sms" || (way === "github" ? settings.github_login : settings.email_login));
+}
+
+/** CLI-62: the card opens with the password form; the other ways (CLI-36) come under it, each with a logo of its own. */
+export function loginLayout(settings: AuthSettings, returning: boolean): { first: "password"; others: { way: Way; logo: "phone" | "envelope" | "github" }[] } {
+  const logos = { sms: "phone", email: "envelope", github: "github" } as const;
+  return { first: "password", others: loginOrder(settings, returning).map(way => ({ way, logo: logos[way] })) };
 }
 
 /** CLI-61: seconds as m:ss, or h:mm:ss from an hour. */
@@ -138,14 +147,20 @@ export function loginScreen(
     },
   } as const;
 
-  /** CLI-36: the first card: one equal button per way, in the order for this browser. */
+  /** CLI-62, CLI-36: the first card: the password form, then one equal button per other way, in the order for this browser. */
   function choices(error: TextKey | null = null): void {
-    const buttons = loginOrder(settings, isReturning()).map(way => way === "github"
-      ? h("a", { class: "button way github", href: "/api/auth/github" }, githubMark(), t("byGitHub"))
+    const buttons = loginLayout(settings, isReturning()).others.map(({ way }) => way === "github"
+      // CLI-63: GitHub sends the person back to "/", so the address is kept for after the login.
+      ? h("a", {
+        class: "button way github", href: "/api/auth/github",
+        onclick: () => rememberNext(location.pathname + location.search),
+      }, githubMark(), t("byGitHub"))
       : h("button", { type: "button", class: `button way ${way}`, onclick: () => open(way) },
         way === "sms" ? smsMark() : emailMark(), t(way === "sms" ? "bySms" : "byEmail")));
     const view = h("div", { class: "ways" },
-      h("p", { class: "error", role: "alert" }, error ? t(error) : ""), ...buttons);
+      h("p", { class: "error", role: "alert" }, error ? t(error) : ""),
+      password(),
+      ...(buttons.length > 0 ? [h("p", { class: "or" }, t("or")), ...buttons] : []));
     show(view);
     bottomLinks(null);
   }
@@ -239,10 +254,9 @@ export function loginScreen(
   function password(): HTMLElement {
     const login = h("input", { id: "login", type: "text", dir: "ltr", autocapitalize: "none", autocomplete: "username", required: true });
     const secret = h("input", { id: "password", type: "password", dir: "ltr", autocomplete: "current-password", required: true });
-    return form("passwordLoginTitle", "loginName", "login", [
+    return form(null, null, "login", [
       h("label", { for: "login" }, t("loginName")), login,
       h("label", { for: "password" }, t("password")), secret,
-      backButton(),
     ], async () => onLogin(await api.passwordLogin(phoneNumber(login.value), secret.value)));
   }
 
@@ -267,21 +281,21 @@ export function loginScreen(
     view.querySelector("input")?.focus();
   }
 
-  /** Password and the development login stay small links at the bottom. */
+  /** The development login stays a small link at the bottom. */
   function bottomLinks(mode: Mode | null): void {
-    const link = (to: Mode, text: TextKey) => h("button", { type: "button", class: "link", onclick: () => open(to) }, t(text));
     links.replaceChildren(
-      ...(mode === "password" ? [] : [link("password", "byPassword")]),
-      ...(mode === "dev" || !settings.dev_login ? [] : [link("dev", "byDevLogin")]));
+      ...(mode === "dev" || !settings.dev_login ? [] : [h("button", { type: "button", class: "link", onclick: () => open("dev") }, t("byDevLogin"))]));
   }
 
   function open(mode: Mode): void {
-    show(mode === "sms" || mode === "email" ? askCode(mode) : mode === "password" ? password() : dev());
+    show(mode === "dev" ? dev() : askCode(mode));
     bottomLinks(mode);
   }
 
   choices(firstError);
   return h("main", { class: "login" },
+    // CLI-62: the Dalan gate above the card.
+    h("div", { class: "login-logo" }, gate()),
     h("h1", { class: "brand" }, t("appName")),
     h("section", { class: "card" }, body, links),
     h("p", { class: "links" },

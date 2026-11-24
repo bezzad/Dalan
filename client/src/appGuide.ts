@@ -20,3 +20,12 @@ export const serviceCommands = { install: "dalan service install", status: "dala
 export function httpCommand(sites: { port: number; name: string }[]): string {
   return "dalan http " + sites.map(site => `${site.port} --name ${site.name}`).join(" ");
 }
+
+/** CLI-67: a site name for this user (SITE-02: 3 to 20 of a-z and 0-9, a letter first), from the username, else the name, else `mysite`. */
+export function defaultSiteName(user: { username: string | null; name: string }): string {
+  for (const source of [user.username, user.name]) {
+    const clean = (source ?? "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20);
+    if (/^[a-z][a-z0-9]{2,19}$/.test(clean)) return clean;
+  }
+  return "mysite";
+}

@@ -11,6 +11,7 @@ import { chatScreen } from "./chat.ts";
 import { Language, type TextKey } from "./i18n.ts";
 import { Live } from "./live.ts";
 import { loginScreen, markReturning } from "./login.ts";
+import { askedNext, loginTarget, rememberNext, takeNext } from "./next.ts";
 import { botPageUsername, initial, pageFor } from "./pages.ts";
 import { h } from "./dom.ts";
 import { toastRegion } from "./toast.ts";
@@ -46,8 +47,8 @@ function showLogin(error: TextKey | null = null): void {
   live?.stop();
   app = live = screen = null;
   authSettings().then(settings => show(loginScreen(language, settings, user => {
-    // CLI-51: after login, the address the user asked for; from the landing page, the chats.
-    if (location.pathname === "/") history.replaceState(null, "", "/chats");
+    // CLI-63: after login, the address the person came from; from the landing page, "My bots".
+    history.replaceState(null, "", loginTarget(location.pathname, location.search, takeNext()));
     void enter(user).catch(fail);
   }, () => {
     language.toggle();
@@ -73,6 +74,13 @@ function guest(): void {
   if (error) {
     history.replaceState(null, "", location.pathname);
     return showLogin(error);
+  }
+  // CLI-63: "/?next=/guide/site" asks for the login and comes back to that address; the address is kept and cleaned.
+  const asked = askedNext(location.search, null);
+  if (asked) {
+    rememberNext(asked);
+    history.replaceState(null, "", location.pathname);
+    return showLogin();
   }
   const page = pageFor(location.pathname, false);
   if (page === "login") return showLogin();
@@ -214,4 +222,9 @@ if ("serviceWorker" in navigator) {
 }
 
 document.body.dataset["connecting"] = language.t("connecting");
-api.me().then(enter).catch(fail);
+// CLI-63: back from GitHub on "/": go to the address kept before the round trip (or `?next=`).
+api.me().then(user => {
+  const asked = askedNext(location.search, takeNext());
+  if (asked && location.pathname === "/") history.replaceState(null, "", asked);
+  return enter(user);
+}).catch(fail);

@@ -143,7 +143,7 @@ export function appsScreen(app: App): Screen {
       h("p", { class: "note" }, t("step4Note")),
       run,
       h("p", { class: "note" }, t("manySites")),
-      codeBlock(httpCommand([{ port: 3000, name: "levelwise" }, { port: 8080, name: "shop" }])),
+      codeBlock(httpCommand([{ port: 3000, name: "mysite" }, { port: 8080, name: "shop" }])),
       h("h3", {}, t("step5Title")),
       h("p", { class: "note" }, t("step5Note")),
       codeBlock(serviceCommands.install),
