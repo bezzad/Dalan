@@ -221,6 +221,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 66 | 2026-11-21 | The repository is public (the owner cannot pay GitHub; public repositories run Actions free). A CI run by hand builds the Windows and macOS agents (`macos-26`, `macos-26-intel`) with Native AOT, each on its own system |
 | 67 | 2026-11-22 | A demo link is a path on one shared host (`dalans.ir/<id>/`) with a cookie for the app's own links, not a new subdomain: no new name to claim and no new certificate per demo. The price is one shared origin, so demos are for tests only |
 | 68 | 2026-11-24 | The SMS provider is SMS.ir, not Kavenegar (its licence steps were too hard); Kavenegar code removed. Plain `HttpClient`, not the `IPE.SmsIR` package. Sent = HTTP 200 and `status` 1 |
+| 69 | 2026-11-24 | Site answers stream: the agent sends parts as the app writes them, with a window of parts and an ack per part over WebSocket (a POST that returns after the write over long polling), and the server tells the agent to stop when the visitor leaves. Needed for Server-Sent Events (PocketBase realtime, OAuth). WebSocket from visitors is still left out |
 
 ## 11. Client address and access log
 

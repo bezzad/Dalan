@@ -8,6 +8,8 @@ using Microsoft.Extensions.Options;
 
 namespace Dalan.Sites.MySites;
 
+internal sealed record ReserveRequest(string? Name);
+
 internal sealed record SiteJson(long Id, string Name, string Url, bool Online, DateTimeOffset CreatedAt);
 
 /// <summary>The sites, and what the guide in "My apps" needs: the sites domain (empty: sites are off) and the agent's server.</summary>
@@ -27,6 +29,22 @@ internal static class MySitesEndpoints
             var mine = await book.ListAsync(TunnelEndpoints.UserId(http), http.RequestAborted);
             return SitesJson.Ok(new MySitesJson(settings.Domain, settings.Scheme, settings.TunnelUrl,
                 mine.Select(s => new SiteJson(s.Id, s.Name, settings.UrlOf(s.Name), hub.IsOnline(s.Name), s.CreatedAt))));
+        });
+
+        // SITE-24: a name is kept before any agent runs; 200 when it is already the caller's.
+        sites.MapPost("", async (HttpContext http, SiteBook book, TunnelHub hub, IOptionsMonitor<SitesOptions> options) =>
+        {
+            var settings = options.CurrentValue;
+            if (settings.Domain.Length == 0)
+                return SitesJson.Error(StatusCodes.Status503ServiceUnavailable, "sites_off", "Sites are not turned on in this server yet.");
+            var name = (await SitesJson.ReadAsync<ReserveRequest>(http))?.Name;
+            var userId = TunnelEndpoints.UserId(http);
+            var before = await book.ListAsync(userId, http.RequestAborted);
+            var (error, bad, claimed) = await book.ClaimAsync(userId, [name], http.RequestAborted);
+            if (error != ClaimError.None) return TunnelEndpoints.ClaimFailed(error, bad, settings);
+            var site = (await book.ListAsync(userId, http.RequestAborted)).Single(s => s.Name == claimed[0]);
+            var json = new SiteJson(site.Id, site.Name, settings.UrlOf(site.Name), hub.IsOnline(site.Name), site.CreatedAt);
+            return before.Any(s => s.Id == site.Id) ? SitesJson.Ok(json) : Results.Json(json, SitesJson.Options, statusCode: StatusCodes.Status201Created);
         });
 
         sites.MapDelete("/{siteId:long}", async (long siteId, HttpContext http, SiteBook book, TunnelHub hub, IUserDirectory users) =>

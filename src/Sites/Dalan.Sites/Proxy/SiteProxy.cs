@@ -28,7 +28,7 @@ internal sealed class SiteProxy(
     {
         if (settings.Domain.Length == 0) return null;
         var name = host.Host.ToLowerInvariant();
-        var suffix = "." + settings.Domain.ToLowerInvariant();
+        var suffix = "." + SitesOptions.HostOnly(settings.Domain).ToLowerInvariant();
         if (!name.EndsWith(suffix, StringComparison.Ordinal)) return null;
         var label = name[..^suffix.Length];
         return label.Contains('.', StringComparison.Ordinal) ? "" : label;
@@ -36,7 +36,7 @@ internal sealed class SiteProxy(
 
     /// <summary>SITE-18: true when the host is the demo host and demos are on.</summary>
     public static bool IsDemoHost(HostString host, SitesOptions settings) =>
-        settings.DemoHost.Length > 0 && string.Equals(host.Host, settings.DemoHost, StringComparison.OrdinalIgnoreCase);
+        settings.DemoHost.Length > 0 && string.Equals(host.Host, SitesOptions.HostOnly(settings.DemoHost), StringComparison.OrdinalIgnoreCase);
 
     public async Task HandleAsync(HttpContext http, string site)
     {
@@ -126,22 +126,30 @@ internal sealed class SiteProxy(
     private async Task RelayAsync(HttpContext http, TunnelSession session, string site, PathString path, string? cookie)
     {
         var settings = options.CurrentValue;
-        var body = await ReadBodyAsync(http, settings.MaxBodyBytes);
-        if (body is null)
-        {
-            await PageAsync(http, StatusCodes.Status413PayloadTooLarge, "request_too_large");
-            return;
-        }
-
         var address = http.Connection.RemoteIpAddress;
-        if (!hub.TryEnter(address))
+        try
         {
-            await PageAsync(http, StatusCodes.Status429TooManyRequests, "too_many_requests");
-            return;
+            // SITE-12: a place first, so a burst waits in line without holding its bodies in memory.
+            if (!await hub.EnterAsync(address, http.RequestAborted))
+            {
+                await PageAsync(http, StatusCodes.Status429TooManyRequests, "too_many_requests");
+                return;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return; // The visitor left while waiting.
         }
 
         try
         {
+            var body = await ReadBodyAsync(http, settings.MaxBodyBytes);
+            if (body is null)
+            {
+                await PageAsync(http, StatusCodes.Status413PayloadTooLarge, "request_too_large");
+                return;
+            }
+
             await ForwardAsync(http, session, site, path, cookie, body, settings);
         }
         finally
@@ -158,6 +166,7 @@ internal sealed class SiteProxy(
         TunnelResponse? response;
         try
         {
+            // SITE-10: the time is for the first message; a stream that started may run longer.
             response = await answer.WaitAsync(TimeSpan.FromSeconds(settings.RequestTimeoutSeconds), time, http.RequestAborted);
         }
         catch (TimeoutException)
@@ -180,19 +189,92 @@ internal sealed class SiteProxy(
             return;
         }
 
-        var bytes = Decode(response.Body);
-        if (bytes is null || bytes.Length > settings.MaxBodyBytes || response.Status is < 100 or > 599)
+        try
         {
-            await PageAsync(http, StatusCodes.Status502BadGateway, "bad_answer");
+            var bytes = Decode(response.Body);
+            if (bytes is null || bytes.Length > settings.MaxBodyBytes || response.Status is < 100 or > 599)
+            {
+                await PageAsync(http, StatusCodes.Status502BadGateway, "bad_answer");
+                return;
+            }
+
+            http.Response.StatusCode = response.Status;
+            if (cookie is not null) http.Response.Headers.Append("Set-Cookie", cookie);
+            foreach (var (name, values) in response.Headers ?? [])
+                if (!HopByHop.Contains(name) && values is not null) http.Response.Headers.Append(name, values);
+
+            // SITE-08: these answers have no body, whatever the app sent.
+            var hasBody = !HttpMethods.IsHead(http.Request.Method) && response.Status is >= 200 and not 204 and not 304;
+            if (!response.More)
+            {
+                if (!hasBody) return;
+                http.Response.ContentLength = bytes.Length;
+                await http.Response.Body.WriteAsync(bytes, http.RequestAborted);
+                return;
+            }
+
+            await StreamAsync(http, session, id, bytes, hasBody, settings);
+        }
+        finally
+        {
+            // Nothing more of this answer is wanted; a stream still running is told to stop.
+            if (response.More) TunnelHub.EndStream(session, id, cancel: TunnelHub.StreamOf(session, id) is not null);
+        }
+    }
+
+    /// <summary>
+    /// SITE-22: writes each part to the visitor as it comes. A stream that stops in the middle (the session ended, too many
+    /// parts, over <see cref="SitesOptions.MaxAnswerMb"/>) breaks the visitor's connection, so a short answer never looks whole.
+    /// </summary>
+    private static async Task StreamAsync(HttpContext http, TunnelSession session, long id, byte[] first, bool hasBody, SitesOptions settings)
+    {
+        if (TunnelHub.StreamOf(session, id) is not { } stream)
+        {
+            http.Abort();
             return;
         }
 
-        http.Response.StatusCode = response.Status;
-        if (cookie is not null) http.Response.Headers.Append("Set-Cookie", cookie);
-        foreach (var (name, values) in response.Headers ?? [])
-            if (!HopByHop.Contains(name) && values is not null) http.Response.Headers.Append(name, values);
-        http.Response.ContentLength = bytes.Length;
-        await http.Response.Body.WriteAsync(bytes, http.RequestAborted);
+        http.Features.Get<IHttpResponseBodyFeature>()?.DisableBuffering();
+        if (hasBody && first.Length > 0) await http.Response.Body.WriteAsync(first, http.RequestAborted);
+        await http.Response.Body.FlushAsync(http.RequestAborted);
+        long total = first.Length;
+        try
+        {
+            await foreach (var part in stream.Parts.ReadAllAsync(http.RequestAborted))
+            {
+                var written = false;
+                try
+                {
+                    total += part.Bytes.Length;
+                    if (total > settings.MaxAnswerBytes) break;
+                    if (hasBody && part.Bytes.Length > 0)
+                    {
+                        await http.Response.Body.WriteAsync(part.Bytes, http.RequestAborted);
+                        await http.Response.Body.FlushAsync(http.RequestAborted);
+                    }
+
+                    written = true;
+                }
+                finally
+                {
+                    // A POST that waits for this part must not wait for ever.
+                    if (!written) part.Written?.TrySetResult(false);
+                }
+
+                TunnelHub.Written(session, id, part);
+                if (part.Last)
+                {
+                    TunnelHub.EndStream(session, id, cancel: false);
+                    return;
+                }
+            }
+        }
+        catch (Exception exception) when (exception is OperationCanceledException or IOException)
+        {
+            return; // The visitor left; the caller tells the agent to stop.
+        }
+
+        http.Abort();
     }
 
     /// <summary>SITE-08: the visitor's headers, without hop-by-hop and forwarded ones; then the real address, scheme and host.</summary>

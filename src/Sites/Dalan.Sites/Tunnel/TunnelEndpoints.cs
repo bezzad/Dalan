@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Net.WebSockets;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Threading.Channels;
 using Dalan.Admin.Contracts;
 using Dalan.Identity.Contracts;
 using Dalan.Sites.Demos;
@@ -26,6 +27,7 @@ internal static class TunnelEndpoints
         var tunnel = endpoints.MapGroup("/api/tunnel").RequireAuthorization(AccessKeys.SessionOrKeyPolicy)
             .AddEndpointFilter<BuilderOnly>();
         tunnel.MapPost("/sessions", OpenAsync);
+        tunnel.MapDelete("/sessions/{session}", EndSessionAsync);
         tunnel.MapDelete("/demos/{id}", EndDemoAsync);
         tunnel.MapGet("/sessions/{session}/ws", WebSocketAsync);
         tunnel.MapGet("/sessions/{session}/requests", PollAsync);
@@ -71,10 +73,11 @@ internal static class TunnelEndpoints
 
         var session = hub.Open(userId, keys);
         return SitesJson.Ok(new OpenSessionAnswer(session.Id,
-            [.. clean.Select(site => new SiteAddress(site, settings.UrlOf(site)))], settings.MaxBodyMb, address));
+            [.. clean.Select(site => new SiteAddress(site, settings.UrlOf(site)))], settings.MaxBodyMb, address,
+            settings.StreamChunkKb, settings.StreamWindow));
     }
 
-    private static IResult ClaimFailed(ClaimError error, string? name, SitesOptions settings) => error switch
+    internal static IResult ClaimFailed(ClaimError error, string? name, SitesOptions settings) => error switch
     {
         ClaimError.BadName => SitesJson.Error(StatusCodes.Status400BadRequest, "bad_name",
             $"\"{name}\" is not a good site name. Use 3 to {settings.MaxNameLength} letters a-z, digits and '-', not at the start or end. Some names are kept for Dalan."),
@@ -102,7 +105,18 @@ internal static class TunnelEndpoints
         return Results.NoContent();
     }
 
-    /// <summary>SITE-05: requests out as text messages, answers in as text messages. SITE-15: access is asked again from time to time.</summary>
+    /// <summary>SITE-23: the agent stops; its visitors get the offline page at once.</summary>
+    private static IResult EndSessionAsync(string session, HttpContext http, TunnelHub hub)
+    {
+        if (hub.Get(session, UserId(http)) is not { } tunnel) return SessionEnded();
+        hub.End(tunnel);
+        return Results.NoContent();
+    }
+
+    /// <summary>
+    /// SITE-05: requests out as text messages, answers in as text messages. SITE-15: access is asked again from time to time.
+    /// SITE-23: the agent opens a new session after any lost WebSocket, so this session ends with its WebSocket.
+    /// </summary>
     private static async Task WebSocketAsync(
         string session, HttpContext http, TunnelHub hub, IUserDirectory users, IOptionsMonitor<SitesOptions> options, TimeProvider time)
     {
@@ -124,33 +138,45 @@ internal static class TunnelEndpoints
         tunnel.StartReading(time.GetUtcNow());
         try
         {
-            var send = SendAsync(socket, tunnel, stop.Token);
-            var receive = ReceiveAsync(socket, tunnel, options.CurrentValue.MaxBodyBytes, stop.Token);
+            using var sending = new SemaphoreSlim(1);
+            var send = SendAsync(socket, sending, tunnel.Waiting.Reader, request => TunnelHub.IsPending(tunnel, request.Id), stop.Token);
+            var control = SendAsync(socket, sending, tunnel.Control.Reader, _ => true, stop.Token);
+            var receive = ReceiveAsync(socket, hub, tunnel, options.CurrentValue.MaxBodyBytes, stop.Token);
             var access = WatchAccessAsync(users, userId, options, time, stop.Token);
-            await Task.WhenAny(send, receive, access);
-            if (access.IsCompletedSuccessfully && !await access) hub.End(tunnel);
+            await Task.WhenAny(send, control, receive, access);
             await stop.CancelAsync();
-            await Task.WhenAll(Quiet(send), Quiet(receive), Quiet(access));
+            await Task.WhenAll(Quiet(send), Quiet(control), Quiet(receive), Quiet(access));
             if (socket.State == WebSocketState.Open)
                 await socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "session ended", CancellationToken.None);
         }
         finally
         {
             tunnel.StopReading(time.GetUtcNow());
+            hub.End(tunnel);
         }
     }
 
-    private static async Task SendAsync(WebSocket socket, TunnelSession tunnel, CancellationToken cancellationToken)
+    /// <summary>Requests and SITE-22 control messages go out on the same socket, one message at a time.</summary>
+    private static async Task SendAsync<T>(
+        WebSocket socket, SemaphoreSlim sending, ChannelReader<T> messages, Func<T, bool> stillWanted, CancellationToken cancellationToken)
     {
-        await foreach (var request in tunnel.Waiting.Reader.ReadAllAsync(cancellationToken))
+        await foreach (var message in messages.ReadAllAsync(cancellationToken))
         {
-            if (!TunnelHub.IsPending(tunnel, request.Id)) continue;
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(request, SitesJson.Options);
-            await socket.SendAsync(bytes, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
+            if (!stillWanted(message)) continue;
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(message, SitesJson.Options);
+            await sending.WaitAsync(cancellationToken);
+            try
+            {
+                await socket.SendAsync(bytes, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
+            }
+            finally
+            {
+                sending.Release();
+            }
         }
     }
 
-    private static async Task ReceiveAsync(WebSocket socket, TunnelSession tunnel, long maxBody, CancellationToken cancellationToken)
+    private static async Task ReceiveAsync(WebSocket socket, TunnelHub hub, TunnelSession tunnel, long maxBody, CancellationToken cancellationToken)
     {
         // Base64 makes the body a third longer; the rest of the answer is small.
         var maxMessage = maxBody / 3 * 4 + 1024 * 1024;
@@ -169,7 +195,8 @@ internal static class TunnelEndpoints
             }
             while (!result.EndOfMessage);
 
-            if (ReadAnswer(buffer.WrittenSpan) is { } response) TunnelHub.Answer(tunnel, response);
+            // SITE-22: a part over WebSocket never waits here; its ack goes out when it was written.
+            if (ReadAnswer(buffer.WrittenSpan) is { } response) await hub.AnswerAsync(tunnel, response, viaWebSocket: true, cancellationToken);
         }
     }
 
@@ -251,7 +278,7 @@ internal static class TunnelEndpoints
             if (TunnelHub.IsPending(tunnel, request.Id)) requests.Add(request);
     }
 
-    /// <summary>SITE-06: one answer.</summary>
+    /// <summary>SITE-06: one answer. SITE-22: a part returns after it was written to the visitor, 410 when its request ended.</summary>
     private static async Task<IResult> AnswerAsync(string session, HttpContext http, TunnelHub hub, IOptionsMonitor<SitesOptions> options)
     {
         if (hub.Get(session, UserId(http)) is not { } tunnel) return SessionEnded();
@@ -262,8 +289,20 @@ internal static class TunnelEndpoints
 
         var response = await SitesJson.ReadAsync<TunnelResponse>(http);
         if (response is null) return SitesJson.Error(StatusCodes.Status400BadRequest, "bad_request", "Send one answer as JSON.");
-        TunnelHub.Answer(tunnel, response);
-        return Results.NoContent();
+        bool taken;
+        try
+        {
+            taken = await hub.AnswerAsync(tunnel, response, viaWebSocket: false, http.RequestAborted);
+        }
+        catch (OperationCanceledException)
+        {
+            taken = false;
+        }
+
+        // A late whole answer is dropped quietly, as before; a late part tells the agent to stop the stream.
+        return taken || (!response.More && response.Status != 0)
+            ? Results.NoContent()
+            : SitesJson.Error(StatusCodes.Status410Gone, "request_gone", "This request has ended. Stop sending its answer.");
     }
 
     private static IResult SessionEnded() => SitesJson.Error(StatusCodes.Status404NotFound, "session_ended",

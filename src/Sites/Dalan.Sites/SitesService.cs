@@ -79,7 +79,7 @@ public static class SitesService
     internal static bool IsUnderDalan(string sitesDomain, string? siteUrl)
     {
         if (sitesDomain.Length == 0 || !Uri.TryCreate(siteUrl, UriKind.Absolute, out var url)) return false;
-        var sites = sitesDomain.ToLowerInvariant();
+        var sites = SitesOptions.HostOnly(sitesDomain).ToLowerInvariant();
         var dalan = url.Host.ToLowerInvariant();
         return sites == dalan || sites.EndsWith("." + dalan, StringComparison.Ordinal);
     }

@@ -71,3 +71,17 @@ Base {site}, header `Authorization: Bearer <access key>`:
 - `PUT /api/builder/bots/<id>/icon` with the image as the body (PNG, JPEG or WebP, small): sets the icon; `DELETE` removes it. `GET /api/bots/<id>/icon` shows it to anyone (use `?v=<icon_version>` for caching)
 
 A bot username is 5 to 32 characters of a-z, 0-9 and _, starting with a letter.
+
+## Run a web app (site)
+
+An approved builder shows a web app that runs on their own computer at `https://<name>.<sites domain>` with the Dalan agent. The app stays unchanged; the agent makes only outbound calls.
+
+    curl -fsSL {site}/install.sh | sh              (Windows: irm {site}/install.ps1 | iex)
+    dalan login <access key>
+    dalan http 3000 --name mysite                  try it: online while the terminal is open, Ctrl+C stops it
+    dalan service install                          keep it online in the background, also after a restart
+    dalan status                                   the service and each site, online or offline
+
+- `GET /api/sites`: your sites with `online`; `POST /api/sites` with `{"name": "mysite"}` reserves a name (3 to 32 of a-z, 0-9 and -).
+- Answers stream, so Server-Sent Events work. WebSocket from the visitor to the app does not work yet.
+- The real visitor address is in `X-Forwarded-For`; the app is reached as `Host: localhost:<port>`, the site's name is in `X-Forwarded-Host`.

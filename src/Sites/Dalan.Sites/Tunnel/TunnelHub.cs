@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Net;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Options;
@@ -14,7 +13,8 @@ public sealed class TunnelHub(TimeProvider time, IOptionsMonitor<SitesOptions> o
     private readonly Lock _lock = new();
     private readonly Dictionary<string, TunnelSession> _bySite = [];
     private readonly Dictionary<string, TunnelSession> _byId = [];
-    private readonly ConcurrentDictionary<IPAddress, int> _perAddress = new();
+    private readonly Lock _gateLock = new();
+    private readonly Dictionary<IPAddress, Gate> _gates = [];
     private long _nextRequestId;
 
     private TimeSpan Idle => TimeSpan.FromSeconds(options.CurrentValue.SessionIdleSeconds);
@@ -84,29 +84,137 @@ public sealed class TunnelHub(TimeProvider time, IOptionsMonitor<SitesOptions> o
     /// <summary>The request has its answer or was given up.</summary>
     public static void Forget(TunnelSession session, long id) => session.Pending.TryRemove(id, out _);
 
-    /// <summary>SITE-06: an answer from the agent. An answer to a request that already ended is dropped.</summary>
-    public static void Answer(TunnelSession session, TunnelResponse response)
+    /// <summary>
+    /// SITE-06 and SITE-22: an answer, or a part of a streamed answer, from the agent. True when it was taken.
+    /// A part posted by long polling (<paramref name="viaWebSocket"/> false) completes only after it was written to the visitor.
+    /// An answer to a request that already ended is dropped; for a stream over WebSocket the agent is told to stop.
+    /// </summary>
+    public Task<bool> AnswerAsync(TunnelSession session, TunnelResponse response, bool viaWebSocket, CancellationToken cancellationToken)
     {
-        if (session.Pending.TryRemove(response.Id, out var pending)) pending.TrySetResult(response);
+        if (session.Pending.TryRemove(response.Id, out var pending))
+        {
+            if (response.More) session.Streams[response.Id] = new TunnelStream(options.CurrentValue.StreamWindow);
+            pending.TrySetResult(response);
+            return Task.FromResult(true);
+        }
+
+        if (!session.Streams.TryGetValue(response.Id, out var stream) || Decode(response.Body) is not { } bytes)
+        {
+            if (response.More) EndStream(session, response.Id, cancel: viaWebSocket);
+            return Task.FromResult(false);
+        }
+
+        var written = viaWebSocket ? null : new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!stream.TryAdd(new StreamPart(bytes, !response.More, written)))
+        {
+            EndStream(session, response.Id, cancel: true); // More parts than the window: a bad agent.
+            return Task.FromResult(false);
+        }
+
+        return written is null ? Task.FromResult(true) : written.Task.WaitAsync(cancellationToken);
+    }
+
+    /// <summary>SITE-22: the running stream of a request, or null.</summary>
+    internal static TunnelStream? StreamOf(TunnelSession session, long id) => session.Streams.GetValueOrDefault(id);
+
+    /// <summary>SITE-22: one part was written to the visitor; over WebSocket the agent may send one more.</summary>
+    internal static void Written(TunnelSession session, long id, StreamPart part)
+    {
+        if (part.Written is { } written) written.TrySetResult(true);
+        else session.Control.Writer.TryWrite(new TunnelControl(id, Ack: true));
+    }
+
+    /// <summary>SITE-22: the stream is over. With <paramref name="cancel"/> the agent is told to stop reading the app.</summary>
+    internal static void EndStream(TunnelSession session, long id, bool cancel)
+    {
+        if (session.Streams.TryRemove(id, out var stream)) stream.End();
+        if (cancel) session.Control.Writer.TryWrite(new TunnelControl(id, Cancel: true));
     }
 
     /// <summary>A request that is still waiting for its answer (the agent may skip the others).</summary>
     public static bool IsPending(TunnelSession session, long id) => session.Pending.ContainsKey(id);
 
-    /// <summary>SITE-12: one more waiting request from this address, unless it has too many.</summary>
-    public bool TryEnter(IPAddress? address)
+    /// <summary>
+    /// SITE-12: a place for one more request of this address at the agent. When all places are taken it waits in line,
+    /// in order, for at most the request timeout. False when the line is full or the wait was too long.
+    /// </summary>
+    public async Task<bool> EnterAsync(IPAddress? address, CancellationToken cancellationToken)
     {
         if (address is null) return true;
-        var count = _perAddress.AddOrUpdate(address, 1, (_, n) => n + 1);
-        if (count <= options.CurrentValue.MaxPendingPerAddress) return true;
-        Leave(address);
-        return false;
+        var settings = options.CurrentValue;
+        Gate? gate;
+        TaskCompletionSource<bool> turn;
+        LinkedListNode<TaskCompletionSource<bool>> place;
+        lock (_gateLock)
+        {
+            if (!_gates.TryGetValue(address, out gate)) _gates[address] = gate = new Gate();
+            if (gate.Running < settings.MaxPendingPerAddress)
+            {
+                gate.Running++;
+                return true;
+            }
+
+            if (gate.Line.Count >= settings.MaxQueuedPerAddress) return false;
+            turn = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            place = gate.Line.AddLast(turn);
+        }
+
+        try
+        {
+            return await turn.Task.WaitAsync(TimeSpan.FromSeconds(settings.RequestTimeoutSeconds), time, cancellationToken);
+        }
+        catch (Exception exception) when (exception is TimeoutException or OperationCanceledException)
+        {
+            lock (_gateLock)
+            {
+                // The place may have come at the same moment: give it on.
+                if (turn.Task.IsCompleted) LeaveLocked(address);
+                else gate.Line.Remove(place);
+            }
+
+            if (exception is OperationCanceledException) throw;
+            return false;
+        }
     }
 
+    /// <summary>SITE-12: a request of this address has ended; its place goes to the first one in line.</summary>
     public void Leave(IPAddress? address)
     {
         if (address is null) return;
-        if (_perAddress.AddOrUpdate(address, 0, (_, n) => n - 1) <= 0) _perAddress.TryRemove(new(address, 0));
+        lock (_gateLock) LeaveLocked(address);
+    }
+
+    private void LeaveLocked(IPAddress address)
+    {
+        if (!_gates.TryGetValue(address, out var gate)) return;
+        if (gate.Line.First is { } first)
+        {
+            gate.Line.RemoveFirst();
+            first.Value.TrySetResult(true);
+            return;
+        }
+
+        if (--gate.Running <= 0) _gates.Remove(address);
+    }
+
+    private static byte[]? Decode(string? body)
+    {
+        if (body is null) return [];
+        try
+        {
+            return Convert.FromBase64String(body);
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>SITE-12: the requests of one address at the agent, and the ones waiting in line.</summary>
+    private sealed class Gate
+    {
+        public int Running;
+        public readonly LinkedList<TaskCompletionSource<bool>> Line = new();
     }
 
     private void TakeSite(TunnelSession session, string site)

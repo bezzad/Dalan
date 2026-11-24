@@ -1,6 +1,6 @@
 // CLI-38: the step-by-step guide at /guide, for a builder with no AI agent. Pure texts, so tests run without a browser.
 // The addresses and numbers come from the public settings (rule 4), never from this file.
-import { httpCommand, installCommands } from "./appGuide.ts";
+import { httpCommand, installCommands, serviceCommands } from "./appGuide.ts";
 import type { Lang, PublicNumbers } from "./pages.ts";
 
 export interface Sample { name: string; code: string }
@@ -136,20 +136,23 @@ export function botMcpSamples(site: string, bot: GuideBot): Sample[] {
   ];
 }
 
-/** CLI-38: the site guide: become a builder, install the agent in one line, log in from "My apps", run the site (CLI-39). */
+/** CLI-38: the site guide: become a builder, install the agent in one line, log in from "My apps", try the site, keep it online (CLI-39). */
 export function siteGuideSteps(lang: Lang, numbers: PublicNumbers): GuideStep[] {
   const install = installCommands(numbers.site_url);
   const samples = [{ name: "Linux / macOS", code: install.unix }, { name: "Windows", code: install.windows }];
   const run = httpCommand([{ port: 3000, name: "mysite" }]);
+  const keep = serviceCommands.install;
   return lang === "fa" ? [
     { title: "وارد شوید و دسترسی توسعه‌دهنده بگیرید", text: "وارد شوید، شماره‌ی موبایل خود را تأیید کنید و از صفحه‌ی «حساب کاربری» درخواست دسترسی توسعه‌دهنده بدهید. پس از تأیید مدیر، بخش «برنامه‌های من» در منوی کاربر فعال می‌شود." },
     { title: "برنامه‌ی رابط دالان را نصب کنید", text: "روی کامپیوتری که سایت روی آن اجرا می‌شود، این دستور را اجرا کنید:", samples },
     { title: "یک بار وارد شوید", text: "در «برنامه‌های من»، دکمه‌ی «ساخت کلید و دستور ورود» را انتخاب کنید و دستوری را که نمایش داده می‌شود اجرا کنید. کلید فقط یک بار نمایش داده می‌شود." },
-    { title: "سایت را آنلاین کنید", text: "سایت را روی کامپیوتر خود اجرا کنید (برای نمونه روی پورت ۳۰۰۰) و سپس این دستور را اجرا کنید. آدرس عمومی سایت در «برنامه‌های من» نمایش داده می‌شود.", code: run },
+    { title: "امتحان کنید", text: "سایت را روی کامپیوتر خود اجرا کنید (برای نمونه روی پورت ۳۰۰۰) و سپس این دستور را اجرا کنید. تا وقتی ترمینال باز است، سایت آنلاین می‌ماند و با Ctrl+C متوقف می‌شود. آدرس عمومی سایت در «برنامه‌های من» نمایش داده می‌شود.", code: run },
+    { title: "سایت را همیشه آنلاین نگه دارید", text: "وقتی سایت کار کرد، دستور قبلی را با Ctrl+C متوقف کنید و این دستور را اجرا کنید. سایت در پس‌زمینه اجرا می‌شود و پس از روشن شدن دوباره‌ی کامپیوتر هم خودکار اجرا می‌شود. وضعیت را با dalan status ببینید.", code: keep },
   ] : [
     { title: "Log in and become a builder", text: "Log in, verify your mobile number and ask to become a builder on the \"Account\" screen. After the admin approves, \"My apps\" opens from the user menu." },
     { title: "Install the Dalan agent", text: "On the computer that runs your site, run this one line:", samples },
     { title: "Log in once", text: "In \"My apps\" press \"Make a key and login command\", then run the line it shows. The key is shown only once." },
-    { title: "Put your site online", text: "Start your site on your computer (for example on port 3000) and run this command. The public address of the site is in \"My apps\".", code: run },
+    { title: "Try it", text: "Start your site on your computer (for example on port 3000) and run this command. The site is online while the terminal is open; Ctrl+C stops it. The public address of the site is in \"My apps\".", code: run },
+    { title: "Keep it online", text: "When it works, stop the command above with Ctrl+C and run this one. The site runs in the background and starts again after a restart. Check it with dalan status.", code: keep },
   ];
 }

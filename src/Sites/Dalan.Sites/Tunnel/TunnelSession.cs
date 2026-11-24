@@ -25,6 +25,16 @@ public sealed class TunnelSession(string id, long userId, DateTimeOffset now)
     /// <summary>Requests sent into this session that have no answer yet, by request id.</summary>
     internal ConcurrentDictionary<long, TaskCompletionSource<TunnelResponse?>> Pending { get; } = new();
 
+    /// <summary>SITE-22: answers that came in parts and are still running, by request id.</summary>
+    internal ConcurrentDictionary<long, TunnelStream> Streams { get; } = new();
+
+    /// <summary>
+    /// SITE-22: "ack" and "cancel" for the WebSocket. Only a WebSocket reads it; an agent on long polling never makes an ack,
+    /// and the oldest message goes when it is full, so it cannot grow without end.
+    /// </summary>
+    internal Channel<TunnelControl> Control { get; } = Channel.CreateBounded<TunnelControl>(
+        new BoundedChannelOptions(10_000) { FullMode = BoundedChannelFullMode.DropOldest });
+
     /// <summary>Cancelled when the session ends: replaced, deleted, or its user lost access.</summary>
     public CancellationToken Ended => _ended.Token;
 
@@ -71,13 +81,14 @@ public sealed class TunnelSession(string id, long userId, DateTimeOffset now)
         lock (_lock) return _readers > 0 || now - _lastSeen < idle;
     }
 
-    /// <summary>Ends the session. Every waiting visitor gets the offline answer at once.</summary>
+    /// <summary>Ends the session. Every waiting visitor gets the offline answer at once; running streams stop.</summary>
     internal void End()
     {
         if (IsEnded) return;
         _ended.Cancel();
         Waiting.Writer.TryComplete();
         foreach (var pending in Pending.Values) pending.TrySetResult(null);
+        foreach (var stream in Streams.Values) stream.End();
     }
 }
 #pragma warning restore CA1001

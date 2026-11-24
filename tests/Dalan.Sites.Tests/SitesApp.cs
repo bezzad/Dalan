@@ -93,6 +93,26 @@ internal static class SitesApp
             body = text is null ? null : Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(text)),
         }, Cancel);
 
+    /// <summary>SITE-22: one message of a streamed answer by long polling. Status 0 is a part after the first.</summary>
+    public static Task<HttpResponseMessage> PartAsync(this HttpClient agent, string session, long id, int status, string? text, bool more,
+        Dictionary<string, string[]>? headers = null) =>
+        agent.PostAsJsonAsync($"/api/tunnel/sessions/{session}/responses", new
+        {
+            id,
+            status,
+            headers,
+            body = text is null ? null : Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(text)),
+            more,
+        }, Cancel);
+
+    /// <summary>Reads what is there now from a streamed answer, at most <paramref name="max"/> bytes.</summary>
+    public static async Task<string> ReadSomeAsync(this Stream stream, int max = 64 * 1024)
+    {
+        var buffer = new byte[max];
+        var read = await stream.ReadAsync(buffer, Cancel);
+        return System.Text.Encoding.UTF8.GetString(buffer, 0, read);
+    }
+
     public static async Task<string?> ErrorCodeAsync(this HttpResponseMessage response)
     {
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(Cancel);
