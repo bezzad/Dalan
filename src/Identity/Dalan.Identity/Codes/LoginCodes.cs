@@ -14,7 +14,8 @@ internal enum CodeCheck { Right, Wrong }
 
 /// <summary>The limits of one channel. Read from the settings on every call, so a change works at once.</summary>
 internal sealed record CodeRules(
-    int Digits, int Seconds, int Tries, int WaitSeconds, int PerTargetPerDay, int PerIpPerDay, int PerDay, string PerDaySetting);
+    int Digits, int Seconds, int Tries, int WaitSeconds, int PerTargetPerDay, int LongWaitSeconds, int PerIpPerDay, int PerDay,
+    string PerDaySetting);
 
 /// <summary>
 /// AUTH-11, AUTH-12, AUTH-24, AUTH-25, SEC-07, SEC-08, SEC-13: makes, limits and checks login codes of one channel.
@@ -27,18 +28,27 @@ internal abstract class LoginCodes<T>(
 
     protected abstract CodeRules Rules { get; }
 
-    /// <summary>Sends a new code when the limits allow it. With <see cref="CodeOutcome.Wait"/>, the time to wait is set.</summary>
+    /// <summary>
+    /// Sends a new code when the limits allow it. Wait is the time left with <see cref="CodeOutcome.Wait"/> and
+    /// <see cref="CodeOutcome.Limit"/>, and the time before the next code with <see cref="CodeOutcome.Sent"/>.
+    /// SEC-07: after <c>PerTargetPerDay</c> codes in 24 hours the wait is long; <paramref name="noCap"/> (an admin) never has it.
+    /// </summary>
     public async Task<(CodeOutcome Outcome, TimeSpan Wait)> SendAsync(
-        string target, string ip, Func<string, CancellationToken, Task<bool>> send, CancellationToken cancellationToken)
+        string target, string ip, Func<string, CancellationToken, Task<bool>> send, CancellationToken cancellationToken,
+        bool noCap = false)
     {
         var rules = Rules;
         var now = time.GetUtcNow();
+        // The wait after a number of codes to the target in 24 hours: short, then long after the cap (SEC-07, SEC-13).
+        TimeSpan WaitAfter(int sent) =>
+            TimeSpan.FromSeconds(sent >= rules.PerTargetPerDay && !noCap ? rules.LongWaitSeconds : rules.WaitSeconds);
         var code = RandomNumberGenerator.GetInt32((int)Math.Pow(10, rules.Digits))
             .ToString(CultureInfo.InvariantCulture).PadLeft(rules.Digits, '0');
         var row = new T { Target = target, CodeHash = Hash(target, code), Ip = ip, CreatedAt = now };
 
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var codes = db.Set<T>();
+        TimeSpan next;
         await using (var transaction = await db.Database.BeginTransactionAsync(cancellationToken))
         {
             // Two calls for one target wait for each other here, so "count, then insert" is safe.
@@ -46,18 +56,20 @@ internal abstract class LoginCodes<T>(
             var dayAgo = now.AddDays(-1);
             await codes.Where(c => c.CreatedAt <= dayAgo).ExecuteDeleteAsync(cancellationToken);
 
-            var sentToTarget = await codes.Where(c => c.Target == target).Select(c => c.CreatedAt).ToListAsync(cancellationToken);
-            if (sentToTarget.Count > 0 && sentToTarget.Max().AddSeconds(rules.WaitSeconds) - now is var wait && wait > TimeSpan.Zero)
+            var sentToTarget = await codes.CountAsync(c => c.Target == target, cancellationToken);
+            if (sentToTarget > 0
+                && await codes.Where(c => c.Target == target).MaxAsync(c => c.CreatedAt, cancellationToken)
+                    + WaitAfter(sentToTarget) - now is var wait && wait > TimeSpan.Zero)
             {
                 log.CodeRefused(channel, target, "too soon");
                 return (CodeOutcome.Wait, wait);
             }
 
-            if (sentToTarget.Count >= rules.PerTargetPerDay
-                || await codes.CountAsync(c => c.Ip == ip, cancellationToken) >= rules.PerIpPerDay)
+            var fromIp = codes.Where(c => c.Ip == ip);
+            if (await fromIp.CountAsync(cancellationToken) >= rules.PerIpPerDay)
             {
-                log.CodeRefused(channel, target, "daily limit");
-                return (CodeOutcome.Limit, default);
+                log.CodeRefused(channel, target, "daily limit of the address");
+                return (CodeOutcome.Limit, await fromIp.MinAsync(c => c.CreatedAt, cancellationToken) + TimeSpan.FromDays(1) - now);
             }
 
             if (await codes.CountAsync(cancellationToken) >= rules.PerDay)
@@ -69,12 +81,13 @@ internal abstract class LoginCodes<T>(
             codes.Add(row);
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
+            next = WaitAfter(sentToTarget + 1);
         }
 
         if (await send(code, cancellationToken))
         {
             log.CodeSent(channel, target);
-            return (CodeOutcome.Sent, default);
+            return (CodeOutcome.Sent, next);
         }
 
         // A failed send costs the person nothing: the slot is free again.
@@ -136,7 +149,7 @@ internal sealed class SmsCodes(
         get
         {
             var o = options.CurrentValue;
-            return new(o.SmsCodeDigits, o.SmsCodeSeconds, o.SmsCodeTries, o.SmsWaitSeconds, o.SmsPerPhonePerDay, o.SmsPerIpPerDay,
+            return new(o.SmsCodeDigits, o.SmsCodeSeconds, o.SmsCodeTries, o.SmsWaitSeconds, o.SmsPerPhonePerDay, o.SmsLongWaitSeconds, o.SmsPerIpPerDay,
                 o.SmsPerDay, "Identity:SmsPerDay");
         }
     }
@@ -153,7 +166,7 @@ internal sealed class EmailCodes(
         {
             var o = options.CurrentValue;
             return new(o.EmailCodeDigits, o.EmailCodeSeconds, o.EmailCodeTries, o.EmailWaitSeconds, o.EmailPerAddressPerDay,
-                o.EmailPerIpPerDay, o.EmailPerDay, "Identity:EmailPerDay");
+                o.EmailLongWaitSeconds, o.EmailPerIpPerDay, o.EmailPerDay, "Identity:EmailPerDay");
         }
     }
 }

@@ -122,7 +122,7 @@ public class SmsLoginTests(PostgresServer postgres)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await JsonAsync(response);
         Assert.Equal(120, json.GetProperty("expires_in").GetInt32());
-        Assert.Equal(60, json.GetProperty("retry_in").GetInt32());
+        Assert.Equal(120, json.GetProperty("retry_in").GetInt32());
         Assert.Equal(6, json.GetProperty("code_digits").GetInt32());
         var sms = Assert.Single(app.Sms.Sent);
         Assert.Equal("+989121234567", sms.Phone);
@@ -236,23 +236,63 @@ public class SmsLoginTests(PostgresServer postgres)
 
     [Fact]
     [Trait("Rule", "SEC-07")]
-    public async Task SEC07_daily_limit_per_number_and_a_day_later()
+    public async Task SEC07_after_the_cap_the_wait_is_long_and_never_a_day()
     {
-        await using var app = await StartAsync(postgres, ("Identity:SmsPerPhonePerDay", "5"));
+        await using var app = await StartAsync(postgres,
+            ("Identity:SmsWaitSeconds", "120"), ("Identity:SmsPerPhonePerDay", "5"), ("Identity:SmsLongWaitSeconds", "1800"));
+        var retryIn = new List<int>();
         for (var i = 0; i < 5; i++)
         {
-            Assert.Equal(HttpStatusCode.OK, (await DalanApp.AskCodeAsync(app.Browser(), Phone)).StatusCode);
-            app.Time.Advance(TimeSpan.FromMinutes(1));
+            var sent = await DalanApp.AskCodeAsync(app.Browser(), Phone);
+            Assert.Equal(HttpStatusCode.OK, sent.StatusCode);
+            retryIn.Add((await JsonAsync(sent)).GetProperty("retry_in").GetInt32());
+            app.Time.Advance(TimeSpan.FromMinutes(2));
         }
 
         var sixth = await DalanApp.AskCodeAsync(app.Browser(), Phone);
+        app.Time.Advance(TimeSpan.FromSeconds(1680));
+        var afterTheWait = await DalanApp.AskCodeAsync(app.Browser(), Phone);
+
+        Assert.Equal([120, 120, 120, 120, 1800], retryIn);
+        Assert.Equal(HttpStatusCode.TooManyRequests, sixth.StatusCode);
+        Assert.Equal("sms_wait", await ErrorCodeAsync(sixth));
+        Assert.Equal("1680", Assert.Single(sixth.Headers.GetValues("Retry-After")));
+        Assert.Equal(HttpStatusCode.OK, afterTheWait.StatusCode);
+        Assert.Equal(6, app.Sms.Sent.Count);
+    }
+
+    [Fact]
+    [Trait("Rule", "SEC-07")]
+    public async Task SEC07_a_day_later_the_wait_is_short_again()
+    {
+        await using var app = await StartAsync(postgres, ("Identity:SmsWaitSeconds", "120"), ("Identity:SmsPerPhonePerDay", "2"));
+        await DalanApp.AskCodeAsync(app.Browser(), Phone);
+        app.Time.Advance(TimeSpan.FromMinutes(2));
+        await DalanApp.AskCodeAsync(app.Browser(), Phone);
+
         app.Time.Advance(TimeSpan.FromHours(24));
         var nextDay = await DalanApp.AskCodeAsync(app.Browser(), Phone);
 
-        Assert.Equal(HttpStatusCode.TooManyRequests, sixth.StatusCode);
-        Assert.Equal("sms_limit", await ErrorCodeAsync(sixth));
         Assert.Equal(HttpStatusCode.OK, nextDay.StatusCode);
-        Assert.Equal(6, app.Sms.Sent.Count);
+        Assert.Equal(120, (await JsonAsync(nextDay)).GetProperty("retry_in").GetInt32());
+    }
+
+    [Fact]
+    [Trait("Rule", "SEC-07")]
+    public async Task SEC07_an_admin_number_never_gets_the_long_wait()
+    {
+        await using var app = await StartAsync(postgres, ("Identity:AdminPhones", Phone),
+            ("Identity:SmsWaitSeconds", "120"), ("Identity:SmsPerPhonePerDay", "2"), ("Identity:SmsLongWaitSeconds", "1800"));
+        var retryIn = new List<int>();
+        for (var i = 0; i < 3; i++)
+        {
+            var sent = await DalanApp.AskCodeAsync(app.Browser(), Phone);
+            Assert.Equal(HttpStatusCode.OK, sent.StatusCode);
+            retryIn.Add((await JsonAsync(sent)).GetProperty("retry_in").GetInt32());
+            app.Time.Advance(TimeSpan.FromMinutes(2));
+        }
+
+        Assert.Equal([120, 120, 120], retryIn);
     }
 
     [Fact]
@@ -275,6 +315,7 @@ public class SmsLoginTests(PostgresServer postgres)
     {
         await using var app = await StartAsync(postgres, ("Identity:SmsPerIpPerDay", "2"));
         await DalanApp.AskCodeAsync(app.Browser("203.0.113.1"), "09120000001");
+        app.Time.Advance(TimeSpan.FromHours(1));
         await DalanApp.AskCodeAsync(app.Browser("203.0.113.1"), "09120000002");
 
         var sameAddress = await DalanApp.AskCodeAsync(app.Browser("203.0.113.1"), "09120000003");
@@ -282,6 +323,7 @@ public class SmsLoginTests(PostgresServer postgres)
 
         Assert.Equal(HttpStatusCode.TooManyRequests, sameAddress.StatusCode);
         Assert.Equal("sms_limit", await ErrorCodeAsync(sameAddress));
+        Assert.Equal("82800", Assert.Single(sameAddress.Headers.GetValues("Retry-After")));
         Assert.Equal(HttpStatusCode.OK, otherAddress.StatusCode);
     }
 
