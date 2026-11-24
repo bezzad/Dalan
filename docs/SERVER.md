@@ -53,6 +53,15 @@ SMS=smsir bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/
 
 The number of the approved OTP template (SMS.ir panel, "ارسال سریع") goes in the admin panel as `Notification:SmsIr:TemplateId`; the code variable of the template text is `Notification:SmsIr:CodeParameter` (start `CODE`, for `#CODE#`). Until SMS.ir approves the template every send fails with SMS.ir status 113 in the log.
 
+The template's last line must be `@dalanet.ir #CODE#` (the site domain, alone on the line), so Android and iPhones read the code by themselves (CLI-59). For example:
+
+```
+کد ورود دالان: #CODE#
+این کد را به هیچ‌کس ندهید.
+
+@dalanet.ir #CODE#
+```
+
 Without an SMS provider nobody can log in: the first login is always by SMS.
 
 If the secrets in `dalan.env` were seen by someone else (for example pasted in a chat), make new ones: `ROTATE_SECRETS=1 bash deploy/install.sh ...` (same arguments). Everyone must log in again and browsers subscribe to push again.

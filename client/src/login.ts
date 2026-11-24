@@ -6,6 +6,7 @@ import { latinDigits } from "./digits.ts";
 import { h } from "./dom.ts";
 import type { Language, TextKey } from "./i18n.ts";
 import { solve } from "./pow.ts";
+import { readSmsCode } from "./webOtp.ts";
 
 type Channel = "sms" | "email";
 type Mode = Channel | "password" | "dev";
@@ -114,12 +115,15 @@ export function loginScreen(
     const nameLabel = h("label", { for: "name", hidden: true }, t(way.newName));
     name.hidden = name.disabled = true;
 
-    return form(way.title, way.sent, "login", [
+    // CLI-59: Android Chrome reads the code from the SMS; the user can still type it.
+    const reading = new AbortController();
+    const view = form(way.title, way.sent, "login", [
       h("p", { dir: "ltr" }, to),
       h("label", { for: "code" }, t("code")), code,
       nameLabel, name,
       h("button", { type: "button", class: "link", onclick: () => open(channel) }, t(way.change)),
     ], async () => {
+      reading.abort();
       try {
         onLogin(await way.verify(to, latinDigits(code.value), name.disabled ? undefined : name.value));
       } catch (failure) {
@@ -128,6 +132,15 @@ export function loginScreen(
         name.focus();
       }
     });
+    if (channel === "sms") {
+      endings.set(view, () => reading.abort());
+      void readSmsCode(reading.signal).then(sms => {
+        if (!sms || reading.signal.aborted) return;
+        code.value = latinDigits(sms);
+        (view as HTMLFormElement).requestSubmit();
+      });
+    }
+    return view;
   }
 
   function password(): HTMLElement {
@@ -153,7 +166,13 @@ export function loginScreen(
     ? [h("a", { class: "button github", href: "/api/auth/github" }, githubMark(), t("byGitHub")), h("p", { class: "or" }, t("orLine"))]
     : [];
 
+  /** CLI-59: what a screen still waits for (the SMS code request), ended when another screen comes. */
+  const endings = new WeakMap<HTMLElement, () => void>();
+  let leave = (): void => {};
+
   function show(form: HTMLElement, top: Node[] = []): void {
+    leave();
+    leave = endings.get(form) ?? (() => {});
     body.replaceChildren(...top, form);
     form.querySelector("input")?.focus();
   }
