@@ -57,10 +57,10 @@ At most `Sites:MaxPendingPerAddress` (start 200) requests from one client addres
 - **WHEN** that address sends one more
 - **THEN** it waits, and goes to the agent when one of the others ends; another address is served at once
 
-#### Scenario: Line full
-- **GIVEN** the line of one address is full
+#### Scenario: Too many at once
+- **GIVEN** `Sites:MaxPendingPerAddress` requests from one address at the agent and its line full
 - **WHEN** that address sends one more
-- **THEN** it gets 429
+- **THEN** it gets 429 while another address is still served
 
 ## ADDED Requirements
 
