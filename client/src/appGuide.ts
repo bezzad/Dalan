@@ -13,7 +13,10 @@ export function loginCommand(key: string, tunnelUrl: string): string {
   return `dalan login ${key} --server ${tunnelUrl}`;
 }
 
-/** Step 3: one site, or more sites in one agent. */
+/** Step 5: the saved sites run in the background and after a restart (AGT-14); status shows them (AGT-15). */
+export const serviceCommands = { install: "dalan service install", status: "dalan status" };
+
+/** Step 4: one site, or more sites in one agent. */
 export function httpCommand(sites: { port: number; name: string }[]): string {
   return "dalan http " + sites.map(site => `${site.port} --name ${site.name}`).join(" ");
 }

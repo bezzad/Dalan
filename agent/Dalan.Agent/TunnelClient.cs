@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
@@ -12,8 +13,8 @@ namespace Dalan.Agent;
 public delegate Task<WebSocket> WebSocketConnector(Uri address, string key, CancellationToken cancellationToken);
 
 /// <summary>
-/// AGT-05 to AGT-08: keeps the sites online. Opens a session, serves it over WebSocket, or by long polling when
-/// WebSocket does not work, and starts again after a loss.
+/// AGT-05 to AGT-08, AGT-12, AGT-13: keeps the sites online. Opens a session, serves it over WebSocket, or by long polling when
+/// WebSocket does not work, and starts again after a loss. On stop it ends its session.
 /// </summary>
 public sealed class TunnelClient(
     HttpClient server, string key, WebSocketConnector connectWebSocket, LocalForwarder local, TextWriter output)
@@ -47,6 +48,9 @@ public sealed class TunnelClient(
     /// <summary>AGT-11: the id of the demo this client keeps, once the server gave it.</summary>
     private string? _demoId;
 
+    /// <summary>AGT-13: the session open now, ended on stop.</summary>
+    private string? _session;
+
     /// <summary>
     /// Keeps the sites online until <paramref name="cancellationToken"/> is cancelled. With <paramref name="demoPort"/> it also
     /// serves a demo (AGT-11): Ctrl+C ends it. A demo that the server ended stops the run with an <see cref="AgentStopException"/>.
@@ -54,6 +58,7 @@ public sealed class TunnelClient(
     public async Task RunAsync(IReadOnlyList<SiteEntry> sites, CancellationToken cancellationToken, int? demoPort = null)
     {
         await KeepOnlineAsync(sites, demoPort, cancellationToken);
+        if (_session is not null) await EndSessionAsync(_session);
         if (_demoId is not null) await EndDemoAsync();
     }
 
@@ -67,6 +72,7 @@ public sealed class TunnelClient(
             try
             {
                 var session = await OpenAsync(sites, demoPort is null ? null : _demoId ?? "new", cancellationToken);
+                _session = session.Session;
                 wait = FirstWait;
                 if (session.Demo is { } demo && demoPort is { } port)
                 {
@@ -154,6 +160,42 @@ public sealed class TunnelClient(
         output.WriteLine(_demoId is null ? "Press Ctrl+C to stop." : "Press Ctrl+C to stop and end the demo.");
     }
 
+    /// <summary>AGT-15: one line per site of the key's builder: name, address, online or offline.</summary>
+    public static async Task<string> StatusAsync(HttpClient server, string key)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/sites");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
+        try
+        {
+            using var response = await server.SendAsync(request);
+            if (!response.IsSuccessStatusCode) return await MessageAsync(response, CancellationToken.None);
+            var mine = await response.Content.ReadFromJsonAsync(AgentJson.Default.MySites);
+            if (mine is null || mine.Sites.Length == 0) return "No site yet. Run: dalan http <port> --name <name>";
+            return string.Join(Environment.NewLine, mine.Sites.Select(site => $"{site.Name}  {site.Url}  {(site.Online ? "online" : "offline")}"));
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            return $"Cannot reach Dalan ({exception.Message}).";
+        }
+    }
+
+    /// <summary>AGT-13: visitors get the offline page at once. The session ends by idle time anyway, so a failure is only said.</summary>
+    private async Task EndSessionAsync(string session)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/tunnel/sessions/{session}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
+        using var limit = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try
+        {
+            using var _ = await server.SendAsync(request, limit.Token);
+            output.WriteLine("Stopped. The site is offline now.");
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            output.WriteLine($"Stopped. Could not tell Dalan ({exception.Message}); the site shows offline in a minute.");
+        }
+    }
+
     /// <summary>AGT-11: asks the server to end the demo. The demo ends by its time anyway, so a failure is only said.</summary>
     private async Task EndDemoAsync()
     {
@@ -174,7 +216,7 @@ public sealed class TunnelClient(
     /// <summary>AGT-05: WebSocket first; when it cannot be opened, long polling on the same session.</summary>
     private async Task ServeAsync(SessionOpened session, Dictionary<string, int> ports, CancellationToken cancellationToken)
     {
-        var maxBody = session.MaxBodyMb * 1024L * 1024L;
+        var limits = new Limits(session.MaxBodyMb * 1024L * 1024L, session.StreamChunkKb * 1024, session.StreamWindow);
         WebSocket socket;
         try
         {
@@ -185,12 +227,12 @@ public sealed class TunnelClient(
         {
             if (Transport != "polling") output.WriteLine("WebSocket does not work on this network; using long polling.");
             Transport = "polling";
-            await PollAsync(session.Session, ports, maxBody, cancellationToken);
+            await PollAsync(session.Session, ports, limits, cancellationToken);
             return;
         }
 
         Transport = "websocket";
-        using (socket) await WebSocketAsync(socket, ports, maxBody, cancellationToken);
+        using (socket) await WebSocketAsync(socket, ports, limits, cancellationToken);
     }
 
     private Uri WebSocketAddress(string session)
@@ -200,9 +242,10 @@ public sealed class TunnelClient(
         return builder.Uri;
     }
 
-    private async Task WebSocketAsync(WebSocket socket, Dictionary<string, int> ports, long maxBody, CancellationToken cancellationToken)
+    private async Task WebSocketAsync(WebSocket socket, Dictionary<string, int> ports, Limits limits, CancellationToken cancellationToken)
     {
         using var sending = new SemaphoreSlim(1);
+        var flows = new ConcurrentDictionary<long, Flow>();
         var buffer = new ArrayBufferWriter<byte>();
         while (socket.State == WebSocketState.Open)
         {
@@ -218,25 +261,56 @@ public sealed class TunnelClient(
 
             var request = JsonSerializer.Deserialize(buffer.WrittenSpan, AgentJson.Default.TunnelRequest);
             if (request is null) continue;
+            // AGT-12: the server wrote a part, or the visitor is gone.
+            if (request.Ack == true || request.Cancel == true)
+            {
+                if (flows.TryGetValue(request.Id, out var known))
+                {
+                    if (request.Cancel == true) known.Stop();
+                    else known.Ack();
+                }
+
+                continue;
+            }
+
+            var flow = new Flow(limits.Window, cancellationToken);
+            flows[request.Id] = flow;
             // AGT-08: each request on its own, so a slow one does not hold the others.
             _ = Task.Run(async () =>
             {
-                var response = await HandleAsync(request, ports, maxBody, cancellationToken);
-                var bytes = JsonSerializer.SerializeToUtf8Bytes(response, AgentJson.Default.TunnelResponse);
-                await sending.WaitAsync(cancellationToken);
                 try
                 {
-                    await socket.SendAsync(bytes, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
+                    await HandleAsync(request, ports, limits, async (message, isPart, token) =>
+                    {
+                        if (isPart) await flow.Credits.WaitAsync(token);
+                        var bytes = JsonSerializer.SerializeToUtf8Bytes(message, AgentJson.Default.TunnelResponse);
+                        await sending.WaitAsync(token);
+                        try
+                        {
+                            await socket.SendAsync(bytes, WebSocketMessageType.Text, endOfMessage: true, token);
+                        }
+                        finally
+                        {
+                            sending.Release();
+                        }
+
+                        return true;
+                    }, flow.Token);
+                }
+                catch (Exception exception) when (exception is OperationCanceledException or WebSocketException or IOException or HttpRequestException)
+                {
+                    // Cancelled by the server, or the connection is lost: the visitor's answer has ended.
                 }
                 finally
                 {
-                    sending.Release();
+                    flows.TryRemove(request.Id, out _);
+                    flow.Dispose();
                 }
             }, cancellationToken);
         }
     }
 
-    private async Task PollAsync(string session, Dictionary<string, int> ports, long maxBody, CancellationToken cancellationToken)
+    private async Task PollAsync(string session, Dictionary<string, int> ports, Limits limits, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -247,31 +321,78 @@ public sealed class TunnelClient(
             response.EnsureSuccessStatusCode();
             var answer = await response.Content.ReadFromJsonAsync(AgentJson.Default.PollAnswer, cancellationToken);
             foreach (var visitor in answer?.Requests ?? [])
-                _ = Task.Run(() => AnswerByPostAsync(session, visitor, ports, maxBody, cancellationToken), cancellationToken);
+                _ = Task.Run(() => AnswerByPostAsync(session, visitor, ports, limits, cancellationToken), cancellationToken);
         }
     }
 
+    /// <summary>AGT-12: each message is one POST; the server answers a part after it was written, 410 when the visitor is gone.</summary>
     private async Task AnswerByPostAsync(
-        string session, TunnelRequest visitor, Dictionary<string, int> ports, long maxBody, CancellationToken cancellationToken)
+        string session, TunnelRequest visitor, Dictionary<string, int> ports, Limits limits, CancellationToken cancellationToken)
     {
-        var response = await HandleAsync(visitor, ports, maxBody, cancellationToken);
-        using var post = new HttpRequestMessage(HttpMethod.Post, $"/api/tunnel/sessions/{session}/responses")
-        {
-            Content = JsonContent.Create(response, AgentJson.Default.TunnelResponse),
-        };
-        post.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
         try
         {
-            using var _ = await server.SendAsync(post, cancellationToken);
+            await HandleAsync(visitor, ports, limits, async (message, _, token) =>
+            {
+                using var post = new HttpRequestMessage(HttpMethod.Post, $"/api/tunnel/sessions/{session}/responses")
+                {
+                    Content = JsonContent.Create(message, AgentJson.Default.TunnelResponse),
+                };
+                post.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
+                using var answer = await server.SendAsync(post, token);
+                return answer.IsSuccessStatusCode;
+            }, cancellationToken);
         }
-        catch (HttpRequestException)
+        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or IOException)
         {
-            // The visitor gets a timeout; the poll loop sees the lost connection.
+            // The visitor gets a timeout or a broken answer; the poll loop sees the lost connection.
         }
     }
 
-    private Task<TunnelResponse> HandleAsync(TunnelRequest request, Dictionary<string, int> ports, long maxBody, CancellationToken cancellationToken) =>
+    private Task HandleAsync(TunnelRequest request, Dictionary<string, int> ports, Limits limits, AnswerSink send, CancellationToken cancellationToken) =>
         ports.TryGetValue(request.Site, out var port)
-            ? local.ForwardAsync(request, port, maxBody, cancellationToken)
-            : Task.FromResult(LocalForwarder.Page(request.Id, HttpStatusCode.NotFound, $"This agent does not serve the site {request.Site}."));
+            ? local.ForwardAsync(request, port, limits.MaxBody, limits.ChunkBytes, send, cancellationToken)
+            : send(LocalForwarder.Page(request.Id, HttpStatusCode.NotFound, $"This agent does not serve the site {request.Site}."), false, cancellationToken);
+
+    /// <summary>What the server allows: one whole answer, the size of a part (0: no parts), parts on the way per answer.</summary>
+    private sealed record Limits(long MaxBody, int ChunkBytes, int Window);
+
+    /// <summary>AGT-12: one answer over WebSocket: the parts it may still send without an ack, and its stop.</summary>
+    private sealed class Flow(int window, CancellationToken stop) : IDisposable
+    {
+        private readonly CancellationTokenSource _cancel = CancellationTokenSource.CreateLinkedTokenSource(stop);
+
+        public SemaphoreSlim Credits { get; } = new(Math.Max(1, window));
+
+        public CancellationToken Token => _cancel.Token;
+
+        public void Ack()
+        {
+            try
+            {
+                Credits.Release();
+            }
+            catch (ObjectDisposedException)
+            {
+                // The answer had just ended.
+            }
+        }
+
+        public void Stop()
+        {
+            try
+            {
+                _cancel.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // The answer had just ended.
+            }
+        }
+
+        public void Dispose()
+        {
+            _cancel.Dispose();
+            Credits.Dispose();
+        }
+    }
 }

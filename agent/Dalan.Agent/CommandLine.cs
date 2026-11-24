@@ -3,12 +3,16 @@ using System.Security.Cryptography;
 
 namespace Dalan.Agent;
 
-public enum CommandKind { Help, Version, Login, Http, Demo, Start }
+public enum CommandKind { Help, Version, Login, Http, Demo, Start, Service, Status }
 
-/// <summary>What the user asked for. <see cref="Sites"/> holds port and name pairs of "http"; a null name means "choose one".</summary>
-public sealed record Command(CommandKind Kind, string? Key, string? Server, IReadOnlyList<(int Port, string? Name)> Sites);
+/// <summary>
+/// What the user asked for. <see cref="Sites"/> holds port and name pairs of "http"; a null name means "choose one".
+/// <see cref="Action"/> is "install" or "uninstall" for "service"; <see cref="Background"/> is "start --background" (Windows).
+/// </summary>
+public sealed record Command(
+    CommandKind Kind, string? Key, string? Server, IReadOnlyList<(int Port, string? Name)> Sites, string? Action = null, bool Background = false);
 
-/// <summary>AGT-02 to AGT-04 and AGT-09: reads the command line.</summary>
+/// <summary>AGT-02 to AGT-04, AGT-09, AGT-14 and AGT-15: reads the command line.</summary>
 public static class CommandLine
 {
     public const string DefaultServer = "https://tunnel.dalanet.ir";
@@ -17,7 +21,11 @@ public static class CommandLine
         Dalan agent: show a web app on this computer to everyone, with no public IP.
 
           dalan login <key>                       save your access key (make one in "My apps" on Dalan)
-          dalan http <port> [--name <name>]       show the app on this port; more "<port> --name <name>" pairs for more sites
+          dalan http <port> [--name <name>]       try it: show the app on this port while this terminal is open (Ctrl+C stops it);
+                                                  more "<port> --name <name>" pairs for more sites
+          dalan service install                   keep it online: run the saved sites in the background, also after a restart
+          dalan service uninstall                 stop that and remove it
+          dalan status                            the service, and each site online or offline
           dalan demo <port>                       a test link, for a limited time, to show the app on this port; Ctrl+C ends it
           dalan start                             run every site saved in the config file
           dalan version
@@ -42,7 +50,12 @@ public static class CommandLine
             "login" => throw new AgentStopException("Use: dalan login <key>"),
             "http" => new(CommandKind.Http, null, server, Pairs(rest)),
             "demo" => new(CommandKind.Demo, null, server, [(DemoPort(rest), null)]),
-            "start" => new(CommandKind.Start, null, server, []),
+            "start" when rest.Count == 1 => new(CommandKind.Start, null, server, []),
+            "start" when rest.Count == 2 && rest[1] == "--background" => new(CommandKind.Start, null, server, [], Background: true),
+            "start" => throw new AgentStopException("Use: dalan start"),
+            "service" when rest.Count == 2 && rest[1] is "install" or "uninstall" => new(CommandKind.Service, null, server, [], rest[1]),
+            "service" => throw new AgentStopException("Use: dalan service install, or dalan service uninstall"),
+            "status" => new(CommandKind.Status, null, server, []),
             "version" or "--version" => new(CommandKind.Version, null, server, []),
             "help" or "--help" or "-h" => new(CommandKind.Help, null, server, []),
             _ => throw new AgentStopException($"Unknown command \"{rest[0]}\". Run \"dalan help\"."),

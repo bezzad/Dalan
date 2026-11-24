@@ -232,20 +232,22 @@ public class AgentTests(PostgresServer postgres)
 
     [Fact]
     [Trait("Rule", "AGT-07")]
-    public async Task AGT07_answer_over_the_limit_becomes_502()
+    public async Task AGT07_small_answer_goes_in_one_message()
     {
-        await using var app = await StartAsync(postgres, ("Sites:MaxBodyMb", "1"));
-        var (browser, _, key) = await app.BuilderAsync();
-        using var stop = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
-        var run = app.RealAgent(key, FakeLocalApp.Text(new string('x', 1024 * 1024 + 1))).RunAsync([new("levelwise", 3000)], stop.Token);
-        await browser.WaitOnlineAsync("levelwise");
+        using var local = new LocalForwarder(FakeLocalApp.Text("hello"));
+        var sent = new List<Dalan.Agent.TunnelResponse>();
+        var request = new Dalan.Agent.TunnelRequest(7, "levelwise", "GET", "/", [], null);
 
-        var response = await app.Visitor("levelwise").GetAsync("/", Cancel);
+        await local.ForwardAsync(request, 3000, 1024 * 1024, 64 * 1024, (message, _, _) =>
+        {
+            sent.Add(message);
+            return Task.FromResult(true);
+        }, Cancel);
 
-        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
-        Assert.Contains("larger than 1 MB", await response.Content.ReadAsStringAsync(Cancel), StringComparison.Ordinal);
-        await stop.CancelAsync();
-        await run;
+        var only = Assert.Single(sent);
+        Assert.Equal(200, only.Status);
+        Assert.False(only.More);
+        Assert.Equal("hello", System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(only.Body!)));
     }
 
     [Fact]

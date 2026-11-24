@@ -215,6 +215,7 @@ export const api = {
   createBot: (username: string, name: string) => call<NewToken>("POST", "/api/builder/bots", { username, name }),
   mySites: () => call<MySites>("GET", "/api/sites"),
   deleteSite: (siteId: number) => call<null>("DELETE", `/api/sites/${siteId}`),
+  reserveSite: (name: string) => call<Site>("POST", "/api/sites", { name }),
   accessKeys: async () => (await call<{ keys: AccessKey[] }>("GET", "/api/account/keys")).keys,
   makeKey: (name: string) => call<AccessKey & { key: string }>("POST", "/api/account/keys", { name }),
   deleteKey: (keyId: number) => call<null>("DELETE", `/api/account/keys/${keyId}`),

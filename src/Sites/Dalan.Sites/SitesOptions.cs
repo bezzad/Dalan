@@ -6,7 +6,10 @@ namespace Dalan.Sites;
 /// </summary>
 public sealed class SitesOptions
 {
-    /// <summary>The registered domain of the sites, for example "dalancloud.ir". Empty: sites are off.</summary>
+    /// <summary>
+    /// The registered domain of the sites, for example "dalancloud.ir". Empty: sites are off.
+    /// It may carry a port for local work ("localhost:5000"); the host match ignores it (SITE-08).
+    /// </summary>
     public string Domain { get; set; } = "";
 
     /// <summary>The scheme of the printed site address: "https", or "http" in local work.</summary>
@@ -24,6 +27,17 @@ public sealed class SitesOptions
     public int RequestTimeoutSeconds { get; set; }
     public int MaxBodyMb { get; set; }
     public int MaxPendingPerAddress { get; set; }
+
+    /// <summary>SITE-12: requests of one address that may wait in line after <see cref="MaxPendingPerAddress"/>.</summary>
+    public int MaxQueuedPerAddress { get; set; }
+
+    /// <summary>SITE-11: the most one streamed answer may carry in total.</summary>
+    public int MaxAnswerMb { get; set; }
+
+    /// <summary>SITE-22: the size of one part of a streamed answer, and how many parts may be on the way.</summary>
+    public int StreamChunkKb { get; set; }
+
+    public int StreamWindow { get; set; }
     public int SessionIdleSeconds { get; set; }
     public int PollTimeoutSeconds { get; set; }
     public int AccessCheckSeconds { get; set; }
@@ -39,6 +53,15 @@ public sealed class SitesOptions
     public int MaxDemosPerBuilder { get; set; }
 
     public long MaxBodyBytes => MaxBodyMb * 1024L * 1024L;
+
+    public long MaxAnswerBytes => MaxAnswerMb * 1024L * 1024L;
+
+    /// <summary>A host setting without its port: "localhost:5000" gives "localhost".</summary>
+    public static string HostOnly(string value)
+    {
+        var colon = value.LastIndexOf(':');
+        return colon < 0 ? value : value[..colon];
+    }
 
     /// <summary>The public address of a site.</summary>
     public string UrlOf(string name) => $"{Scheme}://{name}.{Domain}";

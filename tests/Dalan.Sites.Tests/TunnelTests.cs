@@ -352,32 +352,6 @@ public class TunnelTests(PostgresServer postgres)
     }
 
     [Fact]
-    [Trait("Rule", "SITE-12")]
-    public async Task SITE12_one_address_with_too_many_waiting_requests_gets_429()
-    {
-        await using var app = await StartAsync(postgres, ("Sites:MaxPendingPerAddress", "2"));
-        var (_, _, key) = await app.BuilderAsync();
-        var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
-        var busy = app.Visitor("levelwise", "5.6.7.8:1000");
-
-        var first = busy.GetAsync("/1", Cancel);
-        var second = busy.GetAsync("/2", Cancel);
-        var waiting = new List<JsonElement>();
-        while (waiting.Count < 2) waiting.AddRange(await agent.PollAsync(session));
-        var third = await busy.GetAsync("/3", Cancel);
-        var other = app.Visitor("levelwise", "9.9.9.9:1000").GetAsync("/4", Cancel);
-        var fourth = Assert.Single(await agent.PollAsync(session));
-        foreach (var request in waiting.Append(fourth))
-            await agent.AnswerAsync(session, request.GetProperty("id").GetInt64(), 200, "ok");
-
-        Assert.Equal(HttpStatusCode.TooManyRequests, third.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await other).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await first).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await second).StatusCode);
-    }
-
-    [Fact]
     [Trait("Rule", "SITE-13")]
     public async Task SITE13_server_refuses_to_start_with_sites_under_dalans_domain()
     {

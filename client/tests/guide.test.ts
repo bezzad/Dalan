@@ -58,13 +58,15 @@ test("CLI-38 every library sample points at Dalan, never at Telegram", () => {
   }
 });
 
-test("CLI-38 the site guide has four steps: builder, one-line install, login, run", () => {
+test("CLI-38 the site guide has five steps: builder, one-line install, login, try it, keep it online", () => {
   for (const lang of ["fa", "en"] as const) {
     const steps = siteGuideSteps(lang, numbers);
-    assert.equal(steps.length, 4);
+    assert.equal(steps.length, 5);
     const install = steps[1]!.samples!.map(sample => sample.code);
     assert.deepEqual(install, ["curl -fsSL https://example.ir/install.sh | sh", "irm https://example.ir/install.ps1 | iex"]);
     assert.equal(steps[3]!.code, "dalan http 3000 --name mysite");
+    assert.match(steps[3]!.text, /Ctrl\+C/);
+    assert.equal(steps[4]!.code, "dalan service install");
     assert.doesNotMatch(JSON.stringify(steps), /tunnel|تونل/i);
   }
 });

@@ -83,6 +83,10 @@ export function errorText(error: unknown): TextKey {
     case "github_unavailable": return "githubUnavailable";
     case "not_builder": return "notBuilder";
     case "bot_limit": return "botLimit";
+    case "name_taken": return "nameTaken";
+    case "bad_name": return "badSiteName";
+    case "site_limit": return "siteLimit";
+    case "sites_off": return "sitesOff";
     case "bad_value": return "badValue";
     case "bad_icon": return "badIcon";
     case "showcase_not_found": return "showcaseFirst";

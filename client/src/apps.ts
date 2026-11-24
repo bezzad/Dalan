@@ -1,10 +1,14 @@
-// CLI-39: "My apps": the builder's sites (SITE-16) and the step-by-step guide to run one with the Dalan agent.
+// CLI-39: "My apps": the builder's sites (SITE-16), kept fresh while the screen is open, and the step-by-step guide:
+// install, log in, reserve a name (SITE-24), try it, keep it online as a service (AGT-14).
 import { api, type MySites, type Site } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
-import { httpCommand, installCommands, loginCommand } from "./appGuide.ts";
+import { httpCommand, installCommands, loginCommand, serviceCommands } from "./appGuide.ts";
 import { h } from "./dom.ts";
 import { builderView } from "./panels.ts";
 import { toast } from "./toast.ts";
+
+/** CLI-39: how often the list asks again, so "online" follows the agent. */
+const refreshMs = 10_000;
 
 export function appsScreen(app: App): Screen {
   const t = app.language.t.bind(app.language);
@@ -31,6 +35,17 @@ export function appsScreen(app: App): Screen {
 
   function draw(mine: MySites, siteUrl: string): HTMLElement[] {
     const list = h("ul", { class: "rows" });
+    // The list follows the agent while this screen is open; it stops when the screen is gone.
+    const timer = setInterval(() => {
+      if (!list.isConnected) {
+        clearInterval(timer);
+        return;
+      }
+      api.mySites().then(fresh => {
+        mine.sites = fresh.sites;
+        drawList();
+      }).catch(() => { /* the next round tries again */ });
+    }, refreshMs);
     const drawList = () => list.replaceChildren(
       ...(mine.sites.length === 0 ? [h("li", { class: "note" }, t("noSites"))] : []),
       ...mine.sites.map(site => h("li", {},
@@ -58,11 +73,14 @@ export function appsScreen(app: App): Screen {
       h("p", { class: "note" }, t("appsNote")),
       ...(mine.domain === "" ? [h("p", { class: "note", role: "status" }, t("sitesOff"))] : []),
       h("section", { class: "card" }, list),
-      guide(mine, siteUrl),
+      guide(mine, siteUrl, site => {
+        mine.sites = [...mine.sites.filter(other => other.id !== site.id), site].sort((a, b) => a.name.localeCompare(b.name));
+        drawList();
+      }),
     ];
   }
 
-  function guide(mine: MySites, siteUrl: string): HTMLElement {
+  function guide(mine: MySites, siteUrl: string, reserved: (site: Site) => void): HTMLElement {
     const install = installCommands(siteUrl);
 
     // Step 2: the key is made here and shown once, inside the command.
@@ -80,7 +98,7 @@ export function appsScreen(app: App): Screen {
     }, t("makeLoginKey"));
     login.append(h("div", { class: "row" }, makeKey));
 
-    // Step 3: the command follows the port and name the user types.
+    // Step 3: the port and the name; the name can be kept now (SITE-24). Step 4 follows what the user types.
     const port = h("input", { id: "app-port", type: "number", min: "1", max: "65535", value: "3000", dir: "ltr" });
     const name = h("input", { id: "site-name", type: "text", dir: "ltr", autocapitalize: "none", autocomplete: "off", value: "myapp" });
     const nameNote = h("p", { class: "note" });
@@ -93,6 +111,18 @@ export function appsScreen(app: App): Screen {
     port.addEventListener("input", update);
     name.addEventListener("input", update);
     update();
+    const reserve = h("button", {
+      type: "button", onclick: async () => {
+        const wanted = name.value.trim().toLowerCase();
+        try {
+          const site = await api.reserveSite(wanted);
+          reserved(site);
+          toast(t("nameReserved").replace("{name}", site.name));
+        } catch (failure) {
+          failed(failure);
+        }
+      },
+    }, t("reserveName"));
 
     return h("section", { class: "card app-guide" },
       h("h2", {}, t("appsGuideTitle")),
@@ -108,11 +138,17 @@ export function appsScreen(app: App): Screen {
       h("div", { class: "fields" },
         h("div", { class: "field" }, h("label", { for: "app-port" }, t("appPort")), port),
         h("div", { class: "field" }, h("label", { for: "site-name" }, t("siteName")), name, nameNote)),
+      h("div", { class: "row" }, reserve),
+      h("h3", {}, t("step4Title")),
+      h("p", { class: "note" }, t("step4Note")),
       run,
       h("p", { class: "note" }, t("manySites")),
       codeBlock(httpCommand([{ port: 3000, name: "levelwise" }, { port: 8080, name: "shop" }])),
-      h("p", { class: "note" }, t("nextTime")),
-      codeBlock("dalan start"));
+      h("h3", {}, t("step5Title")),
+      h("p", { class: "note" }, t("step5Note")),
+      codeBlock(serviceCommands.install),
+      h("p", { class: "note" }, t("statusNote")),
+      codeBlock(serviceCommands.status));
   }
 
   /** A command: monospace, dark in both themes, with Copy (docs/UI.md). */

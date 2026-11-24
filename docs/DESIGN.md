@@ -287,7 +287,7 @@ In Layer 2 the builder's frontend and backend stay unchanged. The page is served
 2. Otherwise the server puts the HTTP request in the bot's queue with a request ID.
 3. The Agent reads it, calls the local backend, and returns the response.
 
-**Dalan Agent.** A small program from Dalan that the builder runs beside the unchanged backend: `dalan login <key>` once, then `dalan http 3000 --name levelwise` (more `<port> --name <name>` pairs for more sites in one agent; `dalan start` runs the saved ones). It connects out to `tunnel.dalanet.ir` by WebSocket, or by long polling when WebSocket is blocked. The builder writes no polling code. Built in Layer 2 milestone 1 (decisions 60 to 63).
+**Dalan Agent.** A small program from Dalan that the builder runs beside the unchanged backend: `dalan login <key>` once, then `dalan http 3000 --name levelwise` (more `<port> --name <name>` pairs for more sites in one agent; `dalan start` runs the saved ones). It connects out to `tunnel.dalanet.ir` by WebSocket, or by long polling when WebSocket is blocked. The builder writes no polling code. Built in Layer 2 milestone 1 (decisions 60 to 63). `dalan http` is for trying: it runs while the terminal is open. `dalan service install` keeps the saved sites online in the background and after a restart; `dalan status` shows them. A name can be reserved in "My apps" before any agent runs (milestone 14).
 
 **Demo link.** `dalan demo 3000` gives a test link with no name to claim: `https://dalans.ir/<random id>/`, open for 24 hours, at most 3 live demos per builder, ended at once by Ctrl+C. The first visit sets a cookie, so the app's own links (`/app.js`) keep going to the same demo. All demos share one origin, so a demo is for tests, not for real accounts (decision 67).
 
@@ -304,7 +304,7 @@ In Layer 2 the builder's frontend and backend stay unchanged. The page is served
 
 **SDK (`dalan.js`) is optional.** It offers extras only: bot online/offline events, user info, asking for push permission, later payments, and a default "service unavailable" banner that the builder can switch off. Without the SDK, an API call gets a clear error (`BOT_OFFLINE` or `TIMEOUT`) and a page load gets Dalan's own offline page.
 
-**First-version limits:** a size cap and a time cap per request, no WebSocket, no streaming.
+**Limits:** a size cap per request and per answer, and a time cap for the first part of an answer. Answers stream (milestone 14, decision 68), so Server-Sent Events and big downloads work. No WebSocket from the visitor to the app yet. Many requests of one address at once wait in a line instead of failing (a service worker or a page with many files).
 
 **Approved for Layer 2 (owner, 2026-11-16; not built yet):**
 
@@ -502,8 +502,11 @@ None of these is planned work. They are recorded so the design does not block th
 | Access key lifetime | 90 days | Assumed (milestone 10) |
 | Access keys per user | 10 | Assumed (milestone 10) |
 | Site storage per bot (Layer 2) | 200 MB | Agreed in discussion |
-| Pending site requests per visitor address (Layer 2) | 50 | Assumed; first 20, raised in Layer 2 milestone 1 because one page load asks for dozens of files at once |
-| Site request timeout (Layer 2) | 30 seconds | Assumed |
+| Site requests of one visitor address at the agent at once (Layer 2) | 200 | Assumed; first 20, then 50; raised in milestone 14 because Levelwise's service worker asks for about 1000 files at once and many mobile users share one address |
+| Site requests of one address waiting in line (Layer 2) | 1000 | Assumed (milestone 14) |
+| One streamed site answer (Layer 2) | 500 MB | Assumed (milestone 14) |
+| Part of a streamed answer, and parts on the way (Layer 2) | 64 KB, 8 | Assumed (milestone 14) |
+| Site request timeout, for the first part of the answer (Layer 2) | 30 seconds | Assumed |
 
 **Confirmed by the owner on 2026-11-16:**
 
