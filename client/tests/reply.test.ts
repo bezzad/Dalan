@@ -29,8 +29,8 @@ test("CLI-52: a swipe to the left starts a reply; a scroll does not", () => {
 test("CLI-53: a press waits until the bot answers it", () => {
   const presses = new PressState();
   const message = m(2);
-  presses.start(message, 0, 1000, 15);
-  presses.sent(2, "77");
+  const token = presses.start(message, 0, 1000, 15);
+  assert.equal(presses.sent(2, token, "77"), false);
 
   assert.equal(presses.pending(message, 2000), 0);
   assert.equal(presses.answered("78"), false);
@@ -50,14 +50,26 @@ test("CLI-53: a newer copy of the message, or the end of the time, ends the wait
 
 test("CLI-53: an answer that comes before the press id still ends the wait; a failure ends it too", () => {
   const presses = new PressState();
-  presses.start(m(2), 0, 1000, 15);
+  const token = presses.start(m(2), 0, 1000, 15);
   presses.answered("77");
-  presses.sent(2, "77");
+  assert.equal(presses.sent(2, token, "77"), true);
   assert.equal(presses.pending(m(2), 2000), null);
 
-  presses.start(m(4), 0, 1000, 15);
-  presses.end(4);
+  const failed = presses.start(m(4), 0, 1000, 15);
+  presses.end(4, failed);
   assert.equal(presses.pending(m(4), 2000), null);
+});
+
+test("CLI-53: a late answer or failure of an older press never ends a newer press of the same message", () => {
+  const presses = new PressState();
+  const old = presses.start(m(2), 0, 1000, 15);
+  assert.equal(presses.pending(m(2), 17_000), null);
+  presses.start(m(2), 1, 17_000, 15);
+
+  assert.equal(presses.sent(2, old, "77"), false);
+  presses.end(2, old);
+  assert.equal(presses.answered("77"), false);
+  assert.equal(presses.pending(m(2), 18_000), 1);
 });
 
 test("CLI-55: a bot's chat links that bot's manifest; other screens the main one", () => {

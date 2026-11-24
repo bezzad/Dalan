@@ -308,7 +308,8 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
       if (message) {
         app.chats.receive(bot.id, message);
         input.value = "";
-        if (message.reply_to) cancelReply();
+        // Only the reply that was sent ends; one the user picked while it was on its way stays.
+        if (message.reply_to && message.reply_to.id === replyTarget?.id) cancelReply();
         following = true;
         draw();
       }
@@ -331,13 +332,14 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
   async function press(message: Message, index: number, data: string): Promise<void> {
     if (!bot || presses.pending(message, Date.now()) !== null) return;
     error.textContent = note.textContent = "";
-    presses.start(message, index, Date.now(), app.pressWaitSeconds);
+    const token = presses.start(message, index, Date.now(), app.pressWaitSeconds);
     draw();
     window.setTimeout(() => { if (element.isConnected) draw(); }, app.pressWaitSeconds * 1000 + 50);
     try {
-      presses.sent(message.id, (await api.press(bot.id, message.id, data)).id);
+      // A fast bot may have answered before this call came back: then the wait ends here.
+      if (presses.sent(message.id, token, (await api.press(bot.id, message.id, data)).id)) draw();
     } catch (failure) {
-      presses.end(message.id);
+      presses.end(message.id, token);
       error.textContent = t(errorText(failure));
       draw();
     }

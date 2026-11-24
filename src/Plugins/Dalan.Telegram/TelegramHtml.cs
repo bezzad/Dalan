@@ -45,7 +45,7 @@ internal static class TelegramHtml
                 continue;
             }
 
-            var end = html.IndexOf('>', i + 1);
+            var end = TagEnd(html, i + 1);
             if (end < 0) return $"unclosed start tag at byte offset {ByteOffset(html, i)}";
 
             var inside = html[(i + 1)..end];
@@ -112,6 +112,24 @@ internal static class TelegramHtml
                 : new Open(name, null, start),
             _ => null,
         };
+    }
+
+    /// <summary>The index of the '>' that ends a tag, skipping a '>' inside a quoted attribute value; -1 when there is none.</summary>
+    private static int TagEnd(string html, int from)
+    {
+        char? quote = null;
+        for (var i = from; i < html.Length; i++)
+        {
+            var c = html[i];
+            if (quote is { } open)
+            {
+                if (c == open) quote = null;
+            }
+            else if (c is '"' or '\'') quote = c;
+            else if (c == '>') return i;
+        }
+
+        return -1;
     }
 
     private static bool IsWebLink(string href) =>

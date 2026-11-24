@@ -196,24 +196,34 @@ export function isReplySwipe(dx: number, dy: number): boolean {
  * a failure, or when its time is over. In memory only.
  */
 export class PressState {
-  private readonly waits = new Map<number, { button: number; version: number; until: number; id: string | null }>();
+  private readonly waits = new Map<number, { token: number; button: number; version: number; until: number; id: string | null }>();
   /** Answers that came before the server gave the press id (a fast bot). */
   private readonly early = new Set<string>();
+  private tokens = 0;
 
-  /** The user tapped button `button` (its index in the message) of this message. */
-  start(message: Message, button: number, now: number, waitSeconds: number): void {
-    this.waits.set(message.id, { button, version: message.version, until: now + waitSeconds * 1000, id: null });
+  /**
+   * The user tapped button `button` (its index in the message) of this message. The token names this press, so a late
+   * answer of an older press of the same message never touches a newer one.
+   */
+  start(message: Message, button: number, now: number, waitSeconds: number): number {
+    const token = ++this.tokens;
+    this.waits.set(message.id, { token, button, version: message.version, until: now + waitSeconds * 1000, id: null });
+    return token;
   }
 
-  /** The server took the press and gave it this id. */
-  sent(messageId: number, pressId: string): void {
+  /** The server took the press and gave it this id. True when that ended the wait (the bot had answered already). */
+  sent(messageId: number, token: number, pressId: string): boolean {
     const wait = this.waits.get(messageId);
-    if (this.early.delete(pressId)) this.waits.delete(messageId);
-    else if (wait) wait.id = pressId;
+    const answered = this.early.delete(pressId);
+    if (wait?.token !== token) return false;
+    if (answered) return this.waits.delete(messageId);
+    wait.id = pressId;
+    return false;
   }
 
-  end(messageId: number): void {
-    this.waits.delete(messageId);
+  /** The press failed. */
+  end(messageId: number, token: number): void {
+    if (this.waits.get(messageId)?.token === token) this.waits.delete(messageId);
   }
 
   /** LIVE-09: the bot answered this press. True when a wait ended. */

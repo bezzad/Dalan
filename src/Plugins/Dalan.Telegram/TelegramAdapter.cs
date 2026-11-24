@@ -234,7 +234,7 @@ public static class TelegramAdapter
                 return "can't parse reply parameters: message_id is missing";
 
             replyTo = messageId;
-            withoutReply = reply.TryGetProperty("allow_sending_without_reply", out var allow) && allow.ValueKind == JsonValueKind.True;
+            if (reply.TryGetProperty("allow_sending_without_reply", out var allow)) withoutReply = allow.ValueKind == JsonValueKind.True;
             return null;
         }
 

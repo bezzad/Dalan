@@ -92,9 +92,13 @@ public class ReplyFormatTests(PostgresServer postgres)
         var allowed = await bot.PostJsonAsync("sendMessage",
             new { chat_id = user, text = "hi", reply_parameters = new { message_id = 99, allow_sending_without_reply = true } });
 
+        var allowedOutside = await bot.PostJsonAsync("sendMessage",
+            new { chat_id = user, text = "hi", allow_sending_without_reply = true, reply_parameters = new { message_id = 99 } });
+
         plain.IsError(400, "Bad Request: message to be replied not found");
         allowed.IsOk();
         Assert.False(allowed.Result.TryGetProperty("reply_to_message", out _));
+        allowedOutside.IsOk();
     }
 
     [Fact]
@@ -139,6 +143,21 @@ public class ReplyFormatTests(PostgresServer postgres)
         var spoiler = answer.Result.GetProperty("entities")[2];
         Assert.Equal(text.IndexOf("راز", StringComparison.Ordinal), spoiler.GetProperty("offset").GetInt32());
         Assert.Equal("python", answer.Result.GetProperty("entities")[3].GetProperty("language").GetString());
+    }
+
+    [Fact]
+    [Trait("Rule", "TG-25")]
+    public async Task TG25_a_gt_inside_a_quoted_attribute_does_not_end_the_tag()
+    {
+        var (app, bot, _, user) = await StartedAsync();
+        await using var _1 = app;
+
+        var answer = await bot.PostJsonAsync("sendMessage",
+            new { chat_id = user, text = """<a href="https://x.dev/?q=a>b">link</a>""", parse_mode = "HTML" });
+
+        answer.IsOk();
+        Assert.Equal("link", answer.Result.GetProperty("text").GetString());
+        Assert.Equal("https://x.dev/?q=a>b", answer.Result.GetProperty("entities")[0].GetProperty("url").GetString());
     }
 
     [Theory]

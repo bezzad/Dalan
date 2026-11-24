@@ -33,6 +33,6 @@ Each task: write the failing tests tagged with the rule IDs, then the code, then
 ## 6. Close
 
 - [x] 6.1 `llms.txt`, `docs/UI.md`, appsettings and DESIGN.md section 18 for the two new settings
-- [ ] 6.2 `scripts/ci.sh` green on the NUC; final review of the whole diff; merge
+- [x] 6.2 `scripts/ci.sh` green on the NUC; final review of the whole diff; merge
 - [ ] 6.3 Owner: check on @mofidbot with ArcaneBot: reply to an AI answer, press skeleton, add-todo edit, install the bot, bold text
 - [ ] 6.4 Archive this change (after m12)
