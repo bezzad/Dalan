@@ -22,7 +22,7 @@ node scripts/demo-bot.mjs 1                 # a small bot to chat with; see the 
 bash tests/delivery/agent_smoke_test.sh out # the site agent as one Native AOT file (needs clang); then:
 out/dalan login <key> --server http://localhost:5000 && out/dalan http 3000 --name mysite   # open http://mysite.localhost:5000
 node client/public/dalan.mjs                # the builder CLI (needs DALAN_URL and DALAN_KEY); /llms.txt explains it
-bash scripts/ci.sh                          # THE gate (DEL-01): every step of ci.yml; needs Node 26, .NET 11, clang, caddy, Docker
+bash scripts/ci.sh                          # the gate (DEL-01) = ci.yml; run it on GitHub (rule 11), not on the owner's PC
 bash scripts/check-rules.sh                 # every spec rule ID has a test
 bash tests/deploy/deploy_test.sh            # deploy script tests (also setup_test, backup_test, drill_test, pull_deploy_test)
 bash tests/proxy/caddy_test.sh              # needs caddy on PATH
@@ -58,7 +58,7 @@ openspec/                          specs and changes
 8. Security from day one: slow password hashing, hashed bot tokens, rate limits on every public endpoint, proof of work before each SMS, audit log.
 9. Spec first: change the rule in an OpenSpec change, owner reviews, write the failing test (tag it with the rule ID), then the code. Archive the change when the milestone is done.
 10. Always use the latest stable version of every tool and package; check the real version, do not trust memory.
-11. After `scripts/ci.sh` passes on the owner's PC (the NUC), do a final code review of the whole diff. If all is OK, merge it yourself; if not, fix and run `scripts/ci.sh` again. Never merge with a red or skipped `scripts/ci.sh`. GitHub CI runs only by hand (minutes ran out, 2026-11-21).
+11. Never build or test on the owner's PC: it overloads it (owner, 2026-11-24). Push the branch, open a PR, run CI on GitHub Actions (`gh workflow run ci --repo bezzad/Dalan --ref <branch>`; the repo is public, so minutes are free) and wait for it. When CI is green, do a final code review of the whole diff and merge it yourself; if not, fix, push and run CI again. Never merge with a red or skipped CI.
 12. Keep docs short and current.
 13. Legal duty: the real IP address, port and time of every user and bot are recorded (`admin.access_log`) to answer cyber police (FATA) complaints. Never read `X-Forwarded-For` yourself: use `HttpContext.Connection` (the host makes it real, only from `Dalan:TrustedProxies`). Every door that knows its caller calls `IAccessLog`; every sent SMS or email code is recorded with its phone number or email. A new proxy or load balancer goes into `Dalan:TrustedProxies`. Rules `SEC-10`, `SEC-11`, `ADM-01` to `ADM-04`, `ADM-16`; `docs/ARCHITECTURE.md` section 11.
 
