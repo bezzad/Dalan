@@ -65,21 +65,21 @@ At most `Sites:MaxPendingPerAddress` (start 200) requests from one client addres
 ## ADDED Requirements
 
 ### Requirement: SITE-22 Streamed answers
-The agent SHALL be able to send an answer in parts: the first message with status and headers and `more: true`, then parts, the last with `more: false`. The server SHALL write and flush each part to the visitor as it comes. Over WebSocket the server SHALL send an `ack` for each part written, and the agent SHALL have at most `Sites:StreamWindow` parts of one answer on the way; a part beyond the window SHALL end that answer. Over long polling, the `POST` of a part SHALL return after the part was written, and 410 `request_gone` when the request has ended. When the visitor leaves or the answer is stopped, the server SHALL send `cancel` (WebSocket) for it. `Sites:StreamChunkKb` and `Sites:StreamWindow` SHALL be given to the agent when it opens a session.
+The agent SHALL be able to send an answer in parts (`more: true` until the last). The server SHALL write and flush each part to the visitor at once, and SHALL give the agent `Sites:StreamChunkKb` and `Sites:StreamWindow` when it opens a session. At most the window of parts SHALL be on the way per answer; more SHALL end that answer. When the visitor leaves, the agent SHALL be told to stop.
 
 #### Scenario: Server-Sent Events
 - **GIVEN** an app that sends one event, waits, then sends another
 - **WHEN** a visitor opens the event stream through Dalan
-- **THEN** the visitor gets the first event before the second is sent
+- **THEN** the visitor gets the first event before the second is sent, and over WebSocket each written part gets an `ack`
 
 #### Scenario: Visitor leaves
 - **WHEN** a visitor closes a stream that is still running
-- **THEN** the agent gets `cancel` for it and stops reading the app
+- **THEN** over WebSocket the agent gets `cancel` for it and stops reading the app
 
 #### Scenario: Stream by long polling
 - **GIVEN** an agent on long polling
 - **WHEN** it streams an answer
-- **THEN** the visitor gets every part in order, and a part for a request that ended gets 410
+- **THEN** each part's `POST` returns after the part was written, the visitor gets every part in order, and a part for a request that ended gets 410 `request_gone`
 
 ### Requirement: SITE-23 A stopped agent is offline at once
 `DELETE /api/tunnel/sessions/{session}` SHALL end the caller's session. When the WebSocket of a session closes, the server SHALL end that session. Visitors waiting on an ended session SHALL get 502 `site_offline` at once.
