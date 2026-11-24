@@ -213,7 +213,7 @@ Two levels (owner, 2026-11-18):
 
 **SMS protection.** SMS costs money, so it is the main abuse target.
 
-- At most 1 SMS per minute per phone number, plus a daily cap per number.
+- At most 1 SMS per 2 minutes per phone number; after 5 in a day, 1 per 30 minutes (never for admin numbers). Never "try tomorrow".
 - A small proof-of-work challenge in the browser before each SMS. Valorians has a working example in `src/lib/pow.ts`.
 - A per-IP cap that is high and only a safety net. A company can have 1,000 people behind one IP, so IP cannot be the main control.
 - A global daily SMS budget with an alert to the admin.
@@ -467,8 +467,8 @@ None of these is planned work. They are recorded so the design does not block th
 | Setting | Starting value | Source |
 | --- | --- | --- |
 | Update expiry | 60 seconds | Owner |
-| SMS per phone number | 1 per minute | Owner |
-| SMS per phone number per day | 5 | Assumed |
+| SMS per phone number | 1 per 2 minutes | Owner (2026-11-24) |
+| SMS per phone number per day at the short wait | 5, then 1 per 30 minutes; admin numbers never | Owner (2026-11-24) |
 | SMS per client address per day | 200 | Assumed (high: a safety net only) |
 | SMS for the whole server per day | 1,000 | Assumed |
 | SMS code | 6 digits, 2 minutes, 5 tries | Assumed |

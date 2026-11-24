@@ -219,10 +219,11 @@ button.link { min-height: 0; padding: 4px 6px; border: 0; background: none; colo
 .login .card form { display: flex; flex-direction: column; gap: 8px; }
 .login .card > .links { justify-content: center; margin-inline: -24px; padding: 12px 24px 0; border-top: 1px solid var(--line); }
 .login .card > .links button.link { align-self: center; }
-.login a.button.github { gap: 10px; min-height: 44px; border-radius: 10px; background: var(--surface); font-weight: 600; }
-.login a.button.github svg { width: 20px; height: 20px; flex: none; }
-.or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 14px; }
-.or::before, .or::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+/* CLI-36: one equal button per way to log in. */
+.login .ways { display: flex; flex-direction: column; gap: 10px; }
+.login .ways .error:empty { display: none; }
+.login .button.way { gap: 10px; min-height: 44px; border-radius: 10px; background: var(--surface); font-weight: 600; }
+.login .button.way svg { width: 20px; height: 20px; flex: none; }
 .scroller > .card { max-width: none; flex: none; }
 
 /* Bot list */
