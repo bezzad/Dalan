@@ -3,7 +3,7 @@ import { codeBlock, tabbed } from "./codeView.ts";
 import { h } from "./dom.ts";
 import type { GuideStep } from "./guide.ts";
 import type { TextKey } from "./i18n.ts";
-import { stepStates } from "./steps.ts";
+import { stepStates, stepsDone } from "./steps.ts";
 
 export interface StepperOptions {
   steps: GuideStep[];
@@ -21,7 +21,8 @@ export function stepper(options: StepperOptions): HTMLElement {
   // A step the server cannot know is done only when the person presses "Next".
   const pressed = steps.map(() => false);
   let hasKey = options.hasKey ?? false;
-  const isDone = () => steps.map((step, i) => options.done[i] === true || pressed[i]! || (step.key === true && hasKey));
+  const keyStep = steps.findIndex(step => step.key === true);
+  const isDone = () => stepsDone(options.done, pressed, keyStep, hasKey);
   let open = Math.max(0, isDone().indexOf(false) === -1 ? steps.length - 1 : isDone().indexOf(false));
   const list = h("ol", { class: "stepper" });
 

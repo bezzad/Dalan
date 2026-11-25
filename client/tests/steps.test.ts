@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { botDone, siteDone, stepStates } from "../src/steps.ts";
+import { botDone, siteDone, stepStates, stepsDone } from "../src/steps.ts";
 import { defaultSiteName } from "../src/appGuide.ts";
 import { siteGuideSteps } from "../src/guide.ts";
 import { texts } from "../src/i18n.ts";
@@ -93,4 +93,13 @@ test("CLI-67 the default site name comes from the username, else the name, else 
   assert.equal(defaultSiteName({ username: "9lives", name: "Shopper" }), "shopper");
   assert.equal(defaultSiteName({ username: "ab", name: "x" }), "mysite");
   assert.equal(defaultSiteName({ username: "a".repeat(40), name: "x" }), "a".repeat(20));
+});
+
+test("CLI-64 Next does not make a step done that the server knows is not done", () => {
+  // Site guide: no key, no site online; the person pressed Next on every step.
+  assert.deepEqual(stepsDone([true, false, false, false, false], [true, true, true, true, false], 2, false), [true, false, false, false, false]);
+  // A key made in the modal makes the key step done.
+  assert.deepEqual(stepsDone([true, false, false, false, false], [false, false, false, false, false], 2, true), [true, false, true, false, false]);
+  // Bot guide: steps beyond what the server knows are done only by Next.
+  assert.deepEqual(stepsDone([true, true, true, true], [false, false, false, false, true, false], -1, false), [true, true, true, true, true, false]);
 });

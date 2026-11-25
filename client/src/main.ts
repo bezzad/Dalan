@@ -84,6 +84,8 @@ function guest(): void {
     history.replaceState(null, "", location.pathname);
     return showLogin();
   }
+  // CLI-63: a path kept for a GitHub round trip that was left halfway must not steer a later login.
+  takeNext();
   const page = pageFor(location.pathname, false);
   if (page === "login") return showLogin();
   show(publicPage(page as PublicPage, false));

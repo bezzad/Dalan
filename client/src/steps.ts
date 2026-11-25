@@ -12,6 +12,14 @@ export function stepStates(done: boolean[]): StepState[] {
 }
 
 /**
+ * CLI-64: what the stepper shows as done. "Next" (`pressed`) counts only for a step the server cannot know
+ * (beyond the `server` list); a step the server knows is done only by the server, or by a key made here (`keyStep`).
+ */
+export function stepsDone(server: boolean[], pressed: boolean[], keyStep: number, hasKey: boolean): boolean[] {
+  return pressed.map((next, i) => (i < server.length ? server[i] === true : next) || (i === keyStep && hasKey));
+}
+
+/**
  * CLI-64: the site guide (log in as a builder, install, key, try it, keep it online).
  * An online site proves the agent is installed, logged in and tried. "Keep it online" the server cannot know.
  */

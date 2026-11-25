@@ -37,9 +37,19 @@ public static class BrowserOpener
         return info;
     }
 
-    /// <summary>Opens the address. A failure (no program, no browser) is never an error for the agent: it returns false.</summary>
+    /// <summary>
+    /// Only an absolute http or https address with none of the characters cmd reads as its own
+    /// (<c>&amp; | ^ % &lt; &gt; "</c>, white space): on Windows the address passes through <c>cmd /c start</c>.
+    /// </summary>
+    public static bool IsSafeUrl(string url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri)
+        && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+        && url.IndexOfAny(['&', '|', '^', '%', '<', '>', '"', ' ', '\t', '\r', '\n']) < 0;
+
+    /// <summary>Opens the address. A failure (no program, no browser, an unsafe address) is never an error for the agent: it returns false.</summary>
     public static bool Open(string url, Action<ProcessStartInfo> start)
     {
+        if (!IsSafeUrl(url)) return false;
         try
         {
             start(StartInfo(url, OperatingSystem.IsWindows(), OperatingSystem.IsMacOS()));
