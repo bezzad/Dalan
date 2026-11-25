@@ -719,3 +719,28 @@ section.guide .code pre { max-height: none; }
 .not-found .gate .handle { fill: var(--bg); }
 .not-found h2 { font-size: var(--text-title); }
 .not-found p { max-width: 420px; color: var(--muted); }
+
+/* CLI-69: no zoom on a phone: no pinch or double tap, and a field of 16px or more is never zoomed on focus. */
+html { touch-action: manipulation; }
+input, textarea, select { font-size: 16px; }
+
+/* CLI-62: the gate above the login card, and the line between the password form and the other ways. */
+.login-logo { flex: none; display: flex; justify-content: center; }
+.login-logo .gate { width: 64px; height: 64px; }
+.login .or { text-align: center; color: var(--muted); font-size: 14px; }
+
+/* CLI-64: the guide as a stepper; a done step is green and closed. CLI-65: the key modal. */
+.stepper { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.stepper .step { padding: 0; }
+.stepper .step-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; border: 0; background: transparent; text-align: start; cursor: pointer; }
+.stepper .step-mark { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); font-size: 14px; }
+.stepper .step.current .step-mark { border-color: var(--brand); color: var(--brand); }
+.stepper .step.done { border-color: var(--brand); }
+.stepper .step.done .step-mark { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+.stepper .step-title { flex: 1; font-weight: 600; }
+.stepper .step-done { color: var(--brand); font-size: 14px; }
+.stepper .step-show { color: var(--muted); font-size: 14px; }
+.stepper .step-body { display: flex; flex-direction: column; gap: 12px; padding: 0 16px 16px; }
+dialog.modal { width: min(560px, calc(100% - 32px)); padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); }
+dialog.modal::backdrop { background: rgb(0 0 0 / .5); }
+dialog.modal > h2 { margin-block-end: 12px; }

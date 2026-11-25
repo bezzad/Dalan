@@ -14,8 +14,8 @@ The Sites service SHALL keep sites in the PostgreSQL schema `sites`, one row per
 A site name SHALL be 3 to `Sites:MaxNameLength` characters of `a-z`, `0-9` and `-`, not starting or ending with `-`, compared and stored in lower case. A name in `Sites:ReservedNames` SHALL be refused.
 
 #### Scenario: Good name in capitals
-- **WHEN** a builder opens a tunnel for `LevelWise`
-- **THEN** the site `levelwise` is made
+- **WHEN** a builder opens a tunnel for `MySite`
+- **THEN** the site `mysite` is made
 
 #### Scenario: Bad or reserved name
 - **WHEN** a builder opens a tunnel for `-x`, `a_b` or `api`
@@ -29,8 +29,8 @@ Opening a tunnel SHALL need a session or an access key of an approved builder or
 - **THEN** the call fails with 403 `not_builder`
 
 #### Scenario: Name of another builder
-- **GIVEN** builder A owns `levelwise`
-- **WHEN** builder B opens a tunnel for `levelwise`
+- **GIVEN** builder A owns `mysite`
+- **WHEN** builder B opens a tunnel for `mysite`
 - **THEN** the call fails with 409 `name_taken`
 
 #### Scenario: Too many sites
@@ -42,8 +42,8 @@ Opening a tunnel SHALL need a session or an access key of an approved builder or
 Opening a tunnel SHALL return a session id and the public address `<scheme>://<name>.<Sites:Domain>` of each site. A newer session of a site SHALL take that site from the older session. A session left with no site SHALL end, and its WebSocket SHALL be closed. A call on an unknown or ended session SHALL fail with 404 `session_ended`. With `Sites:Domain` empty, opening a tunnel SHALL fail with 503 `sites_off`.
 
 #### Scenario: Second agent for the same site
-- **GIVEN** an agent with an open session for `levelwise` only
-- **WHEN** a second agent opens a session for `levelwise`
+- **GIVEN** an agent with an open session for `mysite` only
+- **WHEN** a second agent opens a session for `mysite`
 - **THEN** visitor requests go to the second agent, and the first agent's calls get `session_ended`
 
 #### Scenario: Sites off
@@ -55,16 +55,16 @@ Opening a tunnel SHALL return a session id and the public address `<scheme>://<n
 `GET /api/tunnel/sessions/{session}/ws` SHALL accept a WebSocket from the session's owner. The server SHALL send each visitor request as one text message and take each answer as one text message.
 
 #### Scenario: Request over WebSocket
-- **GIVEN** an agent connected by WebSocket for `levelwise`
-- **WHEN** a visitor asks `levelwise` for `/hello?x=1`
+- **GIVEN** an agent connected by WebSocket for `mysite`
+- **WHEN** a visitor asks `mysite` for `/hello?x=1`
 - **THEN** the agent gets the method, path, query, headers and body, and the visitor gets the agent's status, headers and body
 
 ### Requirement: SITE-06 Long-polling transport
 `GET /api/tunnel/sessions/{session}/requests` SHALL return the waiting requests at once, or wait up to `timeout` seconds (at most `Sites:PollTimeoutSeconds`) and return an empty list. `POST /api/tunnel/sessions/{session}/responses` SHALL take one answer. An answer to a request that already ended SHALL be dropped quietly.
 
 #### Scenario: Request by long polling
-- **GIVEN** an agent that polls for `levelwise`
-- **WHEN** a visitor asks `levelwise` for `/`
+- **GIVEN** an agent that polls for `mysite`
+- **WHEN** a visitor asks `mysite` for `/`
 - **THEN** the poll returns the request, and the answer the agent posts reaches the visitor
 
 #### Scenario: Nothing to do
@@ -75,7 +75,7 @@ Opening a tunnel SHALL return a session id and the public address `<scheme>://<n
 A session SHALL count as alive while its WebSocket is open or a poll waits, and for `Sites:SessionIdleSeconds` after its last poll. After that its sites SHALL be offline.
 
 #### Scenario: Agent stops polling
-- **GIVEN** an agent that polled once for `levelwise`
+- **GIVEN** an agent that polled once for `mysite`
 - **WHEN** `Sites:SessionIdleSeconds` pass with no poll and a visitor comes
 - **THEN** the visitor gets the offline answer
 
@@ -98,7 +98,7 @@ A request whose host is `<name>.<Sites:Domain>` SHALL go to that site's session 
 A request to a site with no alive session SHALL get 502 with a short page that says the site's computer is off (`site_offline`). A request to a name that is not a site SHALL get 404 (`site_not_found`).
 
 #### Scenario: Agent not running
-- **GIVEN** the site `levelwise` with no agent
+- **GIVEN** the site `mysite` with no agent
 - **WHEN** a visitor opens it
 - **THEN** the answer is 502 and the page names `site_offline`
 
@@ -154,8 +154,8 @@ A user who is suspended or no longer a builder SHALL lose their tunnels: new cal
 `GET /api/sites` SHALL list the caller's sites with name, address and online state, with the sites domain and the agent's server address for the guide. `DELETE /api/sites/{id}` SHALL delete a site of the caller (or any site, for an admin), end its session and free its name.
 
 #### Scenario: List and delete
-- **GIVEN** a builder with the site `levelwise` and its agent connected
-- **WHEN** they list their sites, then delete `levelwise`
+- **GIVEN** a builder with the site `mysite` and its agent connected
+- **WHEN** they list their sites, then delete `mysite`
 - **THEN** the list shows it online, and after the delete the list is empty and a visitor gets 404
 
 #### Scenario: Not your site
@@ -166,8 +166,8 @@ A user who is suspended or no longer a builder SHALL lose their tunnels: new cal
 `GET /api/sites/tls?domain=<host>` SHALL answer 200 only when the host is `name.<Sites:Domain>` and the name is claimed, or the host is `Sites:DemoHost` and demos are on, and only to a caller on the server itself (the front proxy asks before it gets a certificate, OPS-15). Every other call SHALL answer 404.
 
 #### Scenario: Claimed and unknown names
-- **GIVEN** the claimed site `levelwise`
-- **WHEN** the front proxy asks about `levelwise.<sites domain>`, then `nobody.<sites domain>`
+- **GIVEN** the claimed site `mysite`
+- **WHEN** the front proxy asks about `mysite.<sites domain>`, then `nobody.<sites domain>`
 - **THEN** the answers are 200, then 404
 
 #### Scenario: The demo host
@@ -175,7 +175,7 @@ A user who is suspended or no longer a builder SHALL lose their tunnels: new cal
 - **THEN** the answer is 200 when demos are on, else 404
 
 #### Scenario: From the internet
-- **WHEN** a client on the internet asks about `levelwise.<sites domain>`
+- **WHEN** a client on the internet asks about `mysite.<sites domain>`
 - **THEN** the answer is 404
 
 ### Requirement: SITE-18 Demo link

@@ -35,10 +35,10 @@ public class AgentTests(PostgresServer postgres)
     [Trait("Rule", "AGT-03")]
     public void AGT03_command_line_reads_port_and_name_pairs()
     {
-        var command = CommandLine.Parse(["http", "3000", "--name", "levelwise", "8080", "--name", "shop", "9000"]);
+        var command = CommandLine.Parse(["http", "3000", "--name", "mysite", "8080", "--name", "shop", "9000"]);
 
         Assert.Equal(CommandKind.Http, command.Kind);
-        Assert.Equal([(3000, "levelwise"), (8080, "shop"), (9000, null)], command.Sites);
+        Assert.Equal([(3000, "mysite"), (8080, "shop"), (9000, null)], command.Sites);
         Assert.Throws<AgentStopException>(() => CommandLine.Parse(["http", "port"]));
         Assert.Throws<AgentStopException>(() => CommandLine.Parse(["http"]));
     }
@@ -49,12 +49,12 @@ public class AgentTests(PostgresServer postgres)
     {
         var (first, saved) = CommandLine.Resolve([(3000, null)], AgentConfig.Empty);
         var (second, _) = CommandLine.Resolve([(3000, null)], saved);
-        var (renamed, renamedConfig) = CommandLine.Resolve([(3000, "Levelwise")], saved);
+        var (renamed, renamedConfig) = CommandLine.Resolve([(3000, "Mysite")], saved);
 
         Assert.Matches("^[a-z][a-z0-9]{7}$", first[0].Name);
         Assert.Equal(first[0].Name, second[0].Name);
-        Assert.Equal(new SiteEntry("levelwise", 3000), Assert.Single(renamed));
-        Assert.Equal(new SiteEntry("levelwise", 3000), Assert.Single(renamedConfig.Sites));
+        Assert.Equal(new SiteEntry("mysite", 3000), Assert.Single(renamed));
+        Assert.Equal(new SiteEntry("mysite", 3000), Assert.Single(renamedConfig.Sites));
     }
 
     [Fact]
@@ -68,13 +68,13 @@ public class AgentTests(PostgresServer postgres)
             Content = new StringContent($"port {request.RequestUri!.Port}"),
         }));
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
-        var run = app.RealAgent(key, local).RunAsync([new("levelwise", 3000), new("shop", 8080)], stop.Token);
+        var run = app.RealAgent(key, local).RunAsync([new("mysite", 3000), new("shop", 8080)], stop.Token);
         await browser.WaitOnlineAsync("shop");
 
-        var levelwise = await app.Visitor("levelwise").GetStringAsync("/", Cancel);
+        var mysite = await app.Visitor("mysite").GetStringAsync("/", Cancel);
         var shop = await app.Visitor("shop").GetStringAsync("/", Cancel);
 
-        Assert.Equal("port 3000", levelwise);
+        Assert.Equal("port 3000", mysite);
         Assert.Equal("port 8080", shop);
         await stop.CancelAsync();
         await run;
@@ -109,9 +109,9 @@ public class AgentTests(PostgresServer postgres)
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
         var agent = app.RealAgent(key, FakeLocalApp.Text("hello"));
 
-        var run = agent.RunAsync([new("levelwise", 3000)], stop.Token);
-        await browser.WaitOnlineAsync("levelwise");
-        var page = await app.Visitor("levelwise").GetStringAsync("/", Cancel);
+        var run = agent.RunAsync([new("mysite", 3000)], stop.Token);
+        await browser.WaitOnlineAsync("mysite");
+        var page = await app.Visitor("mysite").GetStringAsync("/", Cancel);
 
         Assert.Equal("websocket", agent.Transport);
         Assert.Equal("hello", page);
@@ -129,9 +129,9 @@ public class AgentTests(PostgresServer postgres)
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
         var agent = app.RealAgent(key, FakeLocalApp.Text("by polling"), output, webSocket: false);
 
-        var run = agent.RunAsync([new("levelwise", 3000)], stop.Token);
-        await browser.WaitOnlineAsync("levelwise");
-        var page = await app.Visitor("levelwise").GetStringAsync("/", Cancel);
+        var run = agent.RunAsync([new("mysite", 3000)], stop.Token);
+        await browser.WaitOnlineAsync("mysite");
+        var page = await app.Visitor("mysite").GetStringAsync("/", Cancel);
 
         Assert.Equal("polling", agent.Transport);
         Assert.Equal("by polling", page);
@@ -147,16 +147,16 @@ public class AgentTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (browser, _, key) = await app.BuilderAsync();
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
-        var run = app.RealAgent(key, FakeLocalApp.Text("back")).RunAsync([new("levelwise", 3000)], stop.Token);
-        await browser.WaitOnlineAsync("levelwise");
+        var run = app.RealAgent(key, FakeLocalApp.Text("back")).RunAsync([new("mysite", 3000)], stop.Token);
+        await browser.WaitOnlineAsync("mysite");
         var hub = app.Services.GetRequiredService<TunnelHub>();
-        var first = hub.Find("levelwise")!;
+        var first = hub.Find("mysite")!;
 
         hub.End(first);
-        await browser.WaitOnlineAsync("levelwise");
+        await browser.WaitOnlineAsync("mysite");
 
-        Assert.NotSame(first, hub.Find("levelwise"));
-        Assert.Equal("back", await app.Visitor("levelwise").GetStringAsync("/", Cancel));
+        Assert.NotSame(first, hub.Find("mysite"));
+        Assert.Equal("back", await app.Visitor("mysite").GetStringAsync("/", Cancel));
         await stop.CancelAsync();
         await run;
     }
@@ -169,7 +169,7 @@ public class AgentTests(PostgresServer postgres)
         var (_, _, key) = await app.BuilderAsync();
 
         var badKey = await Assert.ThrowsAsync<AgentStopException>(() =>
-            app.RealAgent("dalan_wrong", FakeLocalApp.Text("")).RunAsync([new("levelwise", 3000)], Cancel));
+            app.RealAgent("dalan_wrong", FakeLocalApp.Text("")).RunAsync([new("mysite", 3000)], Cancel));
         var badName = await Assert.ThrowsAsync<AgentStopException>(() =>
             app.RealAgent(key, FakeLocalApp.Text("")).RunAsync([new("api", 3000)], Cancel));
 
@@ -190,9 +190,9 @@ public class AgentTests(PostgresServer postgres)
             return Task.FromResult(answer);
         });
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
-        var run = app.RealAgent(key, local).RunAsync([new("levelwise", 3000)], stop.Token);
-        await browser.WaitOnlineAsync("levelwise");
-        var visitor = app.Visitor("levelwise");
+        var run = app.RealAgent(key, local).RunAsync([new("mysite", 3000)], stop.Token);
+        await browser.WaitOnlineAsync("mysite");
+        var visitor = app.Visitor("mysite");
         visitor.DefaultRequestHeaders.Add("X-Custom", "1");
 
         var response = await visitor.PostAsync("/items?x=1", new StringContent("{\"a\":1}", System.Text.Encoding.UTF8, "application/json"), Cancel);
@@ -201,7 +201,7 @@ public class AgentTests(PostgresServer postgres)
         Assert.Equal("http://localhost:3000/items?x=1", request.RequestUri!.ToString());
         Assert.Equal("localhost:3000", request.Headers.Host);
         Assert.Equal("1", request.Headers.GetValues("X-Custom").Single());
-        Assert.Equal($"levelwise.{Domain}", request.Headers.GetValues("X-Forwarded-Host").Single());
+        Assert.Equal($"mysite.{Domain}", request.Headers.GetValues("X-Forwarded-Host").Single());
         Assert.Equal("application/json; charset=utf-8", request.Content!.Headers.ContentType!.ToString());
         Assert.Equal("{\"a\":1}", body);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -219,10 +219,10 @@ public class AgentTests(PostgresServer postgres)
         var (browser, _, key) = await app.BuilderAsync();
         var down = new FakeLocalApp(_ => throw new HttpRequestException("Connection refused"));
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
-        var run = app.RealAgent(key, down).RunAsync([new("levelwise", 3000)], stop.Token);
-        await browser.WaitOnlineAsync("levelwise");
+        var run = app.RealAgent(key, down).RunAsync([new("mysite", 3000)], stop.Token);
+        await browser.WaitOnlineAsync("mysite");
 
-        var response = await app.Visitor("levelwise").GetAsync("/", Cancel);
+        var response = await app.Visitor("mysite").GetAsync("/", Cancel);
 
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
         Assert.Contains("port 3000", await response.Content.ReadAsStringAsync(Cancel), StringComparison.Ordinal);
@@ -236,7 +236,7 @@ public class AgentTests(PostgresServer postgres)
     {
         using var local = new LocalForwarder(FakeLocalApp.Text("hello"));
         var sent = new List<Dalan.Agent.TunnelResponse>();
-        var request = new Dalan.Agent.TunnelRequest(7, "levelwise", "GET", "/", [], null);
+        var request = new Dalan.Agent.TunnelRequest(7, "mysite", "GET", "/", [], null);
 
         await local.ForwardAsync(request, 3000, 1024 * 1024, 64 * 1024, (message, _, _) =>
         {
@@ -263,11 +263,11 @@ public class AgentTests(PostgresServer postgres)
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(request.RequestUri.AbsolutePath) };
         });
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
-        var run = app.RealAgent(key, local).RunAsync([new("levelwise", 3000)], stop.Token);
-        await browser.WaitOnlineAsync("levelwise");
+        var run = app.RealAgent(key, local).RunAsync([new("mysite", 3000)], stop.Token);
+        await browser.WaitOnlineAsync("mysite");
 
-        var slow = app.Visitor("levelwise").GetStringAsync("/slow", Cancel);
-        var fast = await app.Visitor("levelwise").GetStringAsync("/fast", Cancel);
+        var slow = app.Visitor("mysite").GetStringAsync("/slow", Cancel);
+        var fast = await app.Visitor("mysite").GetStringAsync("/fast", Cancel);
 
         Assert.Equal("/fast", fast);
         Assert.False(slow.IsCompleted);

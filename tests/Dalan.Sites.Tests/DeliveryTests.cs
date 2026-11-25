@@ -49,15 +49,15 @@ public class DeliveryTests(PostgresServer postgres)
     {
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
-        await app.Agent(key).SessionAsync("levelwise");
+        await app.Agent(key).SessionAsync("mysite");
         var server = DalanApp.From(app.CreateClient(), "127.0.0.1:40000");
         var outside = DalanApp.From(app.CreateClient(), "5.6.7.8:1234");
 
-        Assert.Equal(HttpStatusCode.OK, (await server.GetAsync($"/api/sites/tls?domain=levelwise.{Domain}", Cancel)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await server.GetAsync($"/api/sites/tls?domain=mysite.{Domain}", Cancel)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await server.GetAsync($"/api/sites/tls?domain=nobody.{Domain}", Cancel)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await server.GetAsync($"/api/sites/tls?domain=a.levelwise.{Domain}", Cancel)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await server.GetAsync("/api/sites/tls?domain=levelwise.example.com", Cancel)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await outside.GetAsync($"/api/sites/tls?domain=levelwise.{Domain}", Cancel)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await server.GetAsync($"/api/sites/tls?domain=a.mysite.{Domain}", Cancel)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await server.GetAsync("/api/sites/tls?domain=mysite.example.com", Cancel)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await outside.GetAsync($"/api/sites/tls?domain=mysite.{Domain}", Cancel)).StatusCode);
     }
 
     [Fact]

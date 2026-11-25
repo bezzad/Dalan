@@ -23,10 +23,10 @@ public class StreamTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
+        var session = await agent.SessionAsync("mysite");
 
         var poll = agent.PollAsync(session);
-        var call = app.Visitor("levelwise").SendAsync(new HttpRequestMessage(new HttpMethod(method), "/app.css"), Cancel);
+        var call = app.Visitor("mysite").SendAsync(new HttpRequestMessage(new HttpMethod(method), "/app.css"), Cancel);
         var request = Assert.Single(await poll);
         await agent.AnswerAsync(session, request.GetProperty("id").GetInt64(), status, "the app sent a body anyway",
             new Dictionary<string, string[]> { ["ETag"] = ["\"v1\""] });
@@ -44,15 +44,15 @@ public class StreamTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres, ("Sites:Domain", Domain + ":5000"), ("Sites:Scheme", "http"));
         var (_, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var opened = await (await agent.OpenAsync("levelwise")).Content.ReadFromJsonAsync<JsonElement>(Cancel);
+        var opened = await (await agent.OpenAsync("mysite")).Content.ReadFromJsonAsync<JsonElement>(Cancel);
         var session = opened.GetProperty("session").GetString()!;
 
         var poll = agent.PollAsync(session);
-        var call = app.Visitor("levelwise").GetAsync("/", Cancel);
+        var call = app.Visitor("mysite").GetAsync("/", Cancel);
         var request = Assert.Single(await poll);
         await agent.AnswerAsync(session, request.GetProperty("id").GetInt64(), 200, "home");
 
-        Assert.Equal($"http://levelwise.{Domain}:5000", opened.GetProperty("sites")[0].GetProperty("url").GetString());
+        Assert.Equal($"http://mysite.{Domain}:5000", opened.GetProperty("sites")[0].GetProperty("url").GetString());
         Assert.Equal("home", await (await call).Content.ReadAsStringAsync(Cancel));
     }
 
@@ -63,10 +63,10 @@ public class StreamTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
+        var session = await agent.SessionAsync("mysite");
 
         var poll = agent.PollAsync(session);
-        var call = app.Visitor("levelwise").GetAsync("/events", HttpCompletionOption.ResponseHeadersRead, Cancel);
+        var call = app.Visitor("mysite").GetAsync("/events", HttpCompletionOption.ResponseHeadersRead, Cancel);
         var id = Assert.Single(await poll).GetProperty("id").GetInt64();
         await agent.PartAsync(session, id, 200, "a", more: true);
         var response = await call;
@@ -85,11 +85,11 @@ public class StreamTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres, ("Sites:MaxAnswerMb", "1"));
         var (_, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
+        var session = await agent.SessionAsync("mysite");
         var half = new string('x', 512 * 1024);
 
         var poll = agent.PollAsync(session);
-        var call = app.Visitor("levelwise").GetAsync("/endless", HttpCompletionOption.ResponseHeadersRead, Cancel);
+        var call = app.Visitor("mysite").GetAsync("/endless", HttpCompletionOption.ResponseHeadersRead, Cancel);
         var id = Assert.Single(await poll).GetProperty("id").GetInt64();
         await agent.PartAsync(session, id, 200, half, more: true);
         var response = await call;
@@ -112,8 +112,8 @@ public class StreamTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres, ("Sites:MaxPendingPerAddress", "2"), ("Sites:MaxQueuedPerAddress", "1"));
         var (_, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
-        var busy = app.Visitor("levelwise", "5.6.7.8:1000");
+        var session = await agent.SessionAsync("mysite");
+        var busy = app.Visitor("mysite", "5.6.7.8:1000");
 
         var first = busy.GetAsync("/1", Cancel);
         var second = busy.GetAsync("/2", Cancel);
@@ -122,7 +122,7 @@ public class StreamTests(PostgresServer postgres)
         var third = busy.GetAsync("/3", Cancel);
         await Task.Delay(200, Cancel);
         var fourth = await busy.GetAsync("/4", Cancel);
-        var other = app.Visitor("levelwise", "9.9.9.9:1000").GetAsync("/5", Cancel);
+        var other = app.Visitor("mysite", "9.9.9.9:1000").GetAsync("/5", Cancel);
         var otherRequest = Assert.Single(await agent.PollAsync(session));
         await agent.AnswerAsync(session, otherRequest.GetProperty("id").GetInt64(), 200, "other");
         Assert.False(third.IsCompleted);
@@ -146,8 +146,8 @@ public class StreamTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres, ("Sites:MaxPendingPerAddress", "1"));
         var (_, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
-        var busy = app.Visitor("levelwise", "5.6.7.8:1000");
+        var session = await agent.SessionAsync("mysite");
+        var busy = app.Visitor("mysite", "5.6.7.8:1000");
 
         // The first holds the one place as a stream, which has no timeout of its own.
         var first = busy.GetAsync("/1", HttpCompletionOption.ResponseHeadersRead, Cancel);
@@ -172,10 +172,10 @@ public class StreamTests(PostgresServer postgres)
     {
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
-        var session = await app.Agent(key).SessionAsync("levelwise");
+        var session = await app.Agent(key).SessionAsync("mysite");
         using var socket = await ConnectAsync(app, key, session);
 
-        var call = app.Visitor("levelwise").GetAsync("/events", HttpCompletionOption.ResponseHeadersRead, Cancel);
+        var call = app.Visitor("mysite").GetAsync("/events", HttpCompletionOption.ResponseHeadersRead, Cancel);
         var id = (await ReceiveAsync(socket)).GetProperty("id").GetInt64();
         await SendAsync(socket, new { id, status = 200, headers = new Dictionary<string, string[]> { ["Content-Type"] = ["text/event-stream"] },
             body = Base64("data: 1\n\n"), more = true });
@@ -199,11 +199,11 @@ public class StreamTests(PostgresServer postgres)
     {
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
-        var session = await app.Agent(key).SessionAsync("levelwise");
+        var session = await app.Agent(key).SessionAsync("mysite");
         using var socket = await ConnectAsync(app, key, session);
         using var leave = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
 
-        var call = app.Visitor("levelwise").GetAsync("/events", HttpCompletionOption.ResponseHeadersRead, leave.Token);
+        var call = app.Visitor("mysite").GetAsync("/events", HttpCompletionOption.ResponseHeadersRead, leave.Token);
         var id = (await ReceiveAsync(socket)).GetProperty("id").GetInt64();
         await SendAsync(socket, new { id, status = 200, body = Base64("data: 1\n\n"), more = true });
         var response = await call;
@@ -221,10 +221,10 @@ public class StreamTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
+        var session = await agent.SessionAsync("mysite");
 
         var poll = agent.PollAsync(session);
-        var call = app.Visitor("levelwise").GetAsync("/file", HttpCompletionOption.ResponseHeadersRead, Cancel);
+        var call = app.Visitor("mysite").GetAsync("/file", HttpCompletionOption.ResponseHeadersRead, Cancel);
         var id = Assert.Single(await poll).GetProperty("id").GetInt64();
         await agent.PartAsync(session, id, 200, "a", more: true);
         var response = await call;
@@ -244,7 +244,7 @@ public class StreamTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres, ("Sites:StreamChunkKb", "32"), ("Sites:StreamWindow", "4"));
         var (_, _, key) = await app.BuilderAsync();
 
-        var opened = await (await app.Agent(key).OpenAsync("levelwise")).Content.ReadFromJsonAsync<JsonElement>(Cancel);
+        var opened = await (await app.Agent(key).OpenAsync("mysite")).Content.ReadFromJsonAsync<JsonElement>(Cancel);
 
         Assert.Equal(32, opened.GetProperty("stream_chunk_kb").GetInt32());
         Assert.Equal(4, opened.GetProperty("stream_window").GetInt32());
@@ -257,13 +257,13 @@ public class StreamTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (browser, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
+        var session = await agent.SessionAsync("mysite");
         var poll = agent.PollAsync(session);
-        var waiting = app.Visitor("levelwise").GetAsync("/", Cancel);
+        var waiting = app.Visitor("mysite").GetAsync("/", Cancel);
         Assert.Single(await poll);
 
         var ended = await agent.DeleteAsync($"/api/tunnel/sessions/{session}", Cancel);
-        var next = await app.Visitor("levelwise").GetAsync("/", Cancel);
+        var next = await app.Visitor("mysite").GetAsync("/", Cancel);
         var again = await agent.DeleteAsync($"/api/tunnel/sessions/{session}", Cancel);
 
         Assert.Equal(HttpStatusCode.NoContent, ended.StatusCode);
@@ -271,7 +271,7 @@ public class StreamTests(PostgresServer postgres)
         Assert.Equal(HttpStatusCode.BadGateway, next.StatusCode);
         Assert.Equal("site_offline", next.SiteError());
         Assert.Equal(HttpStatusCode.NotFound, again.StatusCode);
-        await browser.WaitOnlineAsync("levelwise", online: false);
+        await browser.WaitOnlineAsync("mysite", online: false);
     }
 
     [Fact]
@@ -280,14 +280,14 @@ public class StreamTests(PostgresServer postgres)
     {
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
-        var session = await app.Agent(key).SessionAsync("levelwise");
+        var session = await app.Agent(key).SessionAsync("mysite");
         var socket = await ConnectAsync(app, key, session);
         var hub = app.Services.GetRequiredService<TunnelHub>();
 
         socket.Abort(); // The agent's connection is lost.
         socket.Dispose();
-        for (var i = 0; i < 200 && hub.Find("levelwise") is not null; i++) await Task.Delay(10, Cancel);
-        var response = await app.Visitor("levelwise").GetAsync("/", Cancel);
+        for (var i = 0; i < 200 && hub.Find("mysite") is not null; i++) await Task.Delay(10, Cancel);
+        var response = await app.Visitor("mysite").GetAsync("/", Cancel);
 
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
         Assert.Equal("site_offline", response.SiteError());
@@ -301,23 +301,23 @@ public class StreamTests(PostgresServer postgres)
         var (browser, _, _) = await app.BuilderAsync("A");
         var (other, _, _) = await app.BuilderAsync("B");
 
-        var made = await browser.PostAsJsonAsync("/api/sites", new { name = "LevelWise" }, Cancel);
-        var again = await browser.PostAsJsonAsync("/api/sites", new { name = "levelwise" }, Cancel);
-        var taken = await other.PostAsJsonAsync("/api/sites", new { name = "levelwise" }, Cancel);
+        var made = await browser.PostAsJsonAsync("/api/sites", new { name = "MySite" }, Cancel);
+        var again = await browser.PostAsJsonAsync("/api/sites", new { name = "mysite" }, Cancel);
+        var taken = await other.PostAsJsonAsync("/api/sites", new { name = "mysite" }, Cancel);
         var bad = await browser.PostAsJsonAsync("/api/sites", new { name = "api" }, Cancel);
         var list = await browser.GetFromJsonAsync<JsonElement>("/api/sites", Cancel);
         var site = await made.Content.ReadFromJsonAsync<JsonElement>(Cancel);
 
         Assert.Equal(HttpStatusCode.Created, made.StatusCode);
-        Assert.Equal("levelwise", site.GetProperty("name").GetString());
-        Assert.Equal($"https://levelwise.{Domain}", site.GetProperty("url").GetString());
+        Assert.Equal("mysite", site.GetProperty("name").GetString());
+        Assert.Equal($"https://mysite.{Domain}", site.GetProperty("url").GetString());
         Assert.False(site.GetProperty("online").GetBoolean());
         Assert.Equal(HttpStatusCode.OK, again.StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, taken.StatusCode);
         Assert.Equal("name_taken", await taken.ErrorCodeAsync());
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
         Assert.Equal("bad_name", await bad.ErrorCodeAsync());
-        Assert.Equal("levelwise", Assert.Single(list.GetProperty("sites").EnumerateArray()).GetProperty("name").GetString());
+        Assert.Equal("mysite", Assert.Single(list.GetProperty("sites").EnumerateArray()).GetProperty("name").GetString());
     }
 
     private static string Base64(string text) => Convert.ToBase64String(Encoding.UTF8.GetBytes(text));

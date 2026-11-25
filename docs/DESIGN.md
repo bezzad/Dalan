@@ -48,7 +48,7 @@ Identity is likely the easiest pillar to sell. SMS OTP login is a real pain for 
 **Rollout phases:**
 
 1. **Personal tool.** The owner and his own bots (ArcaneBot first).
-2. **Known apps.** A few apps from people he knows: Valorians (a friend's game), Levelwise.
+2. **Known apps.** A few apps from people he knows: a friend's game and a personal site.
 3. **Public.** Builders who can write an app, often with AI, but have no backend or DevOps skills.
 
 The service is free for now. Registration is public from day one because the domain is public, so abuse protection is part of version 1.
@@ -214,7 +214,7 @@ Two levels (owner, 2026-11-18):
 **SMS protection.** SMS costs money, so it is the main abuse target.
 
 - At most 1 SMS per 2 minutes per phone number; after 5 in a day, 1 per 30 minutes (never for admin numbers). Never "try tomorrow".
-- A small proof-of-work challenge in the browser before each SMS. Valorians has a working example in `src/lib/pow.ts`.
+- A small proof-of-work challenge in the browser before each SMS. The partner game has a working example in `src/lib/pow.ts`.
 - A per-IP cap that is high and only a safety net. A company can have 1,000 people behind one IP, so IP cannot be the main control.
 - A global daily SMS budget with an alert to the admin.
 - The SMS provider must be inside Iran.
@@ -287,7 +287,7 @@ In Layer 2 the builder's frontend and backend stay unchanged. The page is served
 2. Otherwise the server puts the HTTP request in the bot's queue with a request ID.
 3. The Agent reads it, calls the local backend, and returns the response.
 
-**Dalan Agent.** A small program from Dalan that the builder runs beside the unchanged backend: `dalan login <key>` once, then `dalan http 3000 --name levelwise` (more `<port> --name <name>` pairs for more sites in one agent; `dalan start` runs the saved ones). It connects out to `tunnel.dalanet.ir` by WebSocket, or by long polling when WebSocket is blocked. The builder writes no polling code. Built in Layer 2 milestone 1 (decisions 60 to 63). `dalan http` is for trying: it runs while the terminal is open. `dalan service install` keeps the saved sites online in the background and after a restart; `dalan status` shows them. A name can be reserved in "My apps" before any agent runs (milestone 15).
+**Dalan Agent.** A small program from Dalan that the builder runs beside the unchanged backend: `dalan login <key>` once, then `dalan http 3000 --name mysite` (more `<port> --name <name>` pairs for more sites in one agent; `dalan start` runs the saved ones). It connects out to `tunnel.dalanet.ir` by WebSocket, or by long polling when WebSocket is blocked. The builder writes no polling code. Built in Layer 2 milestone 1 (decisions 60 to 63). `dalan http` is for trying: it runs while the terminal is open. `dalan service install` keeps the saved sites online in the background and after a restart; `dalan status` shows them. A name can be reserved in "My apps" before any agent runs (milestone 15).
 
 **Demo link.** `dalan demo 3000` gives a test link with no name to claim: `https://dalans.ir/<random id>/`, open for 24 hours, at most 3 live demos per builder, ended at once by Ctrl+C. The first visit sets a cookie, so the app's own links (`/app.js`) keep going to the same demo. All demos share one origin, so a demo is for tests, not for real accounts (decision 67).
 
@@ -311,12 +311,12 @@ In Layer 2 the builder's frontend and backend stay unchanged. The page is served
 - **Inspector and replay.** The builder sees each request that came to the site (for example a webhook) with its headers, body and response, and can send it again to the home machine.
 - **Basic Auth and IP allowlist.** The builder can put a password or a list of allowed IP ranges in front of a site. Private companies often allow only fixed IP ranges.
 
-**Test case: Valorians** (repository `parsakhosravani/valorians`, read on 2026-11-16).
+**Test case: a partner game** (its repository, read on 2026-11-16).
 
 - Next.js 16 with client-rendered screens, 83 API routes, a SQLite database, and one scheduled job every minute.
 - No WebSocket. Screens poll every 15 to 60 seconds, which fits the queue model.
 - The owner reports a build output of about 110 MB.
-- It already runs on its own server in Iran (`valorians.ir`). For this game Dalan would remove server cost and provide identity; it is not a rescue.
+- It already runs on its own server in Iran (its own domain). For this game Dalan would remove server cost and provide identity; it is not a rescue.
 - Static export of its frontend has not been tested.
 
 ## 12. AI-friendly by design
@@ -369,7 +369,7 @@ Do not advertise "free tunnel". Cloudflare does that better for anyone with open
 
 ## 14. Infrastructure and deployment facts for Iran
 
-These facts shaped the design. Several were learned the hard way by the Valorians project (`docs/IRAN_SERVER.md` in its repository).
+These facts shaped the design. Several were learned the hard way by the partner game project (`docs/IRAN_SERVER.md` in its repository).
 
 **Domain and DNS**
 
@@ -381,7 +381,7 @@ These facts shaped the design. Several were learned the hard way by the Valorian
 **Server**
 
 - Starting size: 2 vCPU, 4 GB RAM, 40 to 80 GB SSD, newest Ubuntu LTS the provider offers, data centre in Iran.
-- Providers considered: ParsPack and ArvanCloud. Valorians runs on ParsPack at a similar size. Compare traffic pricing, extra disk and domestic DNS before buying.
+- Providers considered: ParsPack and ArvanCloud. The partner game runs on ParsPack at a similar size. Compare traffic pricing, extra disk and domestic DNS before buying.
 - Development and first tests run on the owner's server in the US. That proves correctness only; real speed must be measured on the Iran server.
 
 **Deployment**
@@ -504,7 +504,7 @@ None of these is planned work. They are recorded so the design does not block th
 | Access key lifetime | 90 days | Assumed (milestone 10) |
 | Access keys per user | 10 | Assumed (milestone 10) |
 | Site storage per bot (Layer 2) | 200 MB | Agreed in discussion |
-| Site requests of one visitor address at the agent at once (Layer 2) | 200 | Assumed; first 20, then 50; raised in milestone 15 because Levelwise's service worker asks for about 1000 files at once and many mobile users share one address |
+| Site requests of one visitor address at the agent at once (Layer 2) | 200 | Assumed; first 20, then 50; raised in milestone 15 because a real app's service worker asks for about 1000 files at once and many mobile users share one address |
 | Site requests of one address waiting in line (Layer 2) | 1000 | Assumed (milestone 15) |
 | One streamed site answer (Layer 2) | 500 MB | Assumed (milestone 15) |
 | Part of a streamed answer, and parts on the way (Layer 2) | 64 KB, 8 | Assumed (milestone 15) |

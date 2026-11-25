@@ -54,8 +54,8 @@ The agent opens a new session after any lost WebSocket. So when the WebSocket of
 
 ## Port in the sites domain
 
-`Sites:Domain` `localhost:5000` → site address `http://levelwise.localhost:5000`; the host match uses only the part before `:`. SITE-13 compares hosts without port. Production values have no port, so nothing changes there.
+`Sites:Domain` `localhost:5000` → site address `http://mysite.localhost:5000`; the host match uses only the part before `:`. SITE-13 compares hosts without port. Production values have no port, so nothing changes there.
 
 ## Reserve (SITE-24)
 
-`POST /api/sites {"name":"levelwise"}` runs the same claim as a session (`SiteBook.ClaimAsync`): 201 with the site, or 400 `bad_name`, 409 `name_taken`, 409 `site_limit`. A name the caller already owns gives 200. My apps polls `GET /api/sites` every 10 seconds while the screen is open, so "online" follows the agent.
+`POST /api/sites {"name":"mysite"}` runs the same claim as a session (`SiteBook.ClaimAsync`): 201 with the site, or 400 `bad_name`, 409 `name_taken`, 409 `site_limit`. A name the caller already owns gives 200. My apps polls `GET /api/sites` every 10 seconds while the screen is open, so "online" follows the agent.

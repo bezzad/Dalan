@@ -50,6 +50,6 @@ On Ctrl+C, or SIGTERM (a service stop or a shutdown), the agent SHALL end its se
 `dalan status` SHALL print whether the service is installed and running, then each site of the key's builder with its address and online or offline.
 
 #### Scenario: One site online
-- **GIVEN** the site `levelwise` online
+- **GIVEN** the site `mysite` online
 - **WHEN** the user runs `dalan status`
-- **THEN** the output has `levelwise`, its address and `online`
+- **THEN** the output has `mysite`, its address and `online`

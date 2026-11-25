@@ -1,10 +1,10 @@
-// Rule: CLI-36
+// Rules: CLI-36, CLI-62
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { loginErrorText } from "../src/app.ts";
 import { texts } from "../src/i18n.ts";
-import { clock, isReturning, loginOrder, markReturning } from "../src/login.ts";
+import { clock, isReturning, loginLayout, loginOrder, markReturning } from "../src/login.ts";
 
 const settings = { dev_login: false, email_login: true, github_login: true, password_min_length: 8, name_max_length: 64 };
 
@@ -65,6 +65,21 @@ test("CLI-36 no login_error in the address shows no error", () => {
   assert.equal(loginErrorText(""), null);
   assert.equal(loginErrorText("?x=1"), null);
   assert.equal(loginErrorText("?login_error=something_new"), "failed");
+});
+
+test("CLI-62 the card opens with the password form and the other ways come under it, each with a logo", () => {
+  const layout = loginLayout(settings, false);
+  assert.equal(layout.first, "password");
+  assert.deepEqual(layout.others, [{ way: "sms", logo: "phone" }, { way: "github", logo: "github" }, { way: "email", logo: "envelope" }]);
+  assert.deepEqual(loginLayout({ ...settings, github_login: false, email_login: false }, true).others, [{ way: "sms", logo: "phone" }]);
+});
+
+test("CLI-62 the gate is above the card and the password form is not behind a button", () => {
+  const source = readFileSync(new URL("../src/login.ts", import.meta.url), "utf8");
+  assert.match(source, /gate\(\)/);
+  assert.doesNotMatch(source, /"byPassword"/);
+  assert.match(source, /password\(\),/);
+  assert.ok(texts.fa.or.length > 0 && texts.en.or.length > 0);
 });
 
 // Rule: CLI-61

@@ -23,8 +23,8 @@ A request whose host is `<name>.<Sites:Domain>` SHALL go to that site's session 
 
 #### Scenario: Domain with a port
 - **GIVEN** `Sites:Domain` `localhost:5000`
-- **WHEN** a visitor opens `levelwise.localhost:5000`
-- **THEN** the request goes to the site `levelwise`, and its address is `http://levelwise.localhost:5000`
+- **WHEN** a visitor opens `mysite.localhost:5000`
+- **THEN** the request goes to the site `mysite`, and its address is `http://mysite.localhost:5000`
 
 ### Requirement: SITE-10 Request timeout
 A request with no first answer message after `Sites:RequestTimeoutSeconds` SHALL get 504 (`site_timeout`). A streamed answer that has started SHALL NOT be cut by this time.
@@ -97,8 +97,8 @@ The agent SHALL be able to send an answer in parts (`more: true` until the last)
 `POST /api/sites` with `{"name": "<name>"}` SHALL claim the name for the calling builder by the rules of SITE-02 and SITE-03, with no agent: 201 with the site (offline), 200 when the caller already owns it, 400 `bad_name`, 409 `name_taken` or 409 `site_limit`.
 
 #### Scenario: Reserve
-- **WHEN** a builder reserves `levelwise`
-- **THEN** the answer is 201, the list has `levelwise` offline, and another builder gets 409 `name_taken` for it
+- **WHEN** a builder reserves `mysite`
+- **THEN** the answer is 201, the list has `mysite` offline, and another builder gets 409 `name_taken` for it
 
 #### Scenario: Taken
 - **GIVEN** `shop` belongs to another builder

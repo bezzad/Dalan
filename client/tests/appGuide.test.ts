@@ -7,9 +7,9 @@ import { httpCommand, installCommands, loginCommand, serviceCommands } from "../
 import { builderView } from "../src/panels.ts";
 
 test("CLI-39 the guide runs one site and two sites", () => {
-  assert.equal(httpCommand([{ port: 3000, name: "levelwise" }]), "dalan http 3000 --name levelwise");
-  assert.equal(httpCommand([{ port: 3000, name: "levelwise" }, { port: 8080, name: "shop" }]),
-    "dalan http 3000 --name levelwise 8080 --name shop");
+  assert.equal(httpCommand([{ port: 3000, name: "mysite" }]), "dalan http 3000 --name mysite");
+  assert.equal(httpCommand([{ port: 3000, name: "mysite" }, { port: 8080, name: "shop" }]),
+    "dalan http 3000 --name mysite 8080 --name shop");
 });
 
 test("CLI-39 the guide keeps the site online with the service and checks it with status", () => {

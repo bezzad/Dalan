@@ -25,8 +25,8 @@ The agent SHALL be published with Native AOT as one executable per system that r
 `dalan http <port> [--name <name>]` SHALL run one site; more `<port> [--name <name>]` pairs SHALL run more sites in the same agent. A port without a name SHALL take the name saved for that port in the config file, else a new random name; the agent SHALL save the port and name pairs it runs.
 
 #### Scenario: Two sites
-- **WHEN** a user runs `dalan http 3000 --name levelwise 8080 --name shop`
-- **THEN** one session serves `levelwise` from port 3000 and `shop` from port 8080
+- **WHEN** a user runs `dalan http 3000 --name mysite 8080 --name shop`
+- **THEN** one session serves `mysite` from port 3000 and `shop` from port 8080
 
 #### Scenario: Same name next time
 - **GIVEN** `dalan http 3000` once made the random name `k3x9q2`

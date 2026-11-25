@@ -27,17 +27,17 @@ Each task: write the failing tests tagged with the rule IDs, then the code, then
 ## 5. Docs and check
 
 - [x] 5.1 `docs/DESIGN.md` (section 11 limits, section 18 values), `docs/ARCHITECTURE.md` decision, `llms.txt`
-- [x] 5.2 Levelwise again through the tunnel: first visit, service worker, SSE, offline
+- [x] 5.2 Mysite again through the tunnel: first visit, service worker, SSE, offline
 - [ ] 5.3 `scripts/ci.sh`
 
 ## 6. Remaining (stopped 2026-11-24: weekly usage limit and PC load)
 
-State: all code, tests and docs are in commit `ca929f7` on branch `m15-sites-ready` (pushed, not merged). Passed: Sites tests (server and agent), client check/build/151 tests, `check-rules.sh`, `openspec validate --all --strict`, Levelwise by hand through the tunnel. The full gate stopped inside the .NET tests (no failure seen).
+State: all code, tests and docs are in commit `ca929f7` on branch `m15-sites-ready` (pushed, not merged). Passed: Sites tests (server and agent), client check/build/151 tests, `check-rules.sh`, `openspec validate --all --strict`, Mysite by hand through the tunnel. The full gate stopped inside the .NET tests (no failure seen).
 
 - [ ] 6.1 Run the gate at low priority: `nice -n 19 bash scripts/ci.sh` (this PC: Node 26 and the workarounds in memory "local-gate-quirks")
 - [ ] 6.2 Final review of the whole diff (rule 11); known limits to report: a streamed answer has no `Content-Length`; Windows does not restart the agent after a crash
 - [ ] 6.3 Untested on real systems: `dalan service install` on Linux (systemd user unit), macOS (launchd), Windows (Run key, `reg add` quoting)
 - [ ] 6.4 Merge to main, then `openspec archive m15-sites-ready`; check the live server builds it (`readlink /opt/dalan/current`)
 - [ ] 6.5 Owner: put `dalans.ir` on the Public Suffix List; decide on a wildcard certificate (Let's Encrypt gives about 50 new names a week)
-- [ ] 6.6 Levelwise side: build with `PUBLIC_POCKETBASE_URL=https://levelwise.dalans.ir`; trust `X-Forwarded-For` in PocketBase; add the site address to OAuth redirects, Turnstile hostnames and `--origins`; fetch about 6 files at a time in `src/sw.js`
+- [ ] 6.6 Mysite side: build with `PUBLIC_POCKETBASE_URL=https://mysite.dalans.ir`; trust `X-Forwarded-For` in PocketBase; add the site address to OAuth redirects, Turnstile hostnames and `--origins`; fetch about 6 files at a time in `src/sw.js`
 - [ ] 6.7 Next milestones (approved idea, not specced): m15 static upload and custom domain, m16 signed user header, m17 inspector, Basic Auth and IP allowlist

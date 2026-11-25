@@ -11,6 +11,7 @@ import { chatScreen } from "./chat.ts";
 import { Language, type TextKey } from "./i18n.ts";
 import { Live } from "./live.ts";
 import { loginScreen, markReturning } from "./login.ts";
+import { askedNext, loginTarget, rememberNext, startsAtTop, takeNext } from "./next.ts";
 import { botPageUsername, initial, pageFor } from "./pages.ts";
 import { h } from "./dom.ts";
 import { toastRegion } from "./toast.ts";
@@ -46,8 +47,8 @@ function showLogin(error: TextKey | null = null): void {
   live?.stop();
   app = live = screen = null;
   authSettings().then(settings => show(loginScreen(language, settings, user => {
-    // CLI-51: after login, the address the user asked for; from the landing page, the chats.
-    if (location.pathname === "/") history.replaceState(null, "", "/chats");
+    // CLI-63: after login, the address the person came from; from the landing page, "My bots".
+    history.replaceState(null, "", loginTarget(location.pathname, location.search, takeNext()));
     void enter(user).catch(fail);
   }, () => {
     language.toggle();
@@ -59,6 +60,8 @@ function showLogin(error: TextKey | null = null): void {
 function navigate(path: string): void {
   history.pushState(null, "", path);
   render();
+  // CLI-68: a new page starts at the top; an address with a #part goes to that part (show() does it).
+  if (startsAtTop(path)) window.scrollTo(0, 0);
 }
 
 function render(): void {
@@ -74,6 +77,15 @@ function guest(): void {
     history.replaceState(null, "", location.pathname);
     return showLogin(error);
   }
+  // CLI-63: "/?next=/guide/site" asks for the login and comes back to that address; the address is kept and cleaned.
+  const asked = askedNext(location.search, null);
+  if (asked) {
+    rememberNext(asked);
+    history.replaceState(null, "", location.pathname);
+    return showLogin();
+  }
+  // CLI-63: a path kept for a GitHub round trip that was left halfway must not steer a later login.
+  takeNext();
   const page = pageFor(location.pathname, false);
   if (page === "login") return showLogin();
   show(publicPage(page as PublicPage, false));
@@ -117,6 +129,7 @@ function publicPage(page: PublicPage, loggedIn: boolean): HTMLElement {
     language,
     loggedIn,
     email: app?.user.email ?? null,
+    user: app?.user ?? null,
     go: navigate,
     enter: loggedIn ? () => navigate("/chats") : showLogin,
   });
@@ -214,4 +227,9 @@ if ("serviceWorker" in navigator) {
 }
 
 document.body.dataset["connecting"] = language.t("connecting");
-api.me().then(enter).catch(fail);
+// CLI-63: back from GitHub on "/": go to the address kept before the round trip (or `?next=`).
+api.me().then(user => {
+  const asked = askedNext(location.search, takeNext());
+  if (asked && location.pathname === "/") history.replaceState(null, "", asked);
+  return enter(user);
+}).catch(fail);

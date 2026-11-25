@@ -28,13 +28,13 @@ public class TunnelTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
 
-        var response = await app.Agent(key).OpenAsync("LevelWise");
+        var response = await app.Agent(key).OpenAsync("MySite");
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(Cancel);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var site = Assert.Single(body.GetProperty("sites").EnumerateArray());
-        Assert.Equal("levelwise", site.GetProperty("name").GetString());
-        Assert.Equal($"https://levelwise.{Domain}", site.GetProperty("url").GetString());
+        Assert.Equal("mysite", site.GetProperty("name").GetString());
+        Assert.Equal($"https://mysite.{Domain}", site.GetProperty("url").GetString());
     }
 
     [Theory]
@@ -63,7 +63,7 @@ public class TunnelTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync(approve: false);
 
-        var response = await app.Agent(key).OpenAsync("levelwise");
+        var response = await app.Agent(key).OpenAsync("mysite");
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         Assert.Equal("not_builder", await response.ErrorCodeAsync());
@@ -76,9 +76,9 @@ public class TunnelTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (_, _, first) = await app.BuilderAsync("A");
         var (_, _, second) = await app.BuilderAsync("B");
-        await app.Agent(first).SessionAsync("levelwise");
+        await app.Agent(first).SessionAsync("mysite");
 
-        var response = await app.Agent(second).OpenAsync("shop", "levelwise");
+        var response = await app.Agent(second).OpenAsync("shop", "mysite");
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Equal("name_taken", await response.ErrorCodeAsync());
@@ -108,11 +108,11 @@ public class TunnelTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var older = await agent.SessionAsync("levelwise");
-        var newer = await agent.SessionAsync("levelwise");
+        var older = await agent.SessionAsync("mysite");
+        var newer = await agent.SessionAsync("mysite");
 
         var oldPoll = await agent.GetAsync($"/api/tunnel/sessions/{older}/requests?timeout=0", Cancel);
-        var visitor = app.Visitor("levelwise").GetAsync("/", Cancel);
+        var visitor = app.Visitor("mysite").GetAsync("/", Cancel);
         var request = Assert.Single(await agent.PollAsync(newer));
         await agent.AnswerAsync(newer, request.GetProperty("id").GetInt64(), 200, "from the newer");
 
@@ -128,7 +128,7 @@ public class TunnelTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres, ("Sites:Domain", ""));
         var (_, _, key) = await app.BuilderAsync();
 
-        var response = await app.Agent(key).OpenAsync("levelwise");
+        var response = await app.Agent(key).OpenAsync("mysite");
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         Assert.Equal("sites_off", await response.ErrorCodeAsync());
@@ -140,12 +140,12 @@ public class TunnelTests(PostgresServer postgres)
     {
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
-        var session = await app.Agent(key).SessionAsync("levelwise");
+        var session = await app.Agent(key).SessionAsync("mysite");
         var client = app.Server.CreateWebSocketClient();
         client.ConfigureRequest = request => request.Headers.Authorization = "Bearer " + key;
         using var socket = await client.ConnectAsync(new Uri($"ws://localhost/api/tunnel/sessions/{session}/ws"), Cancel);
 
-        var visitor = app.Visitor("levelwise").PostAsync("/hello?x=1", new StringContent("ping"), Cancel);
+        var visitor = app.Visitor("mysite").PostAsync("/hello?x=1", new StringContent("ping"), Cancel);
         var buffer = new byte[64 * 1024];
         var received = await socket.ReceiveAsync(buffer, Cancel);
         var request = JsonSerializer.Deserialize<JsonElement>(buffer.AsSpan(0, received.Count));
@@ -159,7 +159,7 @@ public class TunnelTests(PostgresServer postgres)
         await socket.SendAsync(answer, System.Net.WebSockets.WebSocketMessageType.Text, true, Cancel);
         var response = await visitor;
 
-        Assert.Equal("levelwise", request.GetProperty("site").GetString());
+        Assert.Equal("mysite", request.GetProperty("site").GetString());
         Assert.Equal("POST", request.GetProperty("method").GetString());
         Assert.Equal("/hello?x=1", request.GetProperty("path").GetString());
         Assert.Equal("ping", Encoding.UTF8.GetString(Convert.FromBase64String(request.GetProperty("body").GetString()!)));
@@ -175,10 +175,10 @@ public class TunnelTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
+        var session = await agent.SessionAsync("mysite");
 
         var poll = agent.PollAsync(session);
-        var visitor = app.Visitor("levelwise").GetAsync("/", Cancel);
+        var visitor = app.Visitor("mysite").GetAsync("/", Cancel);
         var request = Assert.Single(await poll);
         var posted = await agent.AnswerAsync(session, request.GetProperty("id").GetInt64(), 200, "hello");
         var late = await agent.AnswerAsync(session, request.GetProperty("id").GetInt64(), 200, "again");
@@ -195,7 +195,7 @@ public class TunnelTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
+        var session = await agent.SessionAsync("mysite");
 
         var poll = agent.PollAsync(session, timeout: 5);
         await Task.Delay(100, Cancel);
@@ -217,11 +217,11 @@ public class TunnelTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
+        var session = await agent.SessionAsync("mysite");
         await agent.PollAsync(session, timeout: 0);
 
         app.Time.Advance(TimeSpan.FromSeconds(61));
-        var response = await app.Visitor("levelwise").GetAsync("/", Cancel);
+        var response = await app.Visitor("mysite").GetAsync("/", Cancel);
 
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
         Assert.Equal("site_offline", response.SiteError());
@@ -234,8 +234,8 @@ public class TunnelTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
-        var visitor = app.Visitor("levelwise", "5.6.7.8:1234");
+        var session = await agent.SessionAsync("mysite");
+        var visitor = app.Visitor("mysite", "5.6.7.8:1234");
         visitor.DefaultRequestHeaders.Add("X-Forwarded-For", "1.1.1.1");
         visitor.DefaultRequestHeaders.Add("Connection", "x-secret");
         visitor.DefaultRequestHeaders.Add("X-Secret", "only this hop");
@@ -253,7 +253,7 @@ public class TunnelTests(PostgresServer postgres)
             .SelectMany(p => p.Value.EnumerateArray().Select(v => v.GetString()!)).ToArray();
         Assert.Equal(["5.6.7.8"], Values("X-Forwarded-For"));
         Assert.Equal(["https"], Values("X-Forwarded-Proto"));
-        Assert.Equal([$"levelwise.{Domain}"], Values("X-Forwarded-Host"));
+        Assert.Equal([$"mysite.{Domain}"], Values("X-Forwarded-Host"));
         Assert.Empty(Values("Connection"));
         Assert.Empty(Values("X-Secret"));
         Assert.Equal(["text/html"], Values("Accept"));
@@ -266,10 +266,10 @@ public class TunnelTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
+        var session = await agent.SessionAsync("mysite");
 
         var poll = agent.PollAsync(session);
-        var call = app.Visitor("levelwise").GetAsync("/api/me", Cancel);
+        var call = app.Visitor("mysite").GetAsync("/api/me", Cancel);
         var request = Assert.Single(await poll);
         await agent.AnswerAsync(session, request.GetProperty("id").GetInt64(), 200, "{\"site\":true}");
         var response = await call;
@@ -286,11 +286,11 @@ public class TunnelTests(PostgresServer postgres)
     {
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
-        await app.Agent(key).SessionAsync("levelwise");
+        await app.Agent(key).SessionAsync("mysite");
         // The agent never reads: after the idle time the site is offline.
         app.Time.Advance(TimeSpan.FromSeconds(61));
 
-        var offline = await app.Visitor("levelwise").GetAsync("/", Cancel);
+        var offline = await app.Visitor("mysite").GetAsync("/", Cancel);
         var unknown = await app.Visitor("nothing").GetAsync("/", Cancel);
 
         Assert.Equal(HttpStatusCode.BadGateway, offline.StatusCode);
@@ -307,10 +307,10 @@ public class TunnelTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (_, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
+        var session = await agent.SessionAsync("mysite");
 
         var poll = agent.PollAsync(session);
-        var call = app.Visitor("levelwise").GetAsync("/slow", Cancel);
+        var call = app.Visitor("mysite").GetAsync("/slow", Cancel);
         Assert.Single(await poll);
         app.Time.Advance(TimeSpan.FromSeconds(30));
         var response = await call;
@@ -326,9 +326,9 @@ public class TunnelTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres, ("Sites:MaxBodyMb", "1"));
         var (_, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
+        var session = await agent.SessionAsync("mysite");
 
-        var response = await app.Visitor("levelwise").PostAsync("/upload", new ByteArrayContent(new byte[1024 * 1024 + 1]), Cancel);
+        var response = await app.Visitor("mysite").PostAsync("/upload", new ByteArrayContent(new byte[1024 * 1024 + 1]), Cancel);
 
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
         Assert.Empty(await agent.PollAsync(session, timeout: 0));
@@ -341,10 +341,10 @@ public class TunnelTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres, ("Sites:MaxBodyMb", "1"));
         var (_, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
+        var session = await agent.SessionAsync("mysite");
 
         var poll = agent.PollAsync(session);
-        var call = app.Visitor("levelwise").GetAsync("/big", Cancel);
+        var call = app.Visitor("mysite").GetAsync("/big", Cancel);
         var request = Assert.Single(await poll);
         await agent.AnswerAsync(session, request.GetProperty("id").GetInt64(), 200, new string('x', 1024 * 1024 + 1));
 
@@ -374,7 +374,7 @@ public class TunnelTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (_, userId, key) = await app.BuilderAsync();
 
-        await app.Agent(key, "9.8.7.6:4000").SessionAsync("levelwise");
+        await app.Agent(key, "9.8.7.6:4000").SessionAsync("mysite");
 
         Assert.Contains($"User {userId} 9.8.7.6 4000", await app.AccessLogAsync());
     }
@@ -385,17 +385,17 @@ public class TunnelTests(PostgresServer postgres)
     {
         await using var app = await StartAsync(postgres);
         var (browser, userId, key) = await app.BuilderAsync();
-        var session = await app.Agent(key).SessionAsync("levelwise");
+        var session = await app.Agent(key).SessionAsync("mysite");
         var client = app.Server.CreateWebSocketClient();
         client.ConfigureRequest = request => request.Headers.Authorization = "Bearer " + key;
         using var socket = await client.ConnectAsync(new Uri($"ws://localhost/api/tunnel/sessions/{session}/ws"), Cancel);
         var admin = await app.AdminAsync();
 
         (await admin.PostAsJsonAsync($"/api/admin/users/{userId}/suspend", new { suspended = true }, Cancel)).EnsureSuccessStatusCode();
-        var refused = await app.Agent(key).OpenAsync("levelwise");
+        var refused = await app.Agent(key).OpenAsync("mysite");
         app.Time.Advance(TimeSpan.FromSeconds(60));
         var closed = await socket.ReceiveAsync(new byte[1024], Cancel);
-        var visitor = await app.Visitor("levelwise").GetAsync("/", Cancel);
+        var visitor = await app.Visitor("mysite").GetAsync("/", Cancel);
 
         Assert.Equal(HttpStatusCode.Unauthorized, refused.StatusCode);
         Assert.Equal(System.Net.WebSockets.WebSocketMessageType.Close, closed.MessageType);
@@ -410,17 +410,17 @@ public class TunnelTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (browser, _, key) = await app.BuilderAsync();
         var agent = app.Agent(key);
-        var session = await agent.SessionAsync("levelwise");
+        var session = await agent.SessionAsync("mysite");
         var poll = agent.PollAsync(session);
 
         var list = await browser.GetFromJsonAsync<JsonElement>("/api/sites", Cancel);
         var site = Assert.Single(list.GetProperty("sites").EnumerateArray());
         var deleted = await browser.DeleteAsync($"/api/sites/{site.GetProperty("id").GetInt64()}", Cancel);
         var after = await browser.GetFromJsonAsync<JsonElement>("/api/sites", Cancel);
-        var visitor = await app.Visitor("levelwise").GetAsync("/", Cancel);
+        var visitor = await app.Visitor("mysite").GetAsync("/", Cancel);
 
-        Assert.Equal("levelwise", site.GetProperty("name").GetString());
-        Assert.Equal($"https://levelwise.{Domain}", site.GetProperty("url").GetString());
+        Assert.Equal("mysite", site.GetProperty("name").GetString());
+        Assert.Equal($"https://mysite.{Domain}", site.GetProperty("url").GetString());
         Assert.True(site.GetProperty("online").GetBoolean());
         Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
         Assert.Empty(after.GetProperty("sites").EnumerateArray());
@@ -439,7 +439,7 @@ public class TunnelTests(PostgresServer postgres)
         await using var app = await StartAsync(postgres);
         var (owner, _, key) = await app.BuilderAsync("A");
         var (other, _, _) = await app.BuilderAsync("B");
-        await app.Agent(key).SessionAsync("levelwise");
+        await app.Agent(key).SessionAsync("mysite");
         var id = (await owner.GetFromJsonAsync<JsonElement>("/api/sites", Cancel)).GetProperty("sites")[0].GetProperty("id").GetInt64();
 
         var response = await other.DeleteAsync($"/api/sites/{id}", Cancel);

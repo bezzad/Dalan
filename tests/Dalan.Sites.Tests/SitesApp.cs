@@ -125,7 +125,7 @@ internal static class SitesApp
 
     /// <summary>The real agent against the test server, with <paramref name="local"/> as the app on the home computer.</summary>
     public static TunnelClient RealAgent(this DalanApp app, string key, HttpMessageHandler local, TextWriter? output = null,
-        bool webSocket = true)
+        bool webSocket = true, Action<string>? openBrowser = null)
     {
         var server = app.CreateClient();
         WebSocketConnector connect = webSocket
@@ -148,6 +148,7 @@ internal static class SitesApp
         return new TunnelClient(server, key, connect, new LocalForwarder(local), output ?? TextWriter.Null)
         {
             FirstWait = TimeSpan.FromMilliseconds(20),
+            OpenBrowser = openBrowser,
         };
     }
 
