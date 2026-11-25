@@ -21,7 +21,7 @@ test("CLI-60 text that is not an Iranian mobile only gets Latin digits", () => {
 
 test("CLI-60 the login and account screens send the phone through phoneNumber", () => {
   const login = readFileSync(new URL("../src/login.ts", import.meta.url), "utf8");
-  const account = readFileSync(new URL("../src/account.ts", import.meta.url), "utf8");
+  const account = readFileSync(new URL("../src/settings/profile.ts", import.meta.url), "utf8");
   assert.match(login, /clean: phoneNumber/);
   assert.match(login, /passwordLogin\(phoneNumber\(/);
   assert.match(login, /devLogin\(phoneNumber\(/);

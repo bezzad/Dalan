@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: CLI-77 Settings area
-The account screen SHALL be a settings area with a side menu and one section per page, each at its own address: Profile (`/account/profile`), Login and security (`/account/security`), Notifications (`/account/notifications`), Preferences (`/account/preferences`), and, only for an approved builder or an admin, Builder (`/account/builder`) and Access keys (`/account/keys`). `/account` SHALL open Profile at 760px and wider, and the menu list below 760px. Each section page SHALL show a breadcrumb, a title, a one-line description and rows of title and help on the start side and the control on the end side. Login methods (password, phone, email, GitHub) SHALL each be a card with a "Connected" or "Not connected" badge and one action. Theme and language SHALL be radio cards that apply at once. A row's button SHALL be primary only while its value is changed.
+The account screen SHALL be a settings area: a side menu, one section per page, each at its own address (`/account/profile`, `/account/security`, `/account/notifications`, `/account/preferences` and, only for an approved builder or an admin, `/account/builder` and `/account/keys`). `/account` SHALL open Profile at 760px and wider, and the menu list below. A section page SHALL show a breadcrumb, a title, a description and rows. A row's button SHALL be primary only while its value is changed.
 
 #### Scenario: Desktop
 - **WHEN** a user opens `/account` in a 1280px wide browser
@@ -20,6 +20,10 @@ The account screen SHALL be a settings area with a side menu and one section per
 - **GIVEN** a user with a password and a phone, no email and no GitHub
 - **WHEN** Login and security opens
 - **THEN** Password and Phone show "Connected", Email and GitHub show "Not connected" with "Set up" and "Link"
+
+#### Scenario: Preferences
+- **WHEN** the user picks "Dark" or "English" in Preferences
+- **THEN** the theme or the language applies at once, and that radio card is the chosen one
 
 #### Scenario: Phone
 - **WHEN** `/account` opens on a 360px phone
