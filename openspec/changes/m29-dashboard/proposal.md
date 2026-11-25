@@ -6,7 +6,7 @@ The admin panel (`/admin`) is a row of tab buttons and, under Settings, every se
 
 ## What Changes
 
-1. **One dashboard (CLI-81).** Every signed-in page lives in one frame with a side menu (the frame and pieces of m26), at `dalanet.ir/dashboard/...` (see design.md, decision 1, for why not `dashboard.dalanet.ir`):
+1. **One dashboard (CLI-81).** Every signed-in page lives in one frame with a side menu (the frame and pieces of m26), at `dalanet.ir/dashboard/...` (owner confirmed 2026-11-25; design.md, decision 1):
    - Workspace: Chats, My bots, My apps (builder and site pages only for a builder or an admin).
    - Account: the settings sections of m26 (Profile, Login and security, Notifications, Preferences, Access keys).
    - Admin, only for an admin: Overview, Requests, Users, Bots, Showcase, Messages, Settings, Access log, Audit log.
@@ -14,7 +14,8 @@ The admin panel (`/admin`) is a row of tab buttons and, under Settings, every se
    - The old addresses (`/account/*`, `/bots`, `/apps`, `/admin`) move to the new ones with a redirect.
 2. **Admin overview (CLI-82).** The first admin page: cards with counts that link to their page: users (new this week), bots (online now), builder and showcase requests waiting, unread support messages, sites online.
 3. **Settings page (CLI-83, ADM-19).** Settings grouped by service (Identity, Relay, Notification, Sites, Admin), each as a setting row (m26): a readable name and a help line in the page language, the control by kind (a number with its unit and allowed range, a switch, a text), a "Changed" badge with the start value and "Reset", a "Needs restart" badge, one Save that turns primary only for a changed row. A search box filters by name, key or help. A setting outside its range is refused by the server (400 `out_of_range`).
-4. **Server checks stay the gate (SEC-14).** Hiding the Admin group is only for the eyes. Every admin call keeps its server check (`AdminFilter`), and every admin page asks the server first: a common user who types an admin address gets "Not found", the same as a missing page, and the try is in the access log.
+4. **Server checks stay the gate (SEC-14).** Hiding the Admin group is only for the eyes. Every admin call keeps its server check (`AdminFilter`), and every admin page asks the server first: a common user who types an admin address gets "Not found", the same as a missing page, and the try is in the access log. The owner is the only admin (2026-11-25): admins come only from `Identity:AdminPhones` in the server's environment, which no API or panel can read or change.
+5. **Second factor for admins (SEC-15).** An admin must have TOTP (AUTH-37 of m27) on, and every admin login, by any way, also needs the code. Until it is set up, the admin pages show only its set-up and `/api/admin` answers 403 `admin_needs_2fa`. An admin cannot turn it off.
 
 ## Capabilities
 
@@ -26,12 +27,13 @@ None.
 
 - `client`: new CLI-81, CLI-82, CLI-83.
 - `admin`: new ADM-19.
-- `security`: new SEC-14.
+- `security`: new SEC-14, SEC-15.
 
 ## Impact
 
 - Client: a `dashboard/` folder (frame, menu, routes), the admin screens moved into it and split per page, `admin.ts` settings rebuilt, `i18n.ts`, `app.css`, `docs/UI.md`.
 - Admin: a settings description file (`settings.json` embedded: name and help in both languages, unit, min, max, group, risky) read by `SettingsCatalog`; `/api/admin/settings` returns them; range check on save; `/api/admin/overview` (counts).
 - Host: `/dashboard/*` serves the page; redirects from the old addresses.
-- Depends on m26 (the frame and pieces) and m25 (keys in the account).
+- Depends on m26 (the frame and pieces), m25 (keys in the account) and AUTH-37 of m27 (TOTP), which therefore stays.
+- Identity: the admin login step and `admin_needs_2fa` (SEC-15).
 - No new admin settings.
