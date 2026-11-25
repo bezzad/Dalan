@@ -70,6 +70,21 @@ public sealed partial class WebPushService : IWebPush
         await db.Subscriptions.Where(s => s.UserId == userId && s.Endpoint == endpoint).ExecuteDeleteAsync(cancellationToken);
     }
 
+    public async Task MoveAsync(long fromUserId, long intoUserId, CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        await db.Subscriptions.Where(s => s.UserId == fromUserId)
+            .ExecuteUpdateAsync(set => set.SetProperty(s => s.UserId, intoUserId), cancellationToken);
+
+        var oldest = await db.Subscriptions
+            .Where(s => s.UserId == intoUserId)
+            .OrderByDescending(s => s.CreatedAt).ThenByDescending(s => s.Id)
+            .Skip(_options.CurrentValue.Push.MaxSubscriptionsPerUser)
+            .Select(s => s.Id)
+            .ToListAsync(cancellationToken);
+        if (oldest.Count > 0) await db.Subscriptions.Where(s => oldest.Contains(s.Id)).ExecuteDeleteAsync(cancellationToken);
+    }
+
     public void Send(long userId, PushNote note)
     {
         if (PublicKey is null) return;

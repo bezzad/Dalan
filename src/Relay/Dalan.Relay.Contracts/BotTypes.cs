@@ -63,8 +63,11 @@ public sealed record BotMessage(
 /// <summary>A press on an inline button (REL-21). <see cref="Message"/> is the bot message that has the button.</summary>
 public sealed record BotCallback(string Id, BotMessage Message, string Data);
 
-/// <summary>One update for a bot: a user's message or a button press.</summary>
-public sealed record BotUpdate(long Id, BotUser From, BotMessage? Message, BotCallback? Callback);
+/// <summary>REL-56: the chat with user <see cref="FromUserId"/> is now the chat with user <see cref="ToUserId"/> (an account merge).</summary>
+public sealed record BotChatMoved(long FromUserId, long ToUserId, DateTimeOffset Date);
+
+/// <summary>One update for a bot: a user's message, a button press, or a moved chat (REL-56).</summary>
+public sealed record BotUpdate(long Id, BotUser From, BotMessage? Message, BotCallback? Callback, BotChatMoved? ChatMoved = null);
 
 /// <summary>
 /// A file to send: an upload (<see cref="Content"/>, <see cref="Name"/>, <see cref="ContentType"/>),
@@ -125,6 +128,9 @@ public enum BotError
     BadCommands,
     NotAnImage,
     ImageTooBig,
+
+    /// <summary>REL-56: the user was merged into another account; <see cref="IBotGateway.MovedToAsync"/> gives the new id.</summary>
+    ChatMoved,
 }
 
 public sealed record BotResult<T>(BotError Error, T? Value);

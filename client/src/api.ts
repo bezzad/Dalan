@@ -19,6 +19,28 @@ export interface User {
   admin: boolean;
   /** AUTH-19 */
   builder: BuilderState;
+  /** AUTH-30 */
+  has_github: boolean;
+}
+
+/** AUTH-31: one side of a merge. */
+export interface MergeSide {
+  id: number;
+  name: string;
+  bots: number;
+  sites: number;
+  keys: number;
+  chats: number;
+}
+
+/** AUTH-31 to AUTH-33: the merge question. */
+export interface MergePlan {
+  way: "phone" | "email" | "github";
+  keep: "this" | "other";
+  this: MergeSide;
+  other: MergeSide;
+  refusal: "both_have_products" | "merge_conflict" | "suspended" | null;
+  field: "phone" | "email" | "github" | null;
 }
 
 /** ADM-11 */
@@ -186,6 +208,13 @@ export const api = {
     call<User>("POST", "/api/auth/email/verify", { email, code, name }),
   /** AUTH-26: the code comes from sendCode. */
   addPhone: (phone: string, code: string) => call<User>("POST", "/api/account/phone", { phone, code }),
+  /** AUTH-30: the code comes from sendEmailCode. */
+  addEmail: (email: string, code: string) => call<User>("POST", "/api/account/email", { email, code }),
+  /** AUTH-31 */
+  mergePlan: () => call<MergePlan>("GET", "/api/account/merge"),
+  /** AUTH-34: the answer is the kept account. */
+  merge: () => call<User>("POST", "/api/account/merge"),
+  dropMerge: () => call<null>("DELETE", "/api/account/merge"),
   passwordLogin: (login: string, password: string) => call<User>("POST", "/api/auth/password", { login, password }),
   setPassword: (password: string, current?: string) =>
     call<null>("POST", "/api/account/password", { password, current_password: current }),

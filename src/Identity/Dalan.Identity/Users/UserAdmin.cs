@@ -96,7 +96,7 @@ internal sealed class UserAdmin(
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
         return user is null ? null : new ProfileJson(
             user.Id, user.DisplayName, user.Username, user.Email, user.PasswordHash != null, user.Phone != null,
-            IsAdminPhone(user.Phone), BuilderName(user.Builder));
+            IsAdminPhone(user.Phone), BuilderName(user.Builder), user.GithubId != null);
     }
 
     private static string BuilderName(BuilderState state) => state switch

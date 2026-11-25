@@ -51,6 +51,7 @@ internal static class EventStream
             $"event: message\ndata: {JsonSerializer.Serialize(new MessageEventJson(changed.BotId, changed.Message), ApiJson.Options)}\n\n",
         CallbackAnswered answer =>
             $"event: answer\ndata: {JsonSerializer.Serialize(new AnswerEventJson(answer.BotId, answer.CallbackId, answer.Text, answer.ShowAlert), ApiJson.Options)}\n\n",
+        ChatsReset => "event: reset\ndata: {}\n\n",
         ChatRead read =>
             $"event: read\ndata: {JsonSerializer.Serialize(new ReadEventJson(read.BotId, read.Unread), ApiJson.Options)}\n\n",
         _ => throw new ArgumentOutOfRangeException(nameof(liveEvent)),

@@ -87,7 +87,7 @@ internal static class BotApiEndpoints
                 request.Text ?? "", replyKeyboard, ToButtons(request.InlineKeyboard), file, replyOptions,
                 EntityJson.ToEntities(request.Entities), request.ReplyTo),
             http.RequestAborted);
-        return error == BotError.None ? ApiJson.Ok(SentMessageJson.Of(message!)) : ErrorOf(error, options.CurrentValue);
+        return error == BotError.None ? ApiJson.Ok(SentMessageJson.Of(message!)) : await ErrorOfAsync(error, http, gateway, userId, options.CurrentValue);
     }
 
     /// <summary>REL-23.</summary>
@@ -99,13 +99,13 @@ internal static class BotApiEndpoints
 
         var edit = new MessageEdit(request.Text, EntityJson.ToEntities(request.Entities), ToButtons(request.InlineKeyboard));
         var (error, message) = await gateway.EditAsync(BotApiFilter.BotId(http), userId, messageId, edit, http.RequestAborted);
-        return error == BotError.None ? ApiJson.Ok(SentMessageJson.Of(message!)) : ErrorOf(error, options.CurrentValue);
+        return error == BotError.None ? ApiJson.Ok(SentMessageJson.Of(message!)) : await ErrorOfAsync(error, http, gateway, userId, options.CurrentValue);
     }
 
     /// <summary>REL-24.</summary>
     private static async Task<IResult> DeleteMessageAsync(
         long userId, long messageId, HttpContext http, IBotGateway gateway, IOptionsMonitor<RelayOptions> options) =>
-        Done(await gateway.DeleteAsync(BotApiFilter.BotId(http), userId, messageId, http.RequestAborted), options);
+        await DoneAsync(await gateway.DeleteAsync(BotApiFilter.BotId(http), userId, messageId, http.RequestAborted), http, gateway, userId, options);
 
     /// <summary>REL-25.</summary>
     private static async Task<IResult> PinAsync(long userId, HttpContext http, IBotGateway gateway, IOptionsMonitor<RelayOptions> options)
@@ -113,11 +113,11 @@ internal static class BotApiEndpoints
         if (await ApiJson.ReadAsync<PinRequest>(http) is not { MessageId: { } messageId })
             return ApiJson.BadRequest("""Send JSON like {"message_id": 2}.""");
 
-        return Done(await gateway.PinAsync(BotApiFilter.BotId(http), userId, messageId, http.RequestAborted), options);
+        return await DoneAsync(await gateway.PinAsync(BotApiFilter.BotId(http), userId, messageId, http.RequestAborted), http, gateway, userId, options);
     }
 
     private static async Task<IResult> UnpinAsync(long userId, HttpContext http, IBotGateway gateway, IOptionsMonitor<RelayOptions> options) =>
-        Done(await gateway.UnpinAsync(BotApiFilter.BotId(http), userId, http.RequestAborted), options);
+        await DoneAsync(await gateway.UnpinAsync(BotApiFilter.BotId(http), userId, http.RequestAborted), http, gateway, userId, options);
 
     /// <summary>REL-22. An empty body is fine: the answer then has no text.</summary>
     private static async Task<IResult> AnswerAsync(string id, HttpContext http, IBotGateway gateway, IOptionsMonitor<RelayOptions> options)
@@ -256,6 +256,16 @@ internal static class BotApiEndpoints
 
     private static IResult Done(BotError error, IOptionsMonitor<RelayOptions> options) =>
         error == BotError.None ? ApiJson.Ok(true) : ErrorOf(error, options.CurrentValue);
+
+    /// <summary>REL-56: like <see cref="ErrorOf"/>, and a moved chat names the user id it has now.</summary>
+    private static async Task<IResult> ErrorOfAsync(BotError error, HttpContext http, IBotGateway gateway, long userId, RelayOptions options) =>
+        error == BotError.ChatMoved && await gateway.MovedToAsync(BotApiFilter.BotId(http), userId, http.RequestAborted) is { } to
+            ? ApiJson.Error(StatusCodes.Status400BadRequest, "chat_moved",
+                $"This user's account was merged into user {to}. Write to user_id {to} from now on.", toUserId: to)
+            : ErrorOf(error, options);
+
+    private static async Task<IResult> DoneAsync(BotError error, HttpContext http, IBotGateway gateway, long userId, IOptionsMonitor<RelayOptions> options) =>
+        error == BotError.None ? ApiJson.Ok(true) : await ErrorOfAsync(error, http, gateway, userId, options.CurrentValue);
 
     private static IResult FileNotFound() => ApiJson.Error(StatusCodes.Status404NotFound, "file_not_found",
         "There is no file with this id for this bot, or it expired. A file is kept for a limited time.");

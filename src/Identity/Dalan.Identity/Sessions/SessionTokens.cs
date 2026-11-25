@@ -129,6 +129,15 @@ internal sealed class SessionTokens(
         await db.Sessions.Where(s => s.UserId == userId && s.TokenHash != current).ExecuteDeleteAsync(http.RequestAborted);
     }
 
+    /// <summary>AUTH-31: the session row of this browser's user, or null when it sent no refresh token or the session ended.</summary>
+    public async Task<long?> SessionIdAsync(HttpContext http, long userId)
+    {
+        if (RefreshHash(http) is not { } current) return null;
+        await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
+        return await db.Sessions.Where(s => s.TokenHash == current && s.UserId == userId)
+            .Select(s => (long?)s.Id).FirstOrDefaultAsync(http.RequestAborted);
+    }
+
     public static long UserId(ClaimsPrincipal user) =>
         long.Parse(user.FindFirstValue(UserIdClaim)!, CultureInfo.InvariantCulture);
 

@@ -1,3 +1,4 @@
+using Dalan.Identity.Contracts;
 using Dalan.Sites.Data;
 using Dalan.Sites.Demos;
 using Dalan.Sites.Downloads;
@@ -33,6 +34,7 @@ public static class SitesService
                 npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", SitesDb.Schema))
             .UseSnakeCaseNamingConvention());
         services.AddSingleton<SiteBook>();
+        services.AddSingleton<IUserHoldings, SiteHoldings>();
         services.AddSingleton<DemoBook>();
         services.AddSingleton<TunnelHub>();
         services.AddSingleton<SiteProxy>();

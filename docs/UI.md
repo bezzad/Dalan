@@ -76,3 +76,7 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - Going to another address scrolls to the top; an address with a #part goes to that part. Back and Forward keep the browser's place.
 - The viewport is scale 1 and pinch zoom stays; every field is 16px or more, so a phone never zooms on focus.
 - Examples never name a personal or company project: `mysite` and `shop` (CLI-67).
+
+## Account: link and merge (CLI-70)
+- Cards to add a phone, add an email and link GitHub show only while that way is empty.
+- After the proof finds another account, the merge card comes first: the question, one line per account (what it has, whether it stays), a note, then "Merge" (primary) and "Cancel" (link). A refusal shows its reason and no "Merge" button.

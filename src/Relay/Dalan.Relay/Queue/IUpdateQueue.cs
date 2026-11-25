@@ -7,18 +7,25 @@ namespace Dalan.Relay.Queue;
 
 /// <summary>
 /// One update waiting for a bot: a user message (its id is the id of the stored message),
-/// or a press on a button of <see cref="Message"/> (REL-21) when <see cref="CallbackData"/> is set.
+/// a press on a button of <see cref="Message"/> (REL-21) when <see cref="CallbackData"/> is set,
+/// or a moved chat (REL-56) when <see cref="Moved"/> is set.
 /// </summary>
-public sealed record QueuedUpdate(long Id, UserProfile From, DateTimeOffset Date, BotMessage Message, string? CallbackData = null)
+public sealed record QueuedUpdate(
+    long Id, UserProfile From, DateTimeOffset Date, BotMessage? Message, string? CallbackData = null, BotChatMoved? Moved = null)
 {
     public static QueuedUpdate Of(Message message, UserProfile sender) => new(message.Id, sender, message.CreatedAt, message.ToBot());
+
+    /// <summary>REL-56: <paramref name="into"/> is the kept user; the id comes from the message ids, so it sorts with them.</summary>
+    public static QueuedUpdate ChatMoved(long id, UserProfile into, long fromUserId, DateTimeOffset date) =>
+        new(id, into, date, null, Moved: new BotChatMoved(fromUserId, into.Id, date));
 
     public BotUpdate ToBot()
     {
         var from = new BotUser(From.Id, From.DisplayName, From.Username);
+        if (Moved is not null) return new BotUpdate(Id, from, null, null, Moved);
         return CallbackData is null
             ? new BotUpdate(Id, from, Message, null)
-            : new BotUpdate(Id, from, null, new BotCallback(Id.ToString(CultureInfo.InvariantCulture), Message, CallbackData));
+            : new BotUpdate(Id, from, null, new BotCallback(Id.ToString(CultureInfo.InvariantCulture), Message!, CallbackData));
     }
 }
 

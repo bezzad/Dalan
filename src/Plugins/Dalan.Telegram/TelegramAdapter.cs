@@ -157,7 +157,7 @@ public static class TelegramAdapter
 
             var outgoing = new OutgoingMessage(text ?? "", keyboard, inline, file, keyboardOptions, entities, replyTo, withoutReply);
             var (error, message) = await gateway.SendAsync(bot.Id, userId, outgoing, cancellationToken);
-            return error == BotError.None ? TelegramJson.Ok(MessageJson.Sent(bot, message!)) : ErrorOf(error, "send", file is not null);
+            return error == BotError.None ? TelegramJson.Ok(MessageJson.Sent(bot, message!)) : await FailAsync(error, userId, "send", file is not null);
         }
 
         /// <summary>TG-16: editMessageText, editMessageCaption and editMessageReplyMarkup (<paramref name="part"/> null).</summary>
@@ -176,7 +176,7 @@ public static class TelegramAdapter
             // A missing caption removes it, as in Telegram; editMessageText always has a text.
             var edit = new MessageEdit(part is null ? null : text ?? "", entities, inline, part ?? EditPart.Any);
             var (error, message) = await gateway.EditAsync(bot.Id, userId, messageId, edit, cancellationToken);
-            return error == BotError.None ? TelegramJson.Ok(MessageJson.Sent(bot, message!)) : ErrorOf(error, "edit", part == EditPart.Caption);
+            return error == BotError.None ? TelegramJson.Ok(MessageJson.Sent(bot, message!)) : await FailAsync(error, userId, "edit", part == EditPart.Caption);
         }
 
         /// <summary>
@@ -255,7 +255,7 @@ public static class TelegramAdapter
             };
             return error == BotError.None
                 ? TelegramJson.Ok(true)
-                : ErrorOf(error, change == Change.Delete ? "delete" : "pin", withFile: false);
+                : await FailAsync(error, userId, change == Change.Delete ? "delete" : "pin", withFile: false);
         }
 
         /// <summary>TG-17: Telegram allows 1 to 100 ids and skips the ones it cannot find.</summary>
@@ -280,7 +280,7 @@ public static class TelegramAdapter
             foreach (var id in ids)
             {
                 var error = await gateway.DeleteAsync(bot.Id, userId, id, cancellationToken);
-                if (error is not BotError.None and not BotError.MessageNotFound) return ErrorOf(error, "delete", withFile: false);
+                if (error is not BotError.None and not BotError.MessageNotFound) return await FailAsync(error, userId, "delete", withFile: false);
             }
 
             return TelegramJson.Ok(true);
@@ -391,6 +391,13 @@ public static class TelegramAdapter
             var type = scope is { } s && s.TryGetProperty("type", out var t) ? t.GetString() : "default";
             return type is "default" or "all_private_chats";
         }
+
+        /// <summary>TG-26: a chat moved by an account merge answers like a Telegram group that moved, with migrate_to_chat_id.</summary>
+        private async Task<IResult> FailAsync(BotError error, long userId, string action, bool withFile) =>
+            error == BotError.ChatMoved && await gateway.MovedToAsync(bot.Id, userId, cancellationToken) is { } to
+                ? TelegramJson.Error(StatusCodes.Status400BadRequest, "Bad Request: group chat was upgraded to a supergroup chat",
+                    new ErrorParametersJson(MigrateToChatId: to))
+                : ErrorOf(error, action, withFile);
 
         /// <summary>Telegram's own error texts, so bots that match on them keep working.</summary>
         private static IResult ErrorOf(BotError error, string action, bool withFile) => error switch

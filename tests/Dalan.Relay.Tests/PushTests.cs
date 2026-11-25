@@ -114,6 +114,8 @@ public class PushTests(PostgresServer postgres)
 
         public Task UnsubscribeAsync(long userId, string endpoint, CancellationToken cancellationToken) => Task.CompletedTask;
 
+        public Task MoveAsync(long fromUserId, long intoUserId, CancellationToken cancellationToken) => Task.CompletedTask;
+
         public void Send(long userId, PushNote note) => Sent.Writer.TryWrite((userId, note));
 
         public async Task<PushNote> NextAsync()

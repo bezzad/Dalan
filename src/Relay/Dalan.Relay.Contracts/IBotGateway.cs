@@ -27,6 +27,9 @@ public interface IBotGateway
     /// <summary>The bot writes to a user who started it (REL-08, REL-09, REL-17, REL-20, REL-27).</summary>
     Task<BotResult<BotMessage>> SendAsync(long botId, long userId, OutgoingMessage message, CancellationToken cancellationToken);
 
+    /// <summary>REL-56: the user id a moved chat now has, or null when the chat with this user did not move.</summary>
+    Task<long?> MovedToAsync(long botId, long userId, CancellationToken cancellationToken);
+
     /// <summary>REL-23 and REL-53.</summary>
     Task<BotResult<BotMessage>> EditAsync(long botId, long userId, long messageId, MessageEdit edit, CancellationToken cancellationToken);
 

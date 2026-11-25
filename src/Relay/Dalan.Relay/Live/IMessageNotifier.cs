@@ -19,6 +19,9 @@ public sealed record ChatRead(long BotId, long UserId, int Unread) : LiveEvent(B
 public sealed record CallbackAnswered(long BotId, long UserId, string CallbackId, string? Text, bool ShowAlert)
     : LiveEvent(BotId, UserId);
 
+/// <summary>REL-55: the user's chats changed as a whole (an account merge): the client loads them again. Not stored.</summary>
+public sealed record ChatsReset(long UserId) : LiveEvent(0, UserId);
+
 /// <summary>One open live stream of a user. Dispose it when the stream ends.</summary>
 public interface IMessageSubscription : IDisposable
 {

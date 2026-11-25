@@ -1,3 +1,4 @@
+using Dalan.Identity.Contracts;
 using Dalan.Relay.BotApi;
 using Dalan.Relay.Bots;
 using Dalan.Relay.Builder;
@@ -8,6 +9,7 @@ using Dalan.Relay.Contracts;
 using Dalan.Relay.Data;
 using Dalan.Relay.Files;
 using Dalan.Relay.Live;
+using Dalan.Relay.Merge;
 using Dalan.Relay.Mcp;
 using Dalan.Relay.Outbox;
 using Dalan.Relay.Queue;
@@ -50,6 +52,9 @@ public static class RelayService
         services.AddSingleton<QueueLoader>();
         services.AddSingleton<RateLimits>();
         services.AddSingleton<IBotGateway, BotGateway>();
+        services.AddSingleton<AccountMerge>();
+        services.AddSingleton<IUserHoldings>(provider => provider.GetRequiredService<AccountMerge>());
+        services.AddSingleton<IUserMergeListener>(provider => provider.GetRequiredService<AccountMerge>());
         services.AddSingleton<IMessageNotifier, InMemoryMessageNotifier>();
         services.AddSingleton<OutboxWorker>();
         services.AddHostedService(provider => provider.GetRequiredService<OutboxWorker>());

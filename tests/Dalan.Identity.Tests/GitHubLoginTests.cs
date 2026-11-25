@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text;
 using Dalan.Testing;
 using Microsoft.AspNetCore.Hosting;
@@ -432,5 +433,58 @@ public class GitHubLoginTests(PostgresServer postgres)
         var response = await ComeBackAsync(browser, await StartLoginAsync(browser), "error=access_denied");
 
         Assert.Contains("expires=Thu, 01 Jan 1970", SetCookie(response, StateCookie), StringComparison.OrdinalIgnoreCase);
+    }
+
+    // ---- AUTH-30 ----
+
+    /// <summary>A browser logged in by the development login (a phone user), that does not follow redirects.</summary>
+    private static async Task<HttpClient> PhoneUserAsync(DalanApp app)
+    {
+        var browser = Browser(app);
+        (await browser.PostAsJsonAsync("/api/dev/login", new { phone = "09121234567", name = "Sara" }, Cancel)).EnsureSuccessStatusCode();
+        return browser;
+    }
+
+    private static async Task<HttpResponseMessage> LinkAsync(HttpClient browser)
+    {
+        var start = await browser.GetAsync("/api/account/github", Cancel);
+        Assert.Equal(HttpStatusCode.Redirect, start.StatusCode);
+        return await ComeBackAsync(browser, QueryHelpers.ParseQuery(start.Headers.Location!.Query)["state"].ToString());
+    }
+
+    [Fact]
+    [Trait("Rule", "AUTH-30")]
+    public async Task AUTH30_link_a_free_github_account()
+    {
+        var (app, _) = await StartAsync();
+        await using var _app = app;
+        var browser = await PhoneUserAsync(app);
+        var me = (await JsonAsync(await browser.GetAsync("/api/me", Cancel))).GetProperty("id").GetInt64();
+
+        var response = await LinkAsync(browser);
+
+        Assert.Equal("/account", Location(response));
+        var profile = await JsonAsync(await browser.GetAsync("/api/me", Cancel));
+        Assert.Equal(me, profile.GetProperty("id").GetInt64());
+        Assert.True(profile.GetProperty("has_github").GetBoolean());
+        Assert.Equal(1L, await CountUsersAsync(app));
+    }
+
+    [Fact]
+    [Trait("Rule", "AUTH-30")]
+    public async Task AUTH30_github_of_another_account_starts_a_merge()
+    {
+        var (app, _) = await StartAsync();
+        await using var _app = app;
+        await PostgresServer.ScalarAsync<int>(app.ConnectionString,
+            "INSERT INTO identity.users (email, github_id, display_name, created_at) VALUES ('sara@example.com', 42, 'Sara', now()) RETURNING 1");
+        var browser = await PhoneUserAsync(app);
+
+        var response = await LinkAsync(browser);
+
+        Assert.Equal("/account?merge=1", Location(response));
+        var plan = await JsonAsync(await browser.GetAsync("/api/account/merge", Cancel));
+        Assert.Equal("github", plan.GetProperty("way").GetString());
+        Assert.Equal(2L, await CountUsersAsync(app));
     }
 }
