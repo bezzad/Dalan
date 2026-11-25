@@ -45,7 +45,7 @@ The login screen SHALL show the Dalan gate (`client/src/logo.ts`) above the card
 - **THEN** each has an icon before its words
 
 ### Requirement: CLI-63 Back to where the person came from
-After a login the client SHALL show the address the person came from. A `next` address SHALL come from `?next=` or from `sessionStorage` key `dalan.next`; the client SHALL keep the address there before it leaves for GitHub, and SHALL clear it after use. An address SHALL be accepted only when it is one string that starts with one `/`, has no `//` or `/\` start, no `\`, no control character, and is at most 200 characters; anything else (`https://evil.example`, `//evil.example`, `/\evil.example`, `javascript:x`) SHALL be ignored. With no accepted address, a login from `/` SHALL go to "My bots" (`/bots`), and a login from any other address SHALL stay on it.
+After a login the client SHALL show the address the person came from (`next`), taken from `?next=` or from `sessionStorage` key `dalan.next`, which the client SHALL keep before it leaves for GitHub and clear after use. Only an internal path SHALL be accepted. With no accepted address, a login from `/` SHALL go to "My bots" (`/bots`), and a login from any other address SHALL stay on it.
 
 #### Scenario: Internal path
 - **GIVEN** `next` is `/guide/site`
@@ -56,6 +56,11 @@ After a login the client SHALL show the address the person came from. A `next` a
 - **GIVEN** `next` is `//evil.example` or `https://evil.example` or `/\evil.example`
 - **WHEN** the login ends
 - **THEN** the address is ignored and the person goes to `/bots`
+
+#### Scenario: What an internal path is
+- **GIVEN** `next` does not start with exactly one `/`, or starts with `//` or `/\`, or has a `\` or a control character, or is longer than 200 characters, or is `javascript:x`
+- **WHEN** the login ends
+- **THEN** the address is ignored
 
 #### Scenario: GitHub round trip
 - **GIVEN** the person pressed "Log in with GitHub" on `/guide/site`
@@ -68,7 +73,7 @@ After a login the client SHALL show the address the person came from. A `next` a
 - **THEN** the screen is `/bots`
 
 ### Requirement: CLI-64 The guides are steppers
-`/guide/bot` and `/guide/site` SHALL show their steps as a stepper: the step to do now is open with "Back" and "Next"; a step already done is green, says "Done" and is closed, with a button to open it. The state SHALL come from the server: logged in (`GET /api/me`), builder (`builder`), an access key (`GET /api/account/keys` not empty), a site online (`GET /api/sites`). The open step SHALL be the first step not done. A step the server cannot know SHALL be done only by "Next". A new and an old user SHALL see the same steps, in the same order.
+`/guide/bot` and `/guide/site` SHALL show their steps as a stepper: the step to do now is open with "Back" and "Next"; a step already done is green, says "Done" and is closed, with a button to open it. Which steps are done SHALL come from the server. The open step SHALL be the first step not done. A step the server cannot know SHALL be done only by "Next". A new and an old user SHALL see the same steps, in the same order.
 
 #### Scenario: First not done
 - **GIVEN** the user is logged in and a builder, has no key and no site online
@@ -79,6 +84,11 @@ After a login the client SHALL show the address the person came from. A `next` a
 - **GIVEN** the user has a key and a site that is online
 - **WHEN** the site guide opens
 - **THEN** the steps of login, key and try it are done and the open step is the last one
+
+#### Scenario: Where the state comes from
+- **GIVEN** a guide opens
+- **WHEN** it decides which steps are done
+- **THEN** logged in comes from `GET /api/me`, builder from its `builder` field, a key from `GET /api/account/keys` not empty, and a site online from `GET /api/sites`
 
 ### Requirement: CLI-65 The key step opens a modal
 The key step of the site guide SHALL say: "If this is the first time you hand us a site, first register site access with a key", and SHALL have a link that opens a modal on the same page. The modal SHALL make the key (`POST /api/account/keys`) and show the `dalan login` command once, with Copy; it SHALL NOT leave the page. When the user already has a key the step SHALL be green and the link SHALL say "Make another key".

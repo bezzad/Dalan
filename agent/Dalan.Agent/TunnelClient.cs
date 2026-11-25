@@ -165,7 +165,7 @@ public sealed class TunnelClient(
         output.WriteLine(_demoId is null ? "Press Ctrl+C to stop." : "Press Ctrl+C to stop and end the demo.");
 
         // AGT-16: the first time only, never again after a reconnect.
-        if (!_opened && OpenBrowser is { } open && session.Sites.Count > 0)
+        if (!_opened && OpenBrowser is { } open && session.Sites.Length > 0)
         {
             _opened = true;
             try
