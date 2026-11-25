@@ -74,5 +74,5 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 
 ## Navigation and phone (CLI-68, CLI-69)
 - Going to another address scrolls to the top; an address with a #part goes to that part. Back and Forward keep the browser's place.
-- The viewport is scale 1 with no pinch zoom; every field is 16px or more, so a phone never zooms on focus.
+- The viewport is scale 1 and pinch zoom stays; every field is 16px or more, so a phone never zooms on focus.
 - Examples never name a personal or company project: `mysite` and `shop` (CLI-67).

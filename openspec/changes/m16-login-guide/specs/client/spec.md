@@ -130,12 +130,12 @@ When the person goes to another address of the site (a header or footer link, th
 - **WHEN** the person presses a link to `/#plans`
 - **THEN** the screen scrolls to the plans, not to the top
 
-### Requirement: CLI-69 No zoom on a phone
-The page SHALL have the viewport `width=device-width, initial-scale=1, maximum-scale=1`, and the style sheet SHALL set `touch-action: manipulation` and a font size of at least 16px on every field, so a pinch, a double tap or a focused field never zooms the page.
+### Requirement: CLI-69 No zoom on a focused field
+The page SHALL have the viewport `width=device-width, initial-scale=1` with no `maximum-scale` and no `user-scalable`, and the style sheet SHALL set a font size of at least 16px on every field, so a focused field never zooms the page. A person SHALL still be able to zoom with a pinch or a double tap (owner, 2026-11-25: people with poor eyesight need it).
 
-#### Scenario: Viewport
-- **WHEN** the page head is read
-- **THEN** the viewport says scale 1 and no larger scale
+#### Scenario: Pinch zoom stays
+- **WHEN** the page head and the style sheet are read
+- **THEN** the viewport says scale 1 with no `maximum-scale` or `user-scalable`, and no `touch-action` stops zoom
 
 #### Scenario: Field size
 - **WHEN** the style sheet is read
