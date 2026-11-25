@@ -108,7 +108,7 @@ public sealed class ShutdownTests(PostgresServer postgres) : IAsyncLifetime
         // A live stream.
         using var streamResponse = await builder.GetAsync("/api/events", HttpCompletionOption.ResponseHeadersRead, cancel);
         await using var stream = await streamResponse.Content.ReadAsStreamAsync(cancel);
-        await stream.ReadAsync(new byte[16], cancel);
+        await stream.ReadAtLeastAsync(new byte[16], 1, cancellationToken: cancel);
 
         // A bot long poll.
         using var bot = _factory.CreateClient();
