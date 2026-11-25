@@ -11,6 +11,7 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 
 ## Page frame
 - **Header on every page**: logo and "دالان" on one line, a link to `/`, at the start. At the end the same tools (`headerTools`): the round language button (only a globe; one click switches Persian and English, Persian first), the round theme button of the same size (36px), then "Log in" or the user menu. No page drops it; language never sits among the menu links.
+- **Connection ring** (CLI-75): no bar and no toast when the live stream is down. A thin `--brand` ring turns around the bot's icon in the chat header, or around the Dalan mark on other screens; with reduced motion it is still and dashed. Hover shows "Connected" or "Connecting…". A hidden `role="status"` text tells screen readers. The page never moves.
 - **Header links** (public pages, CLI-42): only Plans, Showcase and Guide. FAQ and Privacy live in the footer only, and so do About us and Contact us (CLI-56).
 - **Phone (below 760px)**: the links fold into a round ☰ button after the tools; it opens a panel with one 48px row per link, closed by a link, a click outside or Escape. "Log in or sign up" becomes "Log in"; a long user name is cut with "…". Under 360px the logo stands without the name. Every page fits 320px and 360 by 740 portrait and 740 by 360 landscape, with no sideways scroll.
 - **Public pages**: the full site header, and the footer with the big half-cut wordmark, always at the bottom of the screen.
