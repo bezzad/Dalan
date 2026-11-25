@@ -29,6 +29,7 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - One height per size: 40px normal, 32px `small`, 36px in the header. The words sit in the middle on both axes (`inline-flex`). Buttons in one row line up with the text beside them; never push one button down with a margin.
 - Inside a wide page a button is as wide as its words, never full width. Full width only on the login card.
 - One primary (green) button per card or row: the main action. Others are plain. A link button for Back and small inline actions.
+- Plain buttons have the `--control-line` border (3:1 against the page, WCAG 1.4.11); cards, rows and dividers keep the soft `--line` (CLI-71).
 - A step that cannot be undone (new token, delete) asks first.
 
 ## Addresses

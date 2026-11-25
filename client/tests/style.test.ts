@@ -1,4 +1,4 @@
-// Rules: CLI-48, CLI-13, CLI-07, CLI-58
+// Rules: CLI-71, CLI-48, CLI-13, CLI-07, CLI-58
 // Reads the style sheet: message sizes like Telegram Desktop, and button colours readable in both themes.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -64,4 +64,14 @@ test("CLI-58 each line of a message and of a blockquote takes its own direction;
     assert.match(body, /text-align: start;/, selector);
   }
   assert.match(css, /\.messages pre \{[^}]*unicode-bidi: isolate;[^}]*direction: ltr;[^}]*text-align: left;/);
+});
+
+test("CLI-71 plain buttons have a visible border in the light theme", () => {
+  const edge = light.get("--control-line")!;
+  assert.ok(contrast(edge, light.get("--surface")!) >= 3, "against --surface");
+  assert.ok(contrast(edge, light.get("--bg")!) >= 3, "against --bg");
+  assert.match(css, /\nbutton, a\.button \{[^}]*border: 1px solid var\(--control-line\)/);
+  assert.doesNotMatch(css, /\.login \.button\.way \{[^}]*border-color: var\(--line\)/);
+  assert.equal(dark.get("--control-line"), dark.get("--line"));
+  assert.equal(darkAuto.get("--control-line"), darkAuto.get("--line"));
 });
