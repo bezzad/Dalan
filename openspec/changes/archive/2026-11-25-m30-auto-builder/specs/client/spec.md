@@ -13,7 +13,7 @@ The account screen SHALL show the user's builder state: a button "become a build
 
 ## ADDED Requirements
 
-### Requirement: CLI-71 A refused builder
+### Requirement: CLI-84 A refused builder
 The account screen SHALL show a refused user the note that the admin refused, with the request button. The admin screen SHALL show the state `refused` and an "approve" button for it. The texts SHALL exist in Persian and in English.
 
 #### Scenario: Account screen

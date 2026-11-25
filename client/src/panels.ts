@@ -6,7 +6,7 @@ export type BuilderState = "none" | "requested" | "approved" | "refused";
 
 /**
  * CLI-23: what the account screen shows about building bots. A user with no phone must verify one first (CLI-34).
- * CLI-71: a refused user sees why, and may ask again.
+ * CLI-84: a refused user sees why, and may ask again.
  */
 export function builderView(user: { builder: BuilderState; admin: boolean; has_phone: boolean }): "phone" | "request" | "refused" | "waiting" | "bots" {
   if (user.admin || user.builder === "approved") return "bots";

@@ -102,7 +102,7 @@ internal static partial class AccountEndpoints
     }
 
     /// <summary>
-    /// AUTH-19: asks for the right to create bots. Needs a phone (level 2). With Identity:AutoBuilder on (AUTH-35) "none"
+    /// AUTH-19: asks for the right to create bots. Needs a phone (level 2). With Identity:AutoBuilder on (AUTH-39) "none"
     /// is approved at once; a refused user's new request waits for the admin. An approved user stays approved.
     /// </summary>
     private static async Task<IResult> AskBuilderAsync(

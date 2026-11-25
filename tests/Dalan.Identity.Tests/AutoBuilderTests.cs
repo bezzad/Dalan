@@ -4,7 +4,7 @@ using static Dalan.Identity.Tests.Http;
 
 namespace Dalan.Identity.Tests;
 
-/// <summary>AUTH-35: a verified phone makes a builder without the admin.</summary>
+/// <summary>AUTH-39: a verified phone makes a builder without the admin.</summary>
 public class AutoBuilderTests(PostgresServer postgres)
 {
     private const string Phone = "09121234567";
@@ -15,8 +15,8 @@ public class AutoBuilderTests(PostgresServer postgres)
         (await JsonAsync(await browser.GetAsync("/api/me", Cancel))).GetProperty("builder").GetString();
 
     [Fact]
-    [Trait("Rule", "AUTH-35")]
-    public async Task AUTH35_a_new_sms_user_is_a_builder()
+    [Trait("Rule", "AUTH-39")]
+    public async Task AUTH39_a_new_sms_user_is_a_builder()
     {
         await using var app = await StartAsync();
 
@@ -26,8 +26,8 @@ public class AutoBuilderTests(PostgresServer postgres)
     }
 
     [Fact]
-    [Trait("Rule", "AUTH-35")]
-    public async Task AUTH35_an_added_phone_makes_a_builder()
+    [Trait("Rule", "AUTH-39")]
+    public async Task AUTH39_an_added_phone_makes_a_builder()
     {
         await using var app = await StartAsync();
         var browser = await app.LoginByEmailAsync("sara@example.com");
@@ -40,8 +40,8 @@ public class AutoBuilderTests(PostgresServer postgres)
     }
 
     [Fact]
-    [Trait("Rule", "AUTH-35")]
-    public async Task AUTH35_refused_stays_refused()
+    [Trait("Rule", "AUTH-39")]
+    public async Task AUTH39_refused_stays_refused()
     {
         await using var app = await StartAsync();
         await app.AddUserAsync(phone: "+989121234567");
@@ -53,8 +53,8 @@ public class AutoBuilderTests(PostgresServer postgres)
     }
 
     [Fact]
-    [Trait("Rule", "AUTH-35")]
-    public async Task AUTH35_off_leaves_the_admin_to_decide()
+    [Trait("Rule", "AUTH-39")]
+    public async Task AUTH39_off_leaves_the_admin_to_decide()
     {
         await using var app = await StartAsync(on: false);
 

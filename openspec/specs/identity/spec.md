@@ -737,7 +737,7 @@ After a merge the other account SHALL be deleted with its sessions, and the pers
 - **WHEN** user 9 is merged into user 4
 - **THEN** the audit log has `user 9 merged into user 4`, and the access log rows of user 9 are unchanged
 
-### Requirement: AUTH-35 A verified phone makes a builder
+### Requirement: AUTH-39 A verified phone makes a builder
 When `Identity:AutoBuilder` is on (start true), a user with a verified phone and builder state `none` SHALL become `approved` at an SMS login, when the phone is added (AUTH-26) and after a merge (AUTH-33). `requested` and `refused` SHALL NOT change. The requests open when this change is installed SHALL be approved once.
 
 #### Scenario: New SMS user

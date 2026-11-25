@@ -1,4 +1,4 @@
-// Rules: CLI-23, CLI-71
+// Rules: CLI-23, CLI-84
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
@@ -7,7 +7,7 @@ import { builderView } from "../src/panels.ts";
 
 const source = (file: string) => readFileSync(new URL(file, import.meta.url), "utf8");
 
-test("CLI-71 a refused user sees why and may ask again", () => {
+test("CLI-84 a refused user sees why and may ask again", () => {
   assert.equal(builderView({ builder: "refused", admin: false, has_phone: true }), "refused");
   assert.equal(builderView({ builder: "refused", admin: false, has_phone: false }), "phone");
   const account = source("../src/account.ts");
@@ -15,7 +15,7 @@ test("CLI-71 a refused user sees why and may ask again", () => {
   assert.match(account, /view === "request" \|\| view === "refused"/);
 });
 
-test("CLI-71 the admin screen says refused and can approve", () => {
+test("CLI-84 the admin screen says refused and can approve", () => {
   const admin = source("../src/admin.ts");
   assert.match(admin, /user\.builder === "refused" \? "refused"/);
   assert.match(admin, /user\.builder === "refused" \? \[action\("approve"/);
