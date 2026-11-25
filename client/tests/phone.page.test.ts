@@ -17,13 +17,14 @@ test("CLI-68 going to another address scrolls the window to the top", () => {
   assert.match(main, /startsAtTop\(path\)\) window\.scrollTo\(0, 0\)/);
 });
 
-test("CLI-69 the viewport has scale 1 and no larger scale", () => {
+test("CLI-69 the viewport has scale 1 and a person can still pinch zoom", () => {
   const html = read("../public/index.html");
-  assert.match(html, /name="viewport" content="[^"]*initial-scale=1[^"]*maximum-scale=1/);
+  assert.match(html, /name="viewport" content="[^"]*initial-scale=1/);
+  assert.doesNotMatch(html, /maximum-scale|user-scalable/);
+  assert.doesNotMatch(read("../public/app.css"), /touch-action/);
 });
 
-test("CLI-69 touch-action is manipulation and every field is at least 16px", () => {
+test("CLI-69 every field is at least 16px, so a focused field never zooms", () => {
   const css = read("../public/app.css");
-  assert.match(css, /html \{ touch-action: manipulation; \}/);
   assert.match(css, /input, textarea, select \{ font-size: 16px; \}/);
 });

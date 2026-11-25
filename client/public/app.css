@@ -720,8 +720,7 @@ section.guide .code pre { max-height: none; }
 .not-found h2 { font-size: var(--text-title); }
 .not-found p { max-width: 420px; color: var(--muted); }
 
-/* CLI-69: no zoom on a phone: no pinch or double tap, and a field of 16px or more is never zoomed on focus. */
-html { touch-action: manipulation; }
+/* CLI-69: a field of 16px or more is never zoomed on focus; pinch and double tap zoom stay for people who need them. */
 input, textarea, select { font-size: 16px; }
 
 /* CLI-62: the gate above the login card, and the line between the password form and the other ways. */
