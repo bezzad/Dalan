@@ -12,6 +12,11 @@ export function matchingMessages(messages: Message[], query: string): Message[] 
   return messages.filter(message => `${message.text} ${message.file?.name ?? ""}`.toLocaleLowerCase().includes(words));
 }
 
+/** CLI-80: the voice button of the chat bar (CLI-46): Dalan's line microphone, not an emoji. */
+export function micButton(label: string): HTMLButtonElement {
+  return h("button", { type: "button", class: "primary mic", hidden: true, "aria-label": label, title: label }, icon("mic"));
+}
+
 export interface ChatHeader {
   element: HTMLElement;
   /** The line after "@username": "online" or "last seen ..." (CLI-19). */

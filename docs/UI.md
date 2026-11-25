@@ -41,7 +41,7 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - Message text 14px, line 1.35, time 12px: the `--message-*` tokens (CLI-48).
 - The bot's reply keyboard sits under the input, where a phone keyboard would be. Rows exactly as sent; a row's buttons share its width. ⌨ in the input bar hides and shows it (not for a persistent one) (CLI-07).
 - Button colours: `success` green, `danger` red, `primary` blue (`--primary`), each with its `--on-*` text colour. Link buttons have a small ↗ (CLI-13).
-- 🎤 takes Send's place while the input is empty; voices and audio use Dalan's own player (CLI-16, CLI-46).
+- The microphone button (Dalan's line `mic` icon, CLI-80) takes Send's place while the input is empty; voices and audio use Dalan's own player (CLI-16, CLI-46).
 - 📎, paste and drop open one card above the input; the input is the caption (CLI-47).
 - Bot icons are round, cut to fill; no icon shows the first letter (CLI-50).
 - Reply: a message's menu (right-click, long press), a double-click or a swipe left. The bar above the input shows the quote with ✕; a bubble that replies shows the quote on top, and a click on it goes to the message (CLI-52).
