@@ -18,10 +18,14 @@ internal sealed class MergeFollowUp(
 {
     public async Task RunOnceAsync(CancellationToken cancellationToken)
     {
-        var before = time.GetUtcNow().AddSeconds(-options.CurrentValue.MergeRetrySeconds);
+        var now = time.GetUtcNow();
+        var before = now.AddSeconds(-options.CurrentValue.MergeRetrySeconds);
         List<string> waiting;
         await using (var db = await dbFactory.CreateDbContextAsync(cancellationToken))
         {
+            // GitHub links that were started and never came back.
+            await db.Database.ExecuteSqlAsync($"DELETE FROM identity.github_links WHERE expires_at <= {now}", cancellationToken);
+
             // One text column ("<id> <from> <into>"), so the query needs no mapped type.
             waiting = await db.Database.SqlQuery<string>($"""
                 SELECT id::text || ' ' || from_user_id::text || ' ' || into_user_id::text AS "Value"

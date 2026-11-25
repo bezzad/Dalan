@@ -1,3 +1,4 @@
+using Dalan.Admin.Contracts;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 using Dalan.Identity.Codes;
@@ -129,12 +130,14 @@ internal static partial class AccountEndpoints
     /// </summary>
     private static async Task<IResult> AddPhoneAsync(
         HttpContext http, IDbContextFactory<IdentityDb> dbFactory, SmsCodes codes, UserAdmin users, SecurityLog log,
-        SessionTokens sessions, AccountMerger merger)
+        SessionTokens sessions, AccountMerger merger, IAccessLog accessLog)
     {
         var request = await AuthJson.ReadAsync<PhoneRequest>(http);
         if (PhoneNumber.Normalize(request?.Phone) is not { } phone) return SmsLoginEndpoints.BadPhone();
 
         var userId = SessionTokens.UserId(http.User);
+        // ADM-01: this door knows its caller.
+        await accessLog.RecordAsync(AccessActor.User, userId, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
         if (await db.Users.AnyAsync(u => u.Id == userId && u.Phone != null, http.RequestAborted))
             return AuthJson.Error(StatusCodes.Status409Conflict, "has_phone", "This account has a mobile number already.");

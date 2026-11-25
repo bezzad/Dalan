@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Dalan.Admin.Contracts;
 using Dalan.Identity.Codes;
 using Dalan.Identity.Data;
 using Dalan.Identity.EmailLogin;
@@ -48,9 +49,12 @@ internal static class MergeEndpoints
     }
 
     /// <summary>AUTH-34: the person is then logged in as the kept account.</summary>
-    private static async Task<IResult> MergeAsync(HttpContext http, SessionTokens sessions, AccountMerger merger, UserAdmin users)
+    private static async Task<IResult> MergeAsync(
+        HttpContext http, SessionTokens sessions, AccountMerger merger, UserAdmin users, IAccessLog accessLog)
     {
         var userId = SessionTokens.UserId(http.User);
+        // ADM-01: this door knows its caller.
+        await accessLog.RecordAsync(AccessActor.User, userId, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
         if (await sessions.SessionIdAsync(http, userId) is not { } sessionId) return AuthJson.Unauthorized();
         if (await merger.MergeAsync(sessionId, userId, http.RequestAborted) is not { } plan) return NoMerge();
 
@@ -71,12 +75,14 @@ internal static class MergeEndpoints
     /// <summary>AUTH-30: an email code proves the address; a free address is added, one of another account makes a pending merge.</summary>
     private static async Task<IResult> LinkEmailAsync(
         HttpContext http, IDbContextFactory<IdentityDb> dbFactory, EmailCodes codes, SessionTokens sessions,
-        AccountMerger merger, UserAdmin users, SecurityLog log)
+        AccountMerger merger, UserAdmin users, SecurityLog log, IAccessLog accessLog)
     {
         var request = await AuthJson.ReadAsync<EmailRequest>(http);
         if (EmailAddress.Normalize(request?.Email) is not { } email) return EmailLoginEndpoints.BadEmail();
 
         var userId = SessionTokens.UserId(http.User);
+        // ADM-01: this door knows its caller.
+        await accessLog.RecordAsync(AccessActor.User, userId, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
         if (await db.Users.AnyAsync(u => u.Id == userId && u.Email != null, http.RequestAborted))
             return AuthJson.Error(StatusCodes.Status409Conflict, "has_email", "This account has an email address already.");

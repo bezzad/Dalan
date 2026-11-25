@@ -30,7 +30,7 @@ public sealed class AccountMerge(
         return new UserHoldings(Bots: bots, Chats: chats);
     }
 
-    /// <summary>REL-55: safe to run twice: the second run finds no chat of the gone user.</summary>
+    /// <summary>REL-55: safe to run twice: the second run finds no chat of the gone user, and announces only what is not announced yet.</summary>
     public async Task UserMergedAsync(long fromUserId, long intoUserId, CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
@@ -38,7 +38,10 @@ public sealed class AccountMerge(
         await using (var db = await dbFactory.CreateDbContextAsync(cancellationToken))
         {
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-            moved = await db.Memberships.Where(m => m.UserId == fromUserId).Select(m => m.BotId).ToListAsync(cancellationToken);
+            // Locked, so no message joins a chat of the gone user while it moves.
+            moved = await db.Database.SqlQuery<long>(
+                $"SELECT bot_id AS \"Value\" FROM relay.memberships WHERE user_id = {fromUserId} ORDER BY bot_id FOR UPDATE")
+                .ToListAsync(cancellationToken);
             foreach (var botId in moved) await MoveChatAsync(db, botId, fromUserId, intoUserId, cancellationToken);
 
             await db.Files.Where(f => f.UserId == fromUserId)
@@ -52,7 +55,8 @@ public sealed class AccountMerge(
                 await db.Database.ExecuteSqlAsync($"""
                     INSERT INTO relay.moved_chats (bot_id, from_user_id, to_user_id, moved_at)
                     VALUES ({botId}, {fromUserId}, {intoUserId}, {now})
-                    ON CONFLICT (bot_id, from_user_id) DO UPDATE SET to_user_id = excluded.to_user_id, moved_at = excluded.moved_at
+                    ON CONFLICT (bot_id, from_user_id) DO UPDATE
+                    SET to_user_id = excluded.to_user_id, moved_at = excluded.moved_at, announced_at = NULL
                     """, cancellationToken);
             }
 
@@ -63,13 +67,33 @@ public sealed class AccountMerge(
         }
 
         await push.MoveAsync(fromUserId, intoUserId, cancellationToken);
-        if (moved.Count == 0) return;
+        await AnnounceAsync(fromUserId, intoUserId, cancellationToken);
+    }
+
+    /// <summary>
+    /// REL-56: one chat_moved update per moved chat not announced yet (a retry after a failure here still announces),
+    /// and the kept user's clients load again.
+    /// </summary>
+    private async Task AnnounceAsync(long fromUserId, long intoUserId, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var bots = await db.Database.SqlQuery<long>(
+            $"SELECT bot_id AS \"Value\" FROM relay.moved_chats WHERE from_user_id = {fromUserId} AND announced_at IS NULL")
+            .ToListAsync(cancellationToken);
+        if (bots.Count == 0) return;
 
         notifier.EndStreams(fromUserId);
         notifier.Publish(new ChatsReset(intoUserId));
-        if (await users.FindAsync(intoUserId, cancellationToken) is not { } into) return;
-        foreach (var botId in moved)
-            queue.Enqueue(botId, QueuedUpdate.ChatMoved(await NextUpdateIdAsync(cancellationToken), into, fromUserId, now));
+        var into = await users.FindAsync(intoUserId, cancellationToken);
+        var now = time.GetUtcNow();
+        foreach (var botId in bots)
+        {
+            if (into is not null)
+                queue.Enqueue(botId, QueuedUpdate.ChatMoved(await NextUpdateIdAsync(cancellationToken), into, fromUserId, now));
+            await db.Database.ExecuteSqlAsync(
+                $"UPDATE relay.moved_chats SET announced_at = {now} WHERE bot_id = {botId} AND from_user_id = {fromUserId}",
+                cancellationToken);
+        }
     }
 
     /// <summary>REL-56: the user id a moved chat has now, for Relay:MovedChatDays after the move.</summary>
@@ -147,7 +171,10 @@ public sealed class AccountMerge(
 
         kept.LastSeq = seqBase + order.Count;
         kept.LastVersion = versionBase + order.Count;
-        kept.LastReadSeq = keptIds.Where(p => p.Key <= kept.LastReadSeq).Select(p => p.Value).DefaultIfEmpty(0).Max();
+        // What either side had read stays read.
+        kept.LastReadSeq = Math.Max(
+            keptIds.Where(p => p.Key <= kept.LastReadSeq).Select(p => p.Value).DefaultIfEmpty(0).Max(),
+            goneIds.Where(p => p.Key <= gone.LastReadSeq).Select(p => p.Value).DefaultIfEmpty(0).Max());
         if (gone.State == MembershipState.Active) kept.State = MembershipState.Active;
         if (gone.StartedAt < kept.StartedAt) kept.StartedAt = gone.StartedAt;
     }

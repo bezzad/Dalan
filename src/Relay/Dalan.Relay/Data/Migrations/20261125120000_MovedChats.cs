@@ -19,6 +19,7 @@ namespace Dalan.Relay.Data.Migrations
                     from_user_id bigint NOT NULL,
                     to_user_id bigint NOT NULL,
                     moved_at timestamp with time zone NOT NULL,
+                    announced_at timestamp with time zone,
                     CONSTRAINT pk_moved_chats PRIMARY KEY (bot_id, from_user_id)
                 );
                 CREATE INDEX ix_moved_chats_to_user_id ON relay.moved_chats (to_user_id);
