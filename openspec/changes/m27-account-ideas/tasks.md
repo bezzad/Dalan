@@ -2,7 +2,7 @@
 
 Ideas from ngrok's settings (owner, 2026-11-25). The owner first keeps or drops each rule; remove the dropped ones before work starts. Needs m26 (the settings area). Each task: write the failing tests tagged with the rule IDs, then the code. CI runs on GitHub (rule 11).
 
-- [ ] 0. Owner: keep or drop AUTH-35, AUTH-36, AUTH-37, AUTH-38, CLI-79
+- [ ] 0. Owner: keep or drop AUTH-35, AUTH-36, AUTH-38, CLI-79 (AUTH-37 stays: m29 SEC-15 needs it for admins, owner 2026-11-25)
 - [ ] 1. Sessions: API, audit, the list in "Login and security" (AUTH-35)
 - [ ] 2. Delete my account: API with proof and word, `owns_things` through Relay and Sites contracts, legal records kept, danger card in Profile (AUTH-36)
 - [ ] 3. Second factor: secret, QR on the device, recovery codes, login step, turn off (AUTH-37)
