@@ -24,13 +24,13 @@ On `UserMerged` (AUTH-34) every chat, file and push subscription of the gone use
 - **THEN** user 4 keeps the newest `MaxSubscriptionsPerUser` of them
 
 ### Requirement: REL-56 The bot is told the chat moved
-For each bot that had a chat with the gone user, the bot SHALL get one update with `chat_moved`: `from_chat_id` (the gone user), `to_chat_id` (the kept user) and `date`. For `Relay:MovedChatDays` (start 180) after the merge, a send to the old `chat_id` SHALL get 400 `chat_moved` with `to_chat_id`. Afterwards it SHALL get "chat not found".
+For each bot that had a chat with the gone user, the bot SHALL get one update with `chat_moved`: `from_user_id` (the gone user), `to_user_id` (the kept user) and `date`. For `Relay:MovedChatDays` (start 180) after the merge, a call for the old user (send, edit, delete, pin) SHALL get 400 `chat_moved` with `to_user_id`; afterwards it SHALL get `chat_not_active`.
 
 #### Scenario: The update
 - **GIVEN** user 9 had a chat with bot 5
 - **WHEN** user 9 is merged into user 4
-- **THEN** bot 5 gets an update with `chat_moved` from 9 to 4
+- **THEN** bot 5 gets an update with `chat_moved`, `from_user_id` 9 and `to_user_id` 4
 
 #### Scenario: Send to the old chat
-- **WHEN** bot 5 sends a message to chat 9 after the merge
-- **THEN** the answer is 400 `chat_moved` with `to_chat_id` 4
+- **WHEN** bot 5 sends a message to user 9 after the merge
+- **THEN** the answer is 400 `chat_moved` with `to_user_id` 4, and after `Relay:MovedChatDays` it is 403 `chat_not_active`

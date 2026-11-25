@@ -28,6 +28,9 @@ public interface IWebPush
     /// <summary>Removes the subscription, but only when it belongs to this user.</summary>
     Task UnsubscribeAsync(long userId, string endpoint, CancellationToken cancellationToken);
 
+    /// <summary>REL-55: after an account merge, the devices of the gone user belong to the kept one (the newest within the limit).</summary>
+    Task MoveAsync(long fromUserId, long intoUserId, CancellationToken cancellationToken);
+
     /// <summary>NTF-07: puts a push for every device of this user in the queue and returns at once.</summary>
     void Send(long userId, PushNote note);
 }

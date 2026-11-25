@@ -94,6 +94,12 @@ public sealed class IdentityOptions
     public int MaxAccessKeys { get; set; }
 
     /// <summary>AUTH-27 to AUTH-29.</summary>
+    /// <summary>AUTH-31: seconds a pending merge waits for "Merge" after the proof.</summary>
+    public int MergeSeconds { get; set; }
+
+    /// <summary>AUTH-34: seconds between tries of a merge's follow-up in the other services that failed.</summary>
+    public int MergeRetrySeconds { get; set; }
+
     public GitHubOptions GitHub { get; set; } = new();
 }
 

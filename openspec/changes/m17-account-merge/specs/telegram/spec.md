@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: TG-26 A moved chat in Telegram's shape
-The Telegram door SHALL show a `chat_moved` update (REL-56) as a `message` in the old chat with `migrate_to_chat_id` set to the new chat id, and a `chat_moved` error as 400 with `parameters.migrate_to_chat_id`, the way Telegram tells a bot that a group moved.
+The Telegram door SHALL show a `chat_moved` update (REL-56) as a `message` in the old chat with `migrate_to_chat_id` set to the new chat id, and a `chat_moved` error as 400 "Bad Request: group chat was upgraded to a supergroup chat" with `parameters.migrate_to_chat_id`, the way Telegram tells a bot that a group moved.
 
 #### Scenario: Update
 - **GIVEN** chat 9 of bot 5 moved to chat 4

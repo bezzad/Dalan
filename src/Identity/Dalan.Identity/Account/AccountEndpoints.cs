@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Dalan.Identity.Codes;
 using Dalan.Identity.Contracts;
 using Dalan.Identity.Data;
+using Dalan.Identity.Merge;
 using Dalan.Identity.Passwords;
 using Dalan.Identity.Sessions;
 using Dalan.Identity.SmsLogin;
@@ -122,9 +123,13 @@ internal static partial class AccountEndpoints
         return profile is null ? AuthJson.Unauthorized() : AuthJson.Ok(profile);
     }
 
-    /// <summary>AUTH-26: a level 1 user proves a phone with an SMS code (sent by POST /api/auth/sms) and becomes level 2.</summary>
+    /// <summary>
+    /// AUTH-26: a level 1 user proves a phone with an SMS code (sent by POST /api/auth/sms) and becomes level 2.
+    /// A phone of another account makes a pending merge instead (AUTH-31).
+    /// </summary>
     private static async Task<IResult> AddPhoneAsync(
-        HttpContext http, IDbContextFactory<IdentityDb> dbFactory, SmsCodes codes, UserAdmin users, SecurityLog log)
+        HttpContext http, IDbContextFactory<IdentityDb> dbFactory, SmsCodes codes, UserAdmin users, SecurityLog log,
+        SessionTokens sessions, AccountMerger merger)
     {
         var request = await AuthJson.ReadAsync<PhoneRequest>(http);
         if (PhoneNumber.Normalize(request?.Phone) is not { } phone) return SmsLoginEndpoints.BadPhone();
@@ -137,6 +142,8 @@ internal static partial class AccountEndpoints
         var (check, codeId) = await codes.CheckAsync(phone, request!.Code?.Trim() ?? "", http.RequestAborted);
         if (check == CodeCheck.Wrong || !await codes.UseAsync(codeId, http.RequestAborted)) return SmsLoginEndpoints.WrongCode();
 
+        if (await MergeEndpoints.OwnerAsync(db, u => u.Phone == phone, http.RequestAborted) is { } other)
+            return await MergeEndpoints.OfferAsync(http, sessions, merger, userId, other, AccountMerger.ByPhone);
         try
         {
             await db.Users.Where(u => u.Id == userId && u.Phone == null)
@@ -144,7 +151,10 @@ internal static partial class AccountEndpoints
         }
         catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
         {
-            return AuthJson.Error(StatusCodes.Status409Conflict, "phone_taken", "Another account has this mobile number.");
+            // Another account took the number in the same moment.
+            if (await MergeEndpoints.OwnerAsync(db, u => u.Phone == phone, http.RequestAborted) is { } owner)
+                return await MergeEndpoints.OfferAsync(http, sessions, merger, userId, owner, AccountMerger.ByPhone);
+            throw;
         }
 
         log.PhoneAdded(userId);

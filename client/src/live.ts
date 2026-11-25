@@ -43,6 +43,8 @@ export class Live {
       const data = JSON.parse(event.data) as { bot_id: number; callback_id: string; text?: string; show_alert: boolean };
       this.handlers.onAnswer(data.bot_id, data);
     });
+    // REL-55: an account merge joined the chats; what this page holds is old, so it loads again.
+    source.addEventListener("reset", () => window.location.reload());
     source.addEventListener("read", event => {
       const data = JSON.parse(event.data) as { bot_id: number; unread: number };
       this.handlers.onRead(data.bot_id, data.unread);

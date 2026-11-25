@@ -21,6 +21,18 @@ internal sealed partial class SecurityLog(ILogger<SecurityLog> logger)
 
     public void PhoneAdded(long userId) => LogPhoneAdded(logger, userId);
 
+    /// <summary>AUTH-30: an email or GitHub account was added to a user.</summary>
+    public void WayLinked(long userId, string way) => LogWayLinked(logger, userId, way);
+
+    /// <summary>AUTH-31: the proof is done and the merge waits for the person.</summary>
+    public void MergeOffered(long userId, long otherUserId, string way) => LogMergeOffered(logger, userId, otherUserId, way);
+
+    /// <summary>AUTH-34.</summary>
+    public void Merged(long fromUserId, long intoUserId, string way) => LogMerged(logger, fromUserId, intoUserId, way);
+
+    /// <summary>AUTH-34: a service could not move what it holds yet; it is tried again.</summary>
+    public void MergeFollowUpFailed(long mergeId, Exception exception) => LogMergeFollowUpFailed(logger, mergeId, exception);
+
     public void RefreshReuse() => LogRefreshReuse(logger);
 
     public void PasswordSet(long userId) => LogPasswordSet(logger, userId);
@@ -48,6 +60,18 @@ internal sealed partial class SecurityLog(ILogger<SecurityLog> logger)
     [LoggerMessage(LogLevel.Error,
         "Security event {Event}: the {Channel} budget of {Budget} per 24 hours ({Setting}) is used up. Nobody can log in by {Channel} until it frees up.")]
     private static partial void LogBudget(ILogger logger, string @event, string channel, int budget, string setting);
+
+    [LoggerMessage(LogLevel.Information, "Security event way_linked: user {UserId} by {Way}")]
+    private static partial void LogWayLinked(ILogger logger, long userId, string way);
+
+    [LoggerMessage(LogLevel.Information, "Security event merge_offered: user {UserId} proved the {Way} of user {OtherUserId}")]
+    private static partial void LogMergeOffered(ILogger logger, long userId, long otherUserId, string way);
+
+    [LoggerMessage(LogLevel.Information, "Security event merged: user {FromUserId} merged into user {IntoUserId} by {Way}")]
+    private static partial void LogMerged(ILogger logger, long fromUserId, long intoUserId, string way);
+
+    [LoggerMessage(LogLevel.Error, "Security event merge_follow_up_failed: merge {MergeId} is tried again later")]
+    private static partial void LogMergeFollowUpFailed(ILogger logger, long mergeId, Exception exception);
 
     [LoggerMessage(LogLevel.Information, "Security event phone_added: user {UserId}")]
     private static partial void LogPhoneAdded(ILogger logger, long userId);

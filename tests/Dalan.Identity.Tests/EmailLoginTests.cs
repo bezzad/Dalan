@@ -283,7 +283,7 @@ public class EmailLoginTests(PostgresServer postgres)
 
     [Fact]
     [Trait("Rule", "AUTH-26")]
-    public async Task AUTH26_phone_of_another_user_is_taken()
+    public async Task AUTH26_phone_of_another_user_needs_a_merge()
     {
         await using var app = await StartAsync(postgres);
         await app.AddUserAsync(phone: "+989121234567");
@@ -293,7 +293,7 @@ public class EmailLoginTests(PostgresServer postgres)
         var response = await AddPhoneAsync(browser, Phone, app.Sms.Sent[^1].Code);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Equal("phone_taken", await ErrorCodeAsync(response));
+        Assert.Equal("merge_needed", await ErrorCodeAsync(response));
     }
 
     [Fact]

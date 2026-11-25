@@ -9,6 +9,8 @@ using Dalan.Relay.Queue;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
+using Dalan.Relay.Merge;
+
 namespace Dalan.Relay.BotApi;
 
 /// <summary>REL-19: the one place where the rules for bots live. Every bot door calls it.</summary>
@@ -23,6 +25,7 @@ internal sealed class BotGateway(
     DeliveryMarks marks,
     BotPresence presence,
     BotIcons icons,
+    AccountMerge merge,
     IOptionsMonitor<RelayOptions> options,
     TimeProvider time,
     IHostApplicationLifetime lifetime) : IBotGateway
@@ -91,19 +94,29 @@ internal sealed class BotGateway(
 
     public async Task<BotResult<BotMessage>> SendAsync(
         long botId, long userId, OutgoingMessage message, CancellationToken cancellationToken) =>
-        Result(await chats.SendFromBotAsync(botId, userId, message, cancellationToken));
+        await MovedAsync(Result(await chats.SendFromBotAsync(botId, userId, message, cancellationToken)), botId, userId, cancellationToken);
 
     public async Task<BotResult<BotMessage>> EditAsync(long botId, long userId, long messageId, MessageEdit edit, CancellationToken cancellationToken) =>
-        Result(await chats.EditAsync(botId, userId, messageId, edit, cancellationToken));
+        await MovedAsync(Result(await chats.EditAsync(botId, userId, messageId, edit, cancellationToken)), botId, userId, cancellationToken);
 
     public async Task<BotError> DeleteAsync(long botId, long userId, long messageId, CancellationToken cancellationToken) =>
-        ToBot(await chats.DeleteAsync(botId, userId, messageId, cancellationToken));
+        await MovedAsync(ToBot(await chats.DeleteAsync(botId, userId, messageId, cancellationToken)), botId, userId, cancellationToken);
 
     public async Task<BotError> PinAsync(long botId, long userId, long messageId, CancellationToken cancellationToken) =>
-        ToBot(await chats.PinAsync(botId, userId, messageId, cancellationToken));
+        await MovedAsync(ToBot(await chats.PinAsync(botId, userId, messageId, cancellationToken)), botId, userId, cancellationToken);
 
     public async Task<BotError> UnpinAsync(long botId, long userId, CancellationToken cancellationToken) =>
-        ToBot(await chats.UnpinAsync(botId, userId, cancellationToken));
+        await MovedAsync(ToBot(await chats.UnpinAsync(botId, userId, cancellationToken)), botId, userId, cancellationToken);
+
+    public Task<long?> MovedToAsync(long botId, long userId, CancellationToken cancellationToken) =>
+        merge.MovedToAsync(botId, userId, cancellationToken);
+
+    /// <summary>REL-56: a chat that is not active because its user was merged into another account says so.</summary>
+    private async Task<BotError> MovedAsync(BotError error, long botId, long userId, CancellationToken cancellationToken) =>
+        error == BotError.ChatNotActive && await merge.MovedToAsync(botId, userId, cancellationToken) is not null ? BotError.ChatMoved : error;
+
+    private async Task<BotResult<BotMessage>> MovedAsync(BotResult<BotMessage> result, long botId, long userId, CancellationToken cancellationToken) =>
+        result with { Error = await MovedAsync(result.Error, botId, userId, cancellationToken) };
 
     public Task<BotError> AnswerCallbackAsync(
         long botId, string callbackId, string? text, bool showAlert, CancellationToken cancellationToken) =>

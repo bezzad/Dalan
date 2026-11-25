@@ -46,7 +46,8 @@ internal sealed record OkJson<T>(bool Ok, T Result);
 
 internal sealed record ErrorJson(bool Ok, int ErrorCode, string Description, ErrorParametersJson? Parameters);
 
-internal sealed record ErrorParametersJson(int RetryAfter);
+/// <summary>TG-11 <see cref="RetryAfter"/>; TG-26 <see cref="MigrateToChatId"/>.</summary>
+internal sealed record ErrorParametersJson(int? RetryAfter = null, long? MigrateToChatId = null);
 
 /// <summary>Telegram's Update: a user's message, or a press on an inline button (TG-14).</summary>
 internal sealed record UpdateJson(long UpdateId, MessageJson? Message, CallbackQueryJson? CallbackQuery)
@@ -56,7 +57,8 @@ internal sealed record UpdateJson(long UpdateId, MessageJson? Message, CallbackQ
         var from = UserJson.Of(update.From);
         return new UpdateJson(
             update.Id,
-            update.Message is { } message ? MessageJson.Received(bot, update.From, message) : null,
+            update.ChatMoved is { } moved ? MessageJson.Migrated(update.From, moved)
+            : update.Message is { } message ? MessageJson.Received(bot, update.From, message) : null,
             update.Callback is { } callback
                 ? new CallbackQueryJson(
                     callback.Id, from, MessageJson.Sent(bot, callback.Message, update.From),
@@ -89,6 +91,17 @@ internal sealed record MessageJson(
     InlineMarkupJson? ReplyMarkup,
     MessageJson? ReplyToMessage)
 {
+    /// <summary>TG-26: Telegram's service message of a group that moved: in the old chat, with migrate_to_chat_id.</summary>
+    public long? MigrateToChatId { get; init; }
+
+    /// <summary>TG-26: a chat moved by an account merge (REL-56), told the way Telegram tells a bot that a group moved.</summary>
+    public static MessageJson Migrated(BotUser user, BotChatMoved moved) => new(
+        0, UserJson.Of(user), new ChatJson(moved.FromUserId, ChatJson.Private), moved.Date.ToUnixTimeSeconds(),
+        null, null, null, null, null, null, null, null, null, null, null, null)
+    {
+        MigrateToChatId = moved.ToUserId,
+    };
+
     /// <summary>A user's message: its entities are the commands in it (TG-06).</summary>
     public static MessageJson Received(BotInfo bot, BotUser user, BotMessage message)
     {

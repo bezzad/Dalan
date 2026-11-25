@@ -7,6 +7,9 @@ namespace Dalan.Relay;
 public sealed class RelayOptions
 {
     public int UpdateExpirySeconds { get; set; }
+
+    /// <summary>REL-56: days a send to a moved chat gets chat_moved with the new id; after that, as any unknown chat.</summary>
+    public int MovedChatDays { get; set; }
     public int ExpirySweepSeconds { get; set; }
     public bool LatestCommandWins { get; set; }
     public int PollTimeoutDefaultSeconds { get; set; }

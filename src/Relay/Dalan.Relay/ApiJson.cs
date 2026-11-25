@@ -6,7 +6,10 @@ using Microsoft.AspNetCore.Http;
 namespace Dalan.Relay;
 
 /// <summary>REL-11: every error has a stable code and a message that says how to fix it.</summary>
-internal sealed record ErrorJson(string Error, string Message);
+internal sealed record ErrorJson(
+    string Error,
+    string Message,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] long? ToUserId = null);
 
 /// <summary>The JSON style of both doors of Relay (Bot API and Client API): snake_case names.</summary>
 internal static class ApiJson
@@ -20,8 +23,9 @@ internal static class ApiJson
 
     public static IResult Ok<T>(T body) => Results.Json(body, Options);
 
-    public static IResult Error(int status, string code, string message) =>
-        Results.Json(new ErrorJson(code, message), Options, statusCode: status);
+    /// <summary><paramref name="toUserId"/>: only for chat_moved (REL-56).</summary>
+    public static IResult Error(int status, string code, string message, long? toUserId = null) =>
+        Results.Json(new ErrorJson(code, message, toUserId), Options, statusCode: status);
 
     /// <summary>REL-38.</summary>
     public static IResult BotSuspended() => Error(StatusCodes.Status403Forbidden, "bot_suspended",

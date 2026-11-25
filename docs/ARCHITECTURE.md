@@ -81,6 +81,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 - Built so far: `relay.outbox` with `MessageCreated`. One worker in Relay takes the oldest rows, passes them to `IMessageNotifier`, and deletes them, all in one transaction (at least once). The writer wakes the worker in memory after its commit; a poll is the safety net.
 - Relay learns a user's name from Identity through `IUserDirectory`. That profile has no phone number. `IUserDirectory.GetAccessAsync` says whether a user is admin, builder or suspended; it is asked on every admin and builder call, so a change works at once.
 - Only Admin uses `IUserAdmin`, the one contract with phone numbers (AUTH-02).
+- Account merge (m17): Identity writes `identity.merges` in the merge transaction (its outbox), then calls every `IUserMergeListener` (Identity.Contracts); `MergeFollowUp` tries again until all are done. Relay moves and joins the chats, sets `relay.moved_chats`, queues a `chat_moved` update and moves push subscriptions (`IWebPush.MoveAsync`). Which account is kept comes from every `IUserHoldings` (Relay, Sites).
 - Push: `MessageChanged` has a `new` flag. For each new bot message the outbox worker calls `IWebPush.Send` (Notification.Contracts), which only puts the push in an in-memory queue; a few workers in Notification send it. A push lost in a restart is not sent again; the message arrives by sync.
 
 ## 5. Data
@@ -222,6 +223,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 67 | 2026-11-22 | A demo link is a path on one shared host (`dalans.ir/<id>/`) with a cookie for the app's own links, not a new subdomain: no new name to claim and no new certificate per demo. The price is one shared origin, so demos are for tests only |
 | 68 | 2026-11-24 | The SMS provider is SMS.ir, not Kavenegar (its licence steps were too hard); Kavenegar code removed. Plain `HttpClient`, not the `IPE.SmsIR` package. Sent = HTTP 200 and `status` 1 |
 | 69 | 2026-11-24 | Site answers stream: the agent sends parts as the app writes them, with a window of parts and an ack per part over WebSocket (a POST that returns after the write over long polling), and the server tells the agent to stop when the visitor leaves. Needed for Server-Sent Events (PocketBase realtime, OAuth). WebSocket from visitors is still left out |
+| 70 | 2026-11-25 | Account merge: only after the proof, only when one side has no products (bots, sites, keys), which never move; chats join in time order with ids after the largest old one; bots get `chat_moved` (Telegram door: `migrate_to_chat_id`) |
 
 ## 11. Client address and access log
 

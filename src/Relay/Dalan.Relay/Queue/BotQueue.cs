@@ -26,8 +26,9 @@ public sealed class BotQueue
             if (_entries.Exists(e => e.Update.Id == update.Id)) return [];
 
             // Q-04: only updates the bot has not seen may be replaced.
-            var replaced = latestCommandWins
-                ? Remove(e => !e.HandedOut && e.Update.From.Id == update.From.Id)
+            // REL-56: a moved chat is news for the bot, never a command that replaces one.
+            var replaced = latestCommandWins && update.Moved is null
+                ? Remove(e => !e.HandedOut && e.Update.Moved is null && e.Update.From.Id == update.From.Id)
                 : [];
 
             // Ids almost always arrive in order; when two messages race, keep the list sorted.

@@ -7,11 +7,12 @@ namespace Dalan.Relay.BotApi;
 
 internal sealed record UpdatesResponse(IEnumerable<UpdateJson> Updates);
 
-/// <summary>REL-07: an update has either a message or a button press (REL-21).</summary>
+/// <summary>REL-07: an update has a message, a button press (REL-21) or a moved chat (REL-56).</summary>
 internal sealed record UpdateJson(
     long UpdateId,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IncomingMessageJson? Message,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] CallbackJson? Callback)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] CallbackJson? Callback,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ChatMovedJson? ChatMoved = null)
 {
     public static UpdateJson Of(BotUpdate update)
     {
@@ -25,9 +26,13 @@ internal sealed record UpdateJson(
                 : null,
             update.Callback is { } callback
                 ? new CallbackJson(callback.Id, from, SentMessageJson.Of(callback.Message), callback.Data)
-                : null);
+                : null,
+            update.ChatMoved is { } moved ? new ChatMovedJson(moved.FromUserId, moved.ToUserId, moved.Date) : null);
     }
 }
+
+/// <summary>REL-56: write to <see cref="ToUserId"/> from now on.</summary>
+internal sealed record ChatMovedJson(long FromUserId, long ToUserId, DateTimeOffset Date);
 
 internal sealed record IncomingMessageJson(
     long Id,

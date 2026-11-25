@@ -234,6 +234,8 @@ Two levels (owner, 2026-11-18):
 
 **Built with GitHub login (2026-11-18):** the login screen is one card like ngrok: "Log in with GitHub", "or", email, and small links to SMS and password. GitHub needs a verified email; the same email is the same user. GitHub can be cut off from Iran, so email and SMS always stay.
 
+**Account merge (m17, 2026-11-25):** a person with two accounts proves the other account's phone, email or GitHub from the account screen and confirms. The account with bots, sites or keys is kept and takes the other's empty login ways; if both have them, there is no merge. Chats join in time order; each bot gets `chat_moved` with the new user id.
+
 **Layer 2: "Login with Dalan".** An app on its own domain cannot read Dalan's cookie. It sends the user to Dalan's login page and gets a token back. This is OAuth 2 with PKCE (OpenID Connect).
 
 ## 10. Queue rules, limits and abuse protection

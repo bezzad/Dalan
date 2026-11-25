@@ -72,6 +72,11 @@ export function errorText(error: unknown): TextKey {
     case "phone_required": return "phoneRequired";
     case "phone_taken": return "phoneTaken";
     case "has_phone": return "hasPhone";
+    case "has_email": return "hasEmail";
+    case "has_github": return "hasGithub";
+    case "merge_needed": return "mergeNeeded";
+    case "no_merge": return "noMerge";
+    case "both_have_products": return "bothHaveProducts";
     case "wrong_login": return "wrongLogin";
     case "weak_password": return "weakPassword";
     case "wrong_password": return "wrongPassword";

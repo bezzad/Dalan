@@ -25,7 +25,7 @@ With a session, `POST /api/account/phone` with `phone` and `code` SHALL check th
 ## ADDED Requirements
 
 ### Requirement: AUTH-30 Link an email or GitHub
-With a session, `POST /api/account/email` (`email`, `code`; the code is asked with `POST /api/auth/email`) and `GET /api/account/github` (the GitHub login of AUTH-27, whose callback links instead of logging in) SHALL save a free email or GitHub account on the user. One of another account SHALL make a pending merge (AUTH-31). A user who already has that way SHALL get 409 `has_email` or `has_github`. These calls SHALL NOT accept an access key.
+With a session, `POST /api/account/email` (`email`, `code` from `POST /api/auth/email`) and `GET /api/account/github` (the GitHub login of AUTH-27, whose callback links instead of logging in) SHALL save a free email or GitHub account on the user. One of another account SHALL make a pending merge (AUTH-31). A way the user already has SHALL be refused. No access key.
 
 #### Scenario: Link a free email
 - **GIVEN** a phone user with no email, and an email code sent to `sara@example.com`
@@ -47,10 +47,10 @@ With a session, `POST /api/account/email` (`email`, `code`; the code is asked wi
 - **WHEN** the user links GitHub and GitHub account 42 comes back
 - **THEN** the answer is 302 to `/account?merge=1` and a pending merge exists
 
-#### Scenario: Already has an email
-- **GIVEN** a user with an email
-- **WHEN** the user posts another email and its right code
-- **THEN** the answer is 409 `has_email`
+#### Scenario: Already has an email or GitHub
+- **GIVEN** a user with an email and a GitHub id
+- **WHEN** the user posts another email, or opens `/api/account/github`
+- **THEN** the answer is 409 `has_email`, or a redirect to `/account?link_error=has_github`
 
 ### Requirement: AUTH-31 Proof first, then the merge question
 A pending merge SHALL be made only after the proof that the person owns the other account's way (right SMS code, right email code, or the GitHub callback); without the proof no caller SHALL learn that a way belongs to another account. A session SHALL have at most one pending merge, which ends after `Identity:MergeSeconds` (start 600). `GET /api/account/merge` SHALL show it (404 when none), `POST` SHALL do it and `DELETE` SHALL drop it.

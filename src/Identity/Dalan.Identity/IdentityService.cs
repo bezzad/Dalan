@@ -8,6 +8,7 @@ using Dalan.Identity.Sessions;
 using Dalan.Identity.Codes;
 using Dalan.Identity.EmailLogin;
 using Dalan.Identity.GitHubLogin;
+using Dalan.Identity.Merge;
 using Dalan.Identity.SmsLogin;
 using Dalan.Identity.Users;
 using Microsoft.AspNetCore.Authentication;
@@ -46,6 +47,9 @@ public static class IdentityService
         services.AddSingleton<EmailCodes>();
         services.AddSingleton<PasswordHasher>();
         services.AddSingleton<PasswordTries>();
+        services.AddSingleton<AccountMerger>();
+        services.AddSingleton<MergeFollowUp>();
+        services.AddHostedService(provider => provider.GetRequiredService<MergeFollowUp>());
         services.AddHttpClient<GitHubClient>((provider, client) =>
         {
             client.Timeout = TimeSpan.FromSeconds(provider.GetRequiredService<IOptionsMonitor<IdentityOptions>>().CurrentValue.GitHub.TimeoutSeconds);
@@ -75,6 +79,7 @@ public static class IdentityService
         endpoints.MapGitHubLogin();
         endpoints.MapPasswordLogin();
         endpoints.MapAccount();
+        endpoints.MapMerge();
         endpoints.MapAccessKeys();
         endpoints.MapDevLogin();
         return endpoints;
