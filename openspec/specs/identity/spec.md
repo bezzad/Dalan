@@ -543,7 +543,7 @@ A call with `Authorization: Bearer <access key>` SHALL be served as the key's us
 - **THEN** the response is 400 `wrong_code`
 
 ### Requirement: AUTH-26 Add a phone number (level 2)
-With a session, `POST /api/account/phone` with `phone` and `code` SHALL check the SMS code (the code is asked with `POST /api/auth/sms`, the same rules as AUTH-12). When it is right and no account has the phone, it SHALL save the phone on the user and answer 200 with the profile (`has_phone` true). When it is right and another account has the phone, it SHALL make a pending merge (AUTH-31) and answer 409 `merge_needed`. A wrong code SHALL get 400 `wrong_code`. A user who has a phone SHALL get 409 `has_phone`. The call SHALL NOT accept an access key.
+With a session, `POST /api/account/phone` with `phone` and `code` SHALL check the SMS code (asked with `POST /api/auth/sms`, rules of AUTH-12). A right code SHALL save a free phone on the user (200 with the profile, `has_phone` true), or make a pending merge (AUTH-31, 409 `merge_needed`) for a phone of another account. A wrong code SHALL get 400 `wrong_code`; a user who has a phone, 409 `has_phone`. No access key.
 
 #### Scenario: Add a phone
 - **GIVEN** an email user with no phone, and an SMS code sent to `09121234567`
