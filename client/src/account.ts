@@ -234,7 +234,8 @@ export function accountScreen(app: App): Screen {
   function showBuilder(): void {
     const view = builderView(app.user);
     builderBody.replaceChildren(
-      view === "request"
+      ...(view === "refused" ? [h("p", { class: "note" }, t("builderRefused"))] : []),
+      view === "request" || view === "refused"
         ? h("button", {
           type: "button", class: "primary", onclick: async () => {
             try {

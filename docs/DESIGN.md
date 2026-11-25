@@ -236,6 +236,8 @@ Two levels (owner, 2026-11-18):
 
 **Account merge (m17, 2026-11-25):** a person with two accounts proves the other account's phone, email or GitHub from the account screen and confirms. The account with bots, sites or keys is kept and takes the other's empty login ways; if both have them, there is no merge. Chats join in time order; each bot gets `chat_moved` with the new user id.
 
+**Auto builder (m18, 2026-11-25):** with `Identity:AutoBuilder` on, a verified phone makes a builder without the admin. An admin refusal is kept as `refused`; a new request from a refused user waits for the admin.
+
 **Layer 2: "Login with Dalan".** An app on its own domain cannot read Dalan's cookie. It sends the user to Dalan's login page and gets a token back. This is OAuth 2 with PKCE (OpenID Connect).
 
 ## 10. Queue rules, limits and abuse protection
