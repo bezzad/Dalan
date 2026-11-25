@@ -11,7 +11,7 @@ import { stepper } from "./stepper.ts";
 import { botDone, siteDone } from "./steps.ts";
 import type { Language } from "./i18n.ts";
 import { themeButton, type Theme } from "./theme.ts";
-import { about, categoryName, closing, faqItems, hero, initial, labels, landing, notOffered, offers, privacyPoints, products, security, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
+import { about, categoryName, closing, faqItems, footerLine, hero, initial, labels, landing, notOffered, offers, privacyPoints, products, security, type BuildInfo, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
 
 export type PublicPage = "landing" | "privacy" | "faq" | "showcase" | "guide" | "guideBot" | "guideSite" | "about" | "contact" | "notFound";
 
@@ -34,6 +34,8 @@ export interface PublicContext {
 }
 
 let numbers: Promise<PublicNumbers> | null = null;
+/** CLI-72: /health is asked once per page load. */
+let build: Promise<BuildInfo> | null = null;
 
 /** CLI-64: what the stepper needs to know about the person. */
 export type GuideUser = { name: string; username: string | null; builder: BuilderState; admin: boolean; has_phone: boolean };
@@ -396,12 +398,21 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
 
   // CLI-42: FAQ and privacy live here, not in the header. CLI-56: about and contact too.
   const column = (title: string, ...items: Node[]) => h("div", { class: "column" }, h("span", { class: "label" }, title), ...items);
+  // CLI-72: the year and version come from /health, once per page load; when it fails the line has no version.
+  const copyright = h("p", { class: "copyright" });
+  const drawCopyright = (info: BuildInfo | null) => {    const line = footerLine(language.current, info, new Date());
+    copyright.replaceChildren(line.text);
+    if (line.version) copyright.append(" · ", h("span", { dir: "ltr", title: line.commit }, line.version));
+  };
+  drawCopyright(null);
+  (build ??= Promise.resolve().then(api.health)).then(drawCopyright, () => build = null);
   const footer = h("footer", { class: "site" },
     h("div", { class: "columns" },
       column(labels[lang].product, ...products[lang].map(product => link(product.guide, product.label)), link("/showcase", t("showcase"))),
       column(labels[lang].resources, link("/guide", t("guide")), link("/faq", t("faq")), link("/privacy", t("privacy")),
         h("a", { href: "/llms.txt" }, "llms.txt"), h("a", { href: "/dalan.mjs" }, "dalan.mjs")),
       column(t("appName"), link("/about", t("about")), link("/contact", t("contact")))),
+    copyright,
     h("div", { class: "wordmark", "aria-hidden": "true" }, t("appName")));
   return h("main", { class: "public" }, header, error, h("div", { class: "scroller page" }, body, footer));
 }

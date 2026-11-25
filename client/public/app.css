@@ -662,6 +662,7 @@ footer.site { position: relative; margin-block-start: auto; display: flex; flex-
 footer.site .columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-l); }
 footer.site .column { gap: 6px; font: 14px/1.8 var(--mono); color: var(--muted); }
 footer.site .column .label { color: var(--text); margin-block-end: 4px; }
+footer.site .copyright { margin: 0; font: 12px/1.6 var(--mono); color: var(--muted); }
 footer.site a { color: var(--muted); text-decoration: none; }
 footer.site a:hover { color: var(--text); }
 .wordmark { margin-block-end: -.32em; font-size: clamp(90px, 22vw, 240px); font-weight: 900; line-height: 1; color: color-mix(in srgb, var(--text) 6%, var(--bg)); text-align: end; user-select: none; }
