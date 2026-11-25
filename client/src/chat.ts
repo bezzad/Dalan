@@ -444,7 +444,7 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
       if (event.key === "Escape") { event.preventDefault(); suggestions.hidden = true; return; }
       if (event.key === "Tab" && !event.shiftKey) {
         event.preventDefault();
-        input.value = `${commandMessage(shown[mark].command)} `;
+        input.value = `${commandMessage(shown[mark]!.command)} `;
         drawSuggest();
         return;
       }
@@ -453,7 +453,7 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
         const chosen = shown[mark];
         input.value = "";
         drawSuggest();
-        void send(commandMessage(chosen.command));
+        void send(commandMessage(chosen!.command));
         return;
       }
     }
