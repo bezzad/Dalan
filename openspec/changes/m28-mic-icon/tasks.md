@@ -1,0 +1,8 @@
+# Tasks
+
+Each task: write the failing tests tagged with the rule IDs, then the code. CI runs on GitHub (rule 11).
+
+- [ ] 1. Client test: the voice button has the `mic` svg, no emoji, `aria-label` "Record" (CLI-80)
+- [ ] 2. `public.ts`: `mic` icon; `chat.ts`: the button uses it; size like the other chat bar icons (CLI-80)
+- [ ] 3. `docs/UI.md` chat part and code comments: "the microphone button"
+- [ ] 4. CI green on GitHub, final review, merge; check on a phone, light and dark; archive
