@@ -109,8 +109,8 @@ echo "PASS DEL-07 no connection, no deploy"
 # Rule: OPS-17 the shown version and the commit are two lines; the folder keeps the commit name
 setup
 touch "$tmp/ready"
-bash "$deploy" "$tmp/pkg" 7207d600e166 v26.11.25.114726 >/dev/null || fail "deploy with a shown version failed"
+bash "$deploy" "$tmp/pkg" 7207d600e166 v1.1.3 >/dev/null || fail "deploy with a shown version failed"
 env_file="$tmp/server/releases/7207d600e166/version.env"
-grep -qx "Dalan__Version=v26.11.25.114726" "$env_file" || fail "shown version not written: $(cat "$env_file")"
+grep -qx "Dalan__Version=v1.1.3" "$env_file" || fail "shown version not written: $(cat "$env_file")"
 grep -qx "Dalan__Commit=7207d600e166" "$env_file" || fail "commit not written: $(cat "$env_file")"
 echo "PASS OPS-17 version.env has the shown version and the commit"
