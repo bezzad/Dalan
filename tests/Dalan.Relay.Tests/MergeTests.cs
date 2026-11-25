@@ -78,7 +78,8 @@ public class MergeTests(PostgresServer postgres)
         await using var db = await app.Services.GetRequiredService<IDbContextFactory<RelayDb>>().CreateDbContextAsync(Cancel);
         var membership = await db.Memberships.SingleAsync(m => m.BotId == botId, Cancel);
         Assert.Equal(keptId, membership.UserId);
-        Assert.Equal(2L, membership.LastReadSeq);
+        // Kept read "a" (now 2); the gone side's own "b" counts as read there (now 3): what either side read stays read.
+        Assert.Equal(3L, membership.LastReadSeq);
         Assert.Equal(3L, membership.LastSeq);
         Assert.Equal(1L, (await db.Bots.SingleAsync(b => b.Id == botId, Cancel)).OwnerUserId);
     }
