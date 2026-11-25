@@ -1,4 +1,4 @@
-// Rule: CLI-45
+// Rules: CLI-45, CLI-80
 // The chat page is the bot's own page: its icon, name and status, then search, theme, the user menu and the Dalan mark.
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -33,7 +33,7 @@ Object.assign(globalThis, {
   },
 });
 
-const { chatHeader, matchingMessages } = await import("../src/chatHeader.ts");
+const { chatHeader, matchingMessages, micButton } = await import("../src/chatHeader.ts");
 
 const t = (key: "search" | "close") => ({ search: "Search", close: "Close" })[key];
 const tool = (name: string) => { const element = new FakeElement("button"); element.setAttribute("class", name); return element as unknown as HTMLElement; };
@@ -76,4 +76,15 @@ test("CLI-45 search keeps only the messages whose text or file name has the word
 
   assert.deepEqual(matchingMessages(messages, " CLOCK ").map(m => m.id), [2, 3]);
   assert.deepEqual(matchingMessages(messages, "").map(m => m.id), [1, 2, 3]);
+});
+
+test("CLI-80 the voice button shows the line mic svg, no emoji, and keeps the name Record", () => {
+  const button = micButton("Record") as unknown as FakeElement;
+  assert.equal(button.getAttribute("aria-label"), "Record");
+  const svg = button.children[0] as FakeElement;
+  assert.equal(svg.tag, "svg");
+  assert.ok(svg.className.includes("icon"));
+  const paths = svg.children.map(path => (path as FakeElement).getAttribute("d"));
+  assert.deepEqual(paths, ["M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z", "M19 10v2a7 7 0 0 1-14 0v-2", "M12 19v3"]);
+  assert.equal(button.textContent, "");
 });

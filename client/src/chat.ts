@@ -4,7 +4,7 @@
 // presses in progress (CLI-53), formatted text (CLI-54) and the input.
 import { api, type Bot } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
-import { chatHeader, matchingMessages } from "./chatHeader.ts";
+import { chatHeader, matchingMessages, micButton } from "./chatHeader.ts";
 import { h } from "./dom.ts";
 import { formatNodes, formatTree } from "./format.ts";
 import { botIconUrl } from "./icon.ts";
@@ -41,7 +41,7 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
   const input = h("textarea", { rows: "1", dir: "auto", maxlength: String(app.maxTextLength), placeholder: t("message"), "aria-label": t("message") });
   const keyToggle = h("button", { type: "button", class: "key-toggle", hidden: true, "aria-label": t("keyboardToggle"), title: t("keyboardToggle") }, "⌨");
   const sendButton = h("button", { type: "submit", class: "primary" }, t("send"));
-  const mic = h("button", { type: "button", class: "primary mic", hidden: true, "aria-label": t("record"), title: t("record") }, "🎤");
+  const mic = micButton(t("record"));
   const start = h("button", { type: "button", class: "primary start", hidden: true }, t("start"));
   const form = h("form", { class: "row compose", hidden: true }, menuButton, attach, picker, input, keyToggle, sendButton, mic);
   // CLI-47: a file waits here, with the input as its caption, until Send or Cancel.
@@ -261,7 +261,7 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
     markRead();
   }
 
-  /** CLI-46: the 🎤 button takes Send's place while there is nothing to send. */
+  /** CLI-46: the microphone button takes Send's place while there is nothing to send. */
   function drawSendButton(): void {
     const empty = input.value.trim() === "" && waitingFile === null;
     mic.hidden = !(empty && canRecord());
@@ -461,7 +461,7 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
     }
   });
 
-  // CLI-46: tap 🎤 to record, ➤ to stop and send, Cancel to drop it. Leaving the chat drops it too.
+  // CLI-46: tap the microphone button to record, ➤ to stop and send, Cancel to drop it. Leaving the chat drops it too.
   interface Recording {
     recorder: MediaRecorder; stream: MediaStream; chunks: Blob[]; bytes: number; started: number; timer: number; send: boolean;
     /** Set by the first stop: a second tap, or Cancel after Send, changes nothing. */
