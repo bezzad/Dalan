@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Dalan.Sites.Tunnel;
@@ -118,7 +119,8 @@ internal static class TunnelEndpoints
     /// SITE-23: the agent opens a new session after any lost WebSocket, so this session ends with its WebSocket.
     /// </summary>
     private static async Task WebSocketAsync(
-        string session, HttpContext http, TunnelHub hub, IUserDirectory users, IOptionsMonitor<SitesOptions> options, TimeProvider time)
+        string session, HttpContext http, TunnelHub hub, IUserDirectory users, IOptionsMonitor<SitesOptions> options, TimeProvider time,
+        IHostApplicationLifetime lifetime)
     {
         if (!http.WebSockets.IsWebSocketRequest)
         {
@@ -134,7 +136,7 @@ internal static class TunnelEndpoints
         }
 
         using var socket = await http.WebSockets.AcceptWebSocketAsync();
-        using var stop = CancellationTokenSource.CreateLinkedTokenSource(http.RequestAborted, tunnel.Ended);
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(http.RequestAborted, tunnel.Ended, lifetime.ApplicationStopping);
         tunnel.StartReading(time.GetUtcNow());
         try
         {
@@ -147,7 +149,13 @@ internal static class TunnelEndpoints
             await stop.CancelAsync();
             await Task.WhenAll(Quiet(send), Quiet(control), Quiet(receive), Quiet(access));
             if (socket.State == WebSocketState.Open)
-                await socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "session ended", CancellationToken.None);
+            {
+                // OPS-03: a stop closes with 1001 "going away", so the agent reconnects to the new process.
+                var (status, reason) = lifetime.ApplicationStopping.IsCancellationRequested
+                    ? (WebSocketCloseStatus.EndpointUnavailable, "server stopping")
+                    : (WebSocketCloseStatus.NormalClosure, "session ended");
+                await socket.CloseOutputAsync(status, reason, CancellationToken.None);
+            }
         }
         finally
         {
@@ -239,7 +247,8 @@ internal static class TunnelEndpoints
 
     /// <summary>SITE-06: the waiting requests, or an empty list after the wait.</summary>
     private static async Task<IResult> PollAsync(
-        string session, HttpContext http, TunnelHub hub, IOptionsMonitor<SitesOptions> options, TimeProvider time)
+        string session, HttpContext http, TunnelHub hub, IOptionsMonitor<SitesOptions> options, TimeProvider time,
+        IHostApplicationLifetime lifetime)
     {
         if (hub.Get(session, UserId(http)) is not { } tunnel) return SessionEnded();
 
@@ -253,7 +262,7 @@ internal static class TunnelEndpoints
         try
         {
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(wait), time);
-            using var stop = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token, http.RequestAborted, tunnel.Ended);
+            using var stop = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token, http.RequestAborted, tunnel.Ended, lifetime.ApplicationStopping);
             while (requests.Count == 0)
             {
                 Take(tunnel, requests);

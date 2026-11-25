@@ -145,6 +145,8 @@ A bot you run at home (for example ArcaneBot) needs only its token and `https://
 
 The server builds `main` itself (OPS-16, next section): merge a pull request after `scripts/ci.sh` passed on your computer, and the new release runs a few minutes later. GitHub CI does not run by itself any more (its minutes ran out, 2026-11-21).
 
+A deploy restarts Dalan. On a stop, live streams, long polls and site tunnels end at once (tunnels close with status 1001 and the agent reconnects), so the server exits within `Dalan:StopGraceSeconds` (5; OPS-03) and the gap is that plus the start, a few seconds. `Dalan:ShutdownTimeoutSeconds` (30) is only the limit for a normal request still running.
+
 Fallbacks, both over SSH with `deploy/deploy.sh`: it sends the release with `rsync` to a new folder (only the parts that differ from the current release go over the network), checks `/ready` after the switch and rolls back by itself. It opens one SSH connection with up to 5 tries of 30 seconds (`SSH_TRIES`, `SSH_TIMEOUT`), because the link to Iran stalls now and then.
 
 - From your computer, when the server cannot reach GitHub: `bash scripts/build-release.sh out`, then `DEPLOY_HOST=root@<server> SYSTEMCTL=systemctl bash deploy/deploy.sh out manual-<name>` and `ssh root@<server> chown -R deploy:deploy /opt/dalan/releases`.
