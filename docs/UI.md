@@ -33,6 +33,7 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - A step that cannot be undone (new token, delete) asks first.
 
 ## Addresses
+- Access keys for AI assistants live in the account screen (`/account#keys`, CLI-30); "My bots" and "My apps" have one link to them.
 - One address per screen (CLI-51): `/chats`, `/@<username>` (a chat), `/bots` (My bots), `/bots/new`, `/bots/<username>` (one bot's page), `/account`, `/admin`, `/apps`. No screen hides behind another's address; reload and Back show the same screen.
 - A bot's page shows only that bot's values; a token shows only right after create or New token.
 

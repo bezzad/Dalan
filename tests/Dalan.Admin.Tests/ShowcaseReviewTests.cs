@@ -149,6 +149,18 @@ public class ShowcaseReviewTests(PostgresServer postgres)
     }
 
     [Fact]
+    [Trait("Rule", "CLI-30")]
+    public async Task CLI30_llms_txt_says_the_access_key_is_made_in_the_account()
+    {
+        await using var app = await AdminApp.StartAsync(postgres);
+
+        var text = await app.CreateClient().GetStringAsync("/llms.txt", TestContext.Current.CancellationToken);
+
+        Assert.Contains("opens \"Account\", and makes an access key", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("opens \"My bots\", and makes an access key", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     [Trait("Rule", "CLI-41")]
     public async Task CLI41_llms_txt_never_names_iran()
     {
