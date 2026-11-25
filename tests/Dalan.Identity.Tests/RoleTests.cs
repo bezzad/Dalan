@@ -86,7 +86,7 @@ public class RoleTests(PostgresServer postgres)
 
     [Fact]
     [Trait("Rule", "AUTH-19")]
-    public async Task AUTH19_refused_goes_back_to_none_and_may_ask_again()
+    public async Task AUTH19_refused_is_kept_and_may_ask_again()
     {
         await using var app = await StartAsync();
         var (admin, _) = await app.LoginAsync("Owner", AdminPhone);
@@ -97,7 +97,37 @@ public class RoleTests(PostgresServer postgres)
         var afterRefusal = await BuilderAsync(browser);
         (await browser.PostAsync("/api/account/builder", null, Cancel)).EnsureSuccessStatusCode();
 
-        Assert.Equal("none", afterRefusal);
+        Assert.Equal("refused", afterRefusal);
+        Assert.Equal("requested", await BuilderAsync(browser));
+    }
+
+    [Fact]
+    [Trait("Rule", "AUTH-19")]
+    public async Task AUTH19_with_auto_builder_asking_approves_at_once()
+    {
+        await using var app = await Http.StartAsync(postgres, ("Identity:AutoBuilder", "true"));
+        var (browser, _) = await app.LoginAsync();
+        // The development login already approves with the setting on; start from "none" to test the button.
+        await PostgresServer.ExecuteAsync(app.ConnectionString, "UPDATE identity.users SET builder = 0");
+
+        (await browser.PostAsync("/api/account/builder", null, Cancel)).EnsureSuccessStatusCode();
+
+        Assert.Equal("approved", await BuilderAsync(browser));
+    }
+
+    [Fact]
+    [Trait("Rule", "AUTH-19")]
+    public async Task AUTH19_a_refused_users_request_waits_for_the_admin_even_with_auto_builder()
+    {
+        await using var app = await Http.StartAsync(postgres, ("Identity:AutoBuilder", "true"), ("Identity:AdminPhones", AdminPhone));
+        var (admin, _) = await app.LoginAsync("Owner", AdminPhone);
+        var (browser, userId) = await app.LoginAsync();
+
+        (await admin.PostAsJsonAsync($"/api/admin/users/{userId}/builder", new { approve = false }, Cancel)).EnsureSuccessStatusCode();
+        var afterRefusal = await BuilderAsync(browser);
+        (await browser.PostAsync("/api/account/builder", null, Cancel)).EnsureSuccessStatusCode();
+
+        Assert.Equal("refused", afterRefusal);
         Assert.Equal("requested", await BuilderAsync(browser));
     }
 

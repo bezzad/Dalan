@@ -34,7 +34,7 @@ function builderStep(app: App, redraw: () => void): HTMLElement {
       h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => app.go("/account") }, t("verifyPhone")))]
     : view === "waiting"
       ? [h("p", { class: "note" }, t("builderWaiting"))]
-      : [h("div", { class: "row" }, h("button", {
+      : [...(view === "refused" ? [h("p", { class: "note" }, t("builderRefused"))] : []), h("div", { class: "row" }, h("button", {
         type: "button", class: "primary", onclick: async () => {
           try {
             app.user = await api.askBuilder();
