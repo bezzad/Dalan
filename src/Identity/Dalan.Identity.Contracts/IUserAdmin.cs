@@ -7,7 +7,7 @@ public enum BuilderState
     Requested = 1,
     Approved = 2,
 
-    /// <summary>AUTH-19: the admin said no. Auto-approval (AUTH-35) never changes it; a new request waits for the admin.</summary>
+    /// <summary>AUTH-19: the admin said no. Auto-approval (AUTH-39) never changes it; a new request waits for the admin.</summary>
     Refused = 3,
 }
 

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Dalan.Identity.Data.Migrations
 {
     /// <summary>
-    /// AUTH-35: the builder requests open when the auto builder came are approved once (2 = approved, 1 = requested).
+    /// AUTH-39: the builder requests open when the auto builder came are approved once (2 = approved, 1 = requested).
     /// The new state 3 (refused) is a value of the same column, so the model snapshot does not change.
     /// </summary>
     [DbContext(typeof(IdentityDb))]

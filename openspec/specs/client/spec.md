@@ -784,7 +784,7 @@ The page SHALL have the viewport `width=device-width, initial-scale=1` with no `
 - **WHEN** the style sheet is read
 - **THEN** inputs, selects and text areas are at least 16px
 
-### Requirement: CLI-71 A refused builder
+### Requirement: CLI-84 A refused builder
 The account screen SHALL show a refused user the note that the admin refused, with the request button. The admin screen SHALL show the state `refused` and an "approve" button for it. The texts SHALL exist in Persian and in English.
 
 #### Scenario: Account screen

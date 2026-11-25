@@ -100,7 +100,7 @@ internal sealed class UserAdmin(
     }
 
     /// <summary>
-    /// AUTH-35: with Identity:AutoBuilder on, a user with a verified phone and no builder state becomes a builder.
+    /// AUTH-39: with Identity:AutoBuilder on, a user with a verified phone and no builder state becomes a builder.
     /// "requested" and "refused" wait for the admin.
     /// </summary>
     public async Task ApproveByPhoneAsync(long userId, CancellationToken cancellationToken)

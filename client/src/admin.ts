@@ -89,7 +89,7 @@ export function adminScreen(app: App): Screen {
           action("approve", async () => redraw(await api.setBuilder(user.id, true))),
           action("refuse", async () => redraw(await api.setBuilder(user.id, false))),
         ] : []),
-        // CLI-71: the admin may change a "no" into a "yes".
+        // CLI-84: the admin may change a "no" into a "yes".
         ...(user.builder === "refused" ? [action("approve", async () => redraw(await api.setBuilder(user.id, true)))] : []),
         action(user.suspended ? "unsuspend" : "suspend", async () => {
           if (user.suspended || confirm(t("suspendConfirm"))) redraw(await api.suspendUser(user.id, !user.suspended));

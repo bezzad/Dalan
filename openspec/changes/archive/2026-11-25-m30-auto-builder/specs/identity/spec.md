@@ -30,7 +30,7 @@
 
 ## ADDED Requirements
 
-### Requirement: AUTH-35 A verified phone makes a builder
+### Requirement: AUTH-39 A verified phone makes a builder
 When `Identity:AutoBuilder` is on (start true), a user with a verified phone and builder state `none` SHALL become `approved` at an SMS login, when the phone is added (AUTH-26) and after a merge (AUTH-33). `requested` and `refused` SHALL NOT change. The requests open when this change is installed SHALL be approved once.
 
 #### Scenario: New SMS user
