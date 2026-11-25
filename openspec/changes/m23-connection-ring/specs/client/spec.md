@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: CLI-75 Connection ring
-The client SHALL NOT show a bar or toast while its event stream (CLI-08) is down. Instead a thin ring SHALL turn around the bot's icon in the chat header, or around the Dalan logo in the header on a screen with no bot icon, from the moment the stream is down until it opens again; with reduced motion the ring SHALL be still and dashed. Hovering the icon SHALL show the tooltip "Connected" or "Connecting…" in the page language. A hidden `role="status"` text SHALL say "Connecting…" when the stream goes down and "Connected" when it is back.
+The client SHALL NOT show a bar or toast while its event stream (CLI-08) is down. Instead a thin ring SHALL turn around the bot's icon in the chat header, or around the Dalan logo on other screens, until the stream opens again. Hovering the icon SHALL show "Connected" or "Connecting…" in the page language, and a hidden `role="status"` text SHALL say the same to screen readers.
 
 #### Scenario: Stream down in a chat
 - **GIVEN** the chat of @mofidbot is open
