@@ -33,6 +33,10 @@ public sealed class Bot
 
     /// <summary>REL-51: 0 with no icon, higher after every change. Clients use it as the cache key (?v=).</summary>
     public int IconVersion { get; set; }
+
+    /// <summary>REL-54: width and height read from the picture's header when it is saved; null with no icon, or when the header cannot be read.</summary>
+    public int? IconWidth { get; set; }
+    public int? IconHeight { get; set; }
 }
 
 public sealed class CommandEntry

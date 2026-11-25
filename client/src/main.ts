@@ -17,7 +17,7 @@ import { h } from "./dom.ts";
 import { toastRegion } from "./toast.ts";
 import { headerTools, homeMark, publicPages, publicScreen, siteBrand, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
-import { Chats, manifestFor } from "./messages.ts";
+import { appLinksFor, Chats } from "./messages.ts";
 import { Theme, themeButton } from "./theme.ts";
 
 const language = new Language(document.documentElement, localStorage);
@@ -34,8 +34,13 @@ async function authSettings(): Promise<AuthSettings> {
 
 function show(element: HTMLElement): void {
   document.title = language.t("appName");
-  // CLI-55: Install on a bot's chat installs that bot; every other screen links the main manifest again.
-  document.querySelector("link[rel=manifest]")?.setAttribute("href", manifestFor(location.pathname));
+  // CLI-55: a bot's chat links that bot's manifest and icons; every other screen links Dalan's again.
+  const links = appLinksFor(location.pathname);
+  document.querySelector("link[rel=manifest]")?.setAttribute("href", links.manifest);
+  const icon = document.querySelector("link[rel=icon]");
+  icon?.setAttribute("href", links.icon);
+  if (links.iconType) icon?.setAttribute("type", links.iconType); else icon?.removeAttribute("type");
+  document.querySelector("link[rel=apple-touch-icon]")?.setAttribute("href", links.appleIcon);
   // Shown by the style sheet while the server cannot be reached.
   document.body.dataset["connecting"] = language.t("connecting");
   document.body.replaceChildren(element, toastRegion());
