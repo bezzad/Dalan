@@ -2,7 +2,9 @@
 
 ## Purpose
 The Telegram-shaped door for bots: a bot written for Telegram works on Dalan with only the server address and the token changed. It follows Telegram Bot API 10.4 (2026-11-09) and serves only what the core can do.
+
 ## Requirements
+
 ### Requirement: TG-01 Telegram-shaped address and token
 The server SHALL serve Telegram Bot API calls at `/bot<token>/<method>`, at the root of the address as Telegram does, for GET and POST. The token SHALL be the bot's Dalan token (REL-03). The method name SHALL match without regard to letter case. A wrong or malformed token SHALL get HTTP 401 with `{"ok":false,"error_code":401,"description":"Unauthorized"}`, and the call SHALL do nothing.
 
@@ -327,3 +329,14 @@ A Telegram adapter call of a suspended bot (REL-38) SHALL get HTTP 403 with `{"o
 - **WHEN** it calls `getMe`
 - **THEN** the answer is 403 with that description
 
+### Requirement: TG-26 A moved chat in Telegram's shape
+The Telegram door SHALL show a `chat_moved` update (REL-56) as a `message` in the old chat with `migrate_to_chat_id` set to the new chat id, and a `chat_moved` error as 400 "Bad Request: group chat was upgraded to a supergroup chat" with `parameters.migrate_to_chat_id`, the way Telegram tells a bot that a group moved.
+
+#### Scenario: Update
+- **GIVEN** chat 9 of bot 5 moved to chat 4
+- **WHEN** the bot calls `getUpdates` on the Telegram door
+- **THEN** it gets a message with `chat.id` 9 and `migrate_to_chat_id` 4
+
+#### Scenario: Error
+- **WHEN** the bot calls `sendMessage` with `chat_id` 9 on the Telegram door
+- **THEN** the answer is `ok` false, `error_code` 400, and `parameters.migrate_to_chat_id` 4

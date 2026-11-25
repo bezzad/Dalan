@@ -10,4 +10,4 @@ Each task: write the failing tests tagged with the rule IDs, then the code. CI r
 - [x] 6. Telegram door: `migrate_to_chat_id` (TG-26)
 - [x] 7. Client: link cards and the merge question, texts in both languages (CLI-70); `docs/UI.md`
 - [x] 8. `docs/DESIGN.md` and `docs/ARCHITECTURE.md`: the merge in short; new settings in the milestone summary
-- [ ] 9. CI green on GitHub, final review, merge, archive
+- [x] 9. CI green on GitHub, final review, merge, archive
