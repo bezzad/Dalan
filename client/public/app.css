@@ -24,6 +24,8 @@
   --text: #16181d;
   --muted: #5b6470;
   --line: #e2e5e9;
+  /* CLI-71: the edge of a plain button; 3:1 against --surface and --bg (WCAG 1.4.11). */
+  --control-line: #868f9a;
   --brand: #0b7a61;
   --on-brand: #fff;
   --mine: #dcf2ea;
@@ -70,6 +72,7 @@
     --text: #f1f4f2;
     --muted: #a3aeaa;
     --line: #2f3533;
+    --control-line: #2f3533;
     --brand: #3fd0a8;
     --on-brand: #06231c;
     --mine: #1f4037;
@@ -90,6 +93,7 @@
   --text: #f1f4f2;
   --muted: #a3aeaa;
   --line: #2f3533;
+  --control-line: #2f3533;
   --brand: #3fd0a8;
   --on-brand: #06231c;
   --mine: #1f4037;
@@ -180,7 +184,7 @@ button, a.button {
   gap: 8px;
   min-height: 40px;
   padding: 0 16px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--control-line);
   border-radius: 10px;
   background: var(--surface);
   line-height: 1.2;
