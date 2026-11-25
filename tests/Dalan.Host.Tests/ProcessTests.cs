@@ -9,7 +9,7 @@ namespace Dalan.Host.Tests;
 /// <summary>Starts the real server as its own process, the way systemd does.</summary>
 public class ProcessTests
 {
-    private sealed record Health(string Status, string Version);
+    private sealed record Health(string Status, string Version, string Commit);
 
     [Fact]
     [Trait("Rule", "OPS-04")]

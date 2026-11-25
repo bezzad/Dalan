@@ -182,6 +182,8 @@ The main way a release reaches the server (DEL-06). The server needs GitHub, but
 2. Setup makes the GitHub key and prints it. Add it to GitHub read-only (below).
 3. `dalan-pull.timer` runs every minute. Each run asks GitHub only for `refs/heads/main` (`git ls-remote`, small); no other branch is ever fetched or built. A new commit is fetched, built in a new folder (about 5 minutes, low priority), smoke-tested on `/health` (no database), and deployed with `deploy.sh`: switch, restart, `/ready`, rollback when not ready. Only the last 5 releases are kept. A lock keeps two runs from overlapping. Watch: `journalctl -u dalan-pull -f`. Start a run now: `sudo systemctl start dalan-pull`.
 
+The live version (OPS-17) is `v<yy.mm.dd.HHMMSS>`, the commit time in Tehran time, with the 12-character commit next to it: `curl -s http://127.0.0.1:5000/health`, or the small line at the bottom of every public page. `releases/<sha>/version.env` holds both.
+
 A failed build or a deploy that rolled back is not tried again: `/opt/dalan/pull-failed` holds its commit and the journal has the reason. Push a fix to `main`. A failed `git ls-remote` or fetch (GitHub slow or cut) is tried again on the next run. The full .NET tests do not run here (they need a test database server; `scripts/ci.sh` runs them): only the client checks, the release smoke test and the Linux agent build.
 
 #### The GitHub deploy key
