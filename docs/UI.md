@@ -43,6 +43,7 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - 📎, paste and drop open one card above the input; the input is the caption (CLI-47).
 - Bot icons are round, cut to fill; no icon shows the first letter (CLI-50).
 - Reply: a message's menu (right-click, long press), a double-click or a swipe left. The bar above the input shows the quote with ✕; a bubble that replies shows the quote on top, and a click on it goes to the message (CLI-52).
+- Typing `/` opens a list above the input with the bot's commands that start with the typed text, each `/command` and its description, left to right. Click, tap or Enter sends; Tab completes; ↑ ↓ move the mark; Esc closes (CLI-74).
 - A pressed inline button shows a moving skeleton; the buttons of its message are locked until the bot answers (CLI-53).
 - Bot formatting is drawn from entities, never as HTML: bold, italic, code, spoiler (tap to show), quotes (CLI-54).
 

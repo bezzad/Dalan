@@ -331,6 +331,13 @@ button.pinned[hidden] { display: none; }
 }
 .quote strong { color: var(--brand); font-weight: 600; }
 .quote span, .quote strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* CLI-74: command suggestions above the input; left to right, scrolls when long. */
+.suggest { flex: none; display: flex; flex-direction: column; max-height: 40dvh; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.suggest[hidden] { display: none; }
+.suggest button { display: flex; gap: 8px; align-items: baseline; justify-content: flex-start; text-align: left; min-height: 40px; border: 0; border-radius: 0; background: none; padding: 6px 10px; }
+.suggest button b { flex: none; color: var(--brand); }
+.suggest button span { min-width: 0; overflow-wrap: anywhere; }
+.suggest button.marked { background: var(--line); }
 .reply-bar { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .reply-bar[hidden] { display: none; }
 .reply-bar .reply-mark { flex: none; color: var(--brand); font-size: 18px; }
