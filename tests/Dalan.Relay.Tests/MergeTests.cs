@@ -34,7 +34,8 @@ public class MergeTests(PostgresServer postgres)
 
         await MergeAsync(app, chat.UserId, keptId);
 
-        Assert.Equal([1L, 2L], (await kept.HistoryAsync(chat.BotId)).Ids());
+        var ids = (await kept.HistoryAsync(chat.BotId)).Ids();
+        Assert.Equal([1L, 2L], ids);
         Assert.Equal(["/start", "hello"], await TextsAsync(kept, chat.BotId));
     }
 
@@ -54,7 +55,8 @@ public class MergeTests(PostgresServer postgres)
 
         await MergeAsync(app, goneId, keptId);
 
-        Assert.Equal([4L, 5L, 6L, 7L, 8L], (await kept.HistoryAsync(botId)).Ids());
+        var ids = (await kept.HistoryAsync(botId)).Ids();
+        Assert.Equal([4L, 5L, 6L, 7L, 8L], ids);
         Assert.Equal(["a", "b", "c", "d", "e"], await TextsAsync(kept, botId));
     }
 
