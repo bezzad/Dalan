@@ -32,7 +32,7 @@ A user message waits for the bot only a short time (`update_expiry_seconds` in {
 
 ## Get an access key (for agents and the CLI)
 
-A person who is an approved builder logs in at {site}, opens "My bots", and makes an access key in the "AI agents" part. The key starts with `dalan_`, is shown once, and expires. It can only create bots, rotate tokens and read bot status. It cannot read chats. Never put a key or a bot token in a repository.
+A person who is an approved builder logs in at {site}, opens "Account", and makes an access key in the "AI agents" part. The key starts with `dalan_`, is shown once, and expires. It can only create bots, rotate tokens and read bot status. It cannot read chats. Never put a key or a bot token in a repository.
 
 ## MCP server
 

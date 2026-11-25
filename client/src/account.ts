@@ -1,13 +1,14 @@
-// The account screen: set the username (AUTH-15), the password (AUTH-13), notifications (CLI-21), building bots (CLI-23),
+// The account screen: set the username (AUTH-15), the password (AUTH-13), notifications (CLI-21), building bots (CLI-23), access keys (CLI-30),
 // the mobile number of a level 1 user (CLI-34), and linking an email or GitHub and merging two accounts (CLI-70).
 import { ApiError, api, type MergePlan } from "./api.ts";
+import { agentsPart } from "./agents.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { latinDigits, phoneNumber } from "./digits.ts";
 import { h } from "./dom.ts";
 import { toast } from "./toast.ts";
 import type { TextKey } from "./i18n.ts";
 import { mergeRefusal, mergeSides, mergeTitle } from "./merge.ts";
-import { builderView } from "./panels.ts";
+import { builderView, keysShown } from "./panels.ts";
 import { solve } from "./pow.ts";
 import { currentPushState, turnOff, turnOn, type PushState } from "./push.ts";
 
@@ -231,7 +232,10 @@ export function accountScreen(app: App): Screen {
 
   // CLI-23: ask to become a builder, wait for the admin, or open "My bots". Admins also open the admin screen.
   const builderBody = h("div", { class: "column" });
+  // CLI-30: the access keys and the ready prompt, for a builder or an admin, under the builder part.
+  const keysBody = h("div", { class: "column" });
   function showBuilder(): void {
+    if (keysShown(app.user) && keysBody.childElementCount === 0) keysBody.append(agentsPart(app));
     const view = builderView(app.user);
     builderBody.replaceChildren(
       ...(view === "refused" ? [h("p", { class: "note" }, t("builderRefused"))] : []),
@@ -262,7 +266,7 @@ export function accountScreen(app: App): Screen {
       h("button", { type: "button", class: "link", onclick: () => app.go("/chats") }, t("back")),
       h("h1", {}, t("account"))),
     h("p", { class: "note", dir: "auto" }, app.user.name),
-    h("div", { class: "scroller" }, mergeCard, pushCard, phoneForm, emailForm, githubCard, usernameForm, passwordForm, builderCard));
+    h("div", { class: "scroller" }, mergeCard, pushCard, phoneForm, emailForm, githubCard, usernameForm, passwordForm, builderCard, keysBody));
 
   return { element };
 }
