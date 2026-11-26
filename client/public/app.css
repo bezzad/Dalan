@@ -325,6 +325,9 @@ button.pinned[hidden] { display: none; }
 .quote span, .quote strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .reply-bar { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .reply-bar[hidden] { display: none; }
+/* CLI-91: the bot is offline; a plain line above the input, like the reply bar. */
+.offline-bar { flex: none; margin: 0; padding: 6px 10px; border: 1px solid var(--line); border-inline-start: 3px solid var(--danger); border-radius: 10px; background: var(--surface); color: var(--muted); font-size: 14px; }
+.offline-bar[hidden] { display: none; }
 .reply-bar .reply-mark { flex: none; color: var(--brand); font-size: 18px; }
 .reply-bar .quote { flex: 1; }
 .reply-bar button.close { flex: none; min-height: 32px; width: 32px; padding: 0; }
