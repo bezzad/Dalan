@@ -155,6 +155,8 @@ export interface Settings {
   max_bot_icon_kb: number;
   /** CLI-53 */
   press_wait_seconds: number;
+  /** REL-57: true when HTML files can open in the app (CLI-90). */
+  file_view?: boolean;
 }
 
 /** SITE-16: one site of "My apps". */
@@ -242,6 +244,9 @@ export const api = {
   removeBotIcon: (botId: number) => call<unknown>("DELETE", `/api/builder/bots/${botId}/icon`),
   /** REL-29: where the browser loads a file of the chat. */
   fileUrl: (botId: number, fileId: string) => `/api/bots/${botId}/files/${encodeURIComponent(fileId)}`,
+  /** REL-57: a short-lived link to an HTML file on the view host (CLI-90). */
+  fileViewLink: (botId: number, fileId: string) =>
+    call<{ url: string; expires_at: string }>("POST", `/api/bots/${botId}/files/${encodeURIComponent(fileId)}/view`),
   press: (botId: number, messageId: number, data: string) =>
     call<{ id: string }>("POST", `/api/bots/${botId}/callbacks`, { message_id: messageId, data }),
   /** REL-32: the user read the chat up to this message. */

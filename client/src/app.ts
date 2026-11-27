@@ -12,6 +12,8 @@ export interface App {
   chats: Chats;
   maxTextLength: number;
   maxFileSizeMb: number;
+  /** CLI-90: HTML files open in the app; false shows only Download. */
+  fileView: boolean;
   /** CLI-19: how often an open chat asks for the bot's status. */
   statusRefreshSeconds: number;
   /** REL-51: the size limit of a bot icon. */

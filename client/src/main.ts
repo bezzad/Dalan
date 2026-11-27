@@ -9,6 +9,7 @@ import { botsScreen } from "./bots.ts";
 import { botPageScreen, myBotsScreen, newBotScreen } from "./builder.ts";
 import { chatScreen } from "./chat.ts";
 import { Connection } from "./connection.ts";
+import { Drafts } from "./compose.ts";
 import { Language, type TextKey } from "./i18n.ts";
 import { Live } from "./live.ts";
 import { loginScreen, markReturning } from "./login.ts";
@@ -180,11 +181,14 @@ async function enter(user: User): Promise<void> {
     chats: new Chats(api.messages, settings.sync_page_size),
     maxTextLength: settings.max_text_length,
     maxFileSizeMb: settings.max_file_size_mb,
+    fileView: settings.file_view ?? false,
     statusRefreshSeconds: settings.status_refresh_seconds,
     maxBotIconKb: settings.max_bot_icon_kb,
     pressWaitSeconds: settings.press_wait_seconds,
     go: navigate,
     logout() {
+      // CLI-88: nor this user's unsent text.
+      Drafts.clearAll(localStorage);
       // CLI-21: the next person on this browser must not get this user's notifications.
       void turnOff().catch(() => {}).then(() => api.logout()).finally(showLogin);
     },

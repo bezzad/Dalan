@@ -1,0 +1,59 @@
+<!doctype html>
+<!-- The browser tests' page on the app origin: the built client's viewers and editor, and a message box wired like the chat's
+     (CLI-85, CLI-86, CLI-87). It sets a cookie and localStorage like a logged-in page, so the report can try to read them. -->
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dalan harness</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<main class="chat">
+  <div class="row">
+    <button type="button" id="open-html">Open report</button>
+    <button type="button" id="open-picture">Open picture</button>
+  </div>
+  <ol id="sent"></ol>
+  <form class="row compose">
+    <div class="box"><textarea rows="1" dir="auto" aria-label="Message"></textarea><button type="button" class="expand" hidden aria-label="Big editor">⤢</button></div>
+    <button type="submit" class="primary">Send</button>
+  </form>
+</main>
+<script type="module">
+  import { openHtml, openPicture } from "/viewer.js";
+  import { openEditor } from "/editor.js";
+  import { enterAction, expandShown, grow, insertText, pressOf } from "/compose.js";
+
+  document.cookie = "session=secret; path=/";
+  localStorage.setItem("token", "secret");
+  const t = key => ({ close: "Close", send: "Send", message: "Message", download: "Download", openNewTab: "Open in a new tab" })[key] ?? key;
+  const view = new URLSearchParams(location.search).get("view");
+  document.getElementById("open-html").onclick = () => openHtml(t, `${view}/v/report`, "/icons/icon-512.png", "report.html");
+  document.getElementById("open-picture").onclick = () => openPicture(t, "/icons/icon-512.png", "icon.png");
+
+  // The chat's message box, with the same pieces (chat.ts): Enter by the pointer, growing, the expand button, the editor.
+  const form = document.querySelector("form");
+  const box = form.querySelector("textarea");
+  const expand = form.querySelector("button.expand");
+  const resize = () => { expand.hidden = !expandShown(grow(box)); };
+  const submit = () => {
+    if (box.value.trim() === "") return;
+    const item = document.createElement("li");
+    item.textContent = box.value;
+    document.getElementById("sent").append(item);
+    box.value = "";
+    resize();
+  };
+  form.addEventListener("submit", event => { event.preventDefault(); submit(); });
+  box.addEventListener("keydown", event => {
+    const action = enterAction(pressOf(event));
+    if (action === "send") { event.preventDefault(); submit(); }
+    else if (action === "newline" && !event.shiftKey) { event.preventDefault(); insertText(box, "\n"); }
+  });
+  box.addEventListener("input", resize);
+  expand.addEventListener("click", () => openEditor(t, box, submit));
+  window.ready = true;
+</script>
+</body>
+</html>

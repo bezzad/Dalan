@@ -48,6 +48,11 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - Bot icons are round, cut to fill; no icon shows the first letter (CLI-50).
 - Reply: a message's menu (right-click, long press), a double-click or a swipe left. The bar above the input shows the quote with ✕; a bubble that replies shows the quote on top, and a click on it goes to the message (CLI-52).
 - Typing `/` opens a list above the input with the bot's commands that start with the typed text, each `/command` and its description, left to right. Click, tap or Enter sends; Tab completes; ↑ ↓ move the mark; Esc closes (CLI-74).
+- Enter (CLI-85): with a mouse and keyboard Enter sends and Shift+Enter or Ctrl+Enter adds a line; on a phone or tablet (coarse pointer, read at each key) Enter adds a line and only Send sends; never while an IME composes.
+- The box grows with its text to `--compose-max-height` (40vh), then scrolls; one row again after a send (CLI-86). Over 3 lines a small expand button (two diagonal arrows) sits in its corner and opens the big editor: the same box moved into a `dialog.modal`, full screen on a phone or under 600px, 80% in the middle otherwise; Send and Close; Esc keeps the text; Ctrl+B and Ctrl+I put `**` and `_` around the selection (CLI-87).
+- Each chat keeps its unsent text in this browser (`dalan.draft.<user>.<bot>`); a send removes it, logout removes all (CLI-88).
+- A photo, or a JPEG, PNG, GIF or WebP document, shows as a picture; a tap opens a black full-screen viewer with pinch, double tap and pan, Download and Close; Esc closes (CLI-89). SVG stays a download.
+- An HTML file is a card (name, size, Open, Download). Open shows it full screen in a frame from the view host (`sandbox="allow-scripts allow-popups"`, SEC-16), with Close, Download and Open in a new tab; on an iPhone a fixed layer inside the safe areas (CLI-90).
 - While the bot is offline, a plain bar above the input (red start edge, `--muted` text) says it won't answer now and that messages wait, then show "not delivered". It hides when the bot is online; a suspended bot shows its error instead (CLI-91).
 - A pressed inline button shows a moving skeleton; the buttons of its message are locked until the bot answers (CLI-53).
 - Bot formatting is drawn from entities, never as HTML: bold, italic, code, spoiler (tap to show), quotes (CLI-54).

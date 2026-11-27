@@ -1,4 +1,4 @@
-// Rules: CLI-74, CLI-05, CLI-06, CLI-07, CLI-13, CLI-14, CLI-15, CLI-16, CLI-17
+// Rules: CLI-89, CLI-90, CLI-74, CLI-05, CLI-06, CLI-07, CLI-13, CLI-14, CLI-15, CLI-16, CLI-17
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
@@ -232,6 +232,32 @@ test("CLI-16 each kind of file has its view", () => {
 
   assert.deepEqual(["photo", "voice", "audio", "video", "document"].map(kind => fileView(file(kind as FileInfo["kind"]))),
     ["image", "player", "player", "video", "link"]);
+});
+
+test("CLI-16 the kind of view: photo, PNG document, HTML document, voice, video and PDF", () => {
+  const doc = (name: string, type: string): FileInfo => ({ id: "x", kind: "document", name, type, size: 1 });
+  const files: FileInfo[] = [
+    { id: "x", kind: "photo", name: "p.jpg", type: "image/jpeg", size: 1 }, doc("chart.png", "image/png"),
+    doc("report.html", "text/html"), { id: "x", kind: "voice", name: "v.ogg", type: "audio/ogg", size: 1 },
+    { id: "x", kind: "video", name: "v.mp4", type: "video/mp4", size: 1 }, doc("a.pdf", "application/pdf"),
+  ];
+  assert.deepEqual(files.map(fileView), ["image", "image", "html", "player", "video", "link"]);
+});
+
+test("CLI-89 picture documents of the SEC-12 inline types show as pictures; SVG stays a download", () => {
+  const doc = (name: string, type: string): FileInfo => ({ id: "x", kind: "document", name, type, size: 1 });
+  for (const type of ["image/jpeg", "image/png", "image/gif", "image/webp", "IMAGE/PNG"]) assert.equal(fileView(doc("a", type)), "image", type);
+  for (const type of ["image/svg+xml", "image/tiff", "image/heic"]) assert.equal(fileView(doc("a", type)), "link", type);
+});
+
+test("CLI-90 an HTML document, or one with no clear type named .html or .htm, is an HTML card", () => {
+  const doc = (name: string, type: string): FileInfo => ({ id: "x", kind: "document", name, type, size: 1 });
+  assert.equal(fileView(doc("sprint-review.html", "text/html")), "html");
+  assert.equal(fileView(doc("x", "text/html; charset=utf-8")), "html");
+  assert.equal(fileView(doc("page.HTM", "application/octet-stream")), "html");
+  assert.equal(fileView(doc("page.html", "")), "html");
+  assert.equal(fileView(doc("page.html", "text/plain")), "link", "a clear other type wins over the name");
+  assert.equal(fileView(doc("page.txt", "")), "link");
 });
 
 test("CLI-16 a voice length reads as minutes and seconds", () => {
