@@ -37,7 +37,7 @@ The message box SHALL grow with its text up to `--compose-max-height` (40% of th
 - **THEN** the box is one row high and empty
 
 ### Requirement: CLI-87 Big editor
-When the text in the box is more than 3 lines (wrapped lines count), a small expand button (two diagonal arrows) SHALL show in the corner of the box. It SHALL open a modal with the same text in a large box: full screen on a coarse pointer or a screen under 600px wide, otherwise large in the middle of the screen. The modal SHALL have Send and Close. Close and Esc SHALL close it and keep the text, its selection and its undo. CLI-85 SHALL apply in it. Ctrl+B and Ctrl+I (Cmd on macOS) SHALL put `**` and `_` around the selected text.
+Over 3 lines of text (wrapped lines count), a small expand button (two diagonal arrows) SHALL show in the box's corner. It SHALL open a modal with the same box: full screen on a coarse pointer or under 600px, otherwise large in the middle. It SHALL have Send and Close; Close and Esc SHALL keep the text, selection and undo. CLI-85 SHALL apply in it. Ctrl+B and Ctrl+I (Cmd on macOS) SHALL put `**` and `_` around the selection.
 
 #### Scenario: Button shows
 - **WHEN** the box has 3 lines, then 4
@@ -90,7 +90,7 @@ A photo, and a document of type `image/jpeg`, `image/png`, `image/gif` or `image
 - **THEN** it zooms in at that point, then back to its full size
 
 ### Requirement: CLI-90 HTML files open in the app
-A document of type `text/html`, or of no clear type with a name ending `.html` or `.htm`, SHALL show as a card with its name, size and "Open". Open SHALL get a view link (REL-57) and show it full screen inside the app in `<iframe sandbox="allow-scripts allow-popups">`, never with `allow-same-origin`. Where the Fullscreen API works, the viewer SHALL use it; elsewhere (iPhone) it SHALL be a fixed full-screen layer inside the safe areas. The viewer SHALL have Close, Download and "Open in a new tab"; Esc SHALL close it. On load the frame SHALL get the focus, so the page's own keys (← →) and swipes work. When the viewer is off (REL-57), the card SHALL show only Download.
+A document of type `text/html`, or of no clear type named `.html` or `.htm`, SHALL show as a card with its name, size and "Open". Open SHALL get a view link (REL-57) and show it full screen in the app in `<iframe sandbox="allow-scripts allow-popups">`, never `allow-same-origin`. The viewer SHALL have Close, Download and "Open in a new tab"; Esc SHALL close it. The frame SHALL get the focus on load.
 
 #### Scenario: Card
 - **WHEN** a bot sends `sprint-review.html` of 1.2 MB
@@ -100,6 +100,10 @@ A document of type `text/html`, or of no clear type with a name ending `.html` o
 - **GIVEN** the Fullscreen API works
 - **WHEN** the user presses Open
 - **THEN** the viewer is full screen with the frame focused, and the frame's `sandbox` is exactly `allow-scripts allow-popups`
+
+#### Scenario: Keys and swipes reach the page
+- **WHEN** the viewer has loaded the file
+- **THEN** the frame has the focus, and the page's own keys (← →) and swipes work in it
 
 #### Scenario: Open on an iPhone
 - **GIVEN** the Fullscreen API does not work

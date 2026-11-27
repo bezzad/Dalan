@@ -24,5 +24,5 @@ Each task: write the failing tests tagged with the rule IDs, then the code, then
 
 ## 4. Docs and check
 
-- [ ] 4.1 `docs/UI.md` chat section (keys, growing box, editor, picture and HTML viewers); DESIGN.md section 18 (`Relay:FileViewHost`, `Relay:FileViewMinutes`); ARCHITECTURE decision (view host on the sites domain)
+- [x] 4.1 `docs/UI.md` chat section (keys, growing box, editor, picture and HTML viewers); DESIGN.md section 18 (`Relay:FileViewHost`, `Relay:FileViewMinutes`); ARCHITECTURE decision (view host on the sites domain)
 - [ ] 4.2 After deploy: the owner opens a real sprint review report on an iPhone in Safari and turns its pages

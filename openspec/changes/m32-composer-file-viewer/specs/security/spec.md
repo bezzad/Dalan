@@ -37,3 +37,21 @@ The view host (REL-57) SHALL answer only `GET /v/{token}`; every other path SHAL
 #### Scenario: App CSP and certificate
 - **WHEN** the app page is loaded and the front proxy asks for a certificate for `view.dalans.ir`
 - **THEN** the app CSP has `frame-src https://view.dalans.ir`, and the ask answers 200
+
+## MODIFIED Requirements
+
+### Requirement: SEC-04 The page loads only from its own origin
+Every response SHALL carry the headers `Content-Security-Policy: default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`, so the browser itself refuses to load anything from a foreign host. While the file viewer is on (REL-57), the CSP SHALL also have `frame-src` with only the view host (SEC-16).
+
+#### Scenario: Open the site
+- **WHEN** a browser asks for `/`
+- **THEN** the response has the three headers
+
+#### Scenario: API answer
+- **WHEN** a client calls an API endpoint
+- **THEN** the response has the three headers
+
+#### Scenario: Viewer on
+- **GIVEN** the view host is `view.dalans.ir`
+- **WHEN** a browser asks for `/`
+- **THEN** the CSP also has `frame-src https://view.dalans.ir` and no other frame source
