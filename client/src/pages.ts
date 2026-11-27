@@ -322,3 +322,14 @@ First read: ${site}/llms.txt
 - Or the command line tool: ${site}/dalan.mjs
 Never put the key or a token in the repository.`;
 }
+
+/** CLI-72: what `/health` tells about the build. */
+export interface BuildInfo { version: string; commit: string }
+
+/** CLI-72: the copyright line under the footer. The year is the year of the version (`v26.11.25.114726` is 2026); without one it is `now`. */
+export function footerLine(lang: Lang, build: BuildInfo | null, now: Date): { text: string; version: string; commit: string } {
+  const made = /^v(\d\d)\./.exec(build?.version ?? "");
+  const year = made ? 2000 + Number(made[1]) : now.getFullYear();
+  const shown = new Intl.NumberFormat(lang === "fa" ? "fa-IR" : "en-GB", { useGrouping: false }).format(year);
+  return { text: `© ${shown} ${lang === "fa" ? "دالان" : "Dalan"}`, version: build?.version ?? "", commit: build?.commit ?? "" };
+}

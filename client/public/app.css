@@ -24,6 +24,8 @@
   --text: #16181d;
   --muted: #5b6470;
   --line: #e2e5e9;
+  /* CLI-71: the edge of a plain button; 3:1 against --surface and --bg (WCAG 1.4.11). */
+  --control-line: #868f9a;
   --brand: #0b7a61;
   --on-brand: #fff;
   --mine: #dcf2ea;
@@ -70,6 +72,7 @@
     --text: #f1f4f2;
     --muted: #a3aeaa;
     --line: #2f3533;
+    --control-line: #2f3533;
     --brand: #3fd0a8;
     --on-brand: #06231c;
     --mine: #1f4037;
@@ -90,6 +93,7 @@
   --text: #f1f4f2;
   --muted: #a3aeaa;
   --line: #2f3533;
+  --control-line: #2f3533;
   --brand: #3fd0a8;
   --on-brand: #06231c;
   --mine: #1f4037;
@@ -115,16 +119,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-body.offline::before {
-  content: attr(data-connecting);
-  display: block;
-  padding: 2px 12px;
-  background: var(--muted);
-  color: var(--bg);
-  font-size: 13px;
-  text-align: center;
-}
-
 [hidden] { display: none !important; }
 
 /* Scrollbars stay on the right edge of the window, also in Persian (owner, 2026-11-18): the root is left to right for
@@ -142,8 +136,6 @@ main {
   height: 100dvh;
   padding: 12px var(--gutter) calc(12px + env(safe-area-inset-bottom));
 }
-
-body.offline main { height: calc(100dvh - 28px); }
 
 header {
   display: flex;
@@ -180,7 +172,7 @@ button, a.button {
   gap: 8px;
   min-height: 40px;
   padding: 0 16px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--control-line);
   border-radius: 10px;
   background: var(--surface);
   line-height: 1.2;
@@ -333,6 +325,9 @@ button.pinned[hidden] { display: none; }
 .quote span, .quote strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .reply-bar { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .reply-bar[hidden] { display: none; }
+/* CLI-91: the bot is offline; a plain line above the input, like the reply bar. */
+.offline-bar { flex: none; margin: 0; padding: 6px 10px; border: 1px solid var(--line); border-inline-start: 3px solid var(--danger); border-radius: 10px; background: var(--surface); color: var(--muted); font-size: 14px; }
+.offline-bar[hidden] { display: none; }
 .reply-bar .reply-mark { flex: none; color: var(--brand); font-size: 18px; }
 .reply-bar .quote { flex: 1; }
 .reply-bar button.close { flex: none; min-height: 32px; width: 32px; padding: 0; }
@@ -371,6 +366,8 @@ button.pinned[hidden] { display: none; }
 .pending .file-name { overflow-wrap: anywhere; }
 .pending .note { flex: 1; }
 form.compose > button { flex: none; }
+form.compose > button.mic { display: inline-flex; align-items: center; justify-content: center; }
+form.compose > button.mic .icon { width: 20px; height: 20px; }
 a.button { text-decoration: none; }
 form.row > button:not(.primary) { padding: 8px 10px; }
 
@@ -424,7 +421,6 @@ select { font: inherit; color: inherit; padding: 8px; border: 1px solid var(--li
 /* Public pages (CLI-26 to CLI-28) and the showcase parts (CLI-29) follow the theme (CLI-35).
    The document itself scrolls; the header stays on top. */
 main.public { --gutter: max(16px, calc((100vw - var(--page-width)) / 2)); height: auto; min-height: 100dvh; padding-block-end: 0; overflow-x: clip; }
-body.offline main.public { height: auto; }
 /* Grow to fill the screen so the footer stays at the bottom of short pages. */
 main.public > .scroller { flex: 1 0 auto; overflow: visible; }
 main.public > header.site { position: sticky; top: 0; margin-block-start: -12px; padding-block: 12px; background: var(--bg); }
@@ -662,6 +658,7 @@ footer.site { position: relative; margin-block-start: auto; display: flex; flex-
 footer.site .columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-l); }
 footer.site .column { gap: 6px; font: 14px/1.8 var(--mono); color: var(--muted); }
 footer.site .column .label { color: var(--text); margin-block-end: 4px; }
+footer.site .copyright { margin: 0; font: 12px/1.6 var(--mono); color: var(--muted); }
 footer.site a { color: var(--muted); text-decoration: none; }
 footer.site a:hover { color: var(--text); }
 .wordmark { margin-block-end: -.32em; font-size: clamp(90px, 22vw, 240px); font-weight: 900; line-height: 1; color: color-mix(in srgb, var(--text) 6%, var(--bg)); text-align: end; user-select: none; }
@@ -743,3 +740,22 @@ input, textarea, select { font-size: 16px; }
 dialog.modal { width: min(560px, calc(100% - 32px)); padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); }
 dialog.modal::backdrop { background: rgb(0 0 0 / .5); }
 dialog.modal > h2 { margin-block-end: 12px; }
+
+/* CLI-75: while the live stream is down, a thin ring turns around the header icon. Nothing moves; there is no bar. */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ring { position: relative; }
+.ring::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 2px solid transparent;
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: ring-turn 1s linear infinite;
+  pointer-events: none;
+}
+.mark.ring::after { border-radius: calc(var(--radius-s) + 4px); border-color: var(--brand) transparent transparent; }
+@keyframes ring-turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .ring::after, .mark.ring::after { animation: none; border: 2px dashed var(--brand); }
+}
