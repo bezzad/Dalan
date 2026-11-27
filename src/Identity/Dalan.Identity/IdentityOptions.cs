@@ -118,6 +118,12 @@ public sealed class IdentityOptions
     /// <summary>AUTH-37: wrong codes one ticket may take; then the person logs in again.</summary>
     public int TotpMaxTries { get; set; }
 
+    /// <summary>AUTH-36: the words that confirm "delete my account", comma separated. Compared trimmed, without regard to case.</summary>
+    public string? DeleteConfirmWords { get; set; }
+
+    /// <summary>AUTH-38: addresses or ranges one access key may have.</summary>
+    public int MaxKeyAddresses { get; set; }
+
     public GitHubOptions GitHub { get; set; } = new();
 }
 

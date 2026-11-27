@@ -12,7 +12,7 @@ public class SettingDescriptionTests
     private static readonly string[] Units =
         ["", "seconds", "minutes", "hours", "days", "MB", "KB", "bytes", "bits", "characters", "digits", "tries", "passes", "rows",
          "keys", "codes", "steps", "devices", "bots", "sites", "demos", "messages", "updates", "events", "buttons", "commands",
-         "connections", "parts", "requests"];
+         "connections", "parts", "requests", "addresses"];
 
     /// <summary>Numbers that are ids, not amounts: no range.</summary>
     private static readonly string[] NoRange = ["Notification:SmsIr:TemplateId"];
