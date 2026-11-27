@@ -103,6 +103,21 @@ public sealed class IdentityOptions
     /// <summary>AUTH-34: seconds between tries of a merge's follow-up in the other services that failed.</summary>
     public int MergeRetrySeconds { get; set; }
 
+    /// <summary>AUTH-37: seconds of one TOTP time step.</summary>
+    public int TotpStepSeconds { get; set; }
+
+    /// <summary>AUTH-37: steps before and after now whose code is also taken (clock drift of the phone).</summary>
+    public int TotpWindowSteps { get; set; }
+
+    /// <summary>AUTH-37: one-time recovery codes given when the second factor is turned on.</summary>
+    public int RecoveryCodes { get; set; }
+
+    /// <summary>AUTH-37: minutes a login ticket waits for the code.</summary>
+    public int TotpTicketMinutes { get; set; }
+
+    /// <summary>AUTH-37: wrong codes one ticket may take; then the person logs in again.</summary>
+    public int TotpMaxTries { get; set; }
+
     public GitHubOptions GitHub { get; set; } = new();
 }
 

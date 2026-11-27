@@ -21,6 +21,8 @@ export interface User {
   builder: BuilderState;
   /** AUTH-30 */
   has_github: boolean;
+  /** AUTH-37: the second factor (TOTP) is on. */
+  totp?: boolean;
 }
 
 /** AUTH-31: one side of a merge. */
@@ -39,7 +41,8 @@ export interface MergePlan {
   keep: "this" | "other";
   this: MergeSide;
   other: MergeSide;
-  refusal: "both_have_products" | "merge_conflict" | "suspended" | null;
+  /** SEC-15: "admin" when one side is an admin. */
+  refusal: "both_have_products" | "merge_conflict" | "suspended" | "admin" | null;
   field: "phone" | "email" | "github" | null;
 }
 
@@ -68,6 +71,27 @@ export interface AdminBot {
 }
 
 /** ADM-13: an entry that waits for review. */
+/** CLI-82: the counts of the admin overview (ADM-19). */
+export interface AdminOverview {
+  users: number;
+  users_new_7d: number;
+  bots: number;
+  bots_online: number;
+  builder_requests: number;
+  showcase_requests: number;
+  unread_messages: number;
+  sites_online: number;
+}
+
+/** AUTH-37: a login that needs the second factor answers this instead of the user; `totpLogin` finishes it. */
+export interface TotpStep {
+  totp_required: true;
+  ticket: string;
+}
+
+/** AUTH-37: what a login answers: the user, or the second-factor step. */
+export type LoginAnswer = User | TotpStep;
+
 export interface ShowcaseRequest {
   bot_id: number;
   username: string;
@@ -196,18 +220,18 @@ const replyHeader = (replyTo?: number): Record<string, string> => replyTo === un
 export const api = {
   me: () => call<User>("GET", "/api/me"),
   authSettings: () => call<AuthSettings>("GET", "/api/auth/settings"),
-  devLogin: (phone: string, name: string) => call<User>("POST", "/api/dev/login", { phone, name }),
+  devLogin: (phone: string, name: string) => call<LoginAnswer>("POST", "/api/dev/login", { phone, name }),
   /** SEC-06: for a phone or an email. */
   challenge: (target: { phone: string } | { email: string }) =>
     call<{ challenge: string; difficulty: number }>("POST", "/api/auth/challenge", target),
   sendCode: (phone: string, challenge: string, nonce: string) =>
     call<{ expires_in: number; retry_in: number; code_digits: number }>("POST", "/api/auth/sms", { phone, challenge, nonce }),
-  verifyCode: (phone: string, code: string, name?: string) => call<User>("POST", "/api/auth/sms/verify", { phone, code, name }),
+  verifyCode: (phone: string, code: string, name?: string) => call<LoginAnswer>("POST", "/api/auth/sms/verify", { phone, code, name }),
   /** AUTH-24, AUTH-25 */
   sendEmailCode: (email: string, challenge: string, nonce: string) =>
     call<{ expires_in: number; retry_in: number; code_digits: number }>("POST", "/api/auth/email", { email, challenge, nonce }),
   verifyEmailCode: (email: string, code: string, name?: string) =>
-    call<User>("POST", "/api/auth/email/verify", { email, code, name }),
+    call<LoginAnswer>("POST", "/api/auth/email/verify", { email, code, name }),
   /** AUTH-26: the code comes from sendCode. */
   addPhone: (phone: string, code: string) => call<User>("POST", "/api/account/phone", { phone, code }),
   /** AUTH-30: the code comes from sendEmailCode. */
@@ -217,7 +241,13 @@ export const api = {
   /** AUTH-34: the answer is the kept account. */
   merge: () => call<User>("POST", "/api/account/merge"),
   dropMerge: () => call<null>("DELETE", "/api/account/merge"),
-  passwordLogin: (login: string, password: string) => call<User>("POST", "/api/auth/password", { login, password }),
+  passwordLogin: (login: string, password: string) => call<LoginAnswer>("POST", "/api/auth/password", { login, password }),
+  /** AUTH-37: the second step of a login that answered `totp_required`; `code` is a TOTP or a recovery code. */
+  totpLogin: (ticket: string, code: string) => call<User>("POST", "/api/auth/totp", { ticket, code }),
+  /** AUTH-37: starts the set-up: the secret, its otpauth address and its QR (SVG). */
+  totpStart: () => call<{ secret: string; otpauth_url: string; qr_svg: string }>("POST", "/api/account/totp"),
+  totpConfirm: (code: string) => call<{ recovery_codes: string[] }>("POST", "/api/account/totp/confirm", { code }),
+  totpOff: (code: string) => call<null>("POST", "/api/account/totp/off", { code }),
   setPassword: (password: string, current?: string) =>
     call<null>("POST", "/api/account/password", { password, current_password: current }),
   setUsername: (username: string) => call<User>("POST", "/api/account/username", { username }),
@@ -268,6 +298,8 @@ export const api = {
   rotateToken: (botId: number) => call<NewToken>("POST", `/api/builder/bots/${botId}/token`),
   renameBot: (botId: number, name: string) => call<BuilderBot>("PATCH", `/api/builder/bots/${botId}`, { name }),
   deleteBot: (botId: number) => call<{ id: number; deleted: boolean }>("DELETE", `/api/builder/bots/${botId}`),
+  /** CLI-82 */
+  adminOverview: () => call<AdminOverview>("GET", "/api/admin/overview"),
   adminSettings: async () => (await call<{ settings: Setting[] }>("GET", "/api/admin/settings")).settings,
   setSetting: (key: string, value: string) => call<Setting>("PUT", `/api/admin/settings/${encodeURIComponent(key)}`, { value }),
   resetSetting: (key: string) => call<Setting>("DELETE", `/api/admin/settings/${encodeURIComponent(key)}`),

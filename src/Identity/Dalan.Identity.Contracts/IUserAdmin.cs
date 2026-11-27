@@ -12,7 +12,14 @@ public enum BuilderState
 }
 
 /// <summary>What a user may do now. A user that does not exist has every flag false.</summary>
-public sealed record UserAccess(bool IsAdmin, bool IsBuilder, bool IsSuspended);
+public sealed record UserAccess(bool IsAdmin, bool IsBuilder, bool IsSuspended)
+{
+    /// <summary>AUTH-37: the user has the second factor on. Read only for an admin (SEC-15); false for others.</summary>
+    public bool HasSecondFactor { get; init; }
+
+    /// <summary>SEC-15: admin powers anywhere (not only /api/admin) need the second factor on, else the user acts as a common user.</summary>
+    public bool ActsAsAdmin => IsAdmin && HasSecondFactor;
+}
 
 /// <summary>A user as the admin sees it: with the phone number and email, for legal complaints (ADM-11).</summary>
 public sealed record AdminUser(
@@ -25,6 +32,9 @@ public sealed record AdminUser(
     BuilderState Builder,
     DateTimeOffset? BuilderRequestedAt,
     bool Suspended);
+
+/// <summary>ADM-19: counts for the admin overview.</summary>
+public sealed record UserCounts(int Users, int NewUsers, int BuilderRequests);
 
 /// <summary>
 /// What the admin door asks of Identity (ADM-11, AUTH-19, AUTH-20). It carries phone numbers,
@@ -46,6 +56,9 @@ public interface IUserAdmin
 
     /// <summary>ADM-17: one user by id, or null.</summary>
     Task<AdminUser?> FindAsync(long userId, CancellationToken cancellationToken);
+
+    /// <summary>ADM-19: all users, those made since <paramref name="newSince"/>, and open builder requests.</summary>
+    Task<UserCounts> CountAsync(DateTimeOffset newSince, CancellationToken cancellationToken);
 
     /// <summary>An Iranian mobile number in any form as +989121234567, or null.</summary>
     string? NormalizePhone(string? input);

@@ -7,6 +7,7 @@
     <PackageReference Include="Konscious.Security.Cryptography.Argon2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="QRCoder" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../Admin/Dalan.Admin.Contracts/Dalan.Admin.Contracts.csproj" />

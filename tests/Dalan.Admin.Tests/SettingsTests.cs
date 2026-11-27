@@ -210,4 +210,75 @@ public class SettingsTests(PostgresServer postgres)
 
         Assert.Equal("setting_not_found", await response.ErrorCodeAsync());
     }
+
+    [Fact]
+    [Trait("Rule", "ADM-19")]
+    public async Task ADM19_settings_are_described()
+    {
+        await using var app = await AdminApp.StartAsync(postgres);
+        var (admin, _) = await app.AdminAsync();
+
+        var retention = await admin.SettingAsync("Admin:AccessLogRetentionDays");
+
+        Assert.Equal("Admin", retention.GetProperty("group").GetString());
+        Assert.Equal("Access log kept for", retention.GetProperty("name").GetProperty("en").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(retention.GetProperty("name").GetProperty("fa").GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(retention.GetProperty("help").GetProperty("en").GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(retention.GetProperty("help").GetProperty("fa").GetString()));
+        Assert.Equal("days", retention.GetProperty("unit").GetString());
+        Assert.Equal(30, retention.GetProperty("min").GetInt32());
+        Assert.Equal(3650, retention.GetProperty("max").GetInt32());
+        Assert.True(retention.GetProperty("risky").GetBoolean());
+        Assert.Equal("180", retention.GetProperty("default").GetString());
+        Assert.False((await admin.SettingAsync("Relay:MaxTextLength")).GetProperty("risky").GetBoolean());
+        Assert.Equal("Dalan", (await admin.SettingAsync("Dalan:IpRequestLimit")).GetProperty("group").GetString());
+    }
+
+    [Fact]
+    [Trait("Rule", "ADM-19")]
+    public async Task ADM19_key_without_description_is_listed_with_its_key_as_name()
+    {
+        await using var app = await AdminApp.StartAsync(postgres, ("Relay:SomeNewLimit", "7"));
+        var (admin, _) = await app.AdminAsync();
+
+        var entry = await admin.SettingAsync("Relay:SomeNewLimit");
+
+        Assert.Equal("Relay", entry.GetProperty("group").GetString());
+        Assert.Equal("Relay:SomeNewLimit", entry.GetProperty("name").GetProperty("en").GetString());
+        Assert.Equal("Relay:SomeNewLimit", entry.GetProperty("name").GetProperty("fa").GetString());
+        Assert.Equal("7", entry.GetProperty("value").GetString());
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, entry.GetProperty("min").ValueKind);
+    }
+
+    [Theory]
+    [Trait("Rule", "ADM-19")]
+    [InlineData("5")]
+    [InlineData("100000")]
+    public async Task ADM19_number_out_of_range_is_refused(string value)
+    {
+        await using var app = await AdminApp.StartAsync(postgres);
+        var (admin, _) = await app.AdminAsync();
+
+        var response = await admin.SetAsync("Admin:AccessLogRetentionDays", value);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("out_of_range", await response.ErrorCodeAsync());
+        Assert.Equal("180", (await admin.SettingAsync("Admin:AccessLogRetentionDays")).GetProperty("value").GetString());
+        Assert.Equal(0, await PostgresServer.ScalarAsync<long>(app.ConnectionString, "SELECT count(*) FROM admin.settings"));
+    }
+
+    [Fact]
+    [Trait("Rule", "ADM-19")]
+    [Trait("Rule", "AUTH-37")]
+    public async Task ADM19_the_code_step_cannot_change_in_the_panel()
+    {
+        // Phones keep the step of their set-up: another value would lock out every user with the second factor.
+        await using var app = await AdminApp.StartAsync(postgres);
+        var (admin, _) = await app.AdminAsync();
+
+        var response = await admin.SetAsync("Identity:TotpStepSeconds", "60");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("out_of_range", await response.ErrorCodeAsync());
+    }
 }

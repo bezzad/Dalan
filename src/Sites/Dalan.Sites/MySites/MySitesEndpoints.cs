@@ -51,7 +51,8 @@ internal static class MySitesEndpoints
         {
             var userId = TunnelEndpoints.UserId(http);
             var access = await users.GetAccessAsync(userId, http.RequestAborted);
-            if (await book.DeleteAsync(userId, access.IsAdmin, siteId, http.RequestAborted) is not { } name)
+            // SEC-15: an admin deletes other users' sites only with the second factor on.
+            if (await book.DeleteAsync(userId, access.ActsAsAdmin, siteId, http.RequestAborted) is not { } name)
                 return SitesJson.Error(StatusCodes.Status404NotFound, "site_not_found", "You have no site with this id.");
             hub.Drop(name);
             return Results.NoContent();

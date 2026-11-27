@@ -41,6 +41,7 @@ public sealed partial class SettingsService(
         Done,
         NotFound,
         BadValue,
+        OutOfRange,
     }
 
     public async Task<(Outcome Outcome, SettingEntry? Entry, string? Rule)> SetAsync(
@@ -51,6 +52,8 @@ public sealed partial class SettingsService(
         var max = options.CurrentValue.MaxSettingLength;
         if (SettingsCatalog.Clean(entry.Kind, value, max) is not { } clean)
             return (Outcome.BadValue, entry, SettingsCatalog.Rule(entry.Kind, max));
+        if (!SettingsCatalog.InRange(entry, clean))
+            return (Outcome.OutOfRange, entry, $"from {entry.Min} to {entry.Max}");
 
         await _writing.WaitAsync(cancellationToken);
         try

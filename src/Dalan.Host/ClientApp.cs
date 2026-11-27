@@ -24,7 +24,9 @@ public static class ClientApp
     /// <summary>The page itself (CLI-51: one address per screen). Only these addresses exist; any other unknown path is a real 404.</summary>
     public static void MapClientPage(this WebApplication app)
     {
-        foreach (var path in (string[])["/", "/chats", "/bots", "/bots/new", "/bots/{username}", "/account", "/account/profile", "/account/security", "/account/notifications", "/account/preferences", "/account/builder", "/account/keys", "/admin", "/apps", "/privacy", "/faq", "/about", "/contact", "/showcase", "/guide", "/guide/bot", "/guide/site", "/@{username}"])
+        foreach (var path in (string[])["/", "/chats", "/bots", "/bots/new", "/bots/{username}", "/account", "/account/profile", "/account/security", "/account/notifications", "/account/preferences", "/account/builder", "/account/keys", "/admin", "/apps", "/privacy", "/faq", "/about", "/contact", "/showcase", "/guide", "/guide/bot", "/guide/site", "/@{username}",
+            // CLI-81: the dashboard; the client decides what each address under it shows, and says "Not found" itself.
+            "/dashboard", "/dashboard/{**rest}"])
             app.MapGet(path, Page).DisableRateLimiting();
     }
 

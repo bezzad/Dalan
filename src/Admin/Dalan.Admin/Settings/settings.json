@@ -1,0 +1,2106 @@
+{
+  "Admin:AccessLogIntervalMinutes": {
+    "group": "Admin",
+    "name": {
+      "fa": "فاصله ثبت در گزارش دسترسی",
+      "en": "Access log row every"
+    },
+    "help": {
+      "fa": "هر کاربر یا بات با همان نشانی، بعد از این مدت دوباره ثبت می‌شود. عدد بزرگ‌تر یعنی ردیف کمتر برای پاسخ به شکایت‌های قانونی.",
+      "en": "A caller at the same address gets a new row after this time. Longer means fewer rows for legal requests."
+    },
+    "unit": "minutes",
+    "min": 1,
+    "max": 1440,
+    "risky": true,
+    "restart": false
+  },
+  "Admin:AccessLogRetentionDays": {
+    "group": "Admin",
+    "name": {
+      "fa": "نگهداری گزارش دسترسی",
+      "en": "Access log kept for"
+    },
+    "help": {
+      "fa": "ردیف‌های قدیمی‌تر از این گزارش پاک می‌شوند. ممکن است قانون به آن‌ها نیاز داشته باشد؛ آن را خیلی کوتاه نکنید.",
+      "en": "Older rows of the access log are deleted. The law may need them; do not make it too short."
+    },
+    "unit": "days",
+    "min": 30,
+    "max": 3650,
+    "risky": true,
+    "restart": false
+  },
+  "Admin:AccessLogSweepMinutes": {
+    "group": "Admin",
+    "name": {
+      "fa": "فاصله پاک‌سازی گزارش دسترسی",
+      "en": "Access log cleanup every"
+    },
+    "help": {
+      "fa": "هر چند وقت یک بار ردیف‌های قدیمی گزارش دسترسی پاک شوند.",
+      "en": "How often old access log rows are deleted."
+    },
+    "unit": "minutes",
+    "min": 1,
+    "max": 1440,
+    "risky": false,
+    "restart": false
+  },
+  "Admin:BotApiUrl": {
+    "group": "Admin",
+    "name": {
+      "fa": "نشانی Bot API",
+      "en": "Bot API address"
+    },
+    "help": {
+      "fa": "نشانی‌ای که بات‌ها صدا می‌زنند و در راهنما نشان داده می‌شود. مقدار اشتباه سازنده‌ها را به جای دیگری می‌فرستد.",
+      "en": "The address bots call, shown in the docs and the ready prompt. A wrong value sends builders to the wrong place."
+    },
+    "unit": "",
+    "risky": true,
+    "restart": false
+  },
+  "Admin:ContactMaxLength": {
+    "group": "Admin",
+    "name": {
+      "fa": "طول پیام تماس با ما",
+      "en": "Contact message length"
+    },
+    "help": {
+      "fa": "بیشترین طول پیامی که صفحه تماس با ما می‌پذیرد.",
+      "en": "The longest message the contact page accepts."
+    },
+    "unit": "characters",
+    "min": 100,
+    "max": 20000,
+    "risky": false,
+    "restart": false
+  },
+  "Admin:ContactPerAddressPerDay": {
+    "group": "Admin",
+    "name": {
+      "fa": "پیام تماس از هر نشانی",
+      "en": "Contact messages per address"
+    },
+    "help": {
+      "fa": "تعداد پیامی که از یک نشانی IP در ۲۴ ساعت از صفحه تماس با ما فرستاده می‌شود.",
+      "en": "Messages one address may send from the contact page in 24 hours."
+    },
+    "unit": "",
+    "min": 1,
+    "max": 1000,
+    "risky": true,
+    "restart": false
+  },
+  "Admin:MaxSettingLength": {
+    "group": "Admin",
+    "name": {
+      "fa": "طول تنظیم متنی",
+      "en": "Text setting length"
+    },
+    "help": {
+      "fa": "بیشترین طول مقدار یک تنظیم متنی.",
+      "en": "The longest value a text setting may have."
+    },
+    "unit": "characters",
+    "min": 10,
+    "max": 100000,
+    "risky": false,
+    "restart": false
+  },
+  "Admin:PageSize": {
+    "group": "Admin",
+    "name": {
+      "fa": "ردیف در هر صفحه",
+      "en": "Rows per page"
+    },
+    "help": {
+      "fa": "تعداد ردیف‌ها در هر صفحه از فهرست‌های مدیریت.",
+      "en": "Rows on one page of the admin lists."
+    },
+    "unit": "rows",
+    "min": 10,
+    "max": 1000,
+    "risky": false,
+    "restart": false
+  },
+  "Admin:SiteUrl": {
+    "group": "Admin",
+    "name": {
+      "fa": "نشانی سایت",
+      "en": "Site address"
+    },
+    "help": {
+      "fa": "نشانی عمومی سایت که در پیوندها، llms.txt و راهنمای آماده به کار می‌رود.",
+      "en": "The public address of the site, used in links, llms.txt and the ready prompt."
+    },
+    "unit": "",
+    "risky": true,
+    "restart": false
+  },
+  "Dalan:IpLimitWindowSeconds": {
+    "group": "Dalan",
+    "name": {
+      "fa": "بازه محدودیت هر نشانی",
+      "en": "Address limit window"
+    },
+    "help": {
+      "fa": "بازه زمانی برای شمارش درخواست‌های هر نشانی IP.",
+      "en": "The time window for the calls-per-address limit."
+    },
+    "unit": "seconds",
+    "min": 1,
+    "max": 3600,
+    "risky": true,
+    "restart": true
+  },
+  "Dalan:IpRequestLimit": {
+    "group": "Dalan",
+    "name": {
+      "fa": "درخواست از هر نشانی",
+      "en": "Calls per address"
+    },
+    "help": {
+      "fa": "تعداد درخواستی که یک نشانی IP در هر بازه می‌تواند بفرستد. عدد کم، کسانی را که یک نشانی مشترک دارند می‌بندد.",
+      "en": "Calls one address may make in each window. Too low blocks people who share one address."
+    },
+    "unit": "",
+    "min": 10,
+    "max": 100000,
+    "risky": true,
+    "restart": true
+  },
+  "Identity:AccessKeyDays": {
+    "group": "Identity",
+    "name": {
+      "fa": "عمر کلید دسترسی",
+      "en": "Access key lifetime"
+    },
+    "help": {
+      "fa": "چند روز یک کلید دسترسی تازه کار می‌کند.",
+      "en": "Days a new access key works."
+    },
+    "unit": "days",
+    "min": 1,
+    "max": 3650,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:AccessTokenMinutes": {
+    "group": "Identity",
+    "name": {
+      "fa": "عمر توکن نشست",
+      "en": "Session token lifetime"
+    },
+    "help": {
+      "fa": "چند دقیقه توکن نشست کار می‌کند تا برنامه آن را تازه کند.",
+      "en": "Minutes a session token works before the app renews it."
+    },
+    "unit": "minutes",
+    "min": 1,
+    "max": 1440,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:AutoBuilder": {
+    "group": "Identity",
+    "name": {
+      "fa": "سازنده بدون تأیید",
+      "en": "Builder without approval"
+    },
+    "help": {
+      "fa": "کاربری که شماره موبایلش تأیید شده، بدون انتظار برای مدیر سازنده می‌شود.",
+      "en": "A user with a verified phone becomes a builder without waiting for an admin."
+    },
+    "unit": "",
+    "risky": false,
+    "restart": false
+  },
+  "Identity:EmailCodeDigits": {
+    "group": "Identity",
+    "name": {
+      "fa": "رقم‌های کد ایمیل",
+      "en": "Email code digits"
+    },
+    "help": {
+      "fa": "تعداد رقم‌های کد ورودی که با ایمیل فرستاده می‌شود.",
+      "en": "Digits in a login code sent by email."
+    },
+    "unit": "digits",
+    "min": 4,
+    "max": 10,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:EmailCodeSeconds": {
+    "group": "Identity",
+    "name": {
+      "fa": "عمر کد ایمیل",
+      "en": "Email code lifetime"
+    },
+    "help": {
+      "fa": "چند ثانیه کد ورود ایمیلی کار می‌کند.",
+      "en": "Seconds an email login code works."
+    },
+    "unit": "seconds",
+    "min": 60,
+    "max": 3600,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:EmailCodeTries": {
+    "group": "Identity",
+    "name": {
+      "fa": "تلاش برای کد ایمیل",
+      "en": "Email code tries"
+    },
+    "help": {
+      "fa": "تعداد تلاش اشتباه مجاز برای یک کد ایمیل.",
+      "en": "Wrong tries allowed on one email code."
+    },
+    "unit": "tries",
+    "min": 1,
+    "max": 20,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:EmailLongWaitSeconds": {
+    "group": "Identity",
+    "name": {
+      "fa": "انتظار طولانی بین ایمیل‌ها",
+      "en": "Long wait between emails"
+    },
+    "help": {
+      "fa": "فاصله بین دو ایمیل به یک نشانی، بعد از رسیدن به سقف روزانه.",
+      "en": "Wait between two emails to one address after the daily count."
+    },
+    "unit": "seconds",
+    "min": 60,
+    "max": 86400,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:EmailPerAddressPerDay": {
+    "group": "Identity",
+    "name": {
+      "fa": "ایمیل به هر نشانی در روز",
+      "en": "Emails per address per day"
+    },
+    "help": {
+      "fa": "تعداد ایمیل با انتظار کوتاه به یک نشانی ایمیل در ۲۴ ساعت.",
+      "en": "Emails with the short wait to one address in 24 hours."
+    },
+    "unit": "",
+    "min": 1,
+    "max": 100,
+    "risky": true,
+    "restart": false
+  },
+  "Identity:EmailPerDay": {
+    "group": "Identity",
+    "name": {
+      "fa": "ایمیل در روز",
+      "en": "Emails per day"
+    },
+    "help": {
+      "fa": "همه ایمیل‌های ورودی که سرور در ۲۴ ساعت می‌فرستد. وقتی تمام شود، کسی کد ایمیل نمی‌گیرد.",
+      "en": "All login emails the server sends in 24 hours. When it is used up, nobody gets an email code."
+    },
+    "unit": "",
+    "min": 10,
+    "max": 1000000,
+    "risky": true,
+    "restart": false
+  },
+  "Identity:EmailPerIpPerDay": {
+    "group": "Identity",
+    "name": {
+      "fa": "ایمیل از هر نشانی IP",
+      "en": "Emails per client address"
+    },
+    "help": {
+      "fa": "تعداد ایمیل ورود که از یک نشانی IP در ۲۴ ساعت خواسته می‌شود. آن را بالا نگه دارید؛ خیلی‌ها یک نشانی مشترک دارند.",
+      "en": "Login emails asked from one IP address in 24 hours. Keep it high: many people share one address."
+    },
+    "unit": "",
+    "min": 10,
+    "max": 100000,
+    "risky": true,
+    "restart": false
+  },
+  "Identity:EmailWaitSeconds": {
+    "group": "Identity",
+    "name": {
+      "fa": "انتظار بین ایمیل‌ها",
+      "en": "Wait between emails"
+    },
+    "help": {
+      "fa": "چند ثانیه بین دو ایمیل ورود به یک نشانی فاصله باشد.",
+      "en": "Seconds between two login emails to one address."
+    },
+    "unit": "seconds",
+    "min": 10,
+    "max": 3600,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:GitHub:StateSeconds": {
+    "group": "Identity",
+    "name": {
+      "fa": "زمان ورود با گیت‌هاب",
+      "en": "GitHub login time"
+    },
+    "help": {
+      "fa": "زمانی که فرد در گیت‌هاب برای تمام کردن ورود دارد.",
+      "en": "Time a person has at GitHub to finish the login."
+    },
+    "unit": "seconds",
+    "min": 60,
+    "max": 3600,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:GitHub:TimeoutSeconds": {
+    "group": "Identity",
+    "name": {
+      "fa": "زمان انتظار گیت‌هاب",
+      "en": "GitHub call timeout"
+    },
+    "help": {
+      "fa": "زمان انتظار برای هر درخواست به گیت‌هاب.",
+      "en": "Wait for each call to GitHub."
+    },
+    "unit": "seconds",
+    "min": 1,
+    "max": 120,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:GitHub:Tries": {
+    "group": "Identity",
+    "name": {
+      "fa": "تلاش برای گیت‌هاب",
+      "en": "GitHub call tries"
+    },
+    "help": {
+      "fa": "تعداد تلاش وقتی گیت‌هاب پاسخ نمی‌دهد.",
+      "en": "Tries of a call when GitHub does not answer."
+    },
+    "unit": "tries",
+    "min": 1,
+    "max": 10,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:MaxAccessKeys": {
+    "group": "Identity",
+    "name": {
+      "fa": "کلید دسترسی برای هر کاربر",
+      "en": "Access keys per user"
+    },
+    "help": {
+      "fa": "تعداد کلید دسترسی که هر کاربر می‌تواند داشته باشد.",
+      "en": "Access keys one user may have."
+    },
+    "unit": "keys",
+    "min": 1,
+    "max": 100,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:MaxNameLength": {
+    "group": "Identity",
+    "name": {
+      "fa": "طول نام",
+      "en": "Name length"
+    },
+    "help": {
+      "fa": "بیشترین طول نام نمایشی کاربر.",
+      "en": "The longest display name of a user."
+    },
+    "unit": "characters",
+    "min": 8,
+    "max": 256,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:MergeRetrySeconds": {
+    "group": "Identity",
+    "name": {
+      "fa": "تلاش دوباره ادغام",
+      "en": "Merge retry every"
+    },
+    "help": {
+      "fa": "فاصله تا تلاش دوباره برای مرحله ناموفق ادغام حساب.",
+      "en": "Wait before a failed step of an account merge is tried again."
+    },
+    "unit": "seconds",
+    "min": 5,
+    "max": 3600,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:MergeSeconds": {
+    "group": "Identity",
+    "name": {
+      "fa": "زمان تأیید ادغام",
+      "en": "Merge confirm time"
+    },
+    "help": {
+      "fa": "زمانی که کاربر بعد از تأیید هویت برای زدن «ادغام» دارد.",
+      "en": "Time a user has to press Merge after the proof."
+    },
+    "unit": "seconds",
+    "min": 60,
+    "max": 3600,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:PasswordHashConcurrency": {
+    "group": "Identity",
+    "name": {
+      "fa": "بررسی هم‌زمان رمز",
+      "en": "Password checks at once"
+    },
+    "help": {
+      "fa": "تعداد بررسی رمز که هم‌زمان اجرا می‌شود. هر کدام به اندازه حافظه رمز، حافظه می‌گیرد.",
+      "en": "Password checks that may run at the same time. Each one takes the password memory."
+    },
+    "unit": "",
+    "min": 1,
+    "max": 64,
+    "risky": true,
+    "restart": true
+  },
+  "Identity:PasswordIterations": {
+    "group": "Identity",
+    "name": {
+      "fa": "دور درهم‌سازی رمز",
+      "en": "Password hash passes"
+    },
+    "help": {
+      "fa": "تعداد دور Argon2id برای هر رمز. بیشتر یعنی امن‌تر و کندتر.",
+      "en": "Argon2id passes for each password. More is safer and slower."
+    },
+    "unit": "passes",
+    "min": 1,
+    "max": 10,
+    "risky": true,
+    "restart": false
+  },
+  "Identity:PasswordMaxLength": {
+    "group": "Identity",
+    "name": {
+      "fa": "بیشترین طول رمز",
+      "en": "Longest password"
+    },
+    "help": {
+      "fa": "بیشترین طول رمزی که کاربر می‌تواند بگذارد.",
+      "en": "The longest password a user may set."
+    },
+    "unit": "characters",
+    "min": 64,
+    "max": 1024,
+    "risky": true,
+    "restart": false
+  },
+  "Identity:PasswordMemoryKb": {
+    "group": "Identity",
+    "name": {
+      "fa": "حافظه درهم‌سازی رمز",
+      "en": "Password hash memory"
+    },
+    "help": {
+      "fa": "حافظه هر بررسی رمز. عدد خیلی بزرگ می‌تواند سرور را از کار بیندازد.",
+      "en": "Memory for each password check. Too high can stop the server."
+    },
+    "unit": "KB",
+    "min": 8192,
+    "max": 1048576,
+    "risky": true,
+    "restart": false
+  },
+  "Identity:PasswordMinLength": {
+    "group": "Identity",
+    "name": {
+      "fa": "کمترین طول رمز",
+      "en": "Shortest password"
+    },
+    "help": {
+      "fa": "کمترین طول رمزی که کاربر می‌تواند بگذارد.",
+      "en": "The shortest password a user may set."
+    },
+    "unit": "characters",
+    "min": 6,
+    "max": 64,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:PasswordTries": {
+    "group": "Identity",
+    "name": {
+      "fa": "تلاش رمز برای هر نام",
+      "en": "Password tries per name"
+    },
+    "help": {
+      "fa": "تعداد تلاش اشتباه رمز برای یک نام کاربری در هر بازه.",
+      "en": "Wrong password tries for one login name in each window."
+    },
+    "unit": "tries",
+    "min": 1,
+    "max": 100,
+    "risky": true,
+    "restart": false
+  },
+  "Identity:PasswordTriesPerIp": {
+    "group": "Identity",
+    "name": {
+      "fa": "تلاش رمز از هر نشانی",
+      "en": "Password tries per address"
+    },
+    "help": {
+      "fa": "تعداد تلاش اشتباه رمز از یک نشانی IP در هر بازه. آن را بالا نگه دارید؛ خیلی‌ها یک نشانی مشترک دارند.",
+      "en": "Wrong password tries from one IP address in each window. Keep it high: many people share one address."
+    },
+    "unit": "tries",
+    "min": 10,
+    "max": 100000,
+    "risky": true,
+    "restart": false
+  },
+  "Identity:PasswordTriesWindowMinutes": {
+    "group": "Identity",
+    "name": {
+      "fa": "بازه تلاش رمز",
+      "en": "Password tries window"
+    },
+    "help": {
+      "fa": "بازه زمانی برای شمارش تلاش‌های رمز.",
+      "en": "The time window for the password tries."
+    },
+    "unit": "minutes",
+    "min": 1,
+    "max": 1440,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:PowChallengeSeconds": {
+    "group": "Identity",
+    "name": {
+      "fa": "عمر معما",
+      "en": "Puzzle lifetime"
+    },
+    "help": {
+      "fa": "چند ثانیه معمای پیش از ورود کار می‌کند.",
+      "en": "Seconds a login puzzle works before a new one is needed."
+    },
+    "unit": "seconds",
+    "min": 30,
+    "max": 3600,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:PowDifficultyBits": {
+    "group": "Identity",
+    "name": {
+      "fa": "سختی معما",
+      "en": "Puzzle difficulty"
+    },
+    "help": {
+      "fa": "کاری که مرورگر پیش از هر کد انجام می‌دهد. هر یک واحد آن را دو برابر می‌کند؛ عدد زیاد ورود را ناممکن می‌کند.",
+      "en": "Work the browser does before each code. Each step up doubles it; too high locks people out."
+    },
+    "unit": "bits",
+    "min": 8,
+    "max": 24,
+    "risky": true,
+    "restart": false
+  },
+  "Identity:RecoveryCodes": {
+    "group": "Identity",
+    "name": {
+      "fa": "کدهای بازیابی",
+      "en": "Recovery codes"
+    },
+    "help": {
+      "fa": "تعداد کدهای بازیابی که کاربر هنگام فعال کردن تأیید دومرحله‌ای می‌گیرد.",
+      "en": "Recovery codes a user gets when the second factor is set up."
+    },
+    "unit": "codes",
+    "min": 4,
+    "max": 20,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:RefreshReuseGraceSeconds": {
+    "group": "Identity",
+    "name": {
+      "fa": "مهلت توکن تازه‌سازی قدیمی",
+      "en": "Refresh reuse grace"
+    },
+    "help": {
+      "fa": "اگر توکن تازه‌سازی قدیمی در این زمان برگردد فقط رد می‌شود؛ بعد از آن نشست بسته می‌شود.",
+      "en": "An old refresh token that comes back in this time is only refused; later it ends the session."
+    },
+    "unit": "seconds",
+    "min": 1,
+    "max": 300,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:RefreshTokenDays": {
+    "group": "Identity",
+    "name": {
+      "fa": "ماندن در حساب",
+      "en": "Stay logged in for"
+    },
+    "help": {
+      "fa": "چند روز یک دستگاه بدون استفاده وارد حساب می‌ماند. عدد کمتر زودتر کاربران را بیرون می‌کند.",
+      "en": "Days a device stays logged in without use. Lower logs people out sooner."
+    },
+    "unit": "days",
+    "min": 1,
+    "max": 365,
+    "risky": true,
+    "restart": false
+  },
+  "Identity:SmsCodeDigits": {
+    "group": "Identity",
+    "name": {
+      "fa": "رقم‌های کد پیامک",
+      "en": "SMS code digits"
+    },
+    "help": {
+      "fa": "تعداد رقم‌های کد ورودی که با پیامک فرستاده می‌شود.",
+      "en": "Digits in a login code sent by SMS."
+    },
+    "unit": "digits",
+    "min": 4,
+    "max": 10,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:SmsCodeSeconds": {
+    "group": "Identity",
+    "name": {
+      "fa": "عمر کد پیامک",
+      "en": "SMS code lifetime"
+    },
+    "help": {
+      "fa": "چند ثانیه کد ورود پیامکی کار می‌کند.",
+      "en": "Seconds an SMS login code works."
+    },
+    "unit": "seconds",
+    "min": 30,
+    "max": 1800,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:SmsCodeTries": {
+    "group": "Identity",
+    "name": {
+      "fa": "تلاش برای کد پیامک",
+      "en": "SMS code tries"
+    },
+    "help": {
+      "fa": "تعداد تلاش اشتباه مجاز برای یک کد پیامک.",
+      "en": "Wrong tries allowed on one SMS code."
+    },
+    "unit": "tries",
+    "min": 1,
+    "max": 20,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:SmsLongWaitSeconds": {
+    "group": "Identity",
+    "name": {
+      "fa": "انتظار طولانی بین پیامک‌ها",
+      "en": "Long wait between SMS"
+    },
+    "help": {
+      "fa": "فاصله بین دو پیامک به یک شماره، بعد از رسیدن به سقف روزانه.",
+      "en": "Wait between two SMS to one number after the daily count."
+    },
+    "unit": "seconds",
+    "min": 60,
+    "max": 86400,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:SmsPerDay": {
+    "group": "Identity",
+    "name": {
+      "fa": "پیامک در روز",
+      "en": "SMS per day"
+    },
+    "help": {
+      "fa": "همه پیامک‌های ورودی که سرور در ۲۴ ساعت می‌فرستد. وقتی تمام شود، کسی کد پیامکی نمی‌گیرد.",
+      "en": "All login SMS the server sends in 24 hours. When it is used up, nobody gets an SMS code."
+    },
+    "unit": "",
+    "min": 10,
+    "max": 1000000,
+    "risky": true,
+    "restart": false
+  },
+  "Identity:SmsPerIpPerDay": {
+    "group": "Identity",
+    "name": {
+      "fa": "پیامک از هر نشانی IP",
+      "en": "SMS per client address"
+    },
+    "help": {
+      "fa": "تعداد پیامک ورود که از یک نشانی IP در ۲۴ ساعت خواسته می‌شود. آن را بالا نگه دارید؛ خیلی‌ها یک نشانی مشترک دارند.",
+      "en": "Login SMS asked from one IP address in 24 hours. Keep it high: many people share one address."
+    },
+    "unit": "",
+    "min": 10,
+    "max": 100000,
+    "risky": true,
+    "restart": false
+  },
+  "Identity:SmsPerPhonePerDay": {
+    "group": "Identity",
+    "name": {
+      "fa": "پیامک به هر شماره در روز",
+      "en": "SMS per number per day"
+    },
+    "help": {
+      "fa": "تعداد پیامک با انتظار کوتاه به یک شماره در ۲۴ ساعت. شماره مدیران محدودیت ندارد.",
+      "en": "SMS with the short wait to one number in 24 hours. Admin numbers have no limit."
+    },
+    "unit": "",
+    "min": 1,
+    "max": 100,
+    "risky": true,
+    "restart": false
+  },
+  "Identity:SmsWaitSeconds": {
+    "group": "Identity",
+    "name": {
+      "fa": "انتظار بین پیامک‌ها",
+      "en": "Wait between SMS"
+    },
+    "help": {
+      "fa": "چند ثانیه بین دو پیامک ورود به یک شماره فاصله باشد.",
+      "en": "Seconds between two login SMS to one number."
+    },
+    "unit": "seconds",
+    "min": 30,
+    "max": 3600,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:TotpMaxTries": {
+    "group": "Identity",
+    "name": {
+      "fa": "تلاش کد دومرحله‌ای",
+      "en": "Second factor tries"
+    },
+    "help": {
+      "fa": "تعداد تلاش اشتباه کد برای یک ورود.",
+      "en": "Wrong code tries on one login."
+    },
+    "unit": "tries",
+    "min": 1,
+    "max": 20,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:TotpStepSeconds": {
+    "group": "Identity",
+    "name": {
+      "fa": "گام کد برنامه تأیید",
+      "en": "Authenticator code step"
+    },
+    "help": {
+      "fa": "چند ثانیه هر کد برنامه تأیید هویت معتبر است. برنامه‌ها ۳۰ را به کار می‌برند و کدهای ساخته‌شده با آن عوض نمی‌شوند؛ برای همین از پنل تغییر نمی‌کند.",
+      "en": "Seconds each authenticator code lasts. Apps use 30, and the codes already set up keep it; so the panel cannot change it."
+    },
+    "unit": "seconds",
+    "min": 30,
+    "max": 30,
+    "risky": true,
+    "restart": false
+  },
+  "Identity:TotpTicketMinutes": {
+    "group": "Identity",
+    "name": {
+      "fa": "زمان کد دومرحله‌ای",
+      "en": "Second factor time"
+    },
+    "help": {
+      "fa": "چند دقیقه فرد بعد از مرحله اول ورود برای وارد کردن کد وقت دارد.",
+      "en": "Minutes a person has to type the code after the first step of a login."
+    },
+    "unit": "minutes",
+    "min": 1,
+    "max": 30,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:TotpWindowSteps": {
+    "group": "Identity",
+    "name": {
+      "fa": "تحمل ساعت برنامه تأیید",
+      "en": "Authenticator clock slack"
+    },
+    "help": {
+      "fa": "کدهای این تعداد گام قبل یا بعد هم پذیرفته می‌شوند، برای گوشی‌ای که ساعتش کمی جلو یا عقب است.",
+      "en": "Codes this many steps before or after are also accepted, for a phone clock that is a little off."
+    },
+    "unit": "steps",
+    "min": 1,
+    "max": 5,
+    "risky": false,
+    "restart": false
+  },
+  "Notification:Push:AllowedHosts": {
+    "group": "Notification",
+    "name": {
+      "fa": "سرویس‌های اعلان",
+      "en": "Push service hosts"
+    },
+    "help": {
+      "fa": "میزبان‌های سرویس اعلان، جدا شده با ویرگول. اگر یکی حذف شود، اعلان آن دستگاه‌ها نمی‌رسد.",
+      "en": "Hosts of the push services, comma separated. A missing host stops notifications on those devices."
+    },
+    "unit": "",
+    "risky": true,
+    "restart": false
+  },
+  "Notification:Push:MaxBodyLength": {
+    "group": "Notification",
+    "name": {
+      "fa": "طول متن اعلان",
+      "en": "Notification text length"
+    },
+    "help": {
+      "fa": "تعداد نویسه‌هایی از پیام که در اعلان نشان داده می‌شود.",
+      "en": "Characters of a message shown in a notification."
+    },
+    "unit": "characters",
+    "min": 50,
+    "max": 1000,
+    "risky": false,
+    "restart": false
+  },
+  "Notification:Push:MaxEndpointLength": {
+    "group": "Notification",
+    "name": {
+      "fa": "طول نشانی اعلان",
+      "en": "Push address length"
+    },
+    "help": {
+      "fa": "بیشترین طول نشانی اعلانی که مرورگر ثبت می‌کند.",
+      "en": "The longest push address a browser may register."
+    },
+    "unit": "characters",
+    "min": 200,
+    "max": 10000,
+    "risky": false,
+    "restart": false
+  },
+  "Notification:Push:MaxSubscriptionsPerUser": {
+    "group": "Notification",
+    "name": {
+      "fa": "دستگاه‌های هر کاربر برای اعلان",
+      "en": "Notified devices per user"
+    },
+    "help": {
+      "fa": "تعداد دستگاه‌های یک کاربر که اعلان می‌گیرند.",
+      "en": "Devices of one user that get notifications."
+    },
+    "unit": "devices",
+    "min": 1,
+    "max": 100,
+    "risky": false,
+    "restart": false
+  },
+  "Notification:Push:QueueSize": {
+    "group": "Notification",
+    "name": {
+      "fa": "صف اعلان",
+      "en": "Notification queue"
+    },
+    "help": {
+      "fa": "تعداد اعلان‌هایی که می‌توانند در صف ارسال بمانند.",
+      "en": "Notifications that may wait to be sent."
+    },
+    "unit": "",
+    "min": 100,
+    "max": 1000000,
+    "risky": false,
+    "restart": true
+  },
+  "Notification:Push:Subject": {
+    "group": "Notification",
+    "name": {
+      "fa": "نشانی تماس اعلان",
+      "en": "Push contact address"
+    },
+    "help": {
+      "fa": "راه تماس سرویس اعلان با صاحب سایت: یک نشانی https یا mailto:.",
+      "en": "How a push service can reach the owner: an https address or mailto:."
+    },
+    "unit": "",
+    "risky": true,
+    "restart": true
+  },
+  "Notification:Push:TimeoutSeconds": {
+    "group": "Notification",
+    "name": {
+      "fa": "زمان انتظار اعلان",
+      "en": "Push call timeout"
+    },
+    "help": {
+      "fa": "زمان انتظار برای هر درخواست به سرویس اعلان.",
+      "en": "Wait for each call to a push service."
+    },
+    "unit": "seconds",
+    "min": 1,
+    "max": 120,
+    "risky": false,
+    "restart": true
+  },
+  "Notification:Push:TtlSeconds": {
+    "group": "Notification",
+    "name": {
+      "fa": "نگهداری اعلان",
+      "en": "Notification kept for"
+    },
+    "help": {
+      "fa": "سرویس اعلان تا کی اعلان را برای دستگاه خاموش نگه دارد.",
+      "en": "How long a push service keeps a notification for a device that is off."
+    },
+    "unit": "seconds",
+    "min": 60,
+    "max": 2419200,
+    "risky": false,
+    "restart": false
+  },
+  "Notification:Push:Workers": {
+    "group": "Notification",
+    "name": {
+      "fa": "ارسال‌کننده‌های اعلان",
+      "en": "Push senders"
+    },
+    "help": {
+      "fa": "تعداد اعلان‌هایی که هم‌زمان فرستاده می‌شوند.",
+      "en": "Notifications sent at the same time."
+    },
+    "unit": "",
+    "min": 1,
+    "max": 64,
+    "risky": false,
+    "restart": true
+  },
+  "Notification:SmsIr:CodeParameter": {
+    "group": "Notification",
+    "name": {
+      "fa": "نام کد در SMS.ir",
+      "en": "SMS.ir code name"
+    },
+    "help": {
+      "fa": "نام متغیر کد در قالب SMS.ir (برای #CODE# بنویسید CODE). مقدار اشتباه ورود با پیامک را از کار می‌اندازد.",
+      "en": "Name of the code in the SMS.ir template (CODE for #CODE#). A wrong value stops SMS login."
+    },
+    "unit": "",
+    "risky": true,
+    "restart": false
+  },
+  "Notification:SmsIr:TemplateId": {
+    "group": "Notification",
+    "name": {
+      "fa": "قالب SMS.ir",
+      "en": "SMS.ir template"
+    },
+    "help": {
+      "fa": "شماره قالب تأییدشده کد در پنل SMS.ir. مقدار اشتباه ورود با پیامک را از کار می‌اندازد.",
+      "en": "Number of the approved code template in the SMS.ir panel. A wrong value stops SMS login."
+    },
+    "unit": "",
+    "risky": true,
+    "restart": false
+  },
+  "Notification:SmsIr:TimeoutSeconds": {
+    "group": "Notification",
+    "name": {
+      "fa": "زمان انتظار SMS.ir",
+      "en": "SMS.ir timeout"
+    },
+    "help": {
+      "fa": "زمان انتظار برای هر درخواست به SMS.ir.",
+      "en": "Wait for each call to SMS.ir."
+    },
+    "unit": "seconds",
+    "min": 1,
+    "max": 120,
+    "risky": false,
+    "restart": false
+  },
+  "Notification:Smtp:TimeoutSeconds": {
+    "group": "Notification",
+    "name": {
+      "fa": "زمان انتظار سرور ایمیل",
+      "en": "Email server timeout"
+    },
+    "help": {
+      "fa": "زمان انتظار برای هر درخواست به سرور ایمیل.",
+      "en": "Wait for each call to the email server."
+    },
+    "unit": "seconds",
+    "min": 1,
+    "max": 120,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:BotOnlineSeconds": {
+    "group": "Relay",
+    "name": {
+      "fa": "آنلاین بودن بات",
+      "en": "Bot online for"
+    },
+    "help": {
+      "fa": "بات تا این مدت بعد از آخرین درخواستش آنلاین نشان داده می‌شود.",
+      "en": "A bot shows as online this long after its last poll."
+    },
+    "unit": "seconds",
+    "min": 10,
+    "max": 3600,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:BotRequestLimit": {
+    "group": "Relay",
+    "name": {
+      "fa": "درخواست هر بات",
+      "en": "Calls per bot"
+    },
+    "help": {
+      "fa": "تعداد درخواستی که هر بات در هر بازه می‌تواند بفرستد.",
+      "en": "Calls one bot may make in each window."
+    },
+    "unit": "",
+    "min": 1,
+    "max": 10000,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:CallbackAnswerSeconds": {
+    "group": "Relay",
+    "name": {
+      "fa": "زمان پاسخ به دکمه",
+      "en": "Button answer time"
+    },
+    "help": {
+      "fa": "زمانی که بات برای پاسخ به دکمه زده‌شده دارد.",
+      "en": "Time a bot has to answer a pressed button."
+    },
+    "unit": "seconds",
+    "min": 10,
+    "max": 3600,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:ClientPressWaitSeconds": {
+    "group": "Relay",
+    "name": {
+      "fa": "انتظار دکمه در برنامه",
+      "en": "Button wait in the app"
+    },
+    "help": {
+      "fa": "زمانی که برنامه بعد از زدن دکمه منتظر بات می‌ماند.",
+      "en": "Time the app waits for the bot after a button press."
+    },
+    "unit": "seconds",
+    "min": 1,
+    "max": 120,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:ClientReconnectMaxSeconds": {
+    "group": "Relay",
+    "name": {
+      "fa": "بیشترین انتظار اتصال دوباره",
+      "en": "Longest reconnect wait"
+    },
+    "help": {
+      "fa": "بیشترین زمانی که برنامه پیش از اتصال دوباره صبر می‌کند.",
+      "en": "The longest wait of the app before it connects again."
+    },
+    "unit": "seconds",
+    "min": 5,
+    "max": 600,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:ClientReconnectMinSeconds": {
+    "group": "Relay",
+    "name": {
+      "fa": "انتظار اول اتصال دوباره",
+      "en": "First reconnect wait"
+    },
+    "help": {
+      "fa": "اولین زمانی که برنامه پیش از اتصال دوباره صبر می‌کند.",
+      "en": "The first wait of the app before it connects again."
+    },
+    "unit": "seconds",
+    "min": 1,
+    "max": 60,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:ClientStatusRefreshSeconds": {
+    "group": "Relay",
+    "name": {
+      "fa": "تازه‌سازی وضعیت بات",
+      "en": "Bot status refresh"
+    },
+    "help": {
+      "fa": "هر چند وقت یک گفتگوی باز بررسی کند که بات آنلاین است.",
+      "en": "How often an open chat checks if the bot is online."
+    },
+    "unit": "seconds",
+    "min": 5,
+    "max": 600,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:ExpirySweepSeconds": {
+    "group": "Relay",
+    "name": {
+      "fa": "فاصله پاک‌سازی به‌روزرسانی‌ها",
+      "en": "Expired update cleanup every"
+    },
+    "help": {
+      "fa": "هر چند وقت یک بار به‌روزرسانی‌های منقضی از صف پاک شوند.",
+      "en": "How often expired updates are removed from the queue."
+    },
+    "unit": "seconds",
+    "min": 1,
+    "max": 86400,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:FileRetentionDays": {
+    "group": "Relay",
+    "name": {
+      "fa": "نگهداری فایل‌ها",
+      "en": "Files kept for"
+    },
+    "help": {
+      "fa": "فایل‌های قدیمی‌تر از این مدت از سرور پاک می‌شوند.",
+      "en": "Files older than this are deleted from the server."
+    },
+    "unit": "days",
+    "min": 1,
+    "max": 3650,
+    "risky": true,
+    "restart": false
+  },
+  "Relay:FileSweepMinutes": {
+    "group": "Relay",
+    "name": {
+      "fa": "فاصله پاک‌سازی فایل‌ها",
+      "en": "File cleanup every"
+    },
+    "help": {
+      "fa": "هر چند وقت یک بار فایل‌های قدیمی پاک شوند.",
+      "en": "How often old files are deleted."
+    },
+    "unit": "minutes",
+    "min": 1,
+    "max": 1440,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:FileViewMinutes": {
+    "group": "Relay",
+    "name": {
+      "fa": "عمر پیوند نمایش فایل",
+      "en": "File view link lifetime"
+    },
+    "help": {
+      "fa": "چند دقیقه پیوند نمایش فایل HTML کار می‌کند.",
+      "en": "Minutes a link to view an HTML file works."
+    },
+    "unit": "minutes",
+    "min": 1,
+    "max": 1440,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:HistoryDays": {
+    "group": "Relay",
+    "name": {
+      "fa": "روزهای تاریخچه گفتگو",
+      "en": "Chat history days"
+    },
+    "help": {
+      "fa": "پیام‌های قدیمی‌تر از این مدت از گفتگو پاک می‌شوند.",
+      "en": "Messages older than this are deleted from a chat."
+    },
+    "unit": "days",
+    "min": 1,
+    "max": 3650,
+    "risky": true,
+    "restart": false
+  },
+  "Relay:HistoryMessages": {
+    "group": "Relay",
+    "name": {
+      "fa": "پیام‌های تاریخچه گفتگو",
+      "en": "Chat history messages"
+    },
+    "help": {
+      "fa": "تعداد پیام‌هایی که در هر گفتگو می‌ماند؛ قدیمی‌ترها پاک می‌شوند.",
+      "en": "Messages kept in each chat; older ones are deleted."
+    },
+    "unit": "messages",
+    "min": 10,
+    "max": 100000,
+    "risky": true,
+    "restart": false
+  },
+  "Relay:HistorySweepMinutes": {
+    "group": "Relay",
+    "name": {
+      "fa": "فاصله پاک‌سازی تاریخچه",
+      "en": "History cleanup every"
+    },
+    "help": {
+      "fa": "هر چند وقت یک بار پیام‌های قدیمی گفتگوها پاک شوند.",
+      "en": "How often old chat messages are deleted."
+    },
+    "unit": "minutes",
+    "min": 1,
+    "max": 1440,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:LatestCommandWins": {
+    "group": "Relay",
+    "name": {
+      "fa": "آخرین درخواست برنده است",
+      "en": "Latest poll wins"
+    },
+    "help": {
+      "fa": "درخواست تازه بات، درخواست قدیمی‌ترش را می‌بندد؛ مانند تلگرام.",
+      "en": "A new poll of a bot ends its older poll, like Telegram."
+    },
+    "unit": "",
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxBotDescriptionLength": {
+    "group": "Relay",
+    "name": {
+      "fa": "طول توضیح بات",
+      "en": "Bot description length"
+    },
+    "help": {
+      "fa": "بیشترین طول توضیح بات در ویترین.",
+      "en": "The longest description of a bot in the showcase."
+    },
+    "unit": "characters",
+    "min": 50,
+    "max": 4096,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxBotIconKb": {
+    "group": "Relay",
+    "name": {
+      "fa": "اندازه نماد بات",
+      "en": "Bot icon size"
+    },
+    "help": {
+      "fa": "بیشترین اندازه نماد بات.",
+      "en": "The largest icon of a bot."
+    },
+    "unit": "KB",
+    "min": 10,
+    "max": 2048,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxBotNameLength": {
+    "group": "Relay",
+    "name": {
+      "fa": "طول نام بات",
+      "en": "Bot name length"
+    },
+    "help": {
+      "fa": "بیشترین طول نام بات.",
+      "en": "The longest name of a bot."
+    },
+    "unit": "characters",
+    "min": 8,
+    "max": 256,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxBotsPerBuilder": {
+    "group": "Relay",
+    "name": {
+      "fa": "بات برای هر سازنده",
+      "en": "Bots per builder"
+    },
+    "help": {
+      "fa": "تعداد باتی که هر سازنده می‌تواند داشته باشد.",
+      "en": "Bots one builder may have."
+    },
+    "unit": "bots",
+    "min": 1,
+    "max": 1000,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxButtonTextLength": {
+    "group": "Relay",
+    "name": {
+      "fa": "طول متن دکمه",
+      "en": "Button text length"
+    },
+    "help": {
+      "fa": "بیشترین طول متن یک دکمه.",
+      "en": "The longest text of a button."
+    },
+    "unit": "characters",
+    "min": 8,
+    "max": 256,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxButtonUrlLength": {
+    "group": "Relay",
+    "name": {
+      "fa": "طول پیوند دکمه",
+      "en": "Button link length"
+    },
+    "help": {
+      "fa": "بیشترین طول پیوند یک دکمه.",
+      "en": "The longest link of a button."
+    },
+    "unit": "characters",
+    "min": 100,
+    "max": 8192,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxCallbackAnswerLength": {
+    "group": "Relay",
+    "name": {
+      "fa": "طول پاسخ دکمه",
+      "en": "Button answer length"
+    },
+    "help": {
+      "fa": "بیشترین طول متنی که بات بعد از زدن دکمه نشان می‌دهد.",
+      "en": "The longest text a bot may show after a button press."
+    },
+    "unit": "characters",
+    "min": 10,
+    "max": 1000,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxCallbackDataBytes": {
+    "group": "Relay",
+    "name": {
+      "fa": "اندازه داده دکمه",
+      "en": "Button data size"
+    },
+    "help": {
+      "fa": "بیشترین اندازه داده پنهان یک دکمه.",
+      "en": "The largest hidden data of a button."
+    },
+    "unit": "bytes",
+    "min": 1,
+    "max": 1024,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxCaptionLength": {
+    "group": "Relay",
+    "name": {
+      "fa": "طول زیرنویس",
+      "en": "Caption length"
+    },
+    "help": {
+      "fa": "بیشترین طول زیرنویس یک فایل.",
+      "en": "The longest caption of a file."
+    },
+    "unit": "characters",
+    "min": 1,
+    "max": 16384,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxCommandDescriptionLength": {
+    "group": "Relay",
+    "name": {
+      "fa": "طول توضیح فرمان",
+      "en": "Command description length"
+    },
+    "help": {
+      "fa": "بیشترین طول توضیح یک فرمان بات.",
+      "en": "The longest description of a bot command."
+    },
+    "unit": "characters",
+    "min": 10,
+    "max": 1024,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxCommands": {
+    "group": "Relay",
+    "name": {
+      "fa": "فرمان برای هر بات",
+      "en": "Commands per bot"
+    },
+    "help": {
+      "fa": "تعداد فرمانی که هر بات می‌تواند تعریف کند.",
+      "en": "Commands one bot may set."
+    },
+    "unit": "commands",
+    "min": 1,
+    "max": 1000,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxFileSizeMb": {
+    "group": "Relay",
+    "name": {
+      "fa": "اندازه فایل",
+      "en": "File size"
+    },
+    "help": {
+      "fa": "بیشترین اندازه فایل در یک پیام.",
+      "en": "The largest file in one message."
+    },
+    "unit": "MB",
+    "min": 1,
+    "max": 2048,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxKeyboardButtons": {
+    "group": "Relay",
+    "name": {
+      "fa": "دکمه در هر پیام",
+      "en": "Buttons per message"
+    },
+    "help": {
+      "fa": "تعداد دکمه‌هایی که یک پیام می‌تواند داشته باشد.",
+      "en": "Buttons one message may have."
+    },
+    "unit": "buttons",
+    "min": 1,
+    "max": 1000,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxMessagesPerSync": {
+    "group": "Relay",
+    "name": {
+      "fa": "پیام در هر بارگیری",
+      "en": "Messages per load"
+    },
+    "help": {
+      "fa": "تعداد پیامی که برنامه در یک درخواست می‌گیرد.",
+      "en": "Messages the app gets in one call."
+    },
+    "unit": "messages",
+    "min": 10,
+    "max": 1000,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxStreamsPerUser": {
+    "group": "Relay",
+    "name": {
+      "fa": "اتصال زنده هر کاربر",
+      "en": "Live connections per user"
+    },
+    "help": {
+      "fa": "تعداد اتصال زنده باز یک کاربر؛ قدیمی‌ترین اول بسته می‌شود.",
+      "en": "Open live connections of one user; the oldest closes first."
+    },
+    "unit": "connections",
+    "min": 1,
+    "max": 100,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxTextEntities": {
+    "group": "Relay",
+    "name": {
+      "fa": "بخش قالب‌دار در پیام",
+      "en": "Formatted parts per message"
+    },
+    "help": {
+      "fa": "تعداد بخش‌های پررنگ، پیوند و دیگر قالب‌ها در یک پیام.",
+      "en": "Bold, link and other formatted parts in one message."
+    },
+    "unit": "parts",
+    "min": 1,
+    "max": 1000,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxTextLength": {
+    "group": "Relay",
+    "name": {
+      "fa": "طول پیام",
+      "en": "Message length"
+    },
+    "help": {
+      "fa": "بیشترین طول متن یک پیام.",
+      "en": "The longest text of a message."
+    },
+    "unit": "characters",
+    "min": 1,
+    "max": 65536,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MaxUpdatesPerPoll": {
+    "group": "Relay",
+    "name": {
+      "fa": "به‌روزرسانی در هر درخواست",
+      "en": "Updates per poll"
+    },
+    "help": {
+      "fa": "تعداد به‌روزرسانی که بات در یک درخواست می‌گیرد.",
+      "en": "Updates a bot gets in one call."
+    },
+    "unit": "updates",
+    "min": 1,
+    "max": 1000,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:MovedChatDays": {
+    "group": "Relay",
+    "name": {
+      "fa": "اطلاع جابه‌جایی گفتگو",
+      "en": "Moved chat notice for"
+    },
+    "help": {
+      "fa": "چند روز به بات گفته شود که گفتگوی ادغام‌شده به شناسه تازه رفته است.",
+      "en": "Days a bot is told a merged chat moved to its new id."
+    },
+    "unit": "days",
+    "min": 1,
+    "max": 3650,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:OutboxBatchSize": {
+    "group": "Relay",
+    "name": {
+      "fa": "دسته صندوق خروجی",
+      "en": "Outbox batch"
+    },
+    "help": {
+      "fa": "تعداد رویدادهایی که در هر دور صندوق خروجی فرستاده می‌شود.",
+      "en": "Events sent in one round of the outbox."
+    },
+    "unit": "",
+    "min": 1,
+    "max": 10000,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:OutboxPollSeconds": {
+    "group": "Relay",
+    "name": {
+      "fa": "فاصله بررسی صندوق خروجی",
+      "en": "Outbox check every"
+    },
+    "help": {
+      "fa": "هر چند وقت یک بار صندوق خروجی رویدادهای تازه را بررسی کند.",
+      "en": "How often the outbox looks for new events."
+    },
+    "unit": "seconds",
+    "min": 1,
+    "max": 300,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:PollTimeoutDefaultSeconds": {
+    "group": "Relay",
+    "name": {
+      "fa": "انتظار پیش‌فرض درخواست بات",
+      "en": "Default poll wait"
+    },
+    "help": {
+      "fa": "وقتی بات زمانی نگوید، درخواستش تا این مدت منتظر می‌ماند.",
+      "en": "How long a bot poll waits when the bot does not say."
+    },
+    "unit": "seconds",
+    "min": 1,
+    "max": 300,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:PollTimeoutMaxSeconds": {
+    "group": "Relay",
+    "name": {
+      "fa": "بیشترین انتظار درخواست بات",
+      "en": "Longest poll wait"
+    },
+    "help": {
+      "fa": "بیشترین زمانی که درخواست بات منتظر می‌ماند.",
+      "en": "The longest a bot poll may wait."
+    },
+    "unit": "seconds",
+    "min": 1,
+    "max": 600,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:RateLimitWindowSeconds": {
+    "group": "Relay",
+    "name": {
+      "fa": "بازه محدودیت درخواست",
+      "en": "Call limit window"
+    },
+    "help": {
+      "fa": "بازه زمانی برای شمارش درخواست‌های هر بات و هر کاربر.",
+      "en": "The time window for the calls per bot and per user."
+    },
+    "unit": "seconds",
+    "min": 1,
+    "max": 3600,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:ShowcaseCategories": {
+    "group": "Relay",
+    "name": {
+      "fa": "دسته‌های ویترین",
+      "en": "Showcase categories"
+    },
+    "help": {
+      "fa": "کلید دسته‌های ویترین، جدا شده با ویرگول.",
+      "en": "Category keys of the showcase, comma separated."
+    },
+    "unit": "",
+    "risky": false,
+    "restart": false
+  },
+  "Relay:ShowcasePageSize": {
+    "group": "Relay",
+    "name": {
+      "fa": "بات در هر صفحه ویترین",
+      "en": "Bots per showcase page"
+    },
+    "help": {
+      "fa": "تعداد بات در هر صفحه ویترین.",
+      "en": "Bots on one page of the showcase."
+    },
+    "unit": "bots",
+    "min": 10,
+    "max": 500,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:StreamBufferSize": {
+    "group": "Relay",
+    "name": {
+      "fa": "حافظه اتصال زنده",
+      "en": "Live connection buffer"
+    },
+    "help": {
+      "fa": "تعداد رویدادهایی که برای یک اتصال زنده کند منتظر می‌مانند.",
+      "en": "Events that may wait on one slow live connection."
+    },
+    "unit": "events",
+    "min": 10,
+    "max": 10000,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:StreamHeartbeatSeconds": {
+    "group": "Relay",
+    "name": {
+      "fa": "ضربان اتصال زنده",
+      "en": "Live connection heartbeat"
+    },
+    "help": {
+      "fa": "هر چند وقت یک نشانه خالی فرستاده شود تا اتصال زنده باز بماند.",
+      "en": "How often an empty sign is sent to keep a live connection open."
+    },
+    "unit": "seconds",
+    "min": 5,
+    "max": 300,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:UpdateExpirySeconds": {
+    "group": "Relay",
+    "name": {
+      "fa": "نگهداری به‌روزرسانی",
+      "en": "Update kept for"
+    },
+    "help": {
+      "fa": "پیام تا این مدت منتظر بات می‌ماند؛ بعد از آن از بین می‌رود.",
+      "en": "A message waits this long for its bot; then it is lost."
+    },
+    "unit": "seconds",
+    "min": 10,
+    "max": 86400,
+    "risky": true,
+    "restart": false
+  },
+  "Relay:UserRequestLimit": {
+    "group": "Relay",
+    "name": {
+      "fa": "درخواست هر کاربر",
+      "en": "Calls per user"
+    },
+    "help": {
+      "fa": "تعداد درخواستی که هر کاربر در هر بازه می‌تواند بفرستد.",
+      "en": "Calls one user may make in each window."
+    },
+    "unit": "",
+    "min": 1,
+    "max": 10000,
+    "risky": false,
+    "restart": false
+  },
+  "Relay:UserUploadMbPerDay": {
+    "group": "Relay",
+    "name": {
+      "fa": "بارگذاری هر کاربر در روز",
+      "en": "Uploads per user per day"
+    },
+    "help": {
+      "fa": "حجم فایلی که هر کاربر در ۲۴ ساعت بارگذاری می‌کند.",
+      "en": "Files one user may upload in 24 hours."
+    },
+    "unit": "MB",
+    "min": 1,
+    "max": 100000,
+    "risky": false,
+    "restart": false
+  },
+  "Sites:AccessCheckSeconds": {
+    "group": "Sites",
+    "name": {
+      "fa": "فاصله بررسی دسترسی عامل",
+      "en": "Agent access check every"
+    },
+    "help": {
+      "fa": "هر چند وقت یک نشست باز عامل بررسی کند که صاحبش هنوز اجازه دارد.",
+      "en": "How often an open agent session checks that its owner may still use it."
+    },
+    "unit": "seconds",
+    "min": 10,
+    "max": 3600,
+    "risky": false,
+    "restart": false
+  },
+  "Sites:CloseWaitSeconds": {
+    "group": "Sites",
+    "name": {
+      "fa": "انتظار بستن تونل",
+      "en": "Tunnel close wait"
+    },
+    "help": {
+      "fa": "زمانی که عامل بعد از خداحافظی سرور برای بستن اتصال دارد.",
+      "en": "Time the agent has to hang up after the server says goodbye."
+    },
+    "unit": "seconds",
+    "min": 1,
+    "max": 60,
+    "risky": false,
+    "restart": false
+  },
+  "Sites:DemoHours": {
+    "group": "Sites",
+    "name": {
+      "fa": "عمر پیوند نمایشی",
+      "en": "Demo link lifetime"
+    },
+    "help": {
+      "fa": "چند ساعت پیوند نمایشی کار می‌کند.",
+      "en": "Hours a demo link works."
+    },
+    "unit": "hours",
+    "min": 1,
+    "max": 720,
+    "risky": false,
+    "restart": false
+  },
+  "Sites:DemoIdLength": {
+    "group": "Sites",
+    "name": {
+      "fa": "طول شناسه نمایشی",
+      "en": "Demo id length"
+    },
+    "help": {
+      "fa": "تعداد نویسه‌های شناسه پیوند نمایشی. تغییر آن پیوندهای نمایشی فعلی را از کار می‌اندازد.",
+      "en": "Characters in the id of a demo link. A change stops the demo links that are open now."
+    },
+    "unit": "characters",
+    "min": 8,
+    "max": 64,
+    "risky": true,
+    "restart": false
+  },
+  "Sites:MaxAnswerMb": {
+    "group": "Sites",
+    "name": {
+      "fa": "اندازه پاسخ سایت",
+      "en": "Site answer size"
+    },
+    "help": {
+      "fa": "بیشترین اندازه پاسخ جریانی یک سایت.",
+      "en": "The largest streamed answer of a site."
+    },
+    "unit": "MB",
+    "min": 1,
+    "max": 10240,
+    "risky": false,
+    "restart": false
+  },
+  "Sites:MaxBodyMb": {
+    "group": "Sites",
+    "name": {
+      "fa": "اندازه درخواست سایت",
+      "en": "Site request size"
+    },
+    "help": {
+      "fa": "بیشترین اندازه درخواستی که بازدیدکننده به سایت می‌فرستد.",
+      "en": "The largest request a visitor may send to a site."
+    },
+    "unit": "MB",
+    "min": 1,
+    "max": 2048,
+    "risky": false,
+    "restart": false
+  },
+  "Sites:MaxDemosPerBuilder": {
+    "group": "Sites",
+    "name": {
+      "fa": "نمایشی برای هر سازنده",
+      "en": "Demos per builder"
+    },
+    "help": {
+      "fa": "تعداد پیوند نمایشی که هر سازنده می‌تواند داشته باشد.",
+      "en": "Demo links one builder may have."
+    },
+    "unit": "demos",
+    "min": 1,
+    "max": 100,
+    "risky": false,
+    "restart": false
+  },
+  "Sites:MaxNameLength": {
+    "group": "Sites",
+    "name": {
+      "fa": "طول نام سایت",
+      "en": "Site name length"
+    },
+    "help": {
+      "fa": "بیشترین طول نام سایت.",
+      "en": "The longest name of a site."
+    },
+    "unit": "characters",
+    "min": 3,
+    "max": 63,
+    "risky": false,
+    "restart": false
+  },
+  "Sites:MaxPendingPerAddress": {
+    "group": "Sites",
+    "name": {
+      "fa": "درخواست هم‌زمان هر نشانی",
+      "en": "Site requests per address"
+    },
+    "help": {
+      "fa": "تعداد درخواست هم‌زمان یک نشانی بازدیدکننده نزد عامل. عدد کم برنامه‌های بزرگ را برای کسانی که نشانی مشترک دارند خراب می‌کند.",
+      "en": "Requests of one visitor address at the agent at once. Too low breaks big apps for people who share one address."
+    },
+    "unit": "requests",
+    "min": 10,
+    "max": 100000,
+    "risky": true,
+    "restart": false
+  },
+  "Sites:MaxQueuedPerAddress": {
+    "group": "Sites",
+    "name": {
+      "fa": "درخواست در صف هر نشانی",
+      "en": "Site requests in line per address"
+    },
+    "help": {
+      "fa": "تعداد درخواست یک نشانی که می‌تواند در صف منتظر بماند.",
+      "en": "Requests of one address that may wait in line."
+    },
+    "unit": "requests",
+    "min": 10,
+    "max": 1000000,
+    "risky": true,
+    "restart": false
+  },
+  "Sites:MaxSitesPerBuilder": {
+    "group": "Sites",
+    "name": {
+      "fa": "سایت برای هر سازنده",
+      "en": "Sites per builder"
+    },
+    "help": {
+      "fa": "تعداد سایتی که هر سازنده می‌تواند داشته باشد.",
+      "en": "Sites one builder may have."
+    },
+    "unit": "sites",
+    "min": 1,
+    "max": 1000,
+    "risky": false,
+    "restart": false
+  },
+  "Sites:PollTimeoutSeconds": {
+    "group": "Sites",
+    "name": {
+      "fa": "انتظار درخواست عامل",
+      "en": "Agent poll wait"
+    },
+    "help": {
+      "fa": "بیشترین زمانی که درخواست عامل منتظر می‌ماند.",
+      "en": "The longest an agent poll waits."
+    },
+    "unit": "seconds",
+    "min": 5,
+    "max": 300,
+    "risky": false,
+    "restart": false
+  },
+  "Sites:RequestTimeoutSeconds": {
+    "group": "Sites",
+    "name": {
+      "fa": "زمان پاسخ سایت",
+      "en": "Site answer timeout"
+    },
+    "help": {
+      "fa": "زمانی که سایت برای شروع پاسخ دارد.",
+      "en": "Time a site has to start its answer."
+    },
+    "unit": "seconds",
+    "min": 5,
+    "max": 600,
+    "risky": false,
+    "restart": false
+  },
+  "Sites:ReservedNames": {
+    "group": "Sites",
+    "name": {
+      "fa": "نام‌های رزروشده",
+      "en": "Reserved site names"
+    },
+    "help": {
+      "fa": "نام‌هایی که کسی نمی‌تواند بگیرد، جدا شده با ویرگول.",
+      "en": "Names nobody may take, comma separated."
+    },
+    "unit": "",
+    "risky": false,
+    "restart": false
+  },
+  "Sites:Scheme": {
+    "group": "Sites",
+    "name": {
+      "fa": "پروتکل نشانی سایت",
+      "en": "Site address scheme"
+    },
+    "help": {
+      "fa": "https، یا فقط برای کار محلی http.",
+      "en": "https, or http only for local work."
+    },
+    "unit": "",
+    "risky": true,
+    "restart": false
+  },
+  "Sites:SessionIdleSeconds": {
+    "group": "Sites",
+    "name": {
+      "fa": "بیکاری عامل",
+      "en": "Agent idle limit"
+    },
+    "help": {
+      "fa": "نشست عاملی که این مدت نشانه‌ای از زنده بودن ندارد بسته می‌شود.",
+      "en": "An agent session with no sign of life this long is closed."
+    },
+    "unit": "seconds",
+    "min": 10,
+    "max": 3600,
+    "risky": false,
+    "restart": false
+  },
+  "Sites:StreamChunkKb": {
+    "group": "Sites",
+    "name": {
+      "fa": "اندازه هر بخش پاسخ",
+      "en": "Answer part size"
+    },
+    "help": {
+      "fa": "اندازه هر بخش از پاسخ جریانی سایت.",
+      "en": "Size of one part of a streamed site answer."
+    },
+    "unit": "KB",
+    "min": 4,
+    "max": 4096,
+    "risky": false,
+    "restart": false
+  },
+  "Sites:StreamWindow": {
+    "group": "Sites",
+    "name": {
+      "fa": "بخش‌های در راه",
+      "en": "Answer parts on the way"
+    },
+    "help": {
+      "fa": "تعداد بخش‌های پاسخ جریانی که هم‌زمان در راه هستند.",
+      "en": "Parts of a streamed answer that may be on the way at once."
+    },
+    "unit": "parts",
+    "min": 1,
+    "max": 128,
+    "risky": false,
+    "restart": false
+  },
+  "Sites:TunnelUrl": {
+    "group": "Sites",
+    "name": {
+      "fa": "نشانی تونل",
+      "en": "Tunnel address"
+    },
+    "help": {
+      "fa": "نشانی‌ای که عامل به آن وصل می‌شود. مقدار اشتباه همه سایت‌ها را از کار می‌اندازد.",
+      "en": "The address the agent connects to. A wrong value stops every site."
+    },
+    "unit": "",
+    "risky": true,
+    "restart": false
+  },
+  "Sites:WebSocketPingSeconds": {
+    "group": "Sites",
+    "name": {
+      "fa": "فاصله پینگ عامل",
+      "en": "Agent ping every"
+    },
+    "help": {
+      "fa": "هر چند وقت سرور اتصال عامل را پینگ کند.",
+      "en": "How often the server pings an agent connection."
+    },
+    "unit": "seconds",
+    "min": 5,
+    "max": 300,
+    "risky": false,
+    "restart": true
+  }
+}

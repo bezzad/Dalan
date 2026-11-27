@@ -1,21 +1,21 @@
-// The admin screen (CLI-25): settings, builder requests, users, bots, contact messages (ADM-18), the access log and the audit log.
-import { ApiError, api, type AccessRow, type AdminBot, type AdminUser, type ContactMessage, type ShowcaseRequest } from "./api.ts";
-import { errorText, type App, type Screen } from "./app.ts";
+// The admin pages of the dashboard (CLI-81): overview (CLI-82), builder requests, users, bots, showcase review, contact
+// messages (ADM-18), settings (CLI-83), the access log and the audit log. The server still checks every call (SEC-14).
+import { ApiError, api, type AccessRow, type AdminBot, type AdminOverview, type AdminUser, type ContactMessage, type ShowcaseRequest } from "./api.ts";
+import { errorText, type App } from "./app.ts";
 import { h } from "./dom.ts";
 import { toast } from "./toast.ts";
 import type { TextKey } from "./i18n.ts";
 import { categoryName, initial } from "./pages.ts";
-import { cleanValue, groupSettings, utc, type Setting } from "./panels.ts";
+import { cleanValue, settingGroups, settingMatches, settingName, utc, type Setting } from "./panels.ts";
+import { sectionPath, type SectionId } from "./settings/model.ts";
 
-type Tab = "settings" | "requests" | "users" | "bots" | "showcase" | "messages" | "access" | "audit";
-const Tabs: [Tab, TextKey][] = [
-  ["settings", "tabSettings"], ["requests", "tabRequests"], ["users", "tabUsers"],
-  ["bots", "tabBots"], ["showcase", "showcase"], ["messages", "tabMessages"], ["access", "tabAccess"], ["audit", "tabAudit"],
-];
+/** The admin sections of the dashboard (settings/model.ts). */
+export type AdminSection = Extract<SectionId, "overview" | "requests" | "users" | "adminBots" | "showcase" | "messages" | "adminSettings" | "access" | "audit">;
 
-export function adminScreen(app: App): Screen {
+export function adminPage(app: App, section: AdminSection): HTMLElement {
   const t = app.language.t.bind(app.language);
-  const body = h("div", { class: "scroller" });
+  const lang = app.language.current;
+  const body = h("div", { class: "column admin" });
   const error = h("p", { class: "error", role: "alert" });
   const failed = (failure: unknown) => {
     toast(failure instanceof ApiError && failure.code === "bad_request" ? t("badSearch") : t(errorText(failure)), "error");
@@ -41,38 +41,80 @@ export function adminScreen(app: App): Screen {
   const action = (label: TextKey, run: () => Promise<void>) =>
     h("button", { type: "button", onclick: () => { run().then(() => toast(t("saved")), failed); } }, t(label));
 
-  // ---- settings ----
+  // ---- overview (CLI-82) ----
+  async function showOverview(): Promise<void> {
+    const counts: AdminOverview = await api.adminOverview();
+    const card = (value: number, label: TextKey, note: string, section: SectionId) => h("a", {
+      class: "card stat", href: sectionPath(section),
+      onclick: (event: Event) => { event.preventDefault(); app.go(sectionPath(section)); },
+    }, h("strong", { class: "number" }, String(value)), h("span", {}, t(label)), ...(note ? [h("span", { class: "note" }, note)] : []));
+    body.replaceChildren(h("div", { class: "stats" },
+      card(counts.users, "statUsers", t("statNewWeek").replace("{n}", String(counts.users_new_7d)), "users"),
+      card(counts.bots, "statBots", t("statOnline").replace("{n}", String(counts.bots_online)), "adminBots"),
+      card(counts.builder_requests + counts.showcase_requests, "statRequests",
+        `${t("tabRequests")} ${counts.builder_requests} · ${t("showcase")} ${counts.showcase_requests}`, "requests"),
+      card(counts.unread_messages, "statMessages", "", "messages"),
+      card(counts.sites_online, "statSites", "", "overview")));
+  }
+
+  // ---- settings (CLI-83, ADM-19) ----
   function settingRow(setting: Setting): HTMLElement {
+    const number = setting.kind === "number";
     const input = setting.kind === "switch"
-      ? h("select", { "aria-label": setting.key }, h("option", { value: "true" }, "true"), h("option", { value: "false" }, "false"))
-      : h("input", { type: setting.kind === "number" ? "number" : "text", dir: "ltr", "aria-label": setting.key, value: setting.value });
+      ? h("select", { "aria-label": settingName(setting, lang) }, h("option", { value: "true" }, t("on")), h("option", { value: "false" }, t("off")))
+      : h("input", {
+        type: number ? "number" : "text", dir: "ltr", "aria-label": settingName(setting, lang), value: setting.value,
+        ...(number && setting.min !== undefined && setting.min !== null ? { min: String(setting.min) } : {}),
+        ...(number && setting.max !== undefined && setting.max !== null ? { max: String(setting.max) } : {}),
+      });
     input.value = setting.value;
-    const save = h("button", { type: "submit", class: "primary" }, t("save"));
-    const check = () => { save.disabled = cleanValue(setting.kind, input.value) === null || input.value === setting.value; };
+    // A row's Save is primary only while its value changed (CLI-77).
+    const save = h("button", { type: "submit" }, t("save"));
+    const check = () => {
+      const changed = input.value !== setting.value;
+      save.disabled = !changed || cleanValue(setting.kind, input.value) === null;
+      save.classList.toggle("primary", changed);
+    };
     input.addEventListener("input", check);
+    input.addEventListener("change", check);
     check();
     const replace = (next: Setting) => row.replaceWith(settingRow(next));
+    const range = number && (setting.min ?? null) !== null && (setting.max ?? null) !== null ? `${setting.min} – ${setting.max}` : "";
     const row = h("form", {
-      class: "setting",
+      class: "setting-row admin-setting",
       onsubmit: event => {
         event.preventDefault();
         const value = cleanValue(setting.kind, input.value);
-        if (value !== null) api.setSetting(setting.key, value).then(replace, failed);
+        if (value === null) return;
+        // A risky setting asks first, with the old and the new value.
+        if (setting.risky && !confirm(`${t("riskyConfirm")}\n${setting.value || "—"} → ${value}`)) return;
+        api.setSetting(setting.key, value).then(replace, failed);
       },
     },
-    h("label", { dir: "ltr" }, setting.key.split(":").slice(1).join(":"),
-      ...(setting.restart ? [h("span", { class: "badge" }, t("afterRestart"))] : [])),
-    input, save,
-    ...(setting.changed
-      ? [h("button", { type: "button", onclick: () => api.resetSetting(setting.key).then(replace, failed), title: setting.start }, t("reset"))]
-      : []));
+    h("div", { class: "what" },
+      h("h3", { dir: "auto" }, settingName(setting, lang)),
+      ...(setting.help ? [h("p", { class: "note", dir: "auto" }, setting.help[lang] ?? setting.help.en ?? "")] : []),
+      h("code", { class: "key", dir: "ltr" }, setting.key),
+      h("div", { class: "row wrap badges" },
+        ...(setting.changed ? [h("span", { class: "badge off", title: setting.start }, `${t("changed")} · ${t("startValue")} ${setting.start || "—"}`)] : []),
+        ...(setting.restart ? [h("span", { class: "badge off" }, t("afterRestart"))] : []))),
+    h("div", { class: "control" },
+      h("div", { class: "row" }, input, ...(setting.unit ? [h("span", { class: "note" }, setting.unit)] : [])),
+      ...(range ? [h("span", { class: "note", dir: "ltr" }, range)] : []),
+      h("div", { class: "row" }, save,
+        ...(setting.changed ? [h("button", { type: "button", onclick: () => api.resetSetting(setting.key).then(replace, failed) }, t("reset"))] : []))));
     return row;
   }
 
   async function showSettings(): Promise<void> {
-    const groups = groupSettings(await api.adminSettings());
-    body.replaceChildren(...groups.map(([name, list]) =>
-      h("section", { class: "card" }, h("h2", { dir: "ltr" }, name), ...list.map(settingRow))));
+    const all = await api.adminSettings();
+    const find = h("input", { type: "search", placeholder: t("settingSearch"), "aria-label": t("settingSearch") });
+    const groups = h("div", { class: "column" });
+    const draw = () => groups.replaceChildren(...settingGroups(all.filter(setting => settingMatches(setting, find.value))).map(([name, list]) =>
+      h("section", { class: "card" }, h("h2", { dir: "ltr" }, name), h("div", { class: "rows" }, ...list.map(settingRow)))));
+    find.addEventListener("input", draw);
+    draw();
+    body.replaceChildren(find, groups);
   }
 
   // ---- users ----
@@ -197,7 +239,6 @@ export function adminScreen(app: App): Screen {
   }
 
   function showAccess(filter: "user" | "bot" | "phone" | "email" | "address" = "address", value = ""): void {
-    select("access", false);
     const kind = h("select", { "aria-label": t("tabAccess") },
       ...(["user", "bot", "phone", "email", "address"] as const).map(name =>
         h("option", { value: name }, t(name === "user" ? "userWord" : name === "bot" ? "botWord" : name))));
@@ -239,25 +280,10 @@ export function adminScreen(app: App): Screen {
     body.replaceChildren(list, more);
   }
 
-  const tabs = h("nav", { class: "row wrap tabs" });
-  function select(tab: Tab, draw = true): void {
-    tabs.replaceChildren(...Tabs.map(([name, label]) =>
-      h("button", { type: "button", class: name === tab ? "primary" : "", onclick: () => select(name) }, t(label))));
-    if (!draw) return;
-    error.textContent = "";
-    body.replaceChildren();
-    const shows: Record<Tab, () => void | Promise<void>> = {
-      settings: showSettings, requests: showRequests, users: showUsers, bots: showBots, showcase: showShowcase, messages: showMessages, access: () => showAccess(), audit: showAudit,
-    };
-    Promise.resolve(shows[tab]()).catch(failed);
-  }
-  select("settings");
-
-  const element = h("main", { class: "admin" },
-    h("header", {},
-      h("button", { type: "button", class: "link", onclick: () => app.go("/account") }, t("back")),
-      h("h1", {}, t("adminScreen"))),
-    tabs, error, body);
-
-  return { element };
+  const shows: Record<AdminSection, () => void | Promise<void>> = {
+    overview: showOverview, requests: showRequests, users: showUsers, adminBots: showBots, showcase: showShowcase,
+    messages: showMessages, adminSettings: showSettings, access: () => showAccess(), audit: showAudit,
+  };
+  Promise.resolve(shows[section]()).catch(failed);
+  return h("div", { class: "column" }, error, body);
 }

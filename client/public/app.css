@@ -848,13 +848,31 @@ nav.side a > .glyph:last-child { display: none; }
 .menu.user .panel .item .glyph { width: 18px; height: 18px; }
 @media (max-width: 759px) {
   .settings .settings-body { grid-template-columns: 1fr; gap: var(--space-m); }
-  .settings:not(.menu-only) nav.side, .settings:not(.menu-only) header h1, .settings .crumbs { display: none; }
+  .settings:not(.menu-only) nav.side, .settings:not(.menu-only) > header:not(.site) > h1, .settings .crumbs { display: none; }
   nav.side a { min-height: 48px; }
   nav.side a > .glyph:last-child { display: block; }
   .setting-row { grid-template-columns: 1fr; }
   .setting-row .control input { max-width: none; }
 }
 @media (min-width: 760px) { .to-menu { display: none; } }
+/* CLI-81: the dashboard is the settings frame with more groups. A workspace page keeps its own screen and title row. */
+.dashboard .page.workspace { max-width: none; }
+.dashboard .page.workspace > main { height: auto; min-height: 0; padding: 0; }
+/* CLI-82: the overview: cards with one big number each, a link to their page. */
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.card.stat { gap: 2px; color: var(--text); text-decoration: none; }
+.card.stat:hover { border-color: var(--brand); }
+.card.stat .number { font-size: var(--text-title); font-weight: 700; font-variant-numeric: tabular-nums; }
+/* CLI-83: a setting row shows its key small and grey under its name. */
+.admin-setting .key { font-size: var(--text-small); color: var(--muted); overflow-wrap: anywhere; }
+.admin-setting .badges:empty { display: none; }
+/* The unit stays beside its input. */
+main.wide .card .admin-setting .control .row:first-child { flex-wrap: nowrap; align-items: center; }
+/* CLI-92: the QR on a white square (readable in the dark theme too), the secret and the recovery codes. */
+.totp .qr { width: 200px; padding: 8px; border-radius: var(--radius-s); background: #fff; }
+.totp .qr svg { display: block; width: 100%; height: auto; }
+.totp .secret { padding: 4px 8px; border-radius: 6px; background: var(--bg); overflow-wrap: anywhere; }
+ol.recovery { columns: 2; margin: 0; padding-inline-start: 24px; font-family: var(--mono); }
 /* CLI-75: while the live stream is down, a thin ring turns around the header icon. Nothing moves; there is no bar. */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .ring { position: relative; }

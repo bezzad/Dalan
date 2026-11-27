@@ -29,7 +29,7 @@ Identity    Relay      Notification     Admin       Sites
 | **Relay** (core) | bots, memberships, messages, the in-memory queue of each bot | sync in; **async** out to bots (queue + long polling) |
 | **Notification** | push subscriptions | **async**, except the login SMS (`ISmsSender`) and the subscription calls (`IWebPush`), which are sync. It gets "send this to this receiver by this channel" and knows no business. Channels: Web Push and SMS, later Email |
 | **Admin** | settings the admin changed, audit log, access log; the one admin door `/api/admin/...` | sync. Other services write the access log and audit log through `IAccessLog` and `IAuditLog`; Admin calls `IUserAdmin` (Identity) and `IBotAdmin` (Relay) for users and bots |
-| **Sites** (Layer 2) | site names (`sites.sites`), the open agent sessions and waiting requests (in memory, `TunnelHub`) | sync in (`/api/tunnel`, `/api/sites`); site hosts go through `SiteProxy` before anything else. Uses `IUserDirectory` and `IAccessLog` only. No `.Contracts` yet: no service needs it |
+| **Sites** (Layer 2) | site names (`sites.sites`), the open agent sessions and waiting requests (in memory, `TunnelHub`) | sync in (`/api/tunnel`, `/api/sites`); site hosts go through `SiteProxy` before anything else. Uses `IUserDirectory` and `IAccessLog` only. `.Contracts`: `ISiteAdmin` (sites online, for the admin overview) |
 
 Relay has two thin HTTP doors, both inside Relay:
 
@@ -55,7 +55,7 @@ src/
   Relay/Dalan.Relay(.Contracts)
   Notification/Dalan.Notification(.Contracts)
   Admin/Dalan.Admin(.Contracts)
-  Sites/Dalan.Sites
+  Sites/Dalan.Sites(.Contracts)
   Plugins/Dalan.Telegram
 agent/Dalan.Agent                     the program on the home computer (Native AOT, stands alone: ARC-06)
 tests/                                one test project per area
@@ -225,6 +225,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 69 | 2026-11-24 | Site answers stream: the agent sends parts as the app writes them, with a window of parts and an ack per part over WebSocket (a POST that returns after the write over long polling), and the server tells the agent to stop when the visitor leaves. Needed for Server-Sent Events (PocketBase realtime, OAuth). WebSocket from visitors is still left out |
 | 70 | 2026-11-25 | Account merge: only after the proof, only when one side has no products (bots, sites, keys), which never move; chats join in time order with ids after the largest old one; bots get `chat_moved` (Telegram door: `migrate_to_chat_id`) |
 | 71 | 2026-11-27 | An HTML file of a chat opens from `view.<Sites:Domain>` (or `Relay:FileViewHost`), a registered domain other than Dalan's, like GitHub's `githubusercontent.com`: its script runs, but it cannot set Dalan's cookies or touch its page. A sandboxed frame plus `CSP: sandbox` (no same origin), `connect-src 'none'`. The link is a Data Protection token (user, bot, file, end time) good for 10 minutes; no table, no cookie. The host routes the view host before the sites |
+| 72 | 2026-11-27 | Every signed-in page but a bot's chat is in one dashboard at `dalanet.ir/dashboard/...`, a path, not a subdomain (owner, 2026-11-25): the session cookies stay host-only and `SameSite=Strict`, and the PWA, push and local settings stay one origin. The old addresses move there in the page. Admin pages are hidden for others, but the server is the gate (SEC-14); an admin needs TOTP on every login way (SEC-15) |
 
 ## 11. Client address and access log
 

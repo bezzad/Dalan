@@ -1,7 +1,7 @@
 // Pure logic and long texts of the public pages (CLI-26 to CLI-29), kept apart so tests run without a browser.
 // The owner may change these texts; a lawyer should read them before the public launch (DESIGN section 13).
 
-import { settingsPaths } from "./settings/model.ts";
+import { dashboardAddress, dashboardPath } from "./settings/model.ts";
 
 export type Lang = "fa" | "en";
 
@@ -23,14 +23,8 @@ export interface PublicNumbers {
 
 /** CLI-26: which screen an address shows. Unknown addresses never reach the page: the server answers 404. */
 export type Page = "landing" | "privacy" | "faq" | "showcase" | "guide" | "about" | "contact" | "guideBot" | "guideSite" | "login"
-  | "chats" | "bots" | "botNew" | "botPage" | "account" | "admin" | "apps" | "chat" | "notFound";
+  | "dashboard" | "chat" | "notFound";
 
-/** CLI-51: the screens of a logged-in user, each at its own address. */
-const appPages: Record<string, Page> = {
-  "/chats": "chats", "/bots": "bots", "/bots/new": "botNew", "/admin": "admin", "/apps": "apps",
-  // CLI-77: the settings area: "/account" and one address per section.
-  ...Object.fromEntries(settingsPaths.map(path => [path, "account" as const])),
-};
 
 /** CLI-49: the username of a bot's own page (`/bots/<username>`), or null. */
 export function botPageUsername(path: string): string | null {
@@ -46,8 +40,9 @@ export function pageFor(path: string, loggedIn: boolean): Page {
   if (path === "/guide/bot") return "guideBot";
   if (path === "/guide/site") return "guideSite";
   if (path.startsWith("/@")) return loggedIn ? "chat" : "login";
-  const screen = appPages[path] ?? (botPageUsername(path) ? "botPage" : null);
-  if (screen) return loggedIn ? screen : "login";
+  // CLI-81: the dashboard; the old addresses move into it after login (dashboardAddress), so a visitor is asked to log in.
+  if (path === dashboardPath || path.startsWith(`${dashboardPath}/`)) return loggedIn ? "dashboard" : "login";
+  if (dashboardAddress(path)) return loggedIn ? "dashboard" : "login";
   // CLI-40: an address we do not know is a closed gate, not the landing page.
   return path === "/" || path === "" ? "landing" : "notFound";
 }

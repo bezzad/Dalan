@@ -1,5 +1,6 @@
 using System.Threading.RateLimiting;
 using Dalan.Identity.Data;
+using Dalan.Identity.SecondFactor;
 using Dalan.Identity.Sessions;
 using Dalan.Identity.Users;
 using Microsoft.AspNetCore.Builder;
@@ -67,7 +68,8 @@ internal static class PasswordLogin
         SessionTokens sessions,
         SecurityLog log,
         UserAdmin users,
-        IOptionsMonitor<IdentityOptions> options)
+        IOptionsMonitor<IdentityOptions> options,
+        SecondFactors factors)
     {
         var request = await AuthJson.ReadAsync<Request>(http);
         var login = request?.Login?.Trim() ?? "";
@@ -115,6 +117,10 @@ internal static class PasswordLogin
             log.LoginFailed(SessionTokens.ByPassword, "suspended");
             return AuthJson.Suspended();
         }
+
+        // AUTH-37: with the second factor on, the session waits for the code.
+        if (await factors.TicketIfNeededAsync(user.Id, SessionTokens.ByPassword, http.RequestAborted) is { } ticket)
+            return SecondFactorEndpoints.Ask(ticket);
 
         await sessions.SignInAsync(http, user.Id, SessionTokens.ByPassword);
         return AuthJson.Ok(await users.ProfileAsync(user.Id, http.RequestAborted));

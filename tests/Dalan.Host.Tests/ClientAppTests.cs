@@ -34,6 +34,7 @@ public class ClientAppTests(PostgresServer postgres)
     [Theory]
     [Trait("Rule", "CLI-01")]
     [Trait("Rule", "CLI-77")]
+    [Trait("Rule", "CLI-81")]
     [InlineData("/")]
     [InlineData("/bots")]
     [InlineData("/apps")]
@@ -55,6 +56,11 @@ public class ClientAppTests(PostgresServer postgres)
     [InlineData("/account/builder")]
     [InlineData("/account/keys")]
     [InlineData("/admin")]
+    // CLI-81: the dashboard and every address under it; the old addresses above move into it in the page.
+    [InlineData("/dashboard")]
+    [InlineData("/dashboard/chats")]
+    [InlineData("/dashboard/bots/mofidbot")]
+    [InlineData("/dashboard/admin/settings")]
     public async Task CLI01_page_is_served_and_not_cached(string path)
     {
         await using var app = await StartAsync();

@@ -1,6 +1,7 @@
 using Dalan.Admin.Contracts;
 using Dalan.Identity.Codes;
 using Dalan.Identity.Data;
+using Dalan.Identity.SecondFactor;
 using Dalan.Identity.Sessions;
 using Dalan.Identity.Users;
 using Dalan.Notification.Contracts;
@@ -82,7 +83,8 @@ internal static class SmsLoginEndpoints
         IDbContextFactory<IdentityDb> dbFactory,
         IOptionsMonitor<IdentityOptions> options,
         UserAdmin users,
-        TimeProvider time)
+        TimeProvider time,
+        SecondFactors factors)
     {
         var request = await AuthJson.ReadAsync<VerifyRequest>(http);
         if (PhoneNumber.Normalize(request?.Phone) is not { } phone) return BadPhone();
@@ -118,6 +120,10 @@ internal static class SmsLoginEndpoints
         if ((await users.GetAccessAsync(ids[0], http.RequestAborted)).IsSuspended) return AuthJson.Suspended();
 
         await users.ApproveByPhoneAsync(ids[0], http.RequestAborted);
+        // SEC-15: an admin with the second factor on also gives its code.
+        if (await factors.TicketIfNeededAsync(ids[0], SessionTokens.BySms, http.RequestAborted) is { } ticket)
+            return SecondFactorEndpoints.Ask(ticket);
+
         await sessions.SignInAsync(http, ids[0], SessionTokens.BySms);
         return AuthJson.Ok(await users.ProfileAsync(ids[0], http.RequestAborted));
     }

@@ -92,8 +92,15 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - A way to log in that is not set shows its "Set up" or "Link" action on its method card; the merge card (below) shows on Login and security.
 - After the proof finds another account, the merge card comes first: the question, one line per account (what it has, whether it stays), a note, then "Merge" (primary) and "Cancel" (link). A refusal shows its reason and no "Merge" button.
 
+## Dashboard (CLI-81 to CLI-83, CLI-92)
+- **One frame** for every signed-in page but a bot's chat, at `/dashboard/...`: the settings frame below with four groups: Workspace (Chats; My bots and My apps for a builder or an admin), Account, Building, and Admin (only for an admin: Overview, Requests, Users, Bots, Showcase, Messages, Settings, Access log, Audit log). The old addresses (`/chats`, `/bots`, `/apps`, `/account/...`, `/admin`) move there in the page. An admin address for anyone else shows "Not found".
+- **Workspace pages** keep their own screen and title row inside the frame.
+- **Overview** (`.stats`): a grid of cards, each one big number, its name and a grey line, a link to its page.
+- **Admin settings**: grouped by service; each a setting row with the name and help in the page language, the key small and grey, the control with its unit and range, "Changed" (with the start value) and Reset, "Needs restart"; a search box on top; a risky setting asks with the old and new value.
+- **Second factor** (`.card.totp`): Set up shows the QR on a white square, the key to copy and a code box; then the recovery codes once in two columns, with Copy and Download. An admin has no Turn off; until it is on, the admin pages show only this card.
+
 ## Settings (CLI-77, CLI-78)
-- **Settings frame**: the site header on top; under it a side menu (240px, at the start side) and the section (up to 720px). Below 760px there is no side menu: `/account` is the menu list, and each section page starts with "‹ Settings".
+- **Settings frame**: the site header on top; under it a side menu (240px, at the start side) and the section (up to 720px). Below 760px there is no side menu: `/dashboard` is the menu list, and each page starts with "‹ Dashboard".
 - **Sections**, one address each: Profile, Login and security, Notifications, Preferences (group Account); Builder and Access keys (group Building, only for an approved builder or an admin). A new section is one entry in `settings/model.ts` and one in `settings/index.ts`.
 - **Side menu**: group titles as `.label` (CLI-76), items as 36px rows with an 18px icon and the name; the current item has `--brand-soft` background; hover has a light `--line` background. On a phone: 48px rows with a › at the end.
 - **Breadcrumb**: small grey text, `Settings › <section>`, the first part is a link. Not shown on a phone.

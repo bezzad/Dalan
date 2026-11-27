@@ -101,6 +101,12 @@ export function errorText(error: unknown): TextKey {
     case "bad_value": return "badValue";
     case "bad_icon": return "badIcon";
     case "showcase_not_found": return "showcaseFirst";
+    // AUTH-37, SEC-15, ADM-19 (m29).
+    case "admin_merge": return "adminMerge";
+    case "admin_needs_2fa": return "adminNeeds2fa";
+    case "totp_on": return "totpOn";
+    case "totp_not_allowed": return "totpNotAllowed";
+    case "out_of_range": return "outOfRange";
     default: return "failed";
   }
 }
