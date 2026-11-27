@@ -234,6 +234,8 @@ public sealed class DalanApp(
         // Tests run in the Development environment. These two do not depend on appsettings.Development.json.
         builder.UseSetting("Identity:DevLogin", "true");
         builder.UseSetting("Identity:AccessTokenMinutes", "15");
+        // AUTH-39 is off unless a test turns it on, so the tests of the manual builder flow keep their meaning.
+        builder.UseSetting("Identity:AutoBuilder", "false");
         // Small work, so tests are fast. The real values are in appsettings.json.
         builder.UseSetting("Identity:PowDifficultyBits", "4");
         builder.UseSetting("Identity:PasswordMemoryKb", "64");

@@ -247,21 +247,39 @@ export class PressState {
   }
 }
 
-/** CLI-55: the manifest a page links; a bot's chat links its own, so Install there installs that bot. */
-export function manifestFor(path: string): string {
+/**
+ * CLI-55: the manifest and the two icons a page links. A bot's chat links its own, so Install, "Create shortcut" and
+ * "Add to Home Screen" there make that bot's app with the bot's icon; every other screen links Dalan's again.
+ */
+export function appLinksFor(path: string): { manifest: string; icon: string; iconType: string | null; appleIcon: string } {
   const username = /^\/@([A-Za-z0-9_]+)$/.exec(path)?.[1];
-  return username ? `/@${username}/manifest.webmanifest` : "/manifest.webmanifest";
+  return username
+    ? { manifest: `/@${username}/manifest.webmanifest`, icon: `/@${username}/icon`, iconType: null, appleIcon: `/@${username}/icon` }
+    : { manifest: "/manifest.webmanifest", icon: "/icons/icon.svg", iconType: "image/svg+xml", appleIcon: "/icons/icon-192.png" };
 }
 
-/** CLI-16: how a file is shown. A voice and an audio get Dalan's own player. */
-export function fileView(file: FileInfo): "image" | "player" | "video" | "link" {
+/** CLI-89: the picture types shown in the page (SEC-12 sends these inline). Not SVG: it can hold script. */
+const pictureTypes = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+
+/** The content type without its parameters, in lower case. */
+const baseType = (type: string) => type.split(";")[0]!.trim().toLowerCase();
+
+/**
+ * CLI-16: how a file shows. A photo or a picture document is an image (CLI-89); an HTML document, or one with no clear type
+ * and a name ending .html or .htm, is a card that opens in the app (CLI-90); everything else (PDF, SVG, ...) is a download link.
+ */
+export function fileView(file: FileInfo): "image" | "player" | "video" | "html" | "link" {
   switch (file.kind) {
     case "photo": return "image";
     case "audio":
     case "voice": return "player";
     case "video": return "video";
-    default: return "link";
   }
+  const type = baseType(file.type);
+  if (pictureTypes.has(type)) return "image";
+  if (type === "text/html") return "html";
+  if ((type === "" || type === "application/octet-stream") && /\.html?$/i.test(file.name)) return "html";
+  return "link";
 }
 
 /** CLI-16: a file the server would refuse is refused before it is sent. */
@@ -272,6 +290,13 @@ export function fitsSize(bytes: number, maxMb: number): boolean {
 /** CLI-15: choosing a command sends it as a message. */
 export function commandMessage(command: string): string {
   return `/${command}`;
+}
+
+/** CLI-74: the commands whose name starts with what follows "/" (no case), in the bot's order; none once the input has a space or does not start with "/". */
+export function suggest<T extends { command: string }>(commands: readonly T[], input: string): T[] {
+  if (!input.startsWith("/") || /\s/.test(input)) return [];
+  const typed = input.slice(1).toLowerCase();
+  return commands.filter(c => c.command.toLowerCase().startsWith(typed));
 }
 
 /** CLI-17 and CLI-20: the time under a message, with the "edited" and the "not delivered" marks. */

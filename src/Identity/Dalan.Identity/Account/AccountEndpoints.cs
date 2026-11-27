@@ -101,9 +101,13 @@ internal static partial class AccountEndpoints
         return profile is null ? AuthJson.Unauthorized() : AuthJson.Ok(profile);
     }
 
-    /// <summary>AUTH-19: asks the admin for the right to create bots. An approved user stays approved. Needs a phone (level 2).</summary>
+    /// <summary>
+    /// AUTH-19: asks for the right to create bots. Needs a phone (level 2). With Identity:AutoBuilder on (AUTH-39) "none"
+    /// is approved at once; a refused user's new request waits for the admin. An approved user stays approved.
+    /// </summary>
     private static async Task<IResult> AskBuilderAsync(
-        HttpContext http, IDbContextFactory<IdentityDb> dbFactory, UserAdmin users, TimeProvider time)
+        HttpContext http, IDbContextFactory<IdentityDb> dbFactory, UserAdmin users, TimeProvider time,
+        IOptionsMonitor<IdentityOptions> options)
     {
         var userId = SessionTokens.UserId(http.User);
         await using (var db = await dbFactory.CreateDbContextAsync(http.RequestAborted))
@@ -114,9 +118,10 @@ internal static partial class AccountEndpoints
                     "To build bots, first verify your mobile number in the account screen.");
             }
 
-            await db.Users.Where(u => u.Id == userId && u.Builder == BuilderState.None)
+            var auto = options.CurrentValue.AutoBuilder;
+            await db.Users.Where(u => u.Id == userId && (u.Builder == BuilderState.None || u.Builder == BuilderState.Refused))
                 .ExecuteUpdateAsync(set => set
-                    .SetProperty(u => u.Builder, BuilderState.Requested)
+                    .SetProperty(u => u.Builder, u => auto && u.Builder == BuilderState.None ? BuilderState.Approved : BuilderState.Requested)
                     .SetProperty(u => u.BuilderRequestedAt, time.GetUtcNow()), http.RequestAborted);
         }
 
@@ -161,6 +166,7 @@ internal static partial class AccountEndpoints
         }
 
         log.PhoneAdded(userId);
+        await users.ApproveByPhoneAsync(userId, http.RequestAborted);
         var profile = await users.ProfileAsync(userId, http.RequestAborted);
         return profile is null ? AuthJson.Unauthorized() : AuthJson.Ok(profile);
     }

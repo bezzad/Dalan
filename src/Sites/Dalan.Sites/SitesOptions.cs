@@ -42,6 +42,9 @@ public sealed class SitesOptions
     public int PollTimeoutSeconds { get; set; }
     public int AccessCheckSeconds { get; set; }
 
+    /// <summary>OPS-03: after the server's close frame, how long it waits for the agent to hang up before it cuts the connection.</summary>
+    public int CloseWaitSeconds { get; set; }
+
     /// <summary>AGT-10: the folder of the agent files, next to the server file unless rooted. The deploy fills it.</summary>
     public string AgentFolder { get; set; } = "";
 

@@ -61,6 +61,7 @@ internal static class DevLoginEndpoint
 
         if ((await users.GetAccessAsync(ids[0], http.RequestAborted)).IsSuspended) return AuthJson.Suspended();
 
+        await users.ApproveByPhoneAsync(ids[0], http.RequestAborted);
         await sessions.SignInAsync(http, ids[0], SessionTokens.ByDevLogin);
         return AuthJson.Ok(await users.ProfileAsync(ids[0], http.RequestAborted));
     }

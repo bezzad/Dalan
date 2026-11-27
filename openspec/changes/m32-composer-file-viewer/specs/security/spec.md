@@ -1,0 +1,57 @@
+# Security
+
+## ADDED Requirements
+
+### Requirement: SEC-16 The view host cannot touch the app
+The view host (REL-57) SHALL answer only `GET /v/{token}`; every other path SHALL be 404. A valid, unexpired token whose user may still get the file (REL-29) SHALL give its bytes with the headers below. It SHALL never read or set a cookie. A bad or expired token, or a file the user may no longer get, SHALL answer 404. Each answer SHALL be in the access log with the token's user. The app CSP SHALL allow only the view host in `frame-src`; SITE-17 SHALL say yes for it; `view` SHALL be reserved.
+
+#### Scenario: Headers
+- **GIVEN** a fresh view link for `report.html`
+- **WHEN** it is opened
+- **THEN** the body is the file, the CSP has `sandbox allow-scripts allow-popups` without `allow-same-origin`, `connect-src 'none'` and `frame-ancestors` with only the app origin, and the answer has no `Set-Cookie`
+- **AND** the headers are exactly `Content-Type: text/html; charset=utf-8`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cache-Control: private, no-store` and `Content-Security-Policy: sandbox allow-scripts allow-popups; default-src 'none'; script-src 'unsafe-inline' data: blob:; style-src 'unsafe-inline' data: blob:; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors <app origin>`
+
+#### Scenario: Reserved name
+- **WHEN** a builder claims the site name `view`
+- **THEN** it is refused, because `view` is in the default `Sites:ReservedNames`
+
+#### Scenario: Expired
+- **GIVEN** a view link made 11 minutes ago
+- **WHEN** it is opened
+- **THEN** the answer is 404
+
+#### Scenario: Message deleted
+- **GIVEN** a view link, then the bot deletes the message that carried the file
+- **WHEN** the link is opened
+- **THEN** the answer is 404
+
+#### Scenario: Other paths
+- **WHEN** `https://view.dalans.ir/api/me` is opened
+- **THEN** the answer is 404
+
+#### Scenario: Nothing reaches the app
+- **GIVEN** the sample report is open in the viewer, in WebKit and in Chromium
+- **WHEN** its script reads `document.cookie`, `localStorage`, `parent.document`, and calls `fetch("https://dalanet.ir/api/me")`
+- **THEN** each one throws, is empty or is blocked
+
+#### Scenario: App CSP and certificate
+- **WHEN** the app page is loaded and the front proxy asks for a certificate for `view.dalans.ir`
+- **THEN** the app CSP has `frame-src https://view.dalans.ir`, and the ask answers 200
+
+## MODIFIED Requirements
+
+### Requirement: SEC-04 The page loads only from its own origin
+Every response SHALL carry the headers `Content-Security-Policy: default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`, so the browser itself refuses to load anything from a foreign host. While the file viewer is on (REL-57), the CSP SHALL also have `frame-src` with only the view host (SEC-16).
+
+#### Scenario: Open the site
+- **WHEN** a browser asks for `/`
+- **THEN** the response has the three headers
+
+#### Scenario: API answer
+- **WHEN** a client calls an API endpoint
+- **THEN** the response has the three headers
+
+#### Scenario: Viewer on
+- **GIVEN** the view host is `view.dalans.ir`
+- **WHEN** a browser asks for `/`
+- **THEN** the CSP also has `frame-src https://view.dalans.ir` and no other frame source

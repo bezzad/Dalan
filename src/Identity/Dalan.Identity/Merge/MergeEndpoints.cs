@@ -59,6 +59,7 @@ internal static class MergeEndpoints
         if (await merger.MergeAsync(sessionId, userId, http.RequestAborted) is not { } plan) return NoMerge();
 
         if (plan.Refusal is { } refusal) return Refused(refusal, plan.Field);
+        await users.ApproveByPhoneAsync(plan.KeptId, http.RequestAborted);
         if (plan.KeptId != userId)
             await sessions.SignInAsync(http, plan.KeptId, http.User.FindFirstValue(SessionTokens.MethodClaim) ?? SessionTokens.ByDevLogin);
         return AuthJson.Ok(await users.ProfileAsync(plan.KeptId, http.RequestAborted));

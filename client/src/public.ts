@@ -11,7 +11,7 @@ import { stepper } from "./stepper.ts";
 import { botDone, siteDone } from "./steps.ts";
 import type { Language } from "./i18n.ts";
 import { themeButton, type Theme } from "./theme.ts";
-import { about, categoryName, closing, faqItems, hero, initial, labels, landing, notOffered, offers, privacyPoints, products, security, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
+import { about, categoryName, closing, faqItems, footerLine, hero, initial, labels, landing, notOffered, offers, privacyPoints, products, security, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
 
 export type PublicPage = "landing" | "privacy" | "faq" | "showcase" | "guide" | "guideBot" | "guideSite" | "about" | "contact" | "notFound";
 
@@ -65,7 +65,12 @@ const icons = {
   terminal: ["M3 5h18v14H3z", "M7 10l3 2-3 2", "M12 15h5"],
   burger: ["M4 7h16", "M4 12h16", "M4 17h16"],
   close: ["M6 6l12 12", "M18 6L6 18"],
+  mic: ["M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z", "M19 10v2a7 7 0 0 1-14 0v-2", "M12 19v3"],
   search: ["M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14z", "M16 16l5 5"],
+  // CLI-87: two diagonal arrows. CLI-89 and CLI-90: download, open in a new tab.
+  expand: ["M14 4h6v6", "M20 4l-7 7", "M10 20H4v-6", "M4 20l7-7"],
+  download: ["M12 3v12", "M7 10l5 5 5-5", "M4 20h16"],
+  external: ["M14 4h6v6", "M20 4l-9 9", "M18 14v6H4V6h6"],
 };
 
 /** CLI-45: the Dalan mark alone, a link to the home page, at the end of the chat header. */
@@ -396,12 +401,23 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
 
   // CLI-42: FAQ and privacy live here, not in the header. CLI-56: about and contact too.
   const column = (title: string, ...items: Node[]) => h("div", { class: "column" }, h("span", { class: "label" }, title), ...items);
+  // CLI-72: the version comes from the public settings (/health is private, OPS-06), once per page load;
+  // when they fail the line has no version.
+  const copyright = h("p", { class: "copyright" });
+  const drawCopyright = (version: string | null | undefined) => {
+    const line = footerLine(language.current, version, new Date());
+    copyright.replaceChildren(line.text);
+    if (line.version) copyright.append(" ", h("span", { dir: "ltr" }, line.version));
+  };
+  drawCopyright(null);
+  (numbers ??= api.publicSettings()).then(settings => drawCopyright(settings.version), () => numbers = null);
   const footer = h("footer", { class: "site" },
     h("div", { class: "columns" },
       column(labels[lang].product, ...products[lang].map(product => link(product.guide, product.label)), link("/showcase", t("showcase"))),
       column(labels[lang].resources, link("/guide", t("guide")), link("/faq", t("faq")), link("/privacy", t("privacy")),
         h("a", { href: "/llms.txt" }, "llms.txt"), h("a", { href: "/dalan.mjs" }, "dalan.mjs")),
       column(t("appName"), link("/about", t("about")), link("/contact", t("contact")))),
+    copyright,
     h("div", { class: "wordmark", "aria-hidden": "true" }, t("appName")));
   return h("main", { class: "public" }, header, error, h("div", { class: "scroller page" }, body, footer));
 }

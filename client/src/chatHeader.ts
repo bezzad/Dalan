@@ -12,6 +12,23 @@ export function matchingMessages(messages: Message[], query: string): Message[] 
   return messages.filter(message => `${message.text} ${message.file?.name ?? ""}`.toLocaleLowerCase().includes(words));
 }
 
+/** CLI-80: the voice button of the chat bar (CLI-46): Dalan's line microphone, not an emoji. */
+export function micButton(label: string): HTMLButtonElement {
+  return h("button", { type: "button", class: "primary mic", hidden: true, "aria-label": label, title: label }, icon("mic"));
+}
+
+/** CLI-91: the bar above the input while the bot is offline. `text` has `{name}`, where `@username` goes. */
+export function offlineBar(username: string, text: string): {
+  element: HTMLElement;
+  /** Shows the bar for an offline bot, hides it for an online or suspended one (CLI-25 says that instead). */
+  update(status: { online: boolean; last_seen: string | null }, suspended: boolean): void;
+} {
+  const [before = "", after = ""] = text.split("{name}");
+  const element = h("p", { class: "offline-bar", role: "status", hidden: true },
+    before, h("bdi", { dir: "ltr" }, `@${username}`), after);
+  return { element, update: (status, suspended) => { element.hidden = status.online || suspended; } };
+}
+
 export interface ChatHeader {
   element: HTMLElement;
   /** The line after "@username": "online" or "last seen ..." (CLI-19). */

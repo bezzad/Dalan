@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: CLI-36 One simple login card
-The login screen SHALL be one card. It SHALL open with the password form (CLI-62). Under it SHALL come one equal button per other way: SMS, GitHub (`/api/auth/github`, when `github_login` is on) and email (when `email_login` is on). Without `dalan.returning` in local storage the order SHALL be SMS, GitHub, email; after any login the client SHALL set it, and the order SHALL be GitHub, email, SMS. SMS and email SHALL open their form with a "back" button. The development login SHALL be a small link. A `login_error` (AUTH-29) SHALL show and leave the address.
+The login screen SHALL be one card that opens with the password form (CLI-62). Under it SHALL come one equal button per other way: SMS, GitHub (`/api/auth/github`, when `github_login` is on) and email (when `email_login` is on), new browsers first SMS, returning ones (`dalan.returning`, set after any login) first GitHub. SMS and email SHALL open their form with a "back" button. The development login SHALL be a small link. A `login_error` (AUTH-29) SHALL show and leave the address.
 
 #### Scenario: New browser
 - **GIVEN** `github_login` and `email_login` are true and local storage has no `dalan.returning`

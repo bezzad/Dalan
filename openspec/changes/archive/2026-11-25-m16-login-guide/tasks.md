@@ -11,5 +11,5 @@ Each task: write the failing tests tagged with the rule IDs, then the code. CI r
 - [x] 7. No foreign host in the install files (DEL-09)
 - [x] 8. A link to another page scrolls to the top; a link with `#part` goes to the part (CLI-68)
 - [x] 9. Phone: scale 1.0, pinch zoom stays, no zoom on a focused field (CLI-69; owner 2026-11-25)
-- [x] 10. (the owner's third item was cut off in the message; still to ask)
-- [ ] 11. CI green on GitHub, final review, merge, archive
+- [x] 10. (the owner's third item was cut off; dropped, owner 2026-11-25)
+- [x] 11. CI green on GitHub, final review, merge, archive

@@ -4,12 +4,13 @@ using System.Text.Json;
 using Dalan.Relay.Contracts;
 using Dalan.Relay.Data;
 using Dalan.Testing;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dalan.Relay.Tests;
 
-/// <summary>Replies, formatting, switch buttons, caption edits, the press wait and one bot's manifest (REL-18, REL-20, REL-23, REL-52 to REL-54).</summary>
+/// <summary>Replies, formatting, switch buttons, caption edits, the press wait and one bot's manifest and icon (REL-18, REL-20, REL-23, REL-52 to REL-54).</summary>
 public class ReplyAndFormatTests(PostgresServer postgres)
 {
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
@@ -224,13 +225,39 @@ public class ReplyAndFormatTests(PostgresServer postgres)
         Assert.Equal("bad_keyboard", await response.ErrorCodeAsync());
     }
 
+    /// <summary>A picture that is only its header: enough for the size to be read.</summary>
+    private static byte[] PngOf(int width, int height) =>
+    [
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, (byte)'I', (byte)'H', (byte)'D', (byte)'R',
+        (byte)(width >> 24), (byte)(width >> 16), (byte)(width >> 8), (byte)width,
+        (byte)(height >> 24), (byte)(height >> 16), (byte)(height >> 8), (byte)height, 8, 6, 0, 0, 0,
+    ];
+
+    private static byte[] JpegOf(int width, int height) =>
+        [0xFF, 0xD8, 0xFF, 0xE0, 0, 4, 0, 0, 0xFF, 0xC0, 0, 11, 8, (byte)(height >> 8), (byte)height, (byte)(width >> 8), (byte)width, 1, 1, 0x11, 0];
+
+    private static byte[] WebpOf(int width, int height)
+    {
+        // VP8X: the canvas size minus one, in three bytes each.
+        byte[] head = [.. "RIFF"u8, 22, 0, 0, 0, .. "WEBPVP8X"u8, 10, 0, 0, 0, 0, 0, 0, 0];
+        return [.. head, (byte)(width - 1), (byte)((width - 1) >> 8), (byte)((width - 1) >> 16), (byte)(height - 1), (byte)((height - 1) >> 8), (byte)((height - 1) >> 16)];
+    }
+
+    private static async Task<JsonElement> ManifestWithIconAsync(DalanApp app, byte[]? icon)
+    {
+        var (botId, _) = await app.AddBotAsync("mofidbot");
+        if (icon is not null)
+            Assert.Equal(BotError.None, await app.Services.GetRequiredService<IBotGateway>().SetIconAsync(botId, new MemoryStream(icon), Cancel));
+        return await BodyAsync(await app.CreateClient().GetAsync("/@MofidBot/manifest.webmanifest", Cancel));
+    }
+
     [Fact]
     [Trait("Rule", "REL-54")]
-    public async Task REL54_manifest_of_a_bot_installs_its_chat()
+    public async Task REL54_manifest_of_a_bot_installs_its_chat_with_only_its_icon()
     {
         await using var app = await RelayApp.StartAsync(postgres);
         var (botId, _) = await app.AddBotAsync("mofidbot");
-        Assert.Equal(BotError.None, await app.Services.GetRequiredService<IBotGateway>().SetIconAsync(botId, new MemoryStream(Png), Cancel));
+        Assert.Equal(BotError.None, await app.Services.GetRequiredService<IBotGateway>().SetIconAsync(botId, new MemoryStream(PngOf(512, 512)), Cancel));
 
         var response = await app.CreateClient().GetAsync("/@MofidBot/manifest.webmanifest", Cancel);
 
@@ -241,12 +268,82 @@ public class ReplyAndFormatTests(PostgresServer postgres)
         Assert.Equal("/@mofidbot", manifest.GetProperty("id").GetString());
         Assert.Equal("Test bot", manifest.GetProperty("name").GetString());
         Assert.Equal("standalone", manifest.GetProperty("display").GetString());
-        Assert.StartsWith($"/api/bots/{botId}/icon?v=", manifest.GetProperty("icons")[0].GetProperty("src").GetString(), StringComparison.Ordinal);
+        var icons = manifest.GetProperty("icons");
+        Assert.Equal(1, icons.GetArrayLength());
+        Assert.StartsWith($"/api/bots/{botId}/icon?v=", icons[0].GetProperty("src").GetString(), StringComparison.Ordinal);
+        Assert.Equal("512x512", icons[0].GetProperty("sizes").GetString());
+        Assert.Equal("any", icons[0].GetProperty("purpose").GetString());
     }
 
     [Fact]
     [Trait("Rule", "REL-54")]
-    public async Task REL54_bot_page_links_its_manifest_and_other_pages_the_main_one()
+    public async Task REL54_size_is_read_from_png_jpeg_and_webp_headers()
+    {
+        await using var app = await RelayApp.StartAsync(postgres);
+        var (botId, _) = await app.AddBotAsync("mofidbot");
+        var gateway = app.Services.GetRequiredService<IBotGateway>();
+        var browser = app.CreateClient();
+
+        foreach (var (icon, sizes) in new[] { (PngOf(300, 300), "300x300"), (JpegOf(640, 640), "640x640"), (WebpOf(256, 256), "256x256") })
+        {
+            Assert.Equal(BotError.None, await gateway.SetIconAsync(botId, new MemoryStream(icon), Cancel));
+            var manifest = await BodyAsync(await browser.GetAsync("/@mofidbot/manifest.webmanifest", Cancel));
+            Assert.Equal(sizes, manifest.GetProperty("icons")[0].GetProperty("sizes").GetString());
+        }
+    }
+
+    [Fact]
+    [Trait("Rule", "REL-54")]
+    public async Task REL54_an_icon_saved_before_the_size_was_kept_is_read_when_asked()
+    {
+        await using var app = await RelayApp.StartAsync(postgres);
+        var (botId, _) = await app.AddBotAsync("mofidbot");
+        Assert.Equal(BotError.None, await app.Services.GetRequiredService<IBotGateway>().SetIconAsync(botId, new MemoryStream(PngOf(400, 400)), Cancel));
+        await using (var db = await app.Services.GetRequiredService<IDbContextFactory<RelayDb>>().CreateDbContextAsync(Cancel))
+            await db.Bots.ExecuteUpdateAsync(set => set.SetProperty(b => b.IconWidth, (int?)null).SetProperty(b => b.IconHeight, (int?)null), Cancel);
+
+        var manifest = await BodyAsync(await app.CreateClient().GetAsync("/@mofidbot/manifest.webmanifest", Cancel));
+
+        Assert.Equal("400x400", manifest.GetProperty("icons")[0].GetProperty("sizes").GetString());
+    }
+
+    [Theory]
+    [Trait("Rule", "REL-54")]
+    [InlineData(null)]
+    [InlineData(100)]
+    [InlineData(600)]
+    public async Task REL54_an_icon_not_fit_for_an_app_gives_dalans_icons(int? side)
+    {
+        await using var app = await RelayApp.StartAsync(postgres);
+        // None, a 100 by 100 one, and a 600 by 400 one.
+        var icon = side switch { null => null, 100 => PngOf(100, 100), _ => PngOf(600, 400) };
+
+        var manifest = await ManifestWithIconAsync(app, icon);
+        var address = await app.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false }).GetAsync("/@mofidbot/icon", Cancel);
+
+        Assert.Equal(["/icons/icon-192.png", "/icons/icon-512.png"], manifest.GetProperty("icons").EnumerateArray().Select(i => i.GetProperty("src").GetString()).ToArray());
+        Assert.Equal("/icons/icon-192.png", address.Headers.Location?.OriginalString);
+    }
+
+    [Fact]
+    [Trait("Rule", "REL-54")]
+    public async Task REL54_icon_address_gives_the_bots_icon()
+    {
+        await using var app = await RelayApp.StartAsync(postgres);
+        var (botId, _) = await app.AddBotAsync("mofidbot");
+        var png = PngOf(512, 512);
+        Assert.Equal(BotError.None, await app.Services.GetRequiredService<IBotGateway>().SetIconAsync(botId, new MemoryStream(png), Cancel));
+
+        var response = await app.CreateClient().GetAsync("/@MofidBot/icon", Cancel);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(png, await response.Content.ReadAsByteArrayAsync(Cancel));
+    }
+
+    [Fact]
+    [Trait("Rule", "REL-54")]
+    public async Task REL54_bot_page_links_its_manifest_and_icon_and_other_pages_the_main_ones()
     {
         await using var app = await RelayApp.StartAsync(postgres);
         var client = app.CreateClient();
@@ -255,7 +352,11 @@ public class ReplyAndFormatTests(PostgresServer postgres)
         var chats = await client.GetStringAsync("/chats", Cancel);
 
         Assert.Contains("""<link rel="manifest" href="/@mofidbot/manifest.webmanifest">""", botPage, StringComparison.Ordinal);
+        Assert.Contains("""<link rel="icon" href="/@mofidbot/icon">""", botPage, StringComparison.Ordinal);
+        Assert.Contains("""<link rel="apple-touch-icon" href="/@mofidbot/icon">""", botPage, StringComparison.Ordinal);
         Assert.Contains("""<link rel="manifest" href="/manifest.webmanifest">""", chats, StringComparison.Ordinal);
+        Assert.Contains("""<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">""", chats, StringComparison.Ordinal);
+        Assert.Contains("""<link rel="apple-touch-icon" href="/icons/icon-192.png">""", chats, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -270,5 +371,7 @@ public class ReplyAndFormatTests(PostgresServer postgres)
 
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/@nobot/manifest.webmanifest", Cancel)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/@mofidbot/manifest.webmanifest", Cancel)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/@nobot/icon", Cancel)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/@mofidbot/icon", Cancel)).StatusCode);
     }
 }

@@ -31,7 +31,8 @@ setup
 touch "$tmp/ready"
 bash "$deploy" "$tmp/pkg" v1 >/dev/null || fail "healthy deploy exited with error"
 [ "$(current)" = "$tmp/server/releases/v1" ] || fail "current is $(current), want v1"
-grep -q 'Dalan__Version=v1' "$tmp/server/releases/v1/version.env" || fail "version.env not written"
+grep -qx "Dalan__Version=v1" "$tmp/server/releases/v1/version.env" || fail "version.env not written"
+grep -qx "Dalan__Commit=v1" "$tmp/server/releases/v1/version.env" || fail "Dalan__Commit not written"
 grep -q 'restart dalan' "$tmp/systemctl.log" || fail "service not restarted"
 [ -x "$tmp/server/releases/v1/Dalan.Host" ] || fail "Dalan.Host is not executable"
 echo "PASS DEL-04 healthy release"
@@ -104,3 +105,12 @@ chmod +x "$tmp/bin/ssh"
 if DEPLOY_HOST=deploy@server SSH_TRIES=2 bash "$deploy" "$tmp/pkg" v1 >/dev/null 2>&1; then fail "deploy without SSH exited with success"; fi
 [ ! -e "$tmp/server/current" ] || fail "current link changed without SSH"
 echo "PASS DEL-07 no connection, no deploy"
+
+# Rule: OPS-17 the shown version and the commit are two lines; the folder keeps the commit name
+setup
+touch "$tmp/ready"
+bash "$deploy" "$tmp/pkg" 7207d600e166 v1.1.3 >/dev/null || fail "deploy with a shown version failed"
+env_file="$tmp/server/releases/7207d600e166/version.env"
+grep -qx "Dalan__Version=v1.1.3" "$env_file" || fail "shown version not written: $(cat "$env_file")"
+grep -qx "Dalan__Commit=7207d600e166" "$env_file" || fail "commit not written: $(cat "$env_file")"
+echo "PASS OPS-17 version.env has the shown version and the commit"

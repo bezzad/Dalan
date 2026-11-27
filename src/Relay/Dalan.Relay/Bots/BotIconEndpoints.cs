@@ -13,35 +13,81 @@ internal static class BotIconEndpoints
     {
         endpoints.MapGet("/api/bots/{botId:long}/icon", GetAsync);
         endpoints.MapGet("/@{username}/manifest.webmanifest", ManifestAsync);
+        endpoints.MapGet("/@{username}/icon", AppIconAsync);
     }
+
+    /// <summary>REL-54: the least side of an icon fit for an app; the browsers' own least for an installed app.</summary>
+    private const int LeastAppIconSide = 192;
+
+    private sealed record AppBot(long Id, string Username, string Name, string? IconType, int IconVersion, int? IconWidth, int? IconHeight);
+
+    /// <summary>
+    /// The bot of a username that is live (not deleted, not suspended). An icon saved before the size was kept gets its size
+    /// read from its header here, once, and kept.
+    /// </summary>
+    private static async Task<AppBot?> FindAsync(string username, RelayDb db, CancellationToken cancellationToken)
+    {
+#pragma warning disable CA1304, CA1311, CA1862 // This runs in PostgreSQL as lower(username), which the unique index covers.
+        var bot = await db.Bots.AsNoTracking()
+            .Where(b => b.Username.ToLower() == username.ToLower() && b.DeletedAt == null && b.SuspendedAt == null)
+            .Select(b => new AppBot(b.Id, b.Username, b.Name, b.IconType, b.IconVersion, b.IconWidth, b.IconHeight))
+            .FirstOrDefaultAsync(cancellationToken);
+#pragma warning restore CA1304, CA1311, CA1862
+        if (bot is not { IconType: not null, IconWidth: null }) return bot;
+
+        var bytes = await db.Bots.AsNoTracking().Where(b => b.Id == bot.Id).Select(b => b.Icon).FirstOrDefaultAsync(cancellationToken);
+        if (bytes is null) return bot;
+        // 0 by 0 when the header cannot be read: kept, so the picture is not read again on every request.
+        var size = BotIcons.ImageSize(bytes) ?? (0, 0);
+
+        await db.Bots.Where(b => b.Id == bot.Id && b.IconVersion == bot.IconVersion).ExecuteUpdateAsync(set => set
+            .SetProperty(b => b.IconWidth, size.Width)
+            .SetProperty(b => b.IconHeight, size.Height), cancellationToken);
+        return bot with { IconWidth = size.Width, IconHeight = size.Height };
+    }
+
+    private static bool FitForApp(AppBot bot) =>
+        bot.IconType is not null && bot.IconWidth is { } w && bot.IconHeight is { } h && w == h && w >= LeastAppIconSide;
 
     /// <summary>
     /// REL-54: a web app manifest for one bot, so the browser installs that bot's chat as its own app.
+    /// With an icon fit for an app the list holds only that icon: a browser picks one icon by size, and a Dalan icon beside it could win.
     /// No session and no access log row, like the icon it points to.
     /// </summary>
     private static async Task<IResult> ManifestAsync(string username, HttpContext http, IDbContextFactory<RelayDb> dbFactory)
     {
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
-#pragma warning disable CA1304, CA1311, CA1862 // This runs in PostgreSQL as lower(username), which the unique index covers.
-        var bot = await db.Bots.AsNoTracking()
-            .Where(b => b.Username.ToLower() == username.ToLower() && b.DeletedAt == null && b.SuspendedAt == null)
-            .Select(b => new { b.Id, b.Username, b.Name, b.IconType, b.IconVersion })
-            .FirstOrDefaultAsync(http.RequestAborted);
-#pragma warning restore CA1304, CA1311, CA1862
+        var bot = await FindAsync(username, db, http.RequestAborted);
         if (bot is null) return ApiJson.Error(StatusCodes.Status404NotFound, "bot_not_found", "There is no bot with this username.");
 
         var home = $"/@{bot.Username}";
-        List<ManifestIcon> icons = [];
-        // The client crops icons to 512 by 512 (CLI-50); Dalan's own icons follow for a bot icon of another size.
-        if (bot.IconType is { } type) icons.Add(new ManifestIcon($"/api/bots/{bot.Id}/icon?v={bot.IconVersion}", "512x512", type, "any"));
-        icons.Add(new ManifestIcon("/icons/icon-192.png", "192x192", "image/png", "any"));
-        icons.Add(new ManifestIcon("/icons/icon-512.png", "512x512", "image/png", "any maskable"));
+        // No "maskable": a bot's picture may reach its edges, and a mask would cut it.
+        List<ManifestIcon> icons = FitForApp(bot)
+            ? [new ManifestIcon($"/api/bots/{bot.Id}/icon?v={bot.IconVersion}", $"{bot.IconWidth}x{bot.IconHeight}", bot.IconType!, "any")]
+            : [new ManifestIcon("/icons/icon-192.png", "192x192", "image/png", "any"), new ManifestIcon("/icons/icon-512.png", "512x512", "image/png", "any maskable")];
 
         http.Response.Headers.CacheControl = "public, max-age=300";
         return Results.Json(
             new BotManifest(home, bot.Name, bot.Name, "fa", "auto", home, home, "standalone", "#f4f6f5", "#0f6e5c", icons),
             ApiJson.Options,
             "application/manifest+json");
+    }
+
+    /// <summary>
+    /// REL-54: one stable address for the page's icon links, so the host can swap a string without reading bot data.
+    /// The bot's app icon, or Dalan's 192 icon when it has none that fits.
+    /// </summary>
+    private static async Task<IResult> AppIconAsync(string username, HttpContext http, IDbContextFactory<RelayDb> dbFactory)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
+        var bot = await FindAsync(username, db, http.RequestAborted);
+        if (bot is null) return ApiJson.Error(StatusCodes.Status404NotFound, "bot_not_found", "There is no bot with this username.");
+
+        http.Response.Headers.CacheControl = "public, max-age=300";
+        if (!FitForApp(bot)) return Results.Redirect("/icons/icon-192.png");
+
+        var image = await db.Bots.AsNoTracking().Where(b => b.Id == bot.Id).Select(b => b.Icon).FirstOrDefaultAsync(http.RequestAborted);
+        return image is null ? Results.Redirect("/icons/icon-192.png") : Image(http, image, bot.IconType!);
     }
 
     private sealed record BotManifest(

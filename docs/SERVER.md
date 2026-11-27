@@ -145,6 +145,8 @@ A bot you run at home (for example ArcaneBot) needs only its token and `https://
 
 The server builds `main` itself (OPS-16, next section): merge a pull request after `scripts/ci.sh` passed on your computer, and the new release runs a few minutes later. GitHub CI does not run by itself any more (its minutes ran out, 2026-11-21).
 
+A deploy restarts Dalan. On a stop, live streams, long polls and site tunnels end at once (tunnels close with status 1001 and the agent reconnects), so the server exits within `Dalan:StopGraceSeconds` (5; OPS-03) and the gap is that plus the start, a few seconds. `Dalan:ShutdownTimeoutSeconds` (30) is only the limit for a normal request still running.
+
 Fallbacks, both over SSH with `deploy/deploy.sh`: it sends the release with `rsync` to a new folder (only the parts that differ from the current release go over the network), checks `/ready` after the switch and rolls back by itself. It opens one SSH connection with up to 5 tries of 30 seconds (`SSH_TRIES`, `SSH_TIMEOUT`), because the link to Iran stalls now and then.
 
 - From your computer, when the server cannot reach GitHub: `bash scripts/build-release.sh out`, then `DEPLOY_HOST=root@<server> SYSTEMCTL=systemctl bash deploy/deploy.sh out manual-<name>` and `ssh root@<server> chown -R deploy:deploy /opt/dalan/releases`.
@@ -181,6 +183,8 @@ The main way a release reaches the server (DEL-06). The server needs GitHub, but
 1. On your computer: `PULL_DEPLOY=1 SITES_DOMAIN=dalans.ir bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub`. It downloads the .NET SDK (the version in `global.json`, newest patch) and Node (the major version in `ci.yml`) here, about 300 MB, and copies them; the server downloads neither. They stay in `~/.cache/dalan-install` (`DALAN_CACHE`), so a later run downloads only a new version. Give `PULL_DEPLOY=1` again only to update them.
 2. Setup makes the GitHub key and prints it. Add it to GitHub read-only (below).
 3. `dalan-pull.timer` runs every minute. Each run asks GitHub only for `refs/heads/main` (`git ls-remote`, small); no other branch is ever fetched or built. A new commit is fetched, built in a new folder (about 5 minutes, low priority), smoke-tested on `/health` (no database), and deployed with `deploy.sh`: switch, restart, `/ready`, rollback when not ready. Only the last 5 releases are kept. A lock keeps two runs from overlapping. Watch: `journalctl -u dalan-pull -f`. Start a run now: `sudo systemctl start dalan-pull`.
+
+The live version (OPS-17) is `v<major>.<minor>.<n>`: `VERSION` in the repository holds `<major>.<minor>` (raise it for a bigger step) and `<n>` counts the commits of main since it changed, so every update counts up. The 12-character commit is next to it: `curl -s http://127.0.0.1:5000/health`, or the small line at the bottom of every public page. `releases/<sha>/version.env` holds both.
 
 A failed build or a deploy that rolled back is not tried again: `/opt/dalan/pull-failed` holds its commit and the journal has the reason. Push a fix to `main`. A failed `git ls-remote` or fetch (GitHub slow or cut) is tried again on the next run. The full .NET tests do not run here (they need a test database server; `scripts/ci.sh` runs them): only the client checks, the release smoke test and the Linux agent build.
 

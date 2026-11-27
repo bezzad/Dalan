@@ -236,6 +236,8 @@ Two levels (owner, 2026-11-18):
 
 **Account merge (m17, 2026-11-25):** a person with two accounts proves the other account's phone, email or GitHub from the account screen and confirms. The account with bots, sites or keys is kept and takes the other's empty login ways; if both have them, there is no merge. Chats join in time order; each bot gets `chat_moved` with the new user id.
 
+**Auto builder (m30, 2026-11-25):** with `Identity:AutoBuilder` on, a verified phone makes a builder without the admin. An admin refusal is kept as `refused`; a new request from a refused user waits for the admin.
+
 **Layer 2: "Login with Dalan".** An app on its own domain cannot read Dalan's cookie. It sends the user to Dalan's login page and gets a token back. This is OAuth 2 with PKCE (OpenID Connect).
 
 ## 10. Queue rules, limits and abuse protection
@@ -478,6 +480,8 @@ None of these is planned work. They are recorded so the design does not block th
 | Session (access token) / refresh token | 15 minutes / 30 days from the last use | Assumed |
 | Password length | 8 to 128 characters | Assumed |
 | Password tries per login name / per client address | 5 / 100 in 15 minutes | Assumed |
+| Stop grace (long connections end at once on a stop; `Dalan:StopGraceSeconds`) | 5 seconds | Assumed |
+| Tunnel close wait (after the close frame, the agent's time to hang up; `Sites:CloseWaitSeconds`) | 2 seconds | Assumed |
 | Long-polling timeout | 30 seconds default, 50 maximum | Assumed (Telegram-like) |
 | Bot shown as online | Last poll under 60 seconds ago | Assumed |
 | Bot status refresh in an open chat | Every 30 seconds | Assumed (milestone 7) |
@@ -511,6 +515,8 @@ None of these is planned work. They are recorded so the design does not block th
 | One streamed site answer (Layer 2) | 500 MB | Assumed (milestone 15) |
 | Part of a streamed answer, and parts on the way (Layer 2) | 64 KB, 8 | Assumed (milestone 15) |
 | Site request timeout, for the first part of the answer (Layer 2) | 30 seconds | Assumed |
+| HTML file viewer host (`Relay:FileViewHost`) | Empty: `view.<Sites:Domain>`; both empty: viewer off | Assumed (milestone 32) |
+| HTML file view link (`Relay:FileViewMinutes`) | 10 minutes | Assumed (milestone 32) |
 
 **Confirmed by the owner on 2026-11-16:**
 

@@ -43,4 +43,4 @@ internal sealed record CommandJson(string Command, string Description);
 /// <summary>REL-18: what the client must know and may not hard-code.</summary>
 internal sealed record ClientSettingsJson(
     int MaxTextLength, int MaxCaptionLength, int MaxFileSizeMb, int SyncPageSize, int ReconnectMinSeconds, int ReconnectMaxSeconds,
-    int StatusRefreshSeconds, int MaxBotIconKb, int PressWaitSeconds);
+    int StatusRefreshSeconds, int MaxBotIconKb, int PressWaitSeconds, bool FileView);

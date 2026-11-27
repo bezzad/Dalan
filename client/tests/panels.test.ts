@@ -1,10 +1,10 @@
-// Rules: CLI-23, CLI-24, CLI-25, CLI-33, CLI-34
+// Rules: CLI-23, CLI-24, CLI-25, CLI-30, CLI-33, CLI-34
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ApiError } from "../src/caller.ts";
 import { errorText } from "../src/app.ts";
 import { texts } from "../src/i18n.ts";
-import { botByUsername, builderView, TokenHandOver, cleanValue, groupSettings, utc, type Setting } from "../src/panels.ts";
+import { botByUsername, builderView, keysShown, TokenHandOver, cleanValue, groupSettings, utc, type Setting } from "../src/panels.ts";
 
 test("CLI-23 the account screen shows the request button, the waiting note or the bots button", () => {
   assert.equal(builderView({ builder: "none", admin: false, has_phone: true }), "request");
@@ -81,3 +81,18 @@ test("CLI-25 a suspended bot is named in the chat in both languages", () => {
   assert.ok(texts.fa[key].length > 0 && texts.en[key].length > 0);
 });
 
+
+test("CLI-30 the keys part shows in the account only for an approved builder or an admin", () => {
+  assert.equal(keysShown({ builder: "approved", admin: false, has_phone: true }), true);
+  assert.equal(keysShown({ builder: "none", admin: true, has_phone: true }), true);
+  for (const builder of ["none", "requested", "refused"] as const) assert.equal(keysShown({ builder, admin: false, has_phone: true }), false);
+});
+
+test("CLI-30 My bots and My apps have a keys link, and the texts say the keys are in the account", () => {
+  assert.equal(texts.en.keysLink, "Access keys for AI assistants");
+  assert.match(texts.fa.keysLink, /کلیدهای دسترسی/);
+  assert.doesNotMatch(texts.fa.keysLink, /گفتگو|ربات/);
+  assert.match(texts.en.cliNote, /Account/);
+  assert.match(texts.fa.cliNote, /حساب/);
+  assert.doesNotMatch(texts.en.cliNote + texts.fa.cliNote, /My bots|بات‌های من/);
+});
