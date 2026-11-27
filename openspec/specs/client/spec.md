@@ -1044,15 +1044,25 @@ The client SHALL draw a message's entities (REL-53) with DOM elements and text n
 - **THEN** the italic "b" is inside the bold element
 
 ### Requirement: CLI-55 Install a bot
-On a bot's chat page (`/@username`) the page SHALL link `/@username/manifest.webmanifest`, and its `rel="icon"` and `rel="apple-touch-icon"` links SHALL be `/@username/icon` (REL-54); on every other screen it SHALL link the main manifest and Dalan's icons again. So the browser's Install, Chrome's "Create shortcut" and "Add to Home Screen" on a bot's page make an app of that bot with the bot's icon, and the app opens its chat.
+On a bot's chat (`/@username`) the page SHALL link `/@username/manifest.webmanifest`, its `rel="icon"` and `rel="apple-touch-icon"` SHALL be `/@username/icon` (REL-54) and its title the bot's name; elsewhere Dalan's. In a browser tab, going between a bot's chat and any other screen (or another bot) SHALL load the page anew, since Safari reads the manifest only at load. So Install and "Add to Home Screen" there have the bot's address, icon and name.
 
 #### Scenario: Bot page
 - **WHEN** the chat of @mofidbot is shown
-- **THEN** the manifest link is `/@mofidbot/manifest.webmanifest`, and both icon links are `/@mofidbot/icon`
+- **THEN** the manifest link is `/@mofidbot/manifest.webmanifest`, both icon links are `/@mofidbot/icon`, and the title is the bot's name
 
 #### Scenario: Back to the list
 - **WHEN** the user goes from the chat to `/chats`
 - **THEN** the manifest link is `/manifest.webmanifest`, the icon link is `/icons/icon.svg` and the apple-touch-icon link is `/icons/icon-192.png`
+
+#### Scenario: Into a chat in a browser tab
+- **GIVEN** a browser tab, not an installed app, on `/dashboard/chats`
+- **WHEN** the user opens the chat of @mofidbot, or goes back from it
+- **THEN** the page loads anew at the new address
+
+#### Scenario: In an installed app
+- **GIVEN** the installed app
+- **WHEN** the user opens a chat
+- **THEN** the page does not load anew
 
 ### Requirement: CLI-72 Copyright and version in the footer
 Under the footer columns of every public page SHALL be one small grey line: `© <this year> Dalan <version>` in English and `© <this year in Persian digits> دالان <version>` in Persian. `<version>` (OPS-17) SHALL come from `GET /api/public/settings` (`version`), because `/health` is private (OPS-06); it SHALL keep Latin digits and read left to right in both languages. Without a version like `v1.1.0` (no answer, or a local run) the line SHALL have none.
@@ -1187,16 +1197,16 @@ The account screen SHALL be a settings area: a side menu and one section per pag
 - **THEN** no button on it is primary; after the username is changed, its "Save" is primary
 
 ### Requirement: CLI-78 Grouped user menu
-The user menu SHALL open with the user's name and, in grey, the phone or the email. Under it SHALL come groups with an icon per item and a line between groups: My bots, Chats, My apps; then Settings and, for an admin, Admin; then Log out alone.
+The user menu SHALL open with the user's name and, in grey, the phone or the email. Under it SHALL come groups with an icon per item and a line between groups: My bots, Chats, My apps; then Dashboard; then Log out alone. Dashboard SHALL open the admin overview for an admin and `/dashboard` for anyone else (owner, 2026-11-27: no separate Settings or Admin item; both are in the dashboard's side menu).
 
 #### Scenario: Admin
 - **GIVEN** an admin with the email `a@example.com` and no phone
 - **WHEN** the user menu opens
-- **THEN** it shows the name, `a@example.com` in grey, then three groups: (My bots, Chats, My apps), (Settings, Admin), (Log out), each item with an icon
+- **THEN** it shows the name, `a@example.com` in grey, then three groups: (My bots, Chats, My apps), (Dashboard), (Log out), each item with an icon, and Dashboard opens `/dashboard/admin`
 
 #### Scenario: Not an admin
 - **WHEN** a user who is not an admin opens the menu
-- **THEN** the second group has only Settings
+- **THEN** the second group has only Dashboard, which opens `/dashboard`
 
 ### Requirement: CLI-80 Line microphone on the voice button
 The voice button of a bot chat (CLI-46) SHALL show Dalan's line `mic` icon (an inline SVG in `currentColor`: a capsule, an arc under it and a short stem), not an emoji. Its screen reader name SHALL stay "Record".
@@ -1421,3 +1431,19 @@ Preferences (CLI-77) SHALL let the user show dates in the Persian (Jalali) or th
 - **GIVEN** the user chose Gregorian
 - **WHEN** the same date is shown in Persian
 - **THEN** it is a Gregorian date with Persian month names and digits
+
+### Requirement: CLI-93 Admin tables and detail pages
+Users and Bots in the admin dashboard SHALL open as tables of everyone, newest first, with "More" for the next page and a search box above that narrows them. Users: name and username, phone or email, builder state, bots, joined, last active, a suspended mark. Bots: name, username, owner, chat users, last seen, a suspended mark. A row SHALL open `/dashboard/admin/users/{id}` or `/dashboard/admin/bots/{id}`: the details, the actions, and the user's bots or the bot's owner as links.
+
+#### Scenario: Users without a search
+- **GIVEN** five users
+- **WHEN** an admin opens Users
+- **THEN** a table shows all five, the newest first, with no search typed
+
+#### Scenario: A user's page
+- **WHEN** an admin clicks the row of user 7, who owns two bots
+- **THEN** the address is `/dashboard/admin/users/7`, the page shows the user's details and actions, and two bot rows that open their pages
+
+#### Scenario: Not an admin
+- **WHEN** a user who is not an admin opens `/dashboard/admin/users/7`
+- **THEN** the page is "Not found"
