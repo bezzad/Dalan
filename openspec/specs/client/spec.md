@@ -107,7 +107,7 @@ When a chat is opened the client SHALL load the newest messages. Each time the e
 - **THEN** the client loads the newest messages of that chat
 
 ### Requirement: CLI-07 Reply buttons
-The client SHALL show under the input the reply keyboard of the newest bot message that carries one. An empty keyboard removes the buttons. A tap on a button SHALL send its text as a message from the user.
+The client SHALL show the newest bot reply keyboard under the input bar, like a phone keyboard; an empty one removes it. Each row SHALL keep its buttons on one line, sharing the width equally, never joined or split; `style` colours a button (CLI-13). A tap SHALL send the button's text. `resize` false: a fixed height the rows share; true: one button high per row. `one_time` hides it after a tap. Unless `persistent`, a ⌨ button hides and shows it; the next keyboard brings it back.
 
 #### Scenario: Keyboard from the newest message that has one
 - **GIVEN** bot message 2 has a keyboard and bot message 4 has none
@@ -118,6 +118,20 @@ The client SHALL show under the input the reply keyboard of the newest bot messa
 - **GIVEN** bot message 2 has a keyboard and bot message 4 has an empty keyboard
 - **WHEN** the chat is shown
 - **THEN** no buttons are shown
+
+#### Scenario: Rows as sent
+- **GIVEN** the keyboard has rows of 5, 4 and 3 buttons, the last with style `success`
+- **WHEN** the chat is shown at 360 and at 1280 pixels wide
+- **THEN** there are three rows of 5, 4 and 3 buttons under the input, the buttons of the row of 3 are wider than those of the row of 5, and the last is green
+
+#### Scenario: One-time keyboard
+- **GIVEN** the keyboard has `one_time` true
+- **WHEN** the user taps a button
+- **THEN** its text is sent, the keyboard is hidden and the ⌨ button shows it again
+
+#### Scenario: Persistent keyboard
+- **WHEN** the keyboard has `persistent` true
+- **THEN** there is no ⌨ button and the keyboard stays
 
 ### Requirement: CLI-08 Reconnect with a growing wait
 When the event stream ends the client SHALL open it again after a wait that starts at `reconnect_min_seconds`, doubles after each failed try, never passes `reconnect_max_seconds`, and goes back to the start after a stream opened. The values come from `GET /api/settings` (REL-18).
@@ -137,7 +151,7 @@ When the event stream ends the client SHALL open it again after a wait that star
 - **THEN** the next wait is the minimum again
 
 ### Requirement: CLI-09 Installable
-The page SHALL link a web app manifest with a name, icons, `display` "standalone" and a start address on the same origin, and SHALL register a service worker from the same origin.
+The page SHALL link a web app manifest with a name, icons, `display` "standalone" and a start address on the same origin, and SHALL register a service worker from the same origin. On a bot's chat page the link SHALL point to that bot's manifest (REL-54, CLI-55).
 
 #### Scenario: Manifest
 - **WHEN** a browser asks for the manifest
@@ -192,12 +206,22 @@ The client SHALL turn Persian and Arabic digits into Latin digits in the phone n
 - **THEN** the client sends `123456`
 
 ### Requirement: CLI-13 Inline buttons
-The client SHALL show the inline keyboard of a message under that message. A tap on a button with `callback_data` SHALL send the press (REL-21); a tap on a `url` button SHALL open the link in a new tab without the site as referrer. An `answer` event with a text SHALL be shown: as an alert when `show_alert` is true, otherwise as a short note.
+The client SHALL show a message's inline keyboard under it, rows as sent. A `callback_data` tap SHALL send the press (REL-21), shown in progress (CLI-53); a `url` tap SHALL open the link in a new tab with no referrer, marked ↗ at its top end; a `switch_query` tap SHALL put only `@username`, a space and the query in the input and focus it. `style`: `success` `--brand`, `danger` `--danger`, `primary` `--primary`, in both themes. An `answer` text shows as an alert with `show_alert`, else a note.
 
 #### Scenario: Buttons of a message
 - **GIVEN** message 2 has the inline buttons `[[A],[B]]`
 - **WHEN** the chat is shown
 - **THEN** message 2 has two rows of buttons under it
+
+#### Scenario: Link mark and colour
+- **GIVEN** a message has a `url` button and a `callback_data` button with style `danger`
+- **WHEN** the chat is shown in light and in dark
+- **THEN** the link button has the ↗ mark, and the other is red with text that passes the WCAG AA contrast check
+
+#### Scenario: Fill button
+- **GIVEN** a message of @mofidbot has a button with `switch_query` "todo 7"
+- **WHEN** the user taps it
+- **THEN** the input says "@mofidbot todo 7" and has the focus
 
 ### Requirement: CLI-14 Pinned message bar
 The client SHALL show the pinned message of the chat (REL-25) in a bar above the messages, taken from the `pinned` field of the newest messages answer and kept up to date by changes: a message with `pinned` true becomes the bar; the bar's message without `pinned`, or deleted, clears it. A click on the bar SHALL close the search, load older pages until the message is there, scroll to it and mark it for a moment; a message that is not in the history gives a short note.
@@ -231,11 +255,16 @@ When the bot has commands (REL-26), the client SHALL show a menu button by the i
 - **THEN** the message "/help" is sent
 
 ### Requirement: CLI-16 Files in the chat
-The client SHALL let the user pick a file and send it with the text in the input as its caption (REL-28), and refuse a file over `max_file_size_mb` (REL-18) before sending. A message with a `file` SHALL show a photo as an image, audio and voice with an audio player, video with a video player, and anything else as a link with its name and size.
+The client SHALL let the user pick, paste or drop a file (CLI-47), show it in a card, and send it with the card's text as its caption (REL-28); a file over `max_file_size_mb` (REL-18) SHALL be refused before sending. A `file` SHALL show as: a photo or picture document, an image (CLI-89); HTML, a card that opens in the app (CLI-90); voice or audio, the Dalan player; video, a video player; anything else (PDF too), a link with its name and size.
 
 #### Scenario: Kind of view
-- **WHEN** messages with a photo, a voice, a video and a document are shown
-- **THEN** they use an image, an audio player, a video player and a link
+- **WHEN** messages with a photo, a PNG document, an HTML document, a voice, a video and a PDF document are shown
+- **THEN** they use an image, an image, an HTML card, the Dalan player, a video player and a link
+
+#### Scenario: Voice length
+- **GIVEN** a voice with `duration` 65
+- **WHEN** it is shown and not playing
+- **THEN** it says 1:05
 
 #### Scenario: Too big
 - **WHEN** the user picks a file over the limit
@@ -304,7 +333,7 @@ The service worker SHALL show each push as a notification with its title, body a
 - **THEN** an open window goes to `/@shopbot` and gets focus, or a new one opens there
 
 ### Requirement: CLI-23 Builder request in the account screen
-The account screen SHALL show the user's builder state: a button "become a builder" when it is `none` or `refused` (with a note that the admin refused, for `refused`), "waiting for approval" when `requested`, and a button that opens "My bots" when `approved` or for an admin. A user with no phone SHALL see, instead of the request button, a note that building needs a verified mobile number (CLI-34). Admins SHALL also see a button that opens the admin screen.
+The account screen (`/account`) and the My bots screen (`/bots`) SHALL show the user's builder state when the user is not a builder: a button "become a builder" when it is `none`, "waiting for approval" when `requested`. A user with no phone SHALL see, instead of the request button, a note that building needs a verified mobile number, with a button to verify it (CLI-34). For a builder or an admin the account screen SHALL have a button to `/bots`; admins SHALL also see a button to `/admin`.
 
 #### Scenario: What the account screen shows
 - **WHEN** the builder state is `none`, `requested` or `approved`, or the user is an admin
@@ -314,12 +343,30 @@ The account screen SHALL show the user's builder state: a button "become a build
 - **WHEN** a user with no phone and builder state `none` opens the account screen
 - **THEN** the screen shows the "verify your mobile first" note and no request button
 
+#### Scenario: Not a builder opens My bots
+- **GIVEN** a user who logged in by email, with no phone and builder state `none`
+- **WHEN** the user opens "My bots"
+- **THEN** the address is `/bots`, the title is "My bots", and the page says to verify the mobile first, with its button
+
 ### Requirement: CLI-24 My bots
-The "My bots" screen SHALL list the builder's bots (username, name, last seen, suspended) and have a form to create one. The bot list SHALL have a "Create bot" button for every user: it opens "My bots" for a builder or an admin, and the account screen (CLI-23) for anyone else. After a create or a new token the screen SHALL show the token once, with a copy button. Each bot SHALL have Rename (REL-48), New token and Delete (REL-49); New token and Delete SHALL ask first.
+`/bots` SHALL list the builder's bots: icon (CLI-50), name, `@username`, online or last seen, a suspended mark; a tap opens `/bots/<username>` (CLI-49). With none, an empty state with "Create a bot". The title row SHALL have "Create a bot", opening `/bots/new` (username, name, optional icon); after it the client SHALL open the new bot's page with its token shown (CLI-49). The chat list SHALL have a "Create a bot" button for every user that opens `/bots`.
+
+#### Scenario: List
+- **GIVEN** a builder with bots `a_bot` (online) and `b_bot` (last seen yesterday)
+- **WHEN** `/bots` is shown
+- **THEN** there are two rows with icon or letter, name, username and status, and no token or guide on this page
+
+#### Scenario: Empty
+- **WHEN** a builder with no bots opens `/bots`
+- **THEN** the page shows the empty state and "Create a bot"
+
+#### Scenario: Create
+- **WHEN** the builder creates `weather_bot` on `/bots/new` with an icon
+- **THEN** the address becomes `/bots/weather_bot`, the token is shown once with Copy, and the bot has the icon
 
 #### Scenario: Token shown once
 - **WHEN** a builder creates a bot
-- **THEN** the token is shown with the copy button, and after closing it the list shows the bot without the token
+- **THEN** the token is shown with the copy button on the bot's page, and after closing it or loading the page again the page shows the bot without the token
 
 ### Requirement: CLI-25 Admin screen
 The admin screen SHALL have tabs: settings (grouped by section, each with its value, an edit field, a reset button when changed, and an "after restart" mark), users (search; approve or refuse a builder request; suspend or unsuspend; open the user's access log), builder requests, bots (search; suspend or unsuspend; open the bot's access log), access log (search by user, bot, phone or address; times shown in UTC and local time) and audit log. A value is checked by its kind before it is sent.
@@ -379,12 +426,26 @@ In "My bots" each bot SHALL have a showcase part: its state (not listed, waiting
 - **THEN** they say "not listed", "waiting for review", "listed" and "refused"
 
 ### Requirement: CLI-30 Access keys and ready prompt
-"My bots" SHALL have a part for AI agents: the builder's keys (name, made, expires) with a delete button, a form to make a key that shows the new key once with a copy button, and a ready prompt to copy. The ready prompt SHALL name the site address, the Bot API address, `/llms.txt`, the MCP door and the CLI, with the addresses from the public settings (ADM-15), and SHALL never hold a key.
+For an approved builder or an admin, the account SHALL have a part for AI assistants (`#keys`): the keys (name, made, expires) with delete, a form that makes a key and shows it once with Copy, and a ready prompt to copy. "My bots" and "My apps" SHALL only link to it ("Access keys for AI assistants"). The prompt SHALL name the site and Bot API addresses from the public settings (ADM-15), `/llms.txt`, the MCP door and the CLI, and SHALL never hold a key.
 
 #### Scenario: Ready prompt
 - **GIVEN** the public settings say site `https://dalanet.ir` and Bot API `https://api.dalanet.ir`
 - **WHEN** the ready prompt is made in Persian and in English
 - **THEN** it has `https://dalanet.ir/llms.txt`, `https://dalanet.ir/api/mcp`, `https://dalanet.ir/dalan.mjs` and `https://api.dalanet.ir`
+
+#### Scenario: In the account
+- **GIVEN** an approved builder
+- **WHEN** the account screen opens
+- **THEN** it shows the AI assistants part with the keys, the form and the ready prompt
+
+#### Scenario: Not a builder
+- **GIVEN** a user who is not an approved builder or an admin
+- **WHEN** the account screen opens
+- **THEN** there is no AI assistants part
+
+#### Scenario: My bots
+- **WHEN** an approved builder opens "My bots"
+- **THEN** it shows the bots and one link "Access keys for AI assistants" to `/account#keys`, and no keys, form or prompt
 
 ### Requirement: CLI-31 Command line tool
 `node dalan.mjs <command>` SHALL read `DALAN_URL` and `DALAN_KEY` and call the builder REST calls with the key: `bots`, `create <username> <name>`, `token <bot id>`, `status <bot id>`. Success: the JSON answer on stdout, exit 0. An error answer: `{"error", "message"}` on stderr, exit 1. No or a wrong command, or a missing variable: the usage, exit 2.
@@ -488,7 +549,7 @@ The landing page SHALL have a "What you get" section after the plans: four group
 - **THEN** it names TCP, SSH and the AI gateway, and no text of the section says "tunnel"
 
 ### Requirement: CLI-38 Guide to run a bot
-A visitor and a logged-in user SHALL see at `/guide` a choice of plan: a bot or a site. In both languages, `/guide/bot` SHALL show nine steps to run a bot without an AI agent and `/guide/site` four steps (CLI-39), with addresses and numbers from the public settings. "My bots" SHALL show steps 5 to 9 of the bot guide, numbered from 1. The token test SHALL show where the whole token goes; on "My bots" it SHALL hold the new token while that token is on screen.
+Anyone SHALL see at `/guide` a choice of plan: a bot or a site. In both languages, `/guide/bot` SHALL show nine steps to run a bot without an AI agent and `/guide/site` five steps (CLI-39), with addresses and numbers from the public settings. A bot's page (CLI-49) SHALL show steps 5 to 9 of the bot guide, numbered from 1, made for that bot. The token test SHALL show where the whole token goes; on the bot's page it SHALL hold the new token while that token is on screen, else `<bot id>:<TOKEN>`.
 
 #### Scenario: Steps use the real addresses
 - **GIVEN** the public settings say `bot_api_url` is `https://api.example.ir`, `site_url` is `https://example.ir` and the expiry is 60 seconds
@@ -502,14 +563,14 @@ A visitor and a logged-in user SHALL see at `/guide` a choice of plan: a bot or 
 #### Scenario: Site guide
 - **GIVEN** the public settings say `site_url` is `https://example.ir`
 - **WHEN** the site guide is made in Persian and in English
-- **THEN** both have four steps; the install step has `curl -fsSL https://example.ir/install.sh | sh` and `irm https://example.ir/install.ps1 | iex`; the last step has `dalan http 3000 --name mysite`
+- **THEN** both have five steps; the install step has `curl -fsSL https://example.ir/install.sh | sh` and `irm https://example.ir/install.ps1 | iex`; the try step has `dalan http 3000 --name mysite` and says Ctrl+C stops it; the last step has `dalan service install`
 
 #### Scenario: Which screen
 - **WHEN** the address is `/guide`, `/guide/bot` or `/guide/site`, for a visitor or a logged-in user
 - **THEN** both get the plan choice, the bot guide and the site guide
 
-#### Scenario: My bots fills in the new token
-- **GIVEN** "My bots" shows the new token `7:XyZ`
+#### Scenario: The bot's page fills in the new token
+- **GIVEN** the bot's page shows the new token `7:XyZ`
 - **WHEN** its run steps are made
 - **THEN** they are numbered from 1, the first is the token test `curl https://api.example.ir/bot7:XyZ/getMe`, and with no token shown it is the sample again
 
@@ -536,11 +597,15 @@ No English text that the product shows SHALL name Iran: client texts, page title
 - **THEN** the text does not contain "Iran" in any case
 
 ### Requirement: CLI-39 My apps
-The user menu SHALL open "My apps" at `/apps`. For a builder it SHALL list their sites (name, address as a link, online or offline) with a delete that asks first, and show a step-by-step guide: 1) install the agent, 2) log in with a key made here by one button (the full `dalan login` command, shown once, with Copy), 3) run `dalan http <port> --name <name>`, with an example for two sites. Every action SHALL end in a toast. A user who is not a builder SHALL see how to become one instead.
+"My apps" (`/apps`) SHALL list a builder's sites (name, address link, online or offline), delete asks first, refreshed every 10 seconds, and a guide: 1) install the agent; 2) log in with a key from one button (the full `dalan login` command, once, Copy); 3) port and name: "Reserve" claims it or says it is taken; 4) `dalan http <port> --name <name>` (Ctrl+C stops it); 5) `dalan service install`, `dalan status`. Each action ends in a toast; a non-builder sees how to become one.
 
 #### Scenario: Guide commands
 - **WHEN** the guide is drawn for the name `mysite` and port `3000`
-- **THEN** it shows `dalan http 3000 --name mysite`
+- **THEN** it shows `dalan http 3000 --name mysite` and `dalan service install`
+
+#### Scenario: Reserve
+- **WHEN** a builder reserves the name in the guide
+- **THEN** the name appears in the list, and a taken name shows its error
 
 #### Scenario: Not a builder
 - **WHEN** a user who is not a builder opens "My apps"
@@ -836,3 +901,511 @@ In the light theme the border of a plain button (`button`, `a.button`, the login
 #### Scenario: Dark theme unchanged
 - **WHEN** the theme is dark
 - **THEN** plain buttons look as before (`--control-line` is the dark `--line`)
+
+### Requirement: CLI-46 Record a voice
+While the input is empty, a 🎤 button SHALL take Send's place when the browser can record. A tap SHALL record and show the time and Cancel; the send button SHALL stop and send it as a voice (REL-28). The voice SHALL be OGG/Opus: recorded so, or WebM/Opus rewritten on the device, else the browser's own format with its real type. Cancel or leaving the chat SHALL stop the microphone and send nothing. At `max_file_size_mb` it SHALL stop and send.
+
+#### Scenario: WebM rewritten
+- **GIVEN** a WebM/Opus recording (saved test sample)
+- **WHEN** it is rewritten
+- **THEN** the result starts with `OggS`, has the `OpusHead` and `OpusTags` pages, has the same Opus packets in order, and its last granule position matches the length
+
+#### Scenario: Type picked
+- **WHEN** the browser supports `audio/ogg;codecs=opus`, or only `audio/webm;codecs=opus`, or only `audio/mp4`
+- **THEN** the voice is sent as `audio/ogg`, as `audio/ogg` after the rewrite, or as `audio/mp4`
+
+#### Scenario: Cancel
+- **WHEN** the user cancels a recording
+- **THEN** nothing is sent and the microphone is off
+
+### Requirement: CLI-47 Paste or drop a file
+Pasting (Ctrl+V) an image or a file into the input, or dropping a file on the chat, SHALL open the same card as 📎 (CLI-16): a preview of an image or the file name and size, a caption field holding the input text, Send and Cancel. A pasted image with no name SHALL be named `image.<type>`. Pasting only text SHALL paste text as before. Send SHALL go through REL-28, so the bot gets `message.photo` for an image and `message.document` for other files.
+
+#### Scenario: Paste a screenshot
+- **WHEN** the user pastes a PNG from the clipboard and sends it with the caption "bug"
+- **THEN** the card showed the picture, and the bot gets a photo with caption "bug"
+
+#### Scenario: Paste text
+- **WHEN** the user pastes text
+- **THEN** no card opens and the text is in the input
+
+#### Scenario: Drop a PDF
+- **WHEN** the user drops a PDF on the chat and sends it
+- **THEN** the bot gets a document
+
+### Requirement: CLI-48 Message text like Telegram
+Message bubbles SHALL use the sizes of Telegram Desktop at the same window width: text 14px with line height 1.35 (Inter for Latin, Vazirmatn for Persian), bubble padding 6px at the top and bottom and 10px at the sides, the time 12px. They SHALL be the same in light and dark, and on phone and desktop widths. The exact values are in one place in `app.css` (`--message-*` tokens).
+
+#### Scenario: Sizes
+- **WHEN** a Persian and a Latin message are shown at 360 and at 1280 pixels wide
+- **THEN** the text is 14px, the time 12px, in both themes
+
+### Requirement: CLI-49 A bot's own page
+`/bots/<username>` SHALL show one of the builder's bots: icon (CLI-50), name with rename, status, its link `<site_url>/@<username>` with Open and Copy, New token and Delete (both ask first), the showcase part (CLI-29), and the run guide (CLI-38) in three tabs: Telegram bot, CLI and MCP. Every value SHALL be this bot's. The token SHALL show only right after create or New token, until Close or leaving. Another username SHALL show "bot not found" with a link to `/bots`.
+
+#### Scenario: Only this bot
+- **GIVEN** the builder has bots 4 `mofidbot` and 9 `other_bot`, and just made a new token for `other_bot`
+- **WHEN** the builder opens `/bots/mofidbot`
+- **THEN** every link, id and command names `mofidbot` and 4, and no token is shown
+
+#### Scenario: Link
+- **WHEN** the builder taps Copy at the link
+- **THEN** `https://dalanet.ir/@mofidbot` is copied and a toast says so
+
+#### Scenario: Unknown bot
+- **WHEN** the builder opens `/bots/nobody_bot`
+- **THEN** the page says the bot was not found and links to `/bots`
+
+### Requirement: CLI-50 Bot icons
+The bot icon (REL-51) SHALL show in the chat header, the chat list, My bots, the bot's page and the showcase, round and cut to fill, at `?v=<icon_version>`; with no icon, or one that fails to load, the first letter. The picker on `/bots/new` and the bot's page SHALL take PNG, JPEG or WebP, cut the middle square to 512 by 512, and lower the JPEG quality until it fits `max_bot_icon_kb`.
+
+#### Scenario: No icon
+- **WHEN** a bot with `icon_version` 0 is in the chat list
+- **THEN** its row shows the first letter and asks for no image
+
+#### Scenario: Square cut
+- **WHEN** the builder picks a 1200 by 800 picture
+- **THEN** the upload is a 512 by 512 JPEG of the middle 800 by 800, at most `max_bot_icon_kb`
+
+### Requirement: CLI-51 One address per screen
+Each screen SHALL have its own address, and opening it (reload, Back, a shared link) SHALL show that screen: `/chats`, `/@<username>`, `/bots`, `/bots/new`, `/bots/<username>`, `/account`, `/admin`, `/apps`. The user menu SHALL go to these addresses. `/admin` for a non-admin SHALL go to `/chats`. After login the client SHALL open the address asked for, else `/chats`.
+
+#### Scenario: Reload keeps the screen
+- **GIVEN** the user is on the account screen
+- **WHEN** the page is loaded again
+- **THEN** the address is `/account` and the account screen is shown
+
+#### Scenario: Different addresses
+- **WHEN** the user opens My bots, then the account, then the chats from the menu
+- **THEN** the addresses are `/bots`, `/account` and `/chats`, and Back goes to `/account`, then `/bots`
+
+#### Scenario: Login lands where asked
+- **GIVEN** a visitor opens `/bots/new`
+- **WHEN** the visitor logs in
+- **THEN** the address is `/bots/new`
+
+### Requirement: CLI-52 Reply in the chat
+The user SHALL start a reply by a message's menu (right-click or long press) → Reply, a double-click, or a swipe to the left. A bar above the input SHALL show the quote, with ✕ and Esc to cancel; the next message or file SHALL carry `reply_to` (REL-52). A message that replies SHALL show the quote on top: the writer ("You" or the bot's name) and the first line, or the file name. A click on a quote SHALL go to that message like CLI-14.
+
+#### Scenario: Reply to an answer
+- **GIVEN** bot message 2 "Which session?"
+- **WHEN** the user picks Reply on it and sends "the second"
+- **THEN** the send has `reply_to` 2, the bar is gone, and the new message shows a quote of "Which session?"
+
+#### Scenario: Cancel
+- **GIVEN** the reply bar is open
+- **WHEN** the user presses ✕
+- **THEN** the bar is gone and the next message has no `reply_to`
+
+#### Scenario: Quote line
+- **GIVEN** a message replies to a bot message "line one\nline two"
+- **WHEN** the chat is shown
+- **THEN** the quote shows the bot's name and "line one"
+
+#### Scenario: Target deleted
+- **GIVEN** a message replies to message 2, and message 2 was deleted
+- **WHEN** the chat is shown
+- **THEN** the quote says "Deleted message"
+
+### Requirement: CLI-53 Press in progress
+After a tap on a `callback_data` button, that button SHALL show a moving skeleton and every button of that message SHALL be locked, until an `answer` event for that press arrives, the message comes again with a higher version, the press fails, or `press_wait_seconds` (REL-18) pass. With reduced motion, the skeleton SHALL not move.
+
+#### Scenario: Wait for the bot
+- **GIVEN** message 2 has buttons A and B
+- **WHEN** the user taps A
+- **THEN** A is marked in progress and A and B do not take taps
+
+#### Scenario: The bot answers
+- **GIVEN** A is in progress for press "77"
+- **WHEN** an `answer` event for press "77" arrives, or message 2 arrives with a higher version
+- **THEN** A and B take taps again
+
+#### Scenario: No answer
+- **GIVEN** A is in progress and `press_wait_seconds` is 15
+- **WHEN** 15 seconds pass with no answer
+- **THEN** A and B take taps again
+
+### Requirement: CLI-54 Formatted text
+The client SHALL draw a message's entities (REL-53) with DOM elements and text nodes only, never by reading the text as HTML: `bold`, `italic`, `underline`, `strikethrough`, `code` and `pre` (monospace, `pre` as a block), `text_link` (opens in a new tab without referrer), `spoiler` (hidden until tapped), `blockquote` and `expandable_blockquote` (closed to three lines until tapped). Entities inside each other SHALL nest.
+
+#### Scenario: Bold
+- **GIVEN** "hi Ali" with a `bold` entity at 3 length 3
+- **WHEN** the message is drawn
+- **THEN** "Ali" is in a bold element and "hi " is plain text
+
+#### Scenario: Markup stays text
+- **GIVEN** a text `<img src=x onerror=alert(1)>` with a `bold` entity over it
+- **WHEN** the message is drawn
+- **THEN** the bold element holds that text as text, and there is no `img` element
+
+#### Scenario: Nested
+- **GIVEN** "abc" with `bold` 0..3 and `italic` 1..2
+- **WHEN** the message is drawn
+- **THEN** the italic "b" is inside the bold element
+
+### Requirement: CLI-55 Install a bot
+On a bot's chat page (`/@username`) the page SHALL link `/@username/manifest.webmanifest`, and its `rel="icon"` and `rel="apple-touch-icon"` links SHALL be `/@username/icon` (REL-54); on every other screen it SHALL link the main manifest and Dalan's icons again. So the browser's Install, Chrome's "Create shortcut" and "Add to Home Screen" on a bot's page make an app of that bot with the bot's icon, and the app opens its chat.
+
+#### Scenario: Bot page
+- **WHEN** the chat of @mofidbot is shown
+- **THEN** the manifest link is `/@mofidbot/manifest.webmanifest`, and both icon links are `/@mofidbot/icon`
+
+#### Scenario: Back to the list
+- **WHEN** the user goes from the chat to `/chats`
+- **THEN** the manifest link is `/manifest.webmanifest`, the icon link is `/icons/icon.svg` and the apple-touch-icon link is `/icons/icon-192.png`
+
+### Requirement: CLI-72 Copyright and version in the footer
+Under the footer columns of every public page SHALL be one small grey line: `© <this year> Dalan <version>` in English and `© <this year in Persian digits> دالان <version>` in Persian. `<version>` (OPS-17) SHALL come from `GET /api/public/settings` (`version`), because `/health` is private (OPS-06); it SHALL keep Latin digits and read left to right in both languages. Without a version like `v1.1.0` (no answer, or a local run) the line SHALL have none.
+
+#### Scenario: Live version
+- **GIVEN** the public settings give `version` `v1.1.0` in 2026
+- **WHEN** an English public page opens
+- **THEN** the footer line is `© 2026 Dalan v1.1.0`
+
+#### Scenario: Persian
+- **WHEN** the same page opens in Persian
+- **THEN** the line is `© ۲۰۲۶ دالان v1.1.0`, with the version left to right
+
+#### Scenario: No version
+- **WHEN** the public settings fail, or give `dev`
+- **THEN** the line is `© <this year> Dalan` with no version
+
+### Requirement: CLI-73 Footer at the bottom
+On a public page shorter than the screen, the footer SHALL sit at the bottom of the screen; on a longer page it SHALL come after the content. The footer SHALL NOT be fixed while scrolling and SHALL NOT cover content, at every screen size (320px to wide, portrait and landscape).
+
+#### Scenario: Short page
+- **WHEN** a page with little content (for example `/contact`) opens on a 1920 by 1080 screen
+- **THEN** the bottom of the footer is at the bottom of the screen, and the free space is above the footer
+
+#### Scenario: Long page
+- **WHEN** the landing page opens on a 360 by 740 phone
+- **THEN** the footer comes after the last section, and only shows after scrolling to the end
+
+### Requirement: CLI-74 Command suggestions while typing
+When the input starts with `/` and has no space, the client SHALL list above it the bot's commands (REL-26) whose name starts with the typed text, ignoring case, in the bot's order, each with `/command` and its description. A click, a tap or Enter on the marked row SHALL send `/command`; Tab SHALL put `/command ` in the input. The list SHALL close when nothing matches, after a space, when the input is empty, and when a message is sent.
+
+#### Scenario: Slash shows all
+- **GIVEN** the bot set the commands "start", "ticket" and "help"
+- **WHEN** the user types `/`
+- **THEN** the list shows `/start`, `/ticket` and `/help` with their descriptions, in that order
+
+#### Scenario: Narrow by the start
+- **WHEN** the user types `/TiC`
+- **THEN** the list shows only `/ticket`, marked
+
+#### Scenario: Send by Enter or tap
+- **WHEN** the list shows `/ticket` marked and the user presses Enter, or taps it
+- **THEN** the message `/ticket` is sent, the input is empty and the list is closed
+
+#### Scenario: Complete with Tab
+- **WHEN** the list shows `/ticket` marked and the user presses Tab
+- **THEN** the input is `/ticket ` and the list is closed
+
+#### Scenario: Closed
+- **WHEN** the user types `/xyz`, or `/ticket 12`, or text not starting with `/`, or the bot has no commands
+- **THEN** no list is shown
+
+#### Scenario: Move and close
+- **WHEN** the list is shown and the user presses ↓, ↑ or Escape
+- **THEN** the mark moves down or up from the first row, or the list closes; the page reads left to right in both languages
+
+### Requirement: CLI-75 Connection ring
+The client SHALL NOT show a bar or toast while its event stream (CLI-08) is down. Instead a thin ring SHALL turn around the bot's icon in the chat header, or around the Dalan logo on other screens, until the stream opens again. Hovering the icon SHALL show "Connected" or "Connecting…" in the page language, and a hidden `role="status"` text SHALL say the same to screen readers.
+
+#### Scenario: Stream down in a chat
+- **GIVEN** the chat of @mofidbot is open
+- **WHEN** the event stream ends
+- **THEN** a turning ring shows around the bot's icon, no bar shows at the top, and the page does not move
+
+#### Scenario: Back
+- **WHEN** the stream opens again
+- **THEN** the ring goes away and the status text says "Connected"
+
+#### Scenario: Other screens
+- **WHEN** the stream is down on the chat list
+- **THEN** the ring turns around the Dalan logo in the header
+
+#### Scenario: Tooltip
+- **WHEN** a mouse hovers the bot's icon in English, while connected and then while connecting
+- **THEN** the tooltip is "Connected", then "Connecting…"
+
+#### Scenario: Reduced motion
+- **GIVEN** the device asks for reduced motion
+- **WHEN** the stream is down
+- **THEN** the ring is shown still and dashed
+
+### Requirement: CLI-76 Readable small text on public pages
+On public pages, no text other than code SHALL be smaller than `--text-small`: 13px in English, 14px in Persian. Section labels (`.label`: the line above a section title, product labels, footer column titles) SHALL use `--text-label`: 14px in English and 15px in Persian. Both sizes SHALL be tokens in `:root`, set again under `:lang(fa)`.
+
+#### Scenario: Persian section label
+- **WHEN** the landing page is shown in Persian
+- **THEN** the label "امکانات" is 15px, in Vazirmatn, with no letter spacing
+
+#### Scenario: English section label
+- **WHEN** the landing page is shown in English
+- **THEN** the section labels are 14px, uppercase
+
+#### Scenario: Nothing below the floor
+- **WHEN** the CSS rules used by public pages are read (code blocks aside)
+- **THEN** no font size is below `--text-small`, and `.label`, `.frame-label`, `ul.guards`, `.branch .box`, `.tag` and `.soon` use the tokens
+
+### Requirement: CLI-77 Settings area
+The account screen SHALL be a settings area: a side menu and one section per page, each at its own address: `/account/profile`, `/account/security`, `/account/notifications`, `/account/preferences`, `/account/builder` (the CLI-23 state, for every user) and `/account/keys` (only an approved builder or an admin). `/account` SHALL open Profile at 760px and wider, and the menu list below. A section page SHALL show a breadcrumb, a title, a description and rows.
+
+#### Scenario: Desktop
+- **WHEN** a user opens `/account` in a 1280px wide browser
+- **THEN** the side menu shows the Account group, the current item is Profile, and the page shows `Settings › Profile` with the username, phone and email rows
+
+#### Scenario: One address per section
+- **WHEN** the user picks "Login and security", then presses Back
+- **THEN** the address was `/account/security`, and Back shows Profile again
+
+#### Scenario: A row's button
+- **WHEN** a row's value is changed
+- **THEN** its button is primary, and plain again when the value is as saved
+
+#### Scenario: Builder group
+- **GIVEN** a user who is not an approved builder or an admin
+- **WHEN** the settings area opens
+- **THEN** the Building group has only Builder, with the request button, the waiting note or the phone note (CLI-23), and `/account/keys` opens Profile
+
+#### Scenario: Login methods
+- **GIVEN** a user with a password and a phone, no email and no GitHub
+- **WHEN** Login and security opens
+- **THEN** Password and Phone show "Connected", Email and GitHub show "Not connected" with "Set up" and "Link"
+
+#### Scenario: Preferences
+- **WHEN** the user picks "Dark" or "English" in Preferences
+- **THEN** the theme or the language applies at once, and that radio card is the chosen one
+
+#### Scenario: Phone
+- **WHEN** `/account` opens on a 360px phone
+- **THEN** it shows the menu as a list of rows; picking Notifications opens `/account/notifications` with "‹ Settings" at the start
+
+#### Scenario: Quiet buttons
+- **WHEN** the Profile page opens
+- **THEN** no button on it is primary; after the username is changed, its "Save" is primary
+
+### Requirement: CLI-78 Grouped user menu
+The user menu SHALL open with the user's name and, in grey, the phone or the email. Under it SHALL come groups with an icon per item and a line between groups: My bots, Chats, My apps; then Settings and, for an admin, Admin; then Log out alone.
+
+#### Scenario: Admin
+- **GIVEN** an admin with the email `a@example.com` and no phone
+- **WHEN** the user menu opens
+- **THEN** it shows the name, `a@example.com` in grey, then three groups: (My bots, Chats, My apps), (Settings, Admin), (Log out), each item with an icon
+
+#### Scenario: Not an admin
+- **WHEN** a user who is not an admin opens the menu
+- **THEN** the second group has only Settings
+
+### Requirement: CLI-80 Line microphone on the voice button
+The voice button of a bot chat (CLI-46) SHALL show Dalan's line `mic` icon (an inline SVG in `currentColor`: a capsule, an arc under it and a short stem), not an emoji. Its screen reader name SHALL stay "Record".
+
+#### Scenario: Voice button
+- **WHEN** a bot chat opens with an empty input
+- **THEN** the voice button holds an `svg.icon` with the three `mic` paths, has no emoji text, and its `aria-label` is "Record"
+
+### Requirement: CLI-81 One dashboard for signed-in pages
+Every signed-in page except a bot's chat SHALL be in one dashboard frame at `/dashboard/...` with a side menu in groups: Workspace (Chats; My bots and My apps for a builder or an admin), Account (the sections of CLI-77), and Admin only for an admin. The old addresses (`/account/*`, `/chats`, `/bots`, `/apps`, `/admin`) SHALL redirect to their new place. An admin page opened by a user who is not an admin SHALL show "Not found".
+
+#### Scenario: Common user
+- **GIVEN** a user who is not a builder or an admin
+- **WHEN** the dashboard opens
+- **THEN** the menu has Workspace with Chats only, and Account; there is no Admin group
+
+#### Scenario: Admin
+- **GIVEN** an admin
+- **WHEN** the dashboard opens
+- **THEN** the menu also has the Admin group with its nine items: Overview, Requests, Users, Bots, Showcase, Messages, Settings, Access log, Audit log
+
+#### Scenario: Typed admin address
+- **GIVEN** a user who is not an admin
+- **WHEN** the user opens `/dashboard/admin/settings`
+- **THEN** the page says "Not found" and shows no admin data
+
+#### Scenario: Old address
+- **WHEN** a user opens `/admin` or `/bots`
+- **THEN** the address becomes `/dashboard/admin` or `/dashboard/bots`
+
+### Requirement: CLI-82 Admin overview
+The first admin page SHALL show cards with counts, each a link to its page: users (and new in the last 7 days), bots (and online now), builder and showcase requests waiting, unread support messages, sites online.
+
+#### Scenario: Waiting requests
+- **GIVEN** two builder requests and one showcase request wait
+- **WHEN** an admin opens the overview
+- **THEN** the requests card says 3 and opens Requests
+
+### Requirement: CLI-83 Readable admin settings
+The admin settings page SHALL group the settings by service and show each as a setting row: name and help in the page language, its key in small grey text, the control by kind (a number with unit and range, a switch, a text), "Changed" with "Reset", and "Needs restart". Save SHALL be primary only when the value changed. A search box SHALL filter rows. A risky setting SHALL ask before it saves.
+
+#### Scenario: Readable row
+- **WHEN** the Admin group of settings is shown in English
+- **THEN** `AccessLogRetentionDays` shows as "Access log kept for" with "days", its help, and its key in grey
+
+#### Scenario: Search
+- **WHEN** the admin types "log" in the search box
+- **THEN** only rows whose name, key or help has "log" stay
+
+#### Scenario: Changed and restart
+- **GIVEN** a setting whose value differs from its start value, and one that applies only after a restart
+- **WHEN** the settings page shows them
+- **THEN** the first has "Changed" with its start value and "Reset", and the second has "Needs restart"
+
+#### Scenario: Risky
+- **WHEN** the admin changes the Bot API address and presses Save
+- **THEN** a question shows the old and the new value, and nothing saves until the admin confirms
+
+### Requirement: CLI-92 Second factor in the app
+"Login and security" (CLI-77) SHALL have a second-factor card: Set up shows the QR (from the server), the secret to copy and a code box; a right code shows the recovery codes once with Copy and Download. When a login answers `totp_required`, the login screen SHALL ask for the code (or a recovery code) and then finish the login. For an admin the card SHALL have no Turn off.
+
+#### Scenario: Set up
+- **WHEN** the user presses Set up and types the code from the authenticator app
+- **THEN** the card says it is on, and the ten recovery codes show once
+
+#### Scenario: Login step
+- **GIVEN** a password login answered `totp_required`
+- **WHEN** the user types a right code
+- **THEN** the login finishes as usual
+
+### Requirement: CLI-91 Offline bar in the chat
+While the bot of the open chat is offline (its status, CLI-19, has `online` false), the chat SHALL show a bar above the input. The bar SHALL name the bot as `@username`, say it will not answer now, and say messages wait and show "not delivered" if it does not come back in time. It SHALL NOT show for an online or suspended bot (CLI-25). Sending is not blocked.
+
+#### Scenario: Bot offline
+- **GIVEN** the chat of `@mofid` is open and its status is `online` false, with or without `last_seen`
+- **WHEN** the status is drawn in English
+- **THEN** a bar above the input says "@mofid is offline and won't answer now" and mentions "not delivered"
+
+#### Scenario: Bot comes back
+- **GIVEN** the offline bar is shown
+- **WHEN** the next status is `online` true
+- **THEN** the bar is hidden
+
+#### Scenario: Status call fails
+- **WHEN** a status call fails
+- **THEN** the bar stays as it was (hidden before the first status)
+
+#### Scenario: Suspended
+- **WHEN** a suspended bot is offline
+- **THEN** the bar is hidden; the suspended error shows instead
+
+### Requirement: CLI-85 Enter like Telegram
+In the message box and in the big editor (CLI-87), the client SHALL decide Enter by the pointer, read from `matchMedia("(pointer: coarse)")` at each key press and never from the user agent. Fine pointer: Enter SHALL send; Shift+Enter or Ctrl+Enter SHALL add a new line. Coarse pointer: Enter SHALL add a new line, and only the Send button SHALL send. While an IME is composing (`isComposing`), Enter SHALL never send.
+
+#### Scenario: Computer
+- **GIVEN** the pointer is fine and the box has "Hi"
+- **WHEN** the user presses Enter
+- **THEN** "Hi" is sent
+
+#### Scenario: New line on a computer
+- **GIVEN** the pointer is fine
+- **WHEN** the user presses Shift+Enter, then Ctrl+Enter
+- **THEN** nothing is sent and the box has two new lines, each removed by one undo
+
+#### Scenario: Phone
+- **GIVEN** the pointer is coarse and the box has "Hi"
+- **WHEN** the user presses Enter
+- **THEN** nothing is sent and the box has "Hi" and a new line; the Send button sends it
+
+#### Scenario: IME
+- **GIVEN** the pointer is fine and an IME is composing
+- **WHEN** the user presses Enter
+- **THEN** nothing is sent
+
+### Requirement: CLI-86 The message box grows
+The message box SHALL grow with its text up to `--compose-max-height` (about six lines, at most 30% of the screen height, like Telegram) and then scroll. Its buttons SHALL keep their size at the bottom. After a send it SHALL be one row high again.
+
+#### Scenario: Long text
+- **WHEN** the user types 30 lines
+- **THEN** the box is about six lines high and scrolls, and Send stays its own size at the bottom
+
+#### Scenario: After send
+- **WHEN** the user sends 5 lines
+- **THEN** the box is one row high and empty
+
+### Requirement: CLI-87 Big editor
+Over 3 lines of text (wrapped lines count), a small expand button (two diagonal arrows) SHALL show in the box's corner. It SHALL open a modal with the same box: full screen on a coarse pointer or under 600px, otherwise large in the middle. It SHALL have Send and Close; Close and Esc SHALL keep the text, selection and undo. CLI-85 SHALL apply in it. Ctrl+B and Ctrl+I (Cmd on macOS) SHALL put `**` and `_` around the selection.
+
+#### Scenario: Button shows
+- **WHEN** the box has 3 lines, then 4
+- **THEN** the expand button is hidden, then shown
+
+#### Scenario: Same text
+- **GIVEN** the box has 4 lines
+- **WHEN** the user opens the editor, adds a line, and presses Esc
+- **THEN** the box has the 5 lines and the editor is closed
+
+#### Scenario: Send from the editor
+- **WHEN** the user presses Send in the editor
+- **THEN** the text is sent, the editor is closed, and the box is empty and one row high
+
+#### Scenario: Bold
+- **GIVEN** "hello world" with "world" selected in the editor
+- **WHEN** the user presses Ctrl+B
+- **THEN** the text is "hello **world**"
+
+### Requirement: CLI-88 A draft per chat
+Each chat SHALL keep its unsent text when the user opens another chat or reloads the page, kept only in this browser for this user. A send SHALL remove the draft; logout SHALL remove every draft. The box SHALL keep `dir="auto"`, the font and the theme.
+
+#### Scenario: Switch chats
+- **GIVEN** the user typed "half" in the chat with bot A
+- **WHEN** they open bot B, then bot A again
+- **THEN** bot B's box is empty and bot A's box has "half"
+
+#### Scenario: Logout
+- **GIVEN** drafts in two chats
+- **WHEN** the user logs out
+- **THEN** no draft is left in the browser
+
+### Requirement: CLI-89 Photos in the chat
+A photo, and a document of type `image/jpeg`, `image/png`, `image/gif` or `image/webp`, SHALL show as a picture in its message. A tap or click SHALL open a full-screen viewer with pinch zoom, double-tap zoom, pan while zoomed, Download and Close. Esc SHALL close it. Any other image type (for example SVG) SHALL stay a download.
+
+#### Scenario: Picture sent as a document
+- **WHEN** a bot sends `chart.png` with `sendDocument`
+- **THEN** the message shows the picture, not a link
+
+#### Scenario: SVG
+- **WHEN** a bot sends `logo.svg` of type `image/svg+xml`
+- **THEN** the message shows a download link
+
+#### Scenario: Open and close
+- **WHEN** the user taps the picture, then presses Esc
+- **THEN** the viewer opens with Download and Close, then closes and the focus is back on the message
+
+#### Scenario: Double tap
+- **WHEN** the user double-taps the open picture, then double-taps again
+- **THEN** it zooms in at that point, then back to its full size
+
+### Requirement: CLI-90 HTML files open in the app
+A document of type `text/html`, or of no clear type named `.html` or `.htm`, SHALL show as a card with its name, size and "Open". Open SHALL get a view link (REL-57) and show it full screen in the app in `<iframe sandbox="allow-scripts allow-popups">`, never `allow-same-origin`. The viewer SHALL have Close, Download and "Open in a new tab"; Esc SHALL close it. The frame SHALL get the focus on load.
+
+#### Scenario: Card
+- **WHEN** a bot sends `sprint-review.html` of 1.2 MB
+- **THEN** the message shows a card "sprint-review.html", "1.2 MB" and "Open"
+
+#### Scenario: Open on a computer
+- **GIVEN** the Fullscreen API works
+- **WHEN** the user presses Open
+- **THEN** the viewer is full screen with the frame focused, and the frame's `sandbox` is exactly `allow-scripts allow-popups`
+
+#### Scenario: Keys and swipes reach the page
+- **WHEN** the viewer has loaded the file
+- **THEN** the frame has the focus, and the page's own keys (← →) and swipes work in it
+
+#### Scenario: Open on an iPhone
+- **GIVEN** the Fullscreen API does not work
+- **WHEN** the user presses Open
+- **THEN** a fixed layer covers the screen inside the safe areas, and the chat under it does not scroll
+
+#### Scenario: Turn a page
+- **GIVEN** the sample report is open in the viewer, in WebKit as an iPhone and in Chromium
+- **WHEN** the user presses → and then swipes left
+- **THEN** the report shows its second and then its third page
+
+#### Scenario: Close
+- **WHEN** the user presses Close, or Esc, or leaves full screen
+- **THEN** the viewer and its frame are gone and the chat is as before
+
+#### Scenario: Viewer off
+- **GIVEN** no view host is set
+- **WHEN** a bot sends `page.html`
+- **THEN** the card shows Download and no Open

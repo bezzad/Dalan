@@ -249,11 +249,15 @@ Every Client API call (paths under `/api/bots`, `/api/events` and `/api/settings
 - **THEN** the response is 400 with error code `bad_request`
 
 ### Requirement: REL-17 Reply keyboard
-`POST /v1/messages` SHALL accept an optional `reply_keyboard`: a list of rows, each row a list of button texts. It SHALL be stored with the message and returned to the user in history and in the event stream. The limits are `Relay:MaxKeyboardButtons` (start 100) and `Relay:MaxButtonTextLength` (start 64); a keyboard over them SHALL get HTTP 400 with error code `bad_keyboard`.
+`POST /v1/messages` SHALL accept an optional `reply_keyboard` (rows of buttons: a text or `{"text", "style"}`) and flags `reply_keyboard_persistent`, `_resize`, `_one_time` (default false). It SHALL be stored and returned in history and the stream: `reply_keyboard` as rows of texts, plus `reply_keyboard_options` (flags and `styles`) when a flag or style is set. Rows keep order and size. Over `Relay:MaxKeyboardButtons` (100) or `Relay:MaxButtonTextLength` (64), or a bad style: 400 `bad_keyboard`.
 
 #### Scenario: Bot sends a keyboard
 - **WHEN** the bot posts a message with `"reply_keyboard":[["Yes","No"],["Cancel"]]`
-- **THEN** the response has the same keyboard and the user's history returns that message with the same keyboard
+- **THEN** the response has the same keyboard and the user's history returns that message with the same keyboard and no `reply_keyboard_options`
+
+#### Scenario: Rows, style and flags kept
+- **WHEN** the bot posts rows of 5, 4 and 3 buttons, the last one `{"text":"➕","style":"success"}`, with `reply_keyboard_resize` true
+- **THEN** the user's history has three rows of 5, 4 and 3 texts, and `reply_keyboard_options` has `resize` true, `persistent` false, `one_time` false and `success` at row 3, button 3, null elsewhere
 
 #### Scenario: Message without a keyboard
 - **WHEN** the bot posts a message without `reply_keyboard`
@@ -264,16 +268,16 @@ Every Client API call (paths under `/api/bots`, `/api/events` and `/api/settings
 - **THEN** the message in the user's history has `reply_keyboard` as an empty list
 
 #### Scenario: Keyboard over the limits
-- **WHEN** the bot posts a keyboard with too many buttons, an empty button text or a too long button text
+- **WHEN** the bot posts a keyboard with too many buttons, an empty button text, a too long button text, or the style `pink`
 - **THEN** the response is 400 `bad_keyboard` and nothing is stored
 
 ### Requirement: REL-18 Client settings
-`GET /api/settings` SHALL return the settings the client needs: `max_text_length`, `max_caption_length`, `max_file_size_mb`, `sync_page_size` (`Relay:MaxMessagesPerSync`), `reconnect_min_seconds` and `reconnect_max_seconds` (`Relay:ClientReconnect...`, start 1 and 30), and `status_refresh_seconds` (`Relay:ClientStatusRefreshSeconds`, start 30). Each comes from the `Relay` setting of the same name. The client SHALL NOT hard-code these values.
+`GET /api/settings` SHALL return what the client needs, each from the `Relay` setting of the same name: `max_text_length`, `max_caption_length`, `max_file_size_mb`, `sync_page_size` (`MaxMessagesPerSync`), `reconnect_min_seconds` and `reconnect_max_seconds` (`ClientReconnect...`, 1 and 30), `status_refresh_seconds` (`ClientStatusRefreshSeconds`, 30), `max_bot_icon_kb` and `press_wait_seconds` (`ClientPressWaitSeconds`, 15). The client SHALL NOT hard-code them.
 
 #### Scenario: Read the settings
-- **GIVEN** `Relay:MaxTextLength` is 10
+- **GIVEN** `Relay:MaxTextLength` is 10 and `Relay:ClientPressWaitSeconds` is 9
 - **WHEN** a logged-in user calls `GET /api/settings`
-- **THEN** the response has `max_text_length` 10, the caption and file limits, the page size, both reconnect values and `status_refresh_seconds`
+- **THEN** the response has `max_text_length` 10, `press_wait_seconds` 9, the caption and file limits, the page size, both reconnect values and `status_refresh_seconds`
 
 ### Requirement: REL-19 One contract for every bot door
 Relay SHALL offer what a bot may do as the contract `IBotGateway` in `Dalan.Relay.Contracts`: enter with a token (REL-04, SEC-01), get updates, send a message or a file, edit, delete, pin and unpin, answer a button press, set and get commands, and get a file. The core Bot API and every adapter plugin SHALL use this contract, so both doors share one queue and one set of rules.
@@ -289,14 +293,18 @@ Relay SHALL offer what a bot may do as the contract `IBotGateway` in `Dalan.Rela
 - **THEN** the user's history has both, with sequence numbers that follow each other
 
 ### Requirement: REL-20 Inline keyboard
-`POST /v1/messages` SHALL accept an optional `inline_keyboard`: rows of buttons, each with `text` and exactly one of `callback_data` (1 to `Relay:MaxCallbackDataBytes` UTF-8 bytes, start 64) or `url` (`http` or `https`, at most `Relay:MaxButtonUrlLength`, start 2048). Count and text follow REL-17. It SHALL be stored and returned in history and in the event stream. A keyboard that breaks a rule SHALL get 400 `bad_keyboard`, and nothing is stored.
+`POST /v1/messages` SHALL accept an optional `inline_keyboard`: rows of buttons with `text`, an optional `style` and one of `callback_data` (1 to `Relay:MaxCallbackDataBytes` bytes, 64), `url` (http or https, up to `Relay:MaxButtonUrlLength`, 2048) or `switch_query` (up to `Relay:MaxTextLength`; a tap puts `@username` and it in the input). Count and text follow REL-17. It SHALL be stored and returned with `style` in history and the stream. A broken one: 400 `bad_keyboard`, nothing stored.
 
 #### Scenario: Bot sends inline buttons
-- **WHEN** the bot posts a message with `"inline_keyboard":[[{"text":"Yes","callback_data":"y"},{"text":"Site","url":"https://dalanet.ir"}]]`
-- **THEN** the user's history has the message with the same buttons
+- **WHEN** the bot posts a message with `"inline_keyboard":[[{"text":"Yes","callback_data":"y","style":"danger"},{"text":"Site","url":"https://dalanet.ir"}]]`
+- **THEN** the user's history has the message with the same buttons, the first with `style` `danger`, the second with no `style`
+
+#### Scenario: Fill button
+- **WHEN** the bot posts a button `{"text":"Edit","switch_query":"todo 7 "}`
+- **THEN** the user's history has the button with `switch_query` "todo 7 "
 
 #### Scenario: Broken button
-- **WHEN** a button has both `callback_data` and `url`, neither, data over the limit, or a `url` that is not http or https
+- **WHEN** a button has two of `callback_data`, `url` and `switch_query`, none, data over the limit, a `url` that is not http or https, or an unknown style
 - **THEN** the response is 400 `bad_keyboard` and nothing is stored
 
 ### Requirement: REL-21 A user presses an inline button
@@ -328,12 +336,17 @@ Relay SHALL offer what a bot may do as the contract `IBotGateway` in `Dalan.Rela
 - **THEN** the response is 400 `callback_not_found`
 
 ### Requirement: REL-23 Edit a message
-`PATCH /v1/messages/{user id}/{message id}` with optional `text` and optional `inline_keyboard` SHALL change a bot message of that chat: the text when given, and the inline keyboard always (missing = removed). It gets the next version and `edited`, is returned like REL-08, and reaches the streams (LIVE-02). Errors: 404 `message_not_found` (none, or deleted), 400 `not_editable` (user message), `no_text` (file message), `not_modified` (nothing changed), and those of REL-09 and REL-20.
+`PATCH /v1/messages/{user id}/{message id}` with optional `text`, `entities` (REL-53) and `inline_keyboard` SHALL edit a bot message of that chat: the text (a file's caption) and entities when given, else kept; the keyboard always (missing = removed). It gets the next version and `edited`, is returned like REL-08 and reaches the streams (LIVE-02). Errors: 404 `message_not_found`, 400 `not_editable`, `not_modified`, and those of REL-09, REL-20, REL-53.
 
 #### Scenario: New text
 - **GIVEN** bot message 2 says "wait"
 - **WHEN** the bot edits it to "done"
 - **THEN** the history has message 2 with "done", a new `version` and `edited`
+
+#### Scenario: New caption
+- **GIVEN** bot message 2 is a photo with caption "cat"
+- **WHEN** the bot edits it with text "dog"
+- **THEN** message 2 still has the photo and its caption is "dog"
 
 #### Scenario: Buttons removed
 - **GIVEN** bot message 2 has inline buttons
@@ -341,7 +354,7 @@ Relay SHALL offer what a bot may do as the contract `IBotGateway` in `Dalan.Rela
 - **THEN** message 2 has no inline buttons
 
 #### Scenario: Not allowed
-- **WHEN** the bot edits a user's message, a message that does not exist, or with the same text and buttons
+- **WHEN** the bot edits a user's message, a message that does not exist, or with the same text, entities and buttons
 - **THEN** the response is 400 `not_editable`, 404 `message_not_found`, or 400 `not_modified`
 
 ### Requirement: REL-24 Delete a message
@@ -399,14 +412,22 @@ Relay SHALL offer what a bot may do as the contract `IBotGateway` in `Dalan.Rela
 - **THEN** the response is 413 `file_too_big` and nothing is stored
 
 ### Requirement: REL-28 A user sends a file
-`POST /api/bots/{bot id}/files` with the file as the body, its type as `Content-Type`, the header `X-File-Name` and optional `X-Caption` (both percent-encoded) SHALL send a user message that carries the file, like REL-15. Kind: `image/jpeg|png|gif|webp` photo, `audio/*` audio, `video/*` video, else document. The bot gets it with its `file` (REL-07). Limits: `Relay:MaxFileSizeMb` (413 `file_too_big`) and `Relay:UserUploadMbPerDay` (start 200) in 24 hours (429 `upload_limit`).
+`POST /api/bots/{bot id}/files` (body the file, `Content-Type`, `X-File-Name`, optional `X-Caption`, percent-encoded) SHALL send a user message with it, like REL-15. `X-Voice-Duration` (seconds) with `audio/*` is voice (bad: 400 `bad_request`); else `image/jpeg|png|gif|webp` photo, `audio/*` audio, `video/*` video, else document. The bot gets its `file` (REL-07). Limits: `Relay:MaxFileSizeMb` (413 `file_too_big`), `Relay:UserUploadMbPerDay` (200) a day (429 `upload_limit`).
 
 #### Scenario: Send a photo
 - **WHEN** the user uploads a PNG named "شکل.png"
 - **THEN** the bot's update has a message with a `file` of kind `photo` and name "شکل.png"
 
+#### Scenario: Send a voice
+- **WHEN** the user uploads `audio/ogg` named "voice.ogg" with `X-Voice-Duration: 7`
+- **THEN** the bot's update has a `file` of kind `voice`, type `audio/ogg` and duration 7, and the user's history shows the same
+
+#### Scenario: Audio without a duration
+- **WHEN** the user uploads `audio/mpeg` with no `X-Voice-Duration`
+- **THEN** the file is of kind `audio`
+
 #### Scenario: No name
-- **WHEN** the upload has no `X-File-Name`
+- **WHEN** the upload has no `X-File-Name`, or `X-Voice-Duration` is `abc` or `-1`
 - **THEN** the response is 400 `bad_request` and nothing is stored
 
 #### Scenario: Daily limit
@@ -629,12 +650,12 @@ A bot suspended by an admin SHALL get 403 `bot_suspended` on every core Bot API 
 - **THEN** the answer is 404 `bot_not_found` and no entry exists
 
 ### Requirement: REL-41 Showcase icon
-`PUT /api/builder/bots/{id}/showcase/icon` SHALL take the raw image as the body and store it on the entry, setting it to `pending`. It SHALL accept only PNG, JPEG or WebP, known by the first bytes of the body, of at most `Relay:MaxBotIconKb` (start 100) KB; else 400 `bad_icon`. A bot with no entry SHALL get 404 `showcase_not_found`. `GET` on the same address SHALL give the icon to the owner or an admin.
+The showcase SHALL show the bot's icon (REL-51); it has no icon of its own. `PUT /api/builder/bots/{id}/showcase/icon` SHALL stay as another address of the bot icon `PUT` (REL-51), with its checks, and SHALL NOT change the entry's state; `GET` there SHALL give the bot icon to the owner or an admin. Showcase answers SHALL say `icon` true when the bot has one.
 
 #### Scenario: PNG icon
 - **GIVEN** a bot with a showcase entry
-- **WHEN** the builder sends a PNG image
-- **THEN** the entry has an icon and is `pending`, and `GET` gives the same bytes as `image/png`
+- **WHEN** the builder sends a PNG image to the showcase icon address
+- **THEN** the bot has the icon, the entry keeps its state, and `GET` gives the same bytes as `image/png`
 
 #### Scenario: Not an image
 - **WHEN** the builder sends an SVG file or a text
@@ -644,6 +665,16 @@ A bot suspended by an admin SHALL get 403 `bot_suspended` on every core Bot API 
 - **GIVEN** `Relay:MaxBotIconKb` is 1
 - **WHEN** the builder sends a 2 KB PNG
 - **THEN** the answer is 400 `bad_icon`
+
+#### Scenario: Icon through the old address
+- **GIVEN** a listed entry
+- **WHEN** the builder sends a PNG to the showcase icon address
+- **THEN** the bot has that icon, the entry is still `listed`, and `GET /api/showcase/{id}/icon` gives the same bytes
+
+#### Scenario: Old icons kept
+- **GIVEN** a showcase entry with an icon before this change
+- **WHEN** the server starts with this change
+- **THEN** the bot has that icon
 
 ### Requirement: REL-42 Leave the showcase
 `DELETE /api/builder/bots/{id}/showcase` SHALL delete the entry at once, with no review. It is in the audit log (`showcase.leave`).
@@ -706,11 +737,11 @@ A sweeper SHALL delete, every `Relay:HistorySweepMinutes` (start 60), the messag
 - **THEN** the answer is 404 `bot_not_found`
 
 ### Requirement: REL-46 MCP door
-`/api/mcp` SHALL be a stateless Streamable HTTP MCP server (protocol 2026-07-28 and 2025-11-25) with the tools `list_bots`, `create_bot` (`username`, `name`), `rotate_token` (`bot_id`) and `bot_status` (`bot_id`). Each tool SHALL follow the rules and give the JSON of its REST call (REL-36, REL-37, REL-39, REL-45). A refused call SHALL be a tool error with the same message.
+`/api/mcp` SHALL be a stateless Streamable HTTP MCP server (protocol 2026-07-28 and 2025-11-25) with the tools `list_bots`, `create_bot` (`username`, `name`), `rotate_token` (`bot_id`), `bot_status` (`bot_id`) and `set_bot_icon` (`bot_id`, `image_base64`). Each tool SHALL follow the rules and give the JSON of its REST call (REL-36, REL-37, REL-39, REL-45, REL-51). A refused call SHALL be a tool error with the same message.
 
 #### Scenario: Tools
 - **WHEN** an MCP client with a builder's key lists the tools
-- **THEN** it gets `list_bots`, `create_bot`, `rotate_token` and `bot_status`
+- **THEN** it gets `list_bots`, `create_bot`, `rotate_token`, `bot_status` and `set_bot_icon`
 
 #### Scenario: Create and use
 - **WHEN** the client calls `create_bot` with `weather_bot` and `Weather`
@@ -720,6 +751,10 @@ A sweeper SHALL delete, every `Relay:HistorySweepMinutes` (start 60), the messag
 - **GIVEN** a bot named `weather_bot`
 - **WHEN** the client calls `create_bot` with `weather_bot` again
 - **THEN** the result is a tool error that says another bot has this username
+
+#### Scenario: Icon by MCP
+- **WHEN** the builder calls `set_bot_icon` with a PNG in base64
+- **THEN** the bot has that icon; a text that is not base64 or not an image gives a tool error
 
 ### Requirement: REL-47 Who may call the MCP door
 The MCP door SHALL take an access key or a session (AUTH-22), SHALL refuse a user who is not a builder with 403 `not_builder`, and SHALL write the access log (ADM-01) and count the per-user limit (SEC-03) on every call.
@@ -770,3 +805,126 @@ For each bot that had a chat with the gone user, the bot SHALL get one update wi
 #### Scenario: Send to the old chat
 - **WHEN** bot 5 sends a message to user 9 after the merge
 - **THEN** the answer is 400 `chat_moved` with `to_user_id` 4, and after `Relay:MovedChatDays` it is 403 `chat_not_active`
+
+### Requirement: REL-50 File length
+A voice, audio or video file SHALL keep a length in whole seconds when one is given: by the user's upload (REL-28) or by the bot (`duration` on `POST /v1/messages` with a file, TG-20). History, the event stream and the bot's update SHALL carry it as `duration`; a file with no length has no `duration` field.
+
+#### Scenario: Bot sends a voice with its length
+- **WHEN** the bot sends a voice file with `duration` 12
+- **THEN** the user's history has the file with `duration` 12
+
+#### Scenario: Document
+- **WHEN** a document is sent
+- **THEN** its `file` has no `duration`
+
+### Requirement: REL-51 Bot icon
+A bot SHALL have at most one icon. `PUT /api/builder/bots/{id}/icon` (raw body) SHALL set it: PNG, JPEG or WebP by the first bytes, at most `Relay:MaxBotIconKb` (start 100) KB, else 400 `bad_icon`; `DELETE` removes it. Only the owner or an admin (else 404 `bot_not_found`); audit `bot.icon`. `GET /api/bots/{id}/icon` SHALL need no session; a deleted or suspended bot gets 404 `not_found`. Bot JSON SHALL have `icon_version`: 0 with no icon, higher after each change.
+
+#### Scenario: Set and read
+- **WHEN** the owner sends a PNG icon
+- **THEN** the answer is 200, `GET /api/bots/{id}/icon` gives the same bytes as `image/png` with no session, and `icon_version` grew in the chat list of a user of that bot
+
+#### Scenario: Not an image
+- **WHEN** the owner sends an SVG, or a PNG over the limit
+- **THEN** the answer is 400 `bad_icon` and the old icon stays
+
+#### Scenario: Remove
+- **WHEN** the owner deletes the icon
+- **THEN** `GET /api/bots/{id}/icon` gives 404 and `icon_version` is 0
+
+#### Scenario: Another owner's bot
+- **WHEN** builder B sends an icon for builder A's bot
+- **THEN** the answer is 404 `bot_not_found` and nothing changes
+
+#### Scenario: Suspended bot
+- **GIVEN** the bot has an icon and is suspended
+- **WHEN** anyone asks for its icon
+- **THEN** the answer is 404 `not_found`
+
+### Requirement: REL-52 Reply to a message
+A message MAY reply to a message of its chat: the user sends `reply_to` (a message id) in the JSON of REL-15 or the header `X-Reply-To` with a file (REL-28); a bot sends `reply_to` in `POST /v1/messages`. A target that is missing or deleted SHALL get 404 `message_not_found`, and nothing is stored. The message SHALL keep a copy of the target as it is then (`reply_to`: `id`, `from`, `text`, `file`) in history, events, updates and answers.
+
+#### Scenario: User replies to the bot
+- **GIVEN** bot message 2 says "Which session?"
+- **WHEN** the user sends "the second" with `reply_to` 2
+- **THEN** the bot's update has the message with `reply_to` `{"id":2,"from":"bot","text":"Which session?"}`, and the user's history has the same
+
+#### Scenario: Bot replies to the user
+- **GIVEN** user message 3
+- **WHEN** the bot posts a message with `reply_to` 3
+- **THEN** the user's history has the bot message with `reply_to.id` 3 and `reply_to.from` "user"
+
+#### Scenario: The copy stays
+- **GIVEN** bot message 4 replies to user message 3 "hello"
+- **WHEN** the bot edits message 4
+- **THEN** message 4 still has `reply_to.text` "hello"
+
+#### Scenario: No such message
+- **WHEN** the user or the bot replies to a message that does not exist, is deleted, or is of another chat
+- **THEN** the response is 404 `message_not_found` and nothing is stored
+
+### Requirement: REL-53 Text formatting
+`POST /v1/messages` and REL-23 SHALL accept `entities` (Telegram's `{type, offset, length, url, language}`, in UTF-16 units) of types `bold`, `italic`, `underline`, `strikethrough`, `spoiler`, `code`, `pre`, `text_link`, `blockquote`, `expandable_blockquote`. Each SHALL lie inside the text; two SHALL be apart or nested; a `text_link` needs an http(s) `url`; at most `Relay:MaxTextEntities` (start 100). Else 400 `bad_entities`, nothing stored. They SHALL be kept and given out with the message.
+
+#### Scenario: Bold word
+- **WHEN** the bot posts "hi Ali" with `entities` `[{"type":"bold","offset":3,"length":3}]`
+- **THEN** the user's history has the message with that entity
+
+#### Scenario: Broken entities
+- **WHEN** an entity goes past the end of the text, has an unknown type, a `text_link` has no http(s) `url`, or two entities cross
+- **THEN** the response is 400 `bad_entities` and nothing is stored
+
+### Requirement: REL-54 Install one bot
+`GET /@{username}/manifest.webmanifest` SHALL need no session and give the bot's manifest: `id`, `start_url`, `scope` `/@username`, `name` and `short_name` its name, `display` "standalone"; icons only the bot's (REL-51), real size read when saved, purpose "any", when square and 192 or more, else Dalan's. `GET /@{username}/icon` SHALL give that icon, else Dalan's 192. Unknown, deleted or suspended: 404. The `/@{username}` page SHALL link these instead of the main ones.
+
+#### Scenario: Manifest of a bot
+- **GIVEN** bot "mofidbot" named "Mofid" with a 512 by 512 PNG icon
+- **WHEN** a browser asks for `/@mofidbot/manifest.webmanifest`
+- **THEN** it is JSON with `start_url` "/@mofidbot", `scope` "/@mofidbot", `name` "Mofid", and one icon: the bot's, `sizes` "512x512", `purpose` "any"; no Dalan icon
+
+#### Scenario: Real size
+- **GIVEN** the bot set a 640 by 640 JPEG with `setMyProfilePhoto`
+- **WHEN** a browser asks for its manifest
+- **THEN** the icon has `sizes` "640x640"
+
+#### Scenario: Icon not fit for an app
+- **GIVEN** the bot has no icon, or a 100 by 100 one, or a 600 by 400 one
+- **WHEN** a browser asks for its manifest and `/@mofidbot/icon`
+- **THEN** the manifest has Dalan's icons, and the icon address gives Dalan's 192 icon
+
+#### Scenario: The bot's page links it
+- **WHEN** a browser opens `/@mofidbot`
+- **THEN** the page links `/@mofidbot/manifest.webmanifest`, and its `rel="icon"` and `rel="apple-touch-icon"` links are `/@mofidbot/icon`
+
+#### Scenario: No such bot
+- **WHEN** a browser asks for the manifest or the icon of a bot that does not exist or is suspended
+- **THEN** the response is 404
+
+### Requirement: REL-57 View link for an HTML file
+`POST /api/bots/{bot id}/files/{file id}/view` SHALL answer `{"url", "expires_at"}` when the user may get the file (REL-29) and it is HTML. The url SHALL be `https://<view host>/v/<token>`; the view host is `Relay:FileViewHost`, else `view.<Sites:Domain>`. The token SHALL name only this user, bot and file and work for `Relay:FileViewMinutes` (start 10). Errors: 404 as REL-29, 400 `not_html`, 503 `viewer_off`. The settings (REL-18) SHALL say `file_view`. Each call SHALL be in the access log.
+
+#### Scenario: Link for a report
+- **GIVEN** a bot sent `report.html` to Sara and `Sites:Domain` is `dalans.ir`
+- **WHEN** Sara asks for its view link
+- **THEN** the url starts with `https://view.dalans.ir/v/`, `expires_at` is 10 minutes later, and her call is in the access log
+
+#### Scenario: Not HTML
+- **WHEN** Sara asks for the view link of a PDF
+- **THEN** the answer is 400 `not_html`
+
+#### Scenario: Not hers
+- **WHEN** Ali asks for the view link of Sara's file
+- **THEN** the answer is 404
+
+#### Scenario: Viewer off
+- **GIVEN** `Relay:FileViewHost` and `Sites:Domain` are empty
+- **WHEN** Sara asks for a view link
+- **THEN** the answer is 503 `viewer_off`
+
+#### Scenario: The client knows
+- **WHEN** the client loads its settings (REL-18)
+- **THEN** `file_view` is true when a view host is set (`Relay:FileViewHost` or `Sites:Domain`), and false when both are empty, so the card shows only Download
+
+#### Scenario: What is HTML
+- **WHEN** a file has type `text/html`, or no clear type (`application/octet-stream`, empty) and a name ending `.html` or `.htm`
+- **THEN** it gets a view link; any other file answers 400 `not_html`
