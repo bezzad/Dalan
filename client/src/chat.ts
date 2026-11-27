@@ -1,16 +1,16 @@
 // The chat with one bot: history, live messages, reply buttons (CLI-07), inline buttons (CLI-13),
 // the pinned bar (CLI-14), the command menu (CLI-15), files (CLI-16), the read position (CLI-18),
 // the bot's status (CLI-19), the "not delivered" mark (CLI-20), voice (CLI-46), paste and drop (CLI-47), replies (CLI-52),
-// presses in progress (CLI-53), formatted text (CLI-54) and the input.
-import { api, type Bot } from "./api.ts";
+// presses in progress (CLI-53), formatted text (CLI-54), command suggestions (CLI-74), the offline bar (CLI-91) and the input.
+import { api, type Bot, type Command } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
-import { chatHeader, matchingMessages, micButton } from "./chatHeader.ts";
+import { chatHeader, matchingMessages, micButton, offlineBar } from "./chatHeader.ts";
 import { h } from "./dom.ts";
 import { formatNodes, formatTree } from "./format.ts";
 import { botIconUrl } from "./icon.ts";
 import { toast } from "./toast.ts";
 import {
-  buttonAction, clock, commandMessage, fileView, fillText, firstFile, fitsSize, isReplySwipe, KeyboardState, PressState, quoteLine,
+  buttonAction, clock, commandMessage, fileView, fillText, firstFile, fitsSize, isReplySwipe, KeyboardState, PressState, quoteLine, suggest,
   ReadPosition, replyKeyboard, stamp,
   type ButtonStyle, type FileInfo, type InlineButton, type Message, type ReplyInfo,
 } from "./messages.ts";
@@ -34,7 +34,13 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
   const keyboard = h("div", { class: "keyboard" });
   const error = h("p", { class: "error", role: "alert" });
   const note = h("p", { class: "note", role: "status" });
+  const offline = offlineBar(username, t("botOffline"));
   const menu = h("div", { class: "keyboard commands", hidden: true });
+  // CLI-74: the commands that match what the user types after "/", above the input.
+  const suggestions = h("div", { class: "suggest", role: "listbox", dir: "ltr", hidden: true });
+  let allCommands: Command[] = [];
+  let shown: Command[] = [];
+  let mark = 0;
   const menuButton = h("button", { type: "button", hidden: true, "aria-label": t("commands"), title: t("commands") }, "☰");
   const picker = h("input", { type: "file", hidden: true });
   const attach = h("button", { type: "button", "aria-label": t("attach"), title: t("attach") }, "📎");
@@ -58,6 +64,8 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
   const presses = new PressState();
   let replyTarget: Message | null = null;
   let bot: Bot | null = null;
+  /** CLI-25: a suspended bot shows its own error, not the offline bar (CLI-91). */
+  let suspended = false;
   let waitingFile: File | null = null;
   /** True while the newest message is in view; then new messages and loaded pictures keep it in view. */
   let following = true;
@@ -276,12 +284,14 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
     if (id !== null) void api.read(bot!.id, id).catch(() => {});
   }
 
-  /** CLI-19: "online" or "last seen ...". A failed call leaves the line as it was. */
+  /** CLI-19: "online" or "last seen ..."; CLI-91: the offline bar. A failed call leaves both as they were. */
   async function refreshStatus(): Promise<void> {
     if (!bot) return;
     try {
-      const seen = app.language.seen(await api.status(bot.id), new Date());
+      const status = await api.status(bot.id);
+      const seen = app.language.seen(status, new Date());
       header.status.textContent = seen ? ` · ${seen}` : "";
+      offline.update(status, suspended);
     } catch {
       // The next round tries again.
     }
@@ -318,11 +328,24 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
     } finally {
       sendButton.disabled = attach.disabled = mic.disabled = false;
       drawSendButton();
+      drawSuggest();
     }
   }
 
   /** CLI-52: the id the next send replies to, if any. */
   const replyId = () => replyTarget?.id;
+  /** CLI-74: draws the list for the input now; it closes when nothing matches. */
+  function drawSuggest(keepMark = false): void {
+    shown = suggest(allCommands, input.value);
+    mark = keepMark ? Math.min(mark, shown.length - 1) : 0;
+    suggestions.hidden = shown.length === 0;
+    suggestions.replaceChildren(...shown.map((c, i) => h("button", {
+      type: "button", role: "option", class: i === mark ? "marked" : "", "aria-selected": String(i === mark),
+      onmousedown: (event: Event) => event.preventDefault(),
+      onclick: () => { input.value = ""; drawSuggest(); void send(commandMessage(c.command)); },
+    }, h("b", {}, `/${c.command}`), h("span", { dir: "auto" }, c.description))));
+    suggestions.children[mark]?.scrollIntoView?.({ block: "nearest" });
+  }
   const send = (text: string) => {
     const replyTo = replyId();
     return text.trim() === "" ? Promise.resolve() : run(() => api.send(bot!.id, text, replyTo));
@@ -415,6 +438,30 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
     submit();
   });
   input.addEventListener("keydown", event => {
+    if (!suggestions.hidden && !event.isComposing) {
+      const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
+      if (step) {
+        event.preventDefault();
+        mark = (mark + step + shown.length) % shown.length;
+        drawSuggest(true);
+        return;
+      }
+      if (event.key === "Escape") { event.preventDefault(); suggestions.hidden = true; return; }
+      if (event.key === "Tab" && !event.shiftKey) {
+        event.preventDefault();
+        input.value = `${commandMessage(shown[mark]!.command)} `;
+        drawSuggest();
+        return;
+      }
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        const chosen = shown[mark];
+        input.value = "";
+        drawSuggest();
+        void send(commandMessage(chosen!.command));
+        return;
+      }
+    }
     if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
       submit();
@@ -425,7 +472,7 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
       cancelReply();
     }
   });
-  input.addEventListener("input", drawSendButton);
+  input.addEventListener("input", () => { drawSendButton(); drawSuggest(); });
   // CLI-47: a pasted file goes to the card; pasted text stays text.
   input.addEventListener("paste", event => {
     const file = firstFile(event.clipboardData?.files ?? [], (f, name) => new File([f], name, { type: f.type }));
@@ -565,7 +612,8 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
       bot = found;
       header.showBot(bot.name, botIconUrl(bot.id, bot.icon_version));
       // CLI-25: say it at once, before the user writes.
-      if (found.suspended) error.textContent = t("botSuspended");
+      suspended = found.suspended;
+      if (suspended) error.textContent = t("botSuspended");
       void refreshStatus();
       await app.chats.open(bot.id);
       draw();
@@ -576,6 +624,7 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
         void send(commandMessage(c.command));
       } }, `/${c.command} · ${c.description}`)));
       menuButton.hidden = commands.length === 0;
+      allCommands = commands;
     } catch (failure) {
       error.textContent = t(errorText(failure));
     }
@@ -588,7 +637,9 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
     scroller,
     error,
     note,
+    offline.element,
     menu,
+    suggestions,
     pending,
     replyBar,
     start,
