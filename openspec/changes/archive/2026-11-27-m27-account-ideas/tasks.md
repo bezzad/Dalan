@@ -8,4 +8,4 @@ Ideas from ngrok's settings (owner, 2026-11-25). The owner first keeps or drops 
 - [x] 4. Address limits on keys: storage, check on every key call, access log, editor in "Access keys" (AUTH-38)
 - [x] 5. Calendar choice in Preferences; every date in the client uses it (CLI-79)
 - [x] 6. DESIGN section 18: the new settings; `docs/UI.md`
-- [ ] 7. CI green on GitHub, final review, merge, archive
+- [x] 7. CI green on GitHub, final review, merge, archive

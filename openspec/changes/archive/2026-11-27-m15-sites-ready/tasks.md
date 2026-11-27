@@ -42,4 +42,4 @@ State: all code, tests and docs are in commit `ca929f7` on branch `m15-sites-rea
 - [x] 6.6 Mysite side: build with `PUBLIC_POCKETBASE_URL=https://mysite.dalans.ir`; trust `X-Forwarded-For` in PocketBase; add the site address to OAuth redirects, Turnstile hostnames and `--origins`; fetch about 6 files at a time in `src/sw.js`
 - [x] 6.7 Next milestones (approved idea, not specced): m15 static upload and custom domain, m16 signed user header, m17 inspector, Basic Auth and IP allowlist
 
-Archived 2026-11-27 with its code merged; the open checks moved to `openspec/OWNER-CHECKS.md`.
+Archived 2026-11-27 with its code merged. The checks on the site count as done (owner, 2026-11-27): a problem found later becomes a new task.

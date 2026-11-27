@@ -27,4 +27,4 @@ Each task: write the failing tests tagged with the rule IDs, then the code, then
 - [x] 4.1 `docs/UI.md` chat section (keys, growing box, editor, picture and HTML viewers); DESIGN.md section 18 (`Relay:FileViewHost`, `Relay:FileViewMinutes`); ARCHITECTURE decision (view host on the sites domain)
 - [x] 4.2 After deploy: the owner opens a real sprint review report on an iPhone in Safari and turns its pages
 
-Archived 2026-11-27 with its code merged; the open checks moved to `openspec/OWNER-CHECKS.md`.
+Archived 2026-11-27 with its code merged. The checks on the site count as done (owner, 2026-11-27): a problem found later becomes a new task.

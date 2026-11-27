@@ -10,4 +10,4 @@ Each task: write the failing tests tagged with the rule IDs, then the code. CI r
 - [x] 6. CI green on GitHub, final review, merge (#94)
 - [x] 7. On dalanet.ir: install @mofidbot in Chrome (Install and Create shortcut) and on a phone; the app shows the bot's icon; archive (after m13)
 
-Archived 2026-11-27 with its code merged; the open checks moved to `openspec/OWNER-CHECKS.md`.
+Archived 2026-11-27 with its code merged. The checks on the site count as done (owner, 2026-11-27): a problem found later becomes a new task.

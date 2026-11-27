@@ -44,4 +44,4 @@ Each task: write the failing tests tagged with the rule IDs, then the code, then
 - [x] 7.3 Owner: approve the deploy (merge to main is live in about 2 minutes); check on @mofidbot with ArcaneBot beside Telegram Desktop: keyboard place and rows, ➕ green, voice todo through whisper, pasted screenshot, icon, `/bots` pages, Parsa's flow
 - [x] 7.4 Archive this change
 
-Archived 2026-11-27 with its code merged; the open checks moved to `openspec/OWNER-CHECKS.md`.
+Archived 2026-11-27 with its code merged. The checks on the site count as done (owner, 2026-11-27): a problem found later becomes a new task.

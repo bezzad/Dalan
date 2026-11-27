@@ -15,4 +15,4 @@
 - [x] 2.3 DNS records for mail (SPF, DKIM, DMARC) and reverse DNS; a login email reaches Gmail. Done 2026-11-22: SPF, DKIM and DMARC are published; a login email reaches the Gmail inbox without a PTR. Reverse DNS stays the provider default (`hosted-by.webdade.cloud`); set it to `dalanet.ir` only if a mail provider rejects us
 - [x] 2.4 Fix what the drill found, archive this change
 
-Archived 2026-11-27 with its code merged; the open checks moved to `openspec/OWNER-CHECKS.md`.
+Archived 2026-11-27 with its code merged. The checks on the site count as done (owner, 2026-11-27): a problem found later becomes a new task.

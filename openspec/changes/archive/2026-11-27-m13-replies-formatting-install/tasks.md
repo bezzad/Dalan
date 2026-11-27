@@ -37,4 +37,4 @@ Each task: write the failing tests tagged with the rule IDs, then the code, then
 - [x] 6.3 Owner: check on @mofidbot with ArcaneBot: reply to an AI answer, press skeleton, add-todo edit, install the bot, bold text
 - [x] 6.4 Archive this change (after m12)
 
-Archived 2026-11-27 with its code merged; the open checks moved to `openspec/OWNER-CHECKS.md`.
+Archived 2026-11-27 with its code merged. The checks on the site count as done (owner, 2026-11-27): a problem found later becomes a new task.

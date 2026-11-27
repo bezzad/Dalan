@@ -9,4 +9,4 @@ Each task: write the failing tests tagged with the rule IDs, then the code. CI r
 - [x] 5. CI green on GitHub, final review, merge (#92)
 - [x] 6. After the next deploy: `journalctl -u dalan` shows `Stopping` to `Stopped` within 5 s, and Caddy has no `connection refused` burst; archive
 
-Archived 2026-11-27 with its code merged; the open checks moved to `openspec/OWNER-CHECKS.md`.
+Archived 2026-11-27 with its code merged. The checks on the site count as done (owner, 2026-11-27): a problem found later becomes a new task.

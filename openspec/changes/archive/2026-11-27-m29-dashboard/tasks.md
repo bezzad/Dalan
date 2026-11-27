@@ -16,4 +16,4 @@ Needs m26 (frame and pieces) and m25. Each task: write the failing tests tagged 
 - [x] 8. CI green on GitHub, final review (and the security review fixes), merge (#102)
 - [x] 9. Owner: check as admin and as a common user, phone and desktop; then archive
 
-Archived 2026-11-27 with its code merged; the open checks moved to `openspec/OWNER-CHECKS.md`.
+Archived 2026-11-27 with its code merged. The checks on the site count as done (owner, 2026-11-27): a problem found later becomes a new task.

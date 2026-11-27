@@ -8,4 +8,4 @@ Each task: write the failing tests tagged with the rule IDs, then the code. CI r
 - [x] 4. CI green on GitHub, final review, merge (#89)
 - [x] 5. Check on a phone, light and dark; archive
 
-Archived 2026-11-27 with its code merged; the open checks moved to `openspec/OWNER-CHECKS.md`.
+Archived 2026-11-27 with its code merged. The checks on the site count as done (owner, 2026-11-27): a problem found later becomes a new task.

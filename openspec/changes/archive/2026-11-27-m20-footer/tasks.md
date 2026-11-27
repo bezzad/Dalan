@@ -12,4 +12,4 @@ Each task: write the failing tests tagged with the rule IDs, then the code. CI r
 - [x] 8. CI green on GitHub, final review, merge (#93; the version that counts up: #96)
 - [x] 9. After the server deploys it: the footer of dalanet.ir shows `v1.1.<n>` of the live release; archive
 
-Archived 2026-11-27 with its code merged; the open checks moved to `openspec/OWNER-CHECKS.md`.
+Archived 2026-11-27 with its code merged. The checks on the site count as done (owner, 2026-11-27): a problem found later becomes a new task.
