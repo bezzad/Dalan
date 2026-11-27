@@ -4,6 +4,7 @@
 import { coarsePointer, enterAction, insertText, markKey, pressOf } from "./compose.ts";
 import { h } from "./dom.ts";
 import type { TextKey } from "./i18n.ts";
+import { track } from "./overlays.ts";
 
 /** Opens the editor with `box`. `send` sends what is in it; the editor closes first, so the box is back in the chat. */
 export function openEditor(t: (key: TextKey) => string, box: HTMLTextAreaElement, send: () => void): void {
@@ -29,8 +30,11 @@ export function openEditor(t: (key: TextKey) => string, box: HTMLTextAreaElement
     else { dialog.close(); send(); }
   };
   box.addEventListener("keydown", keys, true);
+  // A new screen closes the editor first, so its Send never goes to a chat that is gone.
+  const untrack = track(() => dialog.close());
   // Esc closes the dialog by itself; every way out puts the box back where it was, with its text.
   dialog.addEventListener("close", () => {
+    untrack();
     box.removeEventListener("keydown", keys, true);
     home.insertBefore(box, next);
     box.style.height = "";

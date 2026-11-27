@@ -531,7 +531,8 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
     // CLI-88: kept after a short quiet, not at every key.
     window.clearTimeout(draftTimer);
     const botId = bot?.id;
-    if (botId !== undefined) draftTimer = window.setTimeout(() => drafts.save(botId, input.value), 300);
+    // Not after the chat is gone: a logout in those 300 ms has already removed every draft.
+    if (botId !== undefined) draftTimer = window.setTimeout(() => { if (element.isConnected) drafts.save(botId, input.value); }, 300);
   });
   expand.addEventListener("click", () => openEditor(t, input, submit));
   // CLI-47: a pasted file goes to the card; pasted text stays text.
@@ -677,7 +678,8 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
       if (suspended) error.textContent = t("botSuspended");
       void refreshStatus();
       // CLI-88: the text this chat had when the user left it.
-      input.value = drafts.load(bot.id);
+      // What the user typed while the chat was loading wins.
+      if (input.value === "") input.value = drafts.load(bot.id);
       await app.chats.open(bot.id);
       draw();
       resize();

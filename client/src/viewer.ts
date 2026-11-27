@@ -2,6 +2,7 @@
 // view host (REL-57, SEC-16), full screen where the Fullscreen API works and a fixed layer inside the safe areas elsewhere (iPhone).
 import { h } from "./dom.ts";
 import type { TextKey } from "./i18n.ts";
+import { track } from "./overlays.ts";
 import { icon } from "./public.ts";
 import { clampPan, doubleTap, pinch, type Point, type View } from "./zoom.ts";
 
@@ -25,6 +26,7 @@ function layer(className: string, label: string, onClose: () => void): { element
   const opener = document.activeElement as HTMLElement | null;
   const element = h("div", { class: `viewer ${className}`, role: "dialog", "aria-modal": "true", "aria-label": label });
   let open = true;
+  let untrack = () => {};
   const keys = (event: KeyboardEvent) => {
     if (event.key !== "Escape") return;
     event.preventDefault();
@@ -33,6 +35,7 @@ function layer(className: string, label: string, onClose: () => void): { element
   function close(): void {
     if (!open) return;
     open = false;
+    untrack();
     document.removeEventListener("keydown", keys, true);
     document.body.classList.remove("viewing");
     element.remove();
@@ -40,6 +43,7 @@ function layer(className: string, label: string, onClose: () => void): { element
     opener?.focus();
   }
   document.addEventListener("keydown", keys, true);
+  untrack = track(close);
   document.body.classList.add("viewing");
   document.body.append(element);
   return { element, close };

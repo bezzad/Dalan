@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Drafts, enterAction, expandShown, lineCount, marked } from "../src/compose.ts";
+import { closeOverlays, track } from "../src/overlays.ts";
 
 const key = (k: string, extra: Partial<Parameters<typeof enterAction>[0]> = {}) =>
   enterAction({ key: k, shift: false, ctrl: false, meta: false, composing: false, coarse: false, ...extra });
@@ -101,4 +102,21 @@ test("CLI-88 a broken storage (private window) never breaks the chat", () => {
   assert.equal(drafts.load(1), "");
   drafts.remove(1);
   Drafts.clearAll(broken);
+});
+
+test("CLI-88 every end of a session (logout or 401) goes through the login screen, which removes every draft", async () => {
+  const { readFileSync } = await import("node:fs");
+  const main = readFileSync(new URL("../src/main.ts", import.meta.url), "utf8");
+  assert.match(main, /function showLogin\([^)]*\): void \{\n\s*\/\/[^\n]*\n\s*Drafts\.clearAll\(localStorage\);/);
+  assert.match(main, /onLoggedOut: showLogin/);
+});
+
+test("CLI-87 a new screen closes the open editor and viewers, each once", async () => {
+  const closed: string[] = [];
+  const untrackA = track(() => { closed.push("editor"); untrackA(); });
+  track(() => closed.push("viewer"));
+  closeOverlays();
+  assert.deepEqual(closed, ["editor", "viewer"]);
+  const { readFileSync } = await import("node:fs");
+  assert.match(readFileSync(new URL("../src/main.ts", import.meta.url), "utf8"), /function show\(element: HTMLElement\): void \{\n[^\n]*\n\s*closeOverlays\(\);/);
 });
