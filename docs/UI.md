@@ -109,8 +109,9 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - **Row button**: plain by default; primary only while the value changed (so a page never shows five green buttons at once).
 - **Status badge** (`.badge.ok`, `.badge.off`): small round-cornered tag; ok is `--brand-soft` with `--brand` text and a check; off is `--line` with `--muted` text.
 - **Method card** (`.method.card`): a card per login way: icon, name and badge at the start; the action at the end; under them the details (the email address) as a small row on `--bg`.
-- **Radio card** (`.radio-card`): a card with a radio, a small picture and a name; the chosen one has a `--brand` border and `--brand-soft` background. Used for theme and language; a choice applies at once.
-- **Danger card** (`.card.danger`): a card with a `--danger` border tint, a title, the text, and a plain button with `--danger` text. Every button in it asks first.
+- **Radio card** (`.radio-card`): a card with a radio, a small picture and a name; the chosen one has a `--brand` border and `--brand-soft` background. Used for theme, language and calendar (its picture is today's date in that calendar); a choice applies at once.
+- **Danger card** (`.card.danger`): a card with a `--danger` border tint, a title, the text, and a plain button with `--danger` text. Every button in it asks first. Profile's "Delete my account" (AUTH-36) is one.
+- **Sessions list** (`ul.sessions`, AUTH-35): in Login and security; a row per session: browser · system, "This device" badge, the address and last use, End; "Log out other devices" in the card's row.
 - **Empty state** (`.empty`): centred 32px grey icon, a short bold line, one grey line that says how it fills.
 - **Grouped menu** (the user menu, and later menus): a head with the name and, in grey, the phone or email; items are 40px rows with an 18px icon; a 1px `--line` between groups; Log out last, alone. Groups: (My bots, Chats, My apps), (Settings, Admin for an admin), (Log out).
 - Icons are `glyph(name)` in `client/src/icon.ts`, inline SVG, 24 by 24 grid.

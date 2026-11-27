@@ -205,6 +205,19 @@ export interface AccessKey {
   name: string;
   created_at: string;
   expires_at: string;
+  /** AUTH-38: the addresses or ranges it may be used from; empty is any. */
+  addresses?: string[];
+}
+
+/** AUTH-35: a live session of the user. */
+export interface AccountSession {
+  id: string | number;
+  browser: string;
+  system: string;
+  address: string;
+  created_at: string;
+  last_used_at: string;
+  current: boolean;
 }
 
 export interface Command {
@@ -252,6 +265,14 @@ export const api = {
     call<null>("POST", "/api/account/password", { password, current_password: current }),
   setUsername: (username: string) => call<User>("POST", "/api/account/username", { username }),
   logout: () => call<null>("POST", "/api/logout"),
+  /** AUTH-35 */
+  sessions: async () => (await call<{ sessions: AccountSession[] }>("GET", "/api/account/sessions")).sessions,
+  endSession: (id: string | number) => call<null>("DELETE", `/api/account/sessions/${encodeURIComponent(String(id))}`),
+  endOtherSessions: () => call<null>("DELETE", "/api/account/sessions"),
+  /** AUTH-36: the code goes to the account's own phone, else its email (`channel`). */
+  deleteChallenge: () => call<{ challenge: string; difficulty: number; channel: "sms" | "email" }>("POST", "/api/account/delete/challenge"),
+  deleteCode: (challenge: string, nonce: string) => call<null>("POST", "/api/account/delete/code", { challenge, nonce }),
+  deleteAccount: (proof: { word: string; password?: string; code?: string }) => call<null>("POST", "/api/account/delete", proof),
   settings: () => call<Settings>("GET", "/api/settings"),
   bots: async () => (await call<{ bots: ListedBot[] }>("GET", "/api/bots")).bots,
   findBot: (username: string) =>
@@ -295,6 +316,8 @@ export const api = {
   accessKeys: async () => (await call<{ keys: AccessKey[] }>("GET", "/api/account/keys")).keys,
   makeKey: (name: string) => call<AccessKey & { key: string }>("POST", "/api/account/keys", { name }),
   deleteKey: (keyId: number) => call<null>("DELETE", `/api/account/keys/${keyId}`),
+  /** AUTH-38: an empty list lets the key work from any address. */
+  setKeyAddresses: (keyId: number, addresses: string[]) => call<unknown>("PUT", `/api/account/keys/${keyId}/addresses`, { addresses }),
   rotateToken: (botId: number) => call<NewToken>("POST", `/api/builder/bots/${botId}/token`),
   renameBot: (botId: number, name: string) => call<BuilderBot>("PATCH", `/api/builder/bots/${botId}`, { name }),
   deleteBot: (botId: number) => call<{ id: number; deleted: boolean }>("DELETE", `/api/builder/bots/${botId}`),

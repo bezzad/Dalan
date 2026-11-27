@@ -1,10 +1,11 @@
-// CLI-77: the Profile section: the username (AUTH-15), the mobile number of a level 1 user (CLI-34) and an email (CLI-70).
+// CLI-77: the Profile section: the username (AUTH-15), the mobile number of a level 1 user (CLI-34) an email (CLI-70) and Delete my account (AUTH-36).
 // A number or an email that clashes with another account goes to the merge question on Login and security.
 import { api } from "../api.ts";
 import type { App } from "../app.ts";
 import { latinDigits, phoneNumber } from "../digits.ts";
 import { h } from "../dom.ts";
 import { solve } from "../pow.ts";
+import { deleteCard } from "./account.ts";
 import { isMergeNeeded } from "./mergeCard.ts";
 import { sectionPath } from "./model.ts";
 import { badge, rowForm, settingRow } from "./row.ts";
@@ -101,7 +102,8 @@ export function profileSection(app: App): HTMLElement {
   }
 
   function draw(): void {
-    element.replaceChildren(username(), phone(), email());
+    // AUTH-36: an admin comes from the server's environment and cannot delete the account here.
+    element.replaceChildren(username(), phone(), email(), ...(app.user.admin ? [] : [deleteCard(app)]));
   }
   draw();
   return element;
