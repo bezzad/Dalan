@@ -52,7 +52,7 @@ With `DALAN_TEST_POSTGRES` (one shared server, no Docker) `ci.sh` runs the test 
 bash scripts/ci.sh               # everything, before each merge
 (cd client && npm ci && npm run build && npm test)  # client; the server build needs client/dist
 dotnet test                      # all .NET tests (needs Docker, or DALAN_TEST_POSTGRES)
-bash tests/deploy/deploy_test.sh # deploy script tests; also setup_test, backup_test, drill_test, pull_deploy_test
+bash tests/deploy/deploy_test.sh # deploy script tests; also setup_test, backup_test, drill_test, pull_deploy_test, wildcard_cert_test
 bash scripts/check-rules.sh      # every rule has a test
 openspec validate --all --strict # specs are well formed
 ```

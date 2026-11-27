@@ -1,0 +1,21 @@
+# OPS-18: get or renew the wildcard certificate of the users' sites. deploy/setup.sh installs it when ARVAN_API_KEY is given.
+[Unit]
+Description=Dalan: get or renew the wildcard certificate of the sites
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Sites__Domain; the ArvanCloud key (root only, 600; no other unit reads it).
+EnvironmentFile=/etc/dalan/domains.env
+EnvironmentFile=/etc/dalan/arvan.env
+# lego's account and certificates: /var/lib/dalan-cert, root only.
+StateDirectory=dalan-cert
+StateDirectoryMode=0700
+TimeoutStartSec=15min
+ExecStart=/opt/dalan/tools/wildcard-cert.sh
+NoNewPrivileges=true
+ProtectSystem=strict
+# The hook writes the copy Caddy reads and Caddy's site block.
+ReadWritePaths=/etc/caddy
+PrivateTmp=true

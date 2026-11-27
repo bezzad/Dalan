@@ -14,11 +14,8 @@
 	}
 }
 
-{$DALAN_SITE_DOMAIN}, {$DALAN_API_DOMAIN}, {$DALAN_TUNNEL_DOMAIN} {
-	# OPS-06: probes are for the server itself only.
-	@probes path /health /ready /api/sites/tls
-	respond @probes 404
-
+# Every block passes the request to Dalan the same way.
+(site) {
 	# SEC-10: the server gets the client's real address and port, never what the client wrote in the header.
 	# The server believes this header only from the proxies in Dalan:TrustedProxies.
 	# A load balancer in front of this proxy changes both places: docs/ARCHITECTURE.md section 11.
@@ -27,12 +24,21 @@
 	}
 }
 
+{$DALAN_SITE_DOMAIN}, {$DALAN_API_DOMAIN}, {$DALAN_TUNNEL_DOMAIN} {
+	# OPS-06: probes are for the server itself only.
+	@probes path /health /ready /api/sites/tls
+	respond @probes 404
+	import site
+}
+
 # OPS-15: every other HTTPS host is a user's site ("name.<sites domain>"). Its paths are the site's own, so none is blocked here.
 https:// {
 	tls {
 		on_demand
 	}
-	reverse_proxy {$DALAN_UPSTREAM:127.0.0.1:5000} {
-		header_up X-Forwarded-For {remote}
-	}
+	import site
 }
+
+# OPS-18: "*.<sites domain>" with the wildcard certificate. deploy/wildcard-cert.sh writes wildcard.caddy next to this
+# file after the first certificate. Before that no file matches, which Caddy accepts, and each site gets its own (OPS-15).
+import wildcard*.caddy

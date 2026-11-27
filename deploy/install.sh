@@ -18,6 +18,8 @@
 #   DALAN_CACHE     default ~/.cache/dalan-install: Caddy, Node and the .NET SDK stay here, so the next run downloads
 #                   only what changed (a new version)
 #   SITES_DOMAIN    the users' sites, for example dalancloud.ir (empty: sites are off); TUNNEL_DOMAIN default tunnel.<site domain> (OPS-15)
+#   ARVAN_API_KEY   the ArvanCloud API key, written like "Apikey <key>": one wildcard certificate for the sites (OPS-18);
+#                   also downloads lego (LEGO_VERSION, default 5.8.0) here and copies it. CERT_EMAIL: optional, the Let's Encrypt account email
 # Example: ADMIN_PHONES=09121234567 SMS=log deploy/install.sh root@203.0.113.10 dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
 set -euo pipefail
 
@@ -44,6 +46,15 @@ base="https://github.com/caddyserver/caddy/releases/download/v${version}"
 echo "Caddy $version"
 curl -fsSL -o "$cache/caddy_checksums.txt" "$base/caddy_${version}_checksums.txt"
 fetch "$base/$file" "$file" caddy_checksums.txt sha512sum
+# OPS-18: lego gets the wildcard certificate; only needed with the ArvanCloud key.
+if [ -n "${ARVAN_API_KEY:-}" ]; then
+  lego_version="${LEGO_VERSION:-5.8.0}"
+  lego_file="lego_v${lego_version}_linux_amd64.tar.gz"
+  lego_base="https://github.com/go-acme/lego/releases/download/v${lego_version}"
+  echo "lego $lego_version"
+  curl -fsSL -o "$cache/lego_checksums.txt" "$lego_base/lego_${lego_version}_checksums.txt"
+  fetch "$lego_base/$lego_file" "$lego_file" lego_checksums.txt sha256sum
+fi
 
 # The tool versions the server has (written by setup.sh). A tool with the same version is not sent again.
 # No answer (a first install, or the link stalled): everything is sent.
@@ -56,7 +67,9 @@ send() {
 
 mkdir "$work/dalan-setup"
 ! send caddy "$version" || tar -xzf "$cache/$file" -C "$work/dalan-setup" caddy
+[ -z "${lego_file:-}" ] || ! send lego "$lego_version" || tar -xzf "$cache/$lego_file" -C "$work/dalan-setup" lego
 cp "$here"/{setup.sh,backup.sh,drill.sh,Caddyfile,dalan.service,caddy.service,dalan-backup.service,dalan-backup.timer} "$work/dalan-setup/"
+cp "$here"/{wildcard-cert.sh,dalan-cert.service,dalan-cert.timer} "$work/dalan-setup/"
 if [ "${PULL_DEPLOY:-}" = 1 ]; then
   cp "$here"/{pull-deploy.sh,dalan-pull.service,dalan-pull.timer} "$work/dalan-setup/"
   sdk=$(sed -nE 's/.*"version": "([0-9]+\.[0-9]+)\..*/\1/p' "$here/../global.json")
@@ -76,7 +89,7 @@ if [ "${PULL_DEPLOY:-}" = 1 ]; then
 fi
 cp "$key" "$work/dalan-setup/deploy.pub"
 # A file, not the command line, so the key is not visible in the server's process list.
-(umask 077 && for name in ADMIN_PHONES SMS SMSIR_KEY ROTATE_SECRETS GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET SITES_DOMAIN TUNNEL_DOMAIN PULL_DEPLOY; do
+(umask 077 && for name in ADMIN_PHONES SMS SMSIR_KEY ROTATE_SECRETS GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET SITES_DOMAIN TUNNEL_DOMAIN PULL_DEPLOY ARVAN_API_KEY CERT_EMAIL; do
   [ -z "${!name:-}" ] || printf '%s=%q\n' "$name" "${!name}"
 done > "$work/dalan-setup/settings.env")
 
