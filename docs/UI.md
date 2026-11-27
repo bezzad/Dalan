@@ -7,6 +7,7 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - Colours only from the tokens in `client/public/app.css` (`--bg`, `--surface`, `--line`, `--text`, `--muted`, `--brand`, `--danger`). The dark tokens are set twice (media query and `[data-theme="dark"]`); keep both in sync.
 - Nothing from another host: fonts and icons are in the page (rule 7).
 - Font: Inter for Latin letters, Vazirmatn for Persian (both OFL, copied from npm by `client/build.mjs`).
+- Small text on public pages (CLI-76): section labels (`.label`) use `--text-label`, 14px (15px in Persian); diagram and tag text (`.frame-label`, `ul.guards`, `.branch .box`, `.tag`, `.soon`) uses `--text-small`, 13px (14px in Persian). Nothing on a public page is smaller; code blocks keep their own size.
 - Logo: the Dalan gate (`client/src/logo.ts`), an outer arch around a door. The favicon is the round version (`public/icons/icon.svg`); the app icons are square. The not-found page (CLI-40) shows the gate closed.
 
 ## Page frame
