@@ -247,10 +247,15 @@ export class PressState {
   }
 }
 
-/** CLI-55: the manifest a page links; a bot's chat links its own, so Install there installs that bot. */
-export function manifestFor(path: string): string {
+/**
+ * CLI-55: the manifest and the two icons a page links. A bot's chat links its own, so Install, "Create shortcut" and
+ * "Add to Home Screen" there make that bot's app with the bot's icon; every other screen links Dalan's again.
+ */
+export function appLinksFor(path: string): { manifest: string; icon: string; iconType: string | null; appleIcon: string } {
   const username = /^\/@([A-Za-z0-9_]+)$/.exec(path)?.[1];
-  return username ? `/@${username}/manifest.webmanifest` : "/manifest.webmanifest";
+  return username
+    ? { manifest: `/@${username}/manifest.webmanifest`, icon: `/@${username}/icon`, iconType: null, appleIcon: `/@${username}/icon` }
+    : { manifest: "/manifest.webmanifest", icon: "/icons/icon.svg", iconType: "image/svg+xml", appleIcon: "/icons/icon-192.png" };
 }
 
 /** CLI-89: the picture types shown in the page (SEC-12 sends these inline). Not SVG: it can hold script. */
