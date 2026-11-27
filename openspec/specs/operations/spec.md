@@ -2,7 +2,9 @@
 
 ## Purpose
 Defines how the running Dalan server reports its health, starts, stops, logs and reads settings, so it can run under systemd or any container platform.
+
 ## Requirements
+
 ### Requirement: OPS-01 Liveness endpoint
 The server SHALL answer `GET /health` with HTTP 200 and a JSON body with `status` set to `ok` and `version` set to the release version. It MUST NOT call the database or any other dependency.
 
@@ -27,12 +29,21 @@ The server SHALL answer `GET /ready` with HTTP 200 only while it accepts traffic
 - **THEN** `/ready` answers 503 and `/health` answers 200
 
 ### Requirement: OPS-03 Graceful shutdown
-On a stop signal the server SHALL stop taking new connections, let running requests finish, and exit within the configured shutdown timeout.
+On a stop signal the server SHALL stop taking new connections, let running requests finish, and exit within the configured shutdown timeout (`Dalan:ShutdownTimeoutSeconds`). Long-lived connections (the live stream, a bot long poll, a site tunnel, an agent long poll) and background workers SHALL end at once on the stop signal, so that a server with no other running request exits within `Dalan:StopGraceSeconds` (start 5). A site tunnel SHALL close with WebSocket status 1001.
 
 #### Scenario: Request in flight during stop
 - **GIVEN** a request is running
 - **WHEN** the server gets a stop signal
 - **THEN** the request completes and the server exits within the shutdown timeout
+
+#### Scenario: Long-lived connections do not hold the stop
+- **GIVEN** a user has an open live stream, a bot waits in a long poll, and an agent has an open site tunnel
+- **WHEN** the server gets a stop signal
+- **THEN** the stream ends, the long poll answers, the tunnel closes with status 1001, and the server exits within `Dalan:StopGraceSeconds`
+
+#### Scenario: Deploy gap
+- **WHEN** a deploy restarts the server while bots and users are connected
+- **THEN** the server refuses connections for at most `Dalan:StopGraceSeconds` plus its start time, not for `Dalan:ShutdownTimeoutSeconds`
 
 ### Requirement: OPS-04 Structured logs on stdout
 The server SHALL write logs to stdout as one JSON object per line, with time, level, category and message.
@@ -141,3 +152,103 @@ The front proxy SHALL serve the tunnel host (`DALAN_TUNNEL_DOMAIN`, default `tun
 - **WHEN** the owner runs `SITES_DOMAIN=dalancloud.ir deploy/install.sh ...`
 - **THEN** `domains.env` has `Sites__Domain=dalancloud.ir` and `Sites__DemoHost=dalancloud.ir`, and setup prints the DNS records `dalancloud.ir` and `*.dalancloud.ir`
 
+### Requirement: OPS-09 One-command server setup
+`deploy/setup.sh` SHALL prepare a fresh Ubuntu server for the first deploy: the `dalan` and `deploy` users, PostgreSQL with a `dalan` role and database, Caddy and the systemd units. The `deploy` user MAY only restart the `dalan` service with root rights. Running it again SHALL succeed. The server MUST NOT download anything from a foreign host for it.
+
+#### Scenario: Fresh server
+- **WHEN** `setup.sh` runs on a fresh server
+- **THEN** the `dalan`, `caddy` and backup units are installed and enabled, and Caddy gets the domains
+
+#### Scenario: Small server
+- **GIVEN** a server with less memory than `SWAP_MB` (start 2048) and no swap
+- **WHEN** `setup.sh` runs, and runs again
+- **THEN** a swap file of `SWAP_MB` is made once and kept after a reboot
+
+#### Scenario: New domains
+- **GIVEN** the server was set up for other domains
+- **WHEN** `setup.sh` runs with new domains
+- **THEN** Caddy and the server's links use the new domains, and `dalan.env` is unchanged
+
+#### Scenario: Deploy user rights
+- **WHEN** `setup.sh` is done
+- **THEN** the sudoers file lets `deploy` run only `systemctl restart dalan`
+
+### Requirement: OPS-10 Server secrets are made once
+`setup.sh` SHALL write `/etc/dalan/dalan.env` (mode 640) with a random database password, a signing key and a push key pair when the file does not exist. It MUST NOT change these secrets later, unless `install.sh` gets `ROTATE_SECRETS=1`. The settings given to `install.sh` SHALL replace their lines on each run. It MAY add the own-mail lines of OPS-13 at the end.
+
+#### Scenario: First run
+- **WHEN** `setup.sh` runs on a server without `/etc/dalan/dalan.env`
+- **THEN** the file exists with mode 640, a database connection, a signing key and a push key pair
+
+#### Scenario: Second run
+- **GIVEN** `/etc/dalan/dalan.env` exists and the owner added the SMS key to it
+- **WHEN** `setup.sh` runs again
+- **THEN** the file is unchanged and the script succeeds
+
+#### Scenario: Settings from install.sh
+- **GIVEN** `/etc/dalan/dalan.env` exists
+- **WHEN** `install.sh` runs with `ADMIN_PHONES` and `SMS=log`, and later with `SMS=smsir` and `SMSIR_KEY`
+- **THEN** each setting is in the file once, the log sender sends only to `ADMIN_PHONES`, the log sender numbers are removed for SMS.ir, the secrets are unchanged, and an unknown `SMS` value stops the script
+
+#### Scenario: Secrets made again
+- **GIVEN** the secrets were seen by someone else
+- **WHEN** `install.sh` runs with `ROTATE_SECRETS=1`
+- **THEN** the database password, signing key and push keys in `dalan.env` are new, the database role has the new password, and the other settings stay
+
+### Requirement: OPS-11 Daily database backup
+The server SHALL dump the database once a day to `/var/backups/dalan` and delete dumps older than `BACKUP_KEEP_DAYS` (start 14).
+
+#### Scenario: Old dumps
+- **GIVEN** dumps from 20 days ago and from yesterday
+- **WHEN** the backup runs with `BACKUP_KEEP_DAYS=14`
+- **THEN** today's dump exists, yesterday's is kept and the 20-day-old one is deleted
+
+#### Scenario: Dump fails
+- **WHEN** `pg_dump` fails
+- **THEN** the backup exits with an error, leaves no partial dump and deletes nothing
+
+### Requirement: OPS-12 Shutdown drill
+`deploy/drill.sh start` SHALL block every new outbound connection from the server except to loopback, private ranges and the ranges in `/etc/dalan/drill-allow.txt`, and SHALL NOT block inbound connections or replies. It SHALL end by itself after `DRILL_MINUTES` (start 60). `drill.sh stop` SHALL remove the block and list each blocked address once.
+
+#### Scenario: Drill on
+- **WHEN** the owner runs `drill.sh start` with an allow list
+- **THEN** outbound to the listed ranges and private ranges is allowed, other outbound is logged and dropped, replies pass, and a stop is scheduled after `DRILL_MINUTES`
+
+#### Scenario: Drill off
+- **GIVEN** the drill blocked calls to two foreign addresses
+- **WHEN** the owner runs `drill.sh stop`
+- **THEN** the block is removed and the two addresses are printed once each
+
+### Requirement: OPS-13 Own mail for login codes
+`setup.sh` SHALL install Postfix that sends only, listens only on loopback and signs mail with DKIM (OpenDKIM, selector `dalan`, key made once). When `dalan.env` has no `Notification__Smtp__Host` line, it SHALL add lines so Dalan sends from `no-reply@<site domain>` through it. It SHALL print the SPF, DKIM and DMARC records for the domain.
+
+#### Scenario: Mail on a new server
+- **WHEN** `setup.sh` runs
+- **THEN** Postfix listens only on loopback with the site domain as its name, OpenDKIM signs for the site domain, and `dalan.env` sends email by SMTP to `127.0.0.1:25` from `no-reply@<site domain>`
+
+#### Scenario: Server made before own mail
+- **GIVEN** a `dalan.env` without an SMTP host
+- **WHEN** `setup.sh` runs, and runs again
+- **THEN** the mail lines are added once and the old lines stay the same
+
+#### Scenario: Key made once
+- **GIVEN** the DKIM key exists
+- **WHEN** `setup.sh` runs again
+- **THEN** the key is not made again and the same DKIM record is printed
+
+### Requirement: OPS-17 A version that counts up
+`VERSION` at the root of the repository SHALL hold `<major>.<minor>` (start `1.1`; the owner raises it). A release of main (OPS-16) SHALL have `Dalan__Version=v<major>.<minor>.<n>` in `version.env`, `<n>` being the commits on main since `VERSION` changed, and `Dalan__Commit=<12 characters of the sha>`. `/health` (private, OPS-06) SHALL give both. The release folder SHALL keep the sha as its name.
+
+#### Scenario: A new VERSION
+- **GIVEN** the commit of main that set `VERSION` to `1.1`
+- **WHEN** the server builds and deploys it
+- **THEN** the version is `v1.1.0`, and the release folder is named by the sha
+
+#### Scenario: Every update counts up
+- **GIVEN** the server runs `v1.1.0`
+- **WHEN** the next commit of main is deployed
+- **THEN** the version is `v1.1.1`
+
+#### Scenario: Local run
+- **WHEN** Dalan runs with no `version.env`
+- **THEN** `/health` gives `version` `dev` and `commit` ""

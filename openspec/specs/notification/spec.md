@@ -6,7 +6,7 @@ How the server sends messages to people outside the app. For now: the login SMS,
 ## Requirements
 
 ### Requirement: NTF-01 SMS goes through one small contract
-Other services SHALL send an SMS only through `ISmsSender` of `Dalan.Notification.Contracts`. `Notification:SmsProvider` SHALL choose the sender: `smsir`, `log`, or empty (every send fails). The `log` sender writes the SMS to the log and sends nothing; outside Development it SHALL send only to `Notification:LogSmsPhones`, and with that list empty the server SHALL refuse to start. An unknown provider name SHALL also stop the start.
+Other services SHALL send an SMS only through `ISmsSender` (`Dalan.Notification.Contracts`). `Notification:SmsProvider` SHALL choose the sender: `smsir`, `log`, or empty, which fails every send. `log` writes the SMS to the log and sends nothing; outside Development it SHALL send only to `Notification:LogSmsPhones` (tests on a server before a provider is ready), and with that list empty the server SHALL refuse to start. An unknown provider SHALL also stop the start.
 
 #### Scenario: No provider
 - **GIVEN** `Notification:SmsProvider` is empty
@@ -28,7 +28,7 @@ Other services SHALL send an SMS only through `ISmsSender` of `Dalan.Notificatio
 - **THEN** it does not start, and the error says why
 
 #### Scenario: Unknown provider
-- **WHEN** the server starts with `Notification:SmsProvider` set to `pigeon` or `kavenegar`
+- **WHEN** the server starts with `Notification:SmsProvider` set to `pigeon`
 - **THEN** it does not start, and the error says why
 
 ### Requirement: NTF-02 SMS.ir sender

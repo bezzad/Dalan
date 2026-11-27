@@ -60,7 +60,7 @@ The Client API SHALL serve each user at most `Relay:UserRequestLimit` calls in e
 - **THEN** that call is served
 
 ### Requirement: SEC-04 The page loads only from its own origin
-Every response SHALL carry the headers `Content-Security-Policy: default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`, so the browser itself refuses to load anything from a foreign host.
+Every response SHALL carry the headers `Content-Security-Policy: default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`, so the browser itself refuses to load anything from a foreign host. While the file viewer is on (REL-57), the CSP SHALL also have `frame-src` with only the view host (SEC-16).
 
 #### Scenario: Open the site
 - **WHEN** a browser asks for `/`
@@ -69,6 +69,11 @@ Every response SHALL carry the headers `Content-Security-Policy: default-src 'se
 #### Scenario: API answer
 - **WHEN** a client calls an API endpoint
 - **THEN** the response has the three headers
+
+#### Scenario: Viewer on
+- **GIVEN** the view host is `view.dalans.ir`
+- **WHEN** a browser asks for `/`
+- **THEN** the CSP also has `frame-src https://view.dalans.ir` and no other frame source
 
 ### Requirement: SEC-05 Another site cannot act as the user
 A request that another site makes in the user's browser SHALL NOT change anything. The session cookie is `SameSite=Strict` (AUTH-03), and every Client API and Identity call that changes data SHALL accept only a JSON body (`Content-Type: application/json`). The one exception, the file upload (REL-28), SHALL need the header `X-File-Name`, which a form of another site cannot send.
@@ -256,3 +261,82 @@ Email codes SHALL follow SEC-07 with `Identity:EmailWaitSeconds` (start 60), `Id
 - **GIVEN** the daily email budget is 1 and 1 email was sent
 - **WHEN** a client asks a code for another address
 - **THEN** the response is 503 `email_unavailable`, and an SMS can still be sent
+
+### Requirement: SEC-14 The server is the gate for admin pages
+Hiding admin items in the client SHALL NOT be the only guard. Every `/api/admin` call SHALL be refused for a user who is not an admin, the same way for every admin call, and the try SHALL be in the access log. No answer to a common user SHALL hold admin-only data (other users' phones or emails, settings, logs).
+
+#### Scenario: Common user calls an admin API
+- **GIVEN** a logged-in user who is not an admin
+- **WHEN** the user calls `GET /api/admin/settings` and `GET /api/admin/overview`
+- **THEN** both are refused, and the access log has both calls
+
+#### Scenario: Admins only from the server
+- **WHEN** every API, the admin panel and the account merge are tried in the tests
+- **THEN** none can make a user an admin; only `Identity:AdminPhones` in the server's environment does, and the panel cannot read or change it
+
+#### Scenario: Nothing leaks in common answers
+- **WHEN** the answers of every non-admin API a common user can call are read in the tests
+- **THEN** none holds another user's phone or email, a setting value, or a log row
+
+### Requirement: SEC-15 Second factor for admins
+An admin (SEC-14: a phone in `Identity:AdminPhones`) SHALL have the second factor (AUTH-37) on. Every login of an admin, by password, SMS, email or GitHub, SHALL also need a TOTP code or an unused recovery code before a session is made. While an admin has no second factor yet, every `/api/admin` call SHALL be refused with 403 `admin_needs_2fa`, and the dashboard SHALL show only the page to set it up. An admin SHALL NOT be able to turn the second factor off.
+
+#### Scenario: Admin logs in by SMS
+- **GIVEN** an admin with the second factor on
+- **WHEN** the admin enters the right SMS code
+- **THEN** the answer asks for the TOTP code, and no session is made until a right code comes
+
+#### Scenario: No second factor yet
+- **GIVEN** an admin without the second factor
+- **WHEN** the admin opens `/dashboard/admin` or calls `GET /api/admin/settings`
+- **THEN** the page shows only the set-up of the second factor, and the call gets 403 `admin_needs_2fa`
+
+#### Scenario: Cannot turn it off
+- **WHEN** an admin asks to turn the second factor off
+- **THEN** the answer is 403 and it stays on
+
+#### Scenario: Admin powers outside /api/admin
+- **GIVEN** an admin without the second factor
+- **WHEN** the admin changes another user's bot or deletes another user's site
+- **THEN** it is refused as for a common user; with the second factor on, it works
+
+#### Scenario: Turning it on ends the other sessions
+- **GIVEN** an admin session made on another device before the second factor
+- **WHEN** the admin turns the second factor on
+- **THEN** that other session ends; only this one stays
+
+### Requirement: SEC-16 The view host cannot touch the app
+The view host (REL-57) SHALL answer only `GET /v/{token}`; every other path SHALL be 404. A valid, unexpired token whose user may still get the file (REL-29) SHALL give its bytes with the headers below. It SHALL never read or set a cookie. A bad or expired token, or a file the user may no longer get, SHALL answer 404. Each answer SHALL be in the access log with the token's user. The app CSP SHALL allow only the view host in `frame-src`; SITE-17 SHALL say yes for it; `view` SHALL be reserved.
+
+#### Scenario: Headers
+- **GIVEN** a fresh view link for `report.html`
+- **WHEN** it is opened
+- **THEN** the body is the file, the CSP has `sandbox allow-scripts allow-popups` without `allow-same-origin`, `connect-src 'none'` and `frame-ancestors` with only the app origin, and the answer has no `Set-Cookie`
+- **AND** the headers are exactly `Content-Type: text/html; charset=utf-8`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cache-Control: private, no-store` and `Content-Security-Policy: sandbox allow-scripts allow-popups; default-src 'none'; script-src 'unsafe-inline' data: blob:; style-src 'unsafe-inline' data: blob:; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors <app origin>`
+
+#### Scenario: Reserved name
+- **WHEN** a builder claims the site name `view`
+- **THEN** it is refused, because `view` is in the default `Sites:ReservedNames`
+
+#### Scenario: Expired
+- **GIVEN** a view link made 11 minutes ago
+- **WHEN** it is opened
+- **THEN** the answer is 404
+
+#### Scenario: Message deleted
+- **GIVEN** a view link, then the bot deletes the message that carried the file
+- **WHEN** the link is opened
+- **THEN** the answer is 404
+
+#### Scenario: Other paths
+- **WHEN** `https://view.dalans.ir/api/me` is opened
+- **THEN** the answer is 404
+
+#### Scenario: Nothing reaches the app
+- **GIVEN** the sample report is open in the viewer, in WebKit and in Chromium
+- **WHEN** its script reads `document.cookie`, `localStorage`, `parent.document`, and calls `fetch("https://dalanet.ir/api/me")`
+- **THEN** each one throws, is empty or is blocked
+
+#### Scenario: App CSP and certificate
+- **WHEN** the app page is loaded and the front proxy asks for a certificate for `view.dalans.ir`
+- **THEN** the app CSP has `frame-src https://view.dalans.ir`, and the ask answers 200
