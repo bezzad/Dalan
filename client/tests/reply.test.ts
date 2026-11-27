@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { formatNodes, formatTree, type Part } from "../src/format.ts";
-import { buttonAction, fillText, appLinksFor, loadsAnew, isReplySwipe, PressState, quoteLine, type Message } from "../src/messages.ts";
+import { buttonAction, fillText, appLinksFor, loadsAnew, longPressKept, longPressMs, isReplySwipe, PressState, quoteLine, type Message } from "../src/messages.ts";
 
 const m = (id: number, version = id): Message => ({ id, version, from: "bot", text: `text ${id}`, date: "2026-11-24T12:00:00Z" });
 
@@ -98,6 +98,20 @@ test("CLI-55: navigate and the back button use it; the chat's title is the bot's
   assert.match(main, /if \(loadsAnew\(shownPath, location\.pathname, standalone\(\)\)\) return location\.reload\(\);/);
   assert.match(main, /matchMedia\("\(display-mode: standalone\)"\)\.matches/);
   assert.match(readFileSync(new URL("../src/chat.ts", import.meta.url), "utf8"), /document\.title = bot\.name;/);
+});
+
+test("CLI-52: on a touch screen a long press of half a second with no move opens the message menu", async () => {
+  assert.equal(longPressMs, 500);
+  assert.equal(longPressKept(4, -6), true);
+  assert.equal(longPressKept(11, 0), false, "a scroll is not a long press");
+  assert.equal(longPressKept(0, -11), false);
+  const { readFileSync } = await import("node:fs");
+  const chat = readFileSync(new URL("../src/chat.ts", import.meta.url), "utf8");
+  assert.match(chat, /setTimeout\(\(\) => \{[^}]*openMenu\(message, first\.clientX, first\.clientY\)/);
+  assert.match(chat, /if \(!longPressKept\(/);
+  // No system text menu or picture callout over Dalan's own menu.
+  const css = readFileSync(new URL("../public/app.css", import.meta.url), "utf8");
+  assert.match(css, /@media \(pointer: coarse\) \{[^}]*\.messages li \{[^}]*-webkit-touch-callout: none;[^}]*user-select: none;/);
 });
 
 /** The tree as short text: [type: parts]. */

@@ -1,4 +1,4 @@
-// Rules: CLI-71, CLI-48, CLI-13, CLI-07, CLI-58, CLI-76
+// Rules: CLI-71, CLI-48, CLI-13, CLI-07, CLI-58, CLI-76, CLI-94
 // Reads the style sheet: message sizes like Telegram Desktop, and button colours readable in both themes.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -94,4 +94,21 @@ test("CLI-76 section labels and small text on public pages are readable, with to
   const small = [...publicCss.matchAll(/^([^{\n]+)\{[^}]*?font(?:-size)?:[^;}]*?\b(\d+(?:\.\d+)?)px/gm)]
     .filter(m => Number(m[2]) < 13 && !/button\.copy|\.code|pre|code/.test(m[1]!));
   assert.deepEqual(small.map(m => m[1]!.trim()), []);
+});
+
+test("CLI-94 the accent line of a big title is a five-colour gradient that moves slowly; still with reduced motion", () => {
+  for (const selector of [":root", ":root[data-theme=\"dark\"]"]) {
+    const rainbow = tokens(selector).get("--rainbow") ?? "";
+    assert.equal(rainbow.split(",").length, 5, `${selector} --rainbow: ${rainbow}`);
+  }
+  const accent = /\.accent \{([^}]*)\}/.exec(css)?.[1] ?? "";
+  assert.match(accent, /background-clip: text;/);
+  assert.match(accent, /color: transparent;/);
+  assert.match(accent, /animation: title-colors \d+s linear infinite;/);
+  assert.match(css, /@keyframes title-colors \{/);
+  assert.match(css, /:lang\(fa\) \.accent \{[^}]*270deg/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[^}]*\.accent \{ animation: none; \}/);
+  // The hero and the closing title use it.
+  const pub = readFileSync(new URL("../src/public.ts", import.meta.url), "utf8");
+  assert.equal(pub.match(/h\("span", \{ class: "accent" \}/g)?.length, 2);
 });

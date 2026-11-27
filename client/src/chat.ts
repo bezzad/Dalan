@@ -16,8 +16,7 @@ import { toast } from "./toast.ts";
 import {
   buttonAction, clock, commandMessage, fileView, fillText, firstFile, fitsSize, isReplySwipe, KeyboardState, PressState, quoteLine, suggest,
   ReadPosition, replyKeyboard, stamp,
-  type ButtonStyle, type FileInfo, type InlineButton, type Message, type ReplyInfo,
-} from "./messages.ts";
+  longPressKept, longPressMs, type ButtonStyle, type FileInfo, type InlineButton, type Message, type ReplyInfo } from "./messages.ts";
 import { recorderType, voiceFile } from "./ogg.ts";
 import { icon } from "./public.ts";
 import { openHtml, openPicture } from "./viewer.ts";
@@ -197,11 +196,24 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
       startReply(message);
     });
     let touch: { x: number; y: number } | null = null;
+    // CLI-52: a long press opens the menu (Reply, Copy); a move first makes it a scroll or a swipe.
+    let pressTimer = 0;
+    const endPress = () => { window.clearTimeout(pressTimer); pressTimer = 0; };
     item.addEventListener("touchstart", event => {
       const first = event.touches[0];
       touch = event.touches.length === 1 && first ? { x: first.clientX, y: first.clientY } : null;
+      endPress();
+      if (!touch || !first || (event.target as Element).closest("a, button, input, audio, video")) return;
+      pressTimer = window.setTimeout(() => { pressTimer = 0; touch = null; openMenu(message, first.clientX, first.clientY); }, longPressMs);
     }, { passive: true });
+    item.addEventListener("touchmove", event => {
+      const now = event.touches[0];
+      if (!touch || !now || !pressTimer) return;
+      if (!longPressKept(now.clientX - touch.x, now.clientY - touch.y)) endPress();
+    }, { passive: true });
+    item.addEventListener("touchcancel", endPress);
     item.addEventListener("touchend", event => {
+      endPress();
       const last = event.changedTouches[0];
       if (touch && last && isReplySwipe(last.clientX - touch.x, last.clientY - touch.y)) startReply(message);
       touch = null;

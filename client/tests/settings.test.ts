@@ -162,12 +162,12 @@ test("CLI-77 the design system describes the settings area and its pieces", () =
     assert.ok(css.includes(rule), rule);
 });
 
-test("CLI-78 the user menu for an admin: three groups, an icon per item; Dashboard opens the admin overview", () => {
+test("CLI-78 the user menu for an admin: three groups, an icon per item; Dashboard opens /dashboard", () => {
   const groups = userMenuGroups({ admin: true });
   assert.deepEqual(groups.map(group => group.map(item => item.id)), [["myBots", "chats", "myApps"], ["dashboard"], ["logout"]]);
   for (const item of groups.flat()) assert.ok(item.glyph in glyphs, item.id);
   // CLI-81: each item opens its place in the dashboard.
-  assert.deepEqual(groups.flat().map(item => item.path), ["/dashboard/bots", "/dashboard/chats", "/dashboard/apps", "/dashboard/admin", null]);
+  assert.deepEqual(groups.flat().map(item => item.path), ["/dashboard/bots", "/dashboard/chats", "/dashboard/apps", "/dashboard", null]);
 });
 
 test("CLI-78 a user who is not an admin has only Dashboard in the second group, opening /dashboard", () => {

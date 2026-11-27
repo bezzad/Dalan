@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: CLI-52 Reply in the chat
-The user SHALL start a reply by a message's menu (right-click, or on a touch screen a long press of `Client:LongPressMs`, start 500, with no move) → Reply or Copy, a double-click, or a swipe to the left; a long press SHALL NOT open the system's text menu. A bar above the input SHALL show the quote, with ✕ and Esc to cancel; the next message or file SHALL carry `reply_to` (REL-52). A replying message SHALL show the quote on top; a click on it SHALL go to that message like CLI-14.
+The user SHALL start a reply by a message's menu (right-click, or on a touch screen a long press of half a second with no move) → Reply or Copy, a double-click, or a swipe to the left; a long press SHALL NOT open the system's text menu. A bar above the input SHALL show the quote, with ✕ and Esc to cancel; the next message or file SHALL carry `reply_to` (REL-52). A replying message SHALL show the quote on top; a click on it SHALL go to that message like CLI-14.
 
 #### Scenario: Reply to an answer
 - **GIVEN** a bot answer in the chat
@@ -10,7 +10,7 @@ The user SHALL start a reply by a message's menu (right-click, or on a touch scr
 
 #### Scenario: Long press on a phone
 - **GIVEN** a touch screen
-- **WHEN** the user holds a finger on a bot message for the long-press time without moving
+- **WHEN** the user holds a finger on a bot message for half a second without moving
 - **THEN** the menu with Reply and Copy opens there, and Copy puts the message text on the clipboard
 
 #### Scenario: A scroll is not a long press
