@@ -31,6 +31,10 @@ internal static class AdminApp
         return (bot.Id, token);
     }
 
+    /// <summary>A person starts the bot's chat (the membership row counts as one of the bot's users, ADM-12).</summary>
+    public static async Task SayAsync(this HttpClient browser, long botId, string text) =>
+        (await browser.PostAsJsonAsync($"/api/bots/{botId}/messages", new { text }, Cancel)).EnsureSuccessStatusCode();
+
     public static async Task<JsonElement> JsonAsync(this HttpResponseMessage response)
     {
         Assert.True(response.IsSuccessStatusCode, $"{(int)response.StatusCode} {await response.Content.ReadAsStringAsync(Cancel)}");

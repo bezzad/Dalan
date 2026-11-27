@@ -30,9 +30,29 @@ internal sealed record AuditRowJson(long Id, long UserId, string Action, string 
 
 internal sealed record RowsResponse<T>(IEnumerable<T> Rows);
 
-internal sealed record UsersResponse(IEnumerable<AdminUser> Users);
+/// <summary>ADM-11: a user as Identity gives it, with the count of bots from Relay.</summary>
+internal sealed record UserJson(
+    long Id,
+    string? Phone,
+    string? Email,
+    string Name,
+    string? Username,
+    DateTimeOffset CreatedAt,
+    BuilderState Builder,
+    DateTimeOffset? BuilderRequestedAt,
+    bool Suspended,
+    int Bots,
+    DateTimeOffset? LastActiveAt);
+
+internal sealed record UsersResponse(IEnumerable<UserJson> Users);
 
 internal sealed record BotsResponse(IEnumerable<AdminBot> Bots);
+
+/// <summary>ADM-20.</summary>
+internal sealed record UserDetailResponse(UserJson User, IEnumerable<AdminBot> Bots);
+
+/// <summary>ADM-20. The owner is null only when the user row is gone.</summary>
+internal sealed record BotDetailResponse(AdminBot Bot, UserJson? Owner);
 
 /// <summary>ADM-19, CLI-82: the counts of the admin overview.</summary>
 internal sealed record OverviewJson(
@@ -60,9 +80,11 @@ internal static class AdminEndpoints
         admin.MapGet("/audit", AuditAsync);
         admin.MapGet("/access-log", AccessLogAsync);
         admin.MapGet("/users", UsersAsync);
+        admin.MapGet("/users/{userId:long}", UserAsync);
         admin.MapPost("/users/{userId:long}/builder", SetBuilderAsync);
         admin.MapPost("/users/{userId:long}/suspend", SuspendUserAsync);
         admin.MapGet("/bots", BotsAsync);
+        admin.MapGet("/bots/{botId:long}", BotAsync);
         admin.MapPost("/bots/{botId:long}/suspend", SuspendBotAsync);
         admin.MapGet("/showcase", ShowcaseAsync);
         admin.MapPost("/showcase/{botId:long}", ReviewShowcaseAsync);
@@ -171,18 +193,45 @@ internal static class AdminEndpoints
 #pragma warning restore CA1308
     }
 
-    /// <summary>ADM-11.</summary>
-    private static async Task<IResult> UsersAsync(HttpContext http, IUserAdmin users, IOptionsMonitor<AdminOptions> options)
+    /// <summary>ADM-11: newest first, "before" gives the next page; "builder=requested" lists open requests, oldest first.</summary>
+    private static async Task<IResult> UsersAsync(
+        HttpContext http, IUserAdmin users, IBotAdmin bots, IOptionsMonitor<AdminOptions> options)
     {
         var limit = options.CurrentValue.PageSize;
         var query = http.Request.Query;
+        var cancel = http.RequestAborted;
         if (query["builder"] == "requested")
-            return AdminJson.Ok(new UsersResponse(await users.BuilderRequestsAsync(limit, http.RequestAborted)));
+            return AdminJson.Ok(new UsersResponse(await WithBotsAsync(await users.BuilderRequestsAsync(limit, cancel), bots, cancel)));
+        if (!TryNumber(query["before"], out var before)) return AdminJson.BadRequest("\"before\" must be a user id.");
 
-        return AdminJson.Ok(new UsersResponse(await users.SearchAsync(query["q"].ToString(), limit, http.RequestAborted)));
+        var page = await users.SearchAsync(query["q"].ToString(), before, limit, cancel);
+        return AdminJson.Ok(new UsersResponse(await WithBotsAsync(page, bots, cancel)));
     }
 
-    private static async Task<IResult> SetBuilderAsync(long userId, HttpContext http, IUserAdmin users, IAuditLog audit)
+    /// <summary>ADM-20: the user and every bot they own.</summary>
+    private static async Task<IResult> UserAsync(long userId, HttpContext http, IUserAdmin users, IBotAdmin bots)
+    {
+        var cancel = http.RequestAborted;
+        if (await users.FindAsync(userId, cancel) is not { } user) return UserNotFound();
+        var owned = await bots.OwnedByAsync(userId, cancel);
+        return AdminJson.Ok(new UserDetailResponse(ToJson(user, owned.Count), owned));
+    }
+
+    /// <summary>ADM-11: Identity knows the users, Relay counts their bots; they meet here.</summary>
+    private static async Task<IEnumerable<UserJson>> WithBotsAsync(
+        IReadOnlyList<AdminUser> users, IBotAdmin bots, CancellationToken cancellationToken)
+    {
+        var counts = await bots.CountByOwnerAsync([.. users.Select(u => u.Id)], cancellationToken);
+        return users.Select(u => ToJson(u, counts.GetValueOrDefault(u.Id)));
+    }
+
+    private static async Task<UserJson> WithBotsAsync(AdminUser user, IBotAdmin bots, CancellationToken cancellationToken) =>
+        (await WithBotsAsync([user], bots, cancellationToken)).Single();
+
+    private static UserJson ToJson(AdminUser u, int bots) => new(
+        u.Id, u.Phone, u.Email, u.Name, u.Username, u.CreatedAt, u.Builder, u.BuilderRequestedAt, u.Suspended, bots, u.LastActiveAt);
+
+    private static async Task<IResult> SetBuilderAsync(long userId, HttpContext http, IUserAdmin users, IBotAdmin bots, IAuditLog audit)
     {
         if (await AdminJson.ReadAsync<BuilderRequest>(http) is not { Approve: { } approve })
             return AdminJson.BadRequest("""Send JSON like {"approve": true}.""");
@@ -190,7 +239,7 @@ internal static class AdminEndpoints
         if (await users.SetBuilderAsync(userId, approve, http.RequestAborted) is not { } user) return UserNotFound();
         await audit.RecordAsync(AdminFilter.UserId(http), approve ? "builder.approve" : "builder.refuse", UserTarget(userId), null,
             http.RequestAborted);
-        return AdminJson.Ok(user);
+        return AdminJson.Ok(await WithBotsAsync(user, bots, http.RequestAborted));
     }
 
     /// <summary>AUTH-20: Identity ends the sessions, Relay ends the live streams.</summary>
@@ -205,21 +254,33 @@ internal static class AdminEndpoints
         if (await users.SetSuspendedAsync(userId, suspended, http.RequestAborted) is not { } user) return UserNotFound();
         if (suspended) bots.EndUserStreams(userId);
         await audit.RecordAsync(adminId, suspended ? "user.suspend" : "user.unsuspend", UserTarget(userId), null, http.RequestAborted);
-        return AdminJson.Ok(user);
+        return AdminJson.Ok(await WithBotsAsync(user, bots, http.RequestAborted));
     }
 
-    /// <summary>ADM-12.</summary>
-    private static async Task<IResult> BotsAsync(HttpContext http, IBotAdmin bots, IOptionsMonitor<AdminOptions> options) =>
-        AdminJson.Ok(new BotsResponse(
-            await bots.SearchAsync(http.Request.Query["q"].ToString(), options.CurrentValue.PageSize, http.RequestAborted)));
+    /// <summary>ADM-12: newest first, "before" gives the next page.</summary>
+    private static async Task<IResult> BotsAsync(HttpContext http, IBotAdmin bots, IOptionsMonitor<AdminOptions> options)
+    {
+        var query = http.Request.Query;
+        if (!TryNumber(query["before"], out var before)) return AdminJson.BadRequest("\"before\" must be a bot id.");
+        return AdminJson.Ok(new BotsResponse(
+            await bots.SearchAsync(query["q"].ToString(), before, options.CurrentValue.PageSize, http.RequestAborted)));
+    }
+
+    /// <summary>ADM-20: the bot and its owner.</summary>
+    private static async Task<IResult> BotAsync(long botId, HttpContext http, IUserAdmin users, IBotAdmin bots)
+    {
+        var cancel = http.RequestAborted;
+        if (await bots.FindAsync(botId, cancel) is not { } bot) return BotNotFound();
+        var owner = await users.FindAsync(bot.OwnerUserId, cancel);
+        return AdminJson.Ok(new BotDetailResponse(bot, owner is null ? null : await WithBotsAsync(owner, bots, cancel)));
+    }
 
     private static async Task<IResult> SuspendBotAsync(long botId, HttpContext http, IBotAdmin bots, IAuditLog audit)
     {
         if (await AdminJson.ReadAsync<SuspendRequest>(http) is not { Suspended: { } suspended })
             return AdminJson.BadRequest("""Send JSON like {"suspended": true}.""");
 
-        if (await bots.SetSuspendedAsync(botId, suspended, http.RequestAborted) is not { } bot)
-            return AdminJson.NotFound("bot_not_found", "There is no bot with this id.");
+        if (await bots.SetSuspendedAsync(botId, suspended, http.RequestAborted) is not { } bot) return BotNotFound();
         await audit.RecordAsync(AdminFilter.UserId(http), suspended ? "bot.suspend" : "bot.unsuspend",
             string.Create(CultureInfo.InvariantCulture, $"bot {botId}"), null, http.RequestAborted);
         return AdminJson.Ok(bot);
@@ -240,6 +301,8 @@ internal static class AdminEndpoints
             string.Create(CultureInfo.InvariantCulture, $"bot {botId}"), null, http.RequestAborted);
         return Results.NoContent();
     }
+
+    private static IResult BotNotFound() => AdminJson.NotFound("bot_not_found", "There is no bot with this id.");
 
     private static IResult UserNotFound() => AdminJson.NotFound("user_not_found", "There is no user with this id.");
 

@@ -21,7 +21,10 @@ public sealed record UserAccess(bool IsAdmin, bool IsBuilder, bool IsSuspended)
     public bool ActsAsAdmin => IsAdmin && HasSecondFactor;
 }
 
-/// <summary>A user as the admin sees it: with the phone number and email, for legal complaints (ADM-11).</summary>
+/// <summary>
+/// A user as the admin sees it: with the phone number and email, for legal complaints (ADM-11).
+/// <see cref="LastActiveAt"/> is the latest use of any session (login or refresh), or null with no session.
+/// </summary>
 public sealed record AdminUser(
     long Id,
     string? Phone,
@@ -31,7 +34,8 @@ public sealed record AdminUser(
     DateTimeOffset CreatedAt,
     BuilderState Builder,
     DateTimeOffset? BuilderRequestedAt,
-    bool Suspended);
+    bool Suspended,
+    DateTimeOffset? LastActiveAt);
 
 /// <summary>ADM-19: counts for the admin overview.</summary>
 public sealed record UserCounts(int Users, int NewUsers, int BuilderRequests);
@@ -42,8 +46,11 @@ public sealed record UserCounts(int Users, int NewUsers, int BuilderRequests);
 /// </summary>
 public interface IUserAdmin
 {
-    /// <summary>Exact id, phone (any Iranian form), email (any case) or username, or the start of the name.</summary>
-    Task<IReadOnlyList<AdminUser>> SearchAsync(string query, int limit, CancellationToken cancellationToken);
+    /// <summary>
+    /// Exact id, phone (any Iranian form), email (any case) or username, or the start of the name; an empty query finds everyone.
+    /// Newest first; <paramref name="before"/> gives the next page (ADM-11).
+    /// </summary>
+    Task<IReadOnlyList<AdminUser>> SearchAsync(string query, long? before, int limit, CancellationToken cancellationToken);
 
     /// <summary>Open builder requests, oldest first.</summary>
     Task<IReadOnlyList<AdminUser>> BuilderRequestsAsync(int limit, CancellationToken cancellationToken);
