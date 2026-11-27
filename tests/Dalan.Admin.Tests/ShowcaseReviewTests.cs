@@ -115,6 +115,17 @@ public class ShowcaseReviewTests(PostgresServer postgres)
     }
 
     [Fact]
+    [Trait("Rule", "CLI-72")]
+    public async Task CLI72_visitor_reads_the_running_version_from_the_public_settings()
+    {
+        await using var app = await AdminApp.StartAsync(postgres, ("Dalan:Version", "v1.1.3"));
+
+        var numbers = await app.CreateClient().JsonAsync("/api/public/settings");
+
+        Assert.Equal("v1.1.3", numbers.GetProperty("version").GetString());
+    }
+
+    [Fact]
     [Trait("Rule", "ADM-14")]
     public async Task ADM14_a_panel_change_shows_at_once()
     {

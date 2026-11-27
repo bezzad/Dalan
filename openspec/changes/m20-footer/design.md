@@ -8,3 +8,5 @@
 4. **Release folder.** It keeps the 12-character sha as its name: `pull-deploy.sh` uses it to skip a commit that is built or failed.
 5. **Footer at the bottom.** `.scroller.page` is a column that fills the screen; `footer.site` gets `margin-block-start: auto`, so free space goes above it. No `position: fixed` or `sticky` on the footer.
 6. **`/health` from the page.** It needs no session and has no rate limit; one call per page load is cheap. When it fails, the line shows only `© <year> Dalan`, with the current year.
+
+**Changed 2026-11-25 (owner):** the version is `v<major>.<minor>.<n>` from `VERSION` and the count of commits since it changed (`v1.1.0`, `v1.1.1`, …), not the commit time; the footer is `© <this year> Dalan v1.1.0` and reads the version from `/api/public/settings`, because `/health` is private (OPS-06) and gave the browser a 404.

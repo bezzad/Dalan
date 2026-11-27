@@ -7,7 +7,8 @@ using Microsoft.Extensions.Configuration;
 namespace Dalan.Admin.PublicPages;
 
 internal sealed record PublicSettingsJson(
-    int HistoryMessages, int HistoryDays, int AccessLogDays, int FileDays, int UpdateExpirySeconds, string SiteUrl, string BotApiUrl, int ContactMaxLength);
+    int HistoryMessages, int HistoryDays, int AccessLogDays, int FileDays, int UpdateExpirySeconds, string SiteUrl, string BotApiUrl, int ContactMaxLength,
+    string Version);
 
 /// <summary>
 /// ADM-14, ADM-15 and ADM-17: the numbers and addresses the privacy page and the FAQ print (CLI-27). Admin knows every setting, so it answers for all
@@ -25,5 +26,7 @@ internal static class PublicSettingsEndpoint
             configuration.GetValue<int>("Relay:UpdateExpirySeconds"),
             configuration["Admin:SiteUrl"] ?? "",
             configuration["Admin:BotApiUrl"] ?? "",
-            configuration.GetValue<int>("Admin:ContactMaxLength"))));
+            configuration.GetValue<int>("Admin:ContactMaxLength"),
+            // CLI-72: the footer shows it. /health is private (OPS-06), so the page reads it here.
+            configuration["Dalan:Version"] ?? "dev")));
 }

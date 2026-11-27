@@ -1,8 +1,8 @@
-// Rules: CLI-05, CLI-06, CLI-07, CLI-13, CLI-14, CLI-15, CLI-16, CLI-17
+// Rules: CLI-74, CLI-05, CLI-06, CLI-07, CLI-13, CLI-14, CLI-15, CLI-16, CLI-17
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  buttonAction, Chat, Chats, clock, commandMessage, currentKeyboard, fileView, firstFile, fitsSize, KeyboardState, merge, replyKeyboard, stamp,
+  buttonAction, Chat, Chats, clock, commandMessage, currentKeyboard, fileView, firstFile, fitsSize, KeyboardState, merge, replyKeyboard, stamp, suggest,
   type FileInfo, type Message,
 } from "../src/messages.ts";
 
@@ -291,4 +291,23 @@ test("CLI-17 an edited message has the edited mark", () => {
   const words = { edited: "edited", notDelivered: "not delivered" };
   assert.equal(stamp(m(1), "12:00", words), "12:00");
   assert.equal(stamp({ ...m(1), edited: "2026-11-16T12:05:00Z" }, "12:00", words), "12:00 · edited");
+});
+
+test("CLI-74 suggestions: all on a slash, the start without case, the bot's order", () => {
+  const commands = [{ command: "start" }, { command: "ticket" }, { command: "help" }];
+
+  assert.deepEqual(suggest(commands, "/").map(c => c.command), ["start", "ticket", "help"]);
+  assert.deepEqual(suggest(commands, "/TiC").map(c => c.command), ["ticket"]);
+  assert.deepEqual(suggest(commands, "/t").map(c => c.command), ["ticket"]);
+});
+
+test("CLI-74 suggestions: none after a space, for no match, for other text or for no commands", () => {
+  const commands = [{ command: "ticket" }];
+
+  assert.deepEqual(suggest(commands, "/ticket 12"), []);
+  assert.deepEqual(suggest(commands, "/xyz"), []);
+  assert.deepEqual(suggest(commands, "ticket"), []);
+  assert.deepEqual(suggest(commands, ""), []);
+  assert.deepEqual(suggest([], "/"), []);
+  assert.deepEqual(suggest(commands, "/icket"), []);
 });

@@ -10,9 +10,10 @@ const source = (file: string) => readFileSync(new URL(file, import.meta.url), "u
 test("CLI-84 a refused user sees why and may ask again", () => {
   assert.equal(builderView({ builder: "refused", admin: false, has_phone: true }), "refused");
   assert.equal(builderView({ builder: "refused", admin: false, has_phone: false }), "phone");
-  const account = source("../src/account.ts");
-  assert.match(account, /view === "refused" \? \[h\("p", \{ class: "note" \}, t\("builderRefused"\)\)\]/);
-  assert.match(account, /view === "request" \|\| view === "refused"/);
+  // The account screen no longer asks: only an approved builder or an admin has the Building group (CLI-77). The ask is in "My bots".
+  const builder = source("../src/builder.ts");
+  assert.match(builder, /view === "refused" \? \[h\("p", \{ class: "note" \}, t\("builderRefused"\)\)\]/);
+  assert.match(builder, /api\.askBuilder\(\)/);
 });
 
 test("CLI-84 the admin screen says refused and can approve", () => {

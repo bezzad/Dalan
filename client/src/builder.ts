@@ -30,7 +30,7 @@ function builderStep(app: App, redraw: () => void): HTMLElement {
   const view = builderView(app.user);
   const body = view === "phone"
     ? [h("p", { class: "note" }, t("phoneRequired")),
-      h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => app.go("/account") }, t("verifyPhone")))]
+      h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => app.go("/account/profile") }, t("verifyPhone")))]
     : view === "waiting"
       ? [h("p", { class: "note" }, t("builderWaiting"))]
       : [...(view === "refused" ? [h("p", { class: "note" }, t("builderRefused"))] : []), h("div", { class: "row" }, h("button", {
@@ -49,10 +49,10 @@ function builderStep(app: App, redraw: () => void): HTMLElement {
 /** CLI-30: the access keys are an account matter; "My bots" and "My apps" only point to them. */
 export function keysLink(app: App): HTMLElement {
   return h("p", {}, h("a", {
-    href: "/account#keys",
+    href: "/account/keys",
     onclick: event => {
       event.preventDefault();
-      app.go("/account#keys");
+      app.go("/account/keys");
     },
   }, app.language.t("keysLink")));
 }

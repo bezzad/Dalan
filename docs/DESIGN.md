@@ -480,6 +480,8 @@ None of these is planned work. They are recorded so the design does not block th
 | Session (access token) / refresh token | 15 minutes / 30 days from the last use | Assumed |
 | Password length | 8 to 128 characters | Assumed |
 | Password tries per login name / per client address | 5 / 100 in 15 minutes | Assumed |
+| Stop grace (long connections end at once on a stop; `Dalan:StopGraceSeconds`) | 5 seconds | Assumed |
+| Tunnel close wait (after the close frame, the agent's time to hang up; `Sites:CloseWaitSeconds`) | 2 seconds | Assumed |
 | Long-polling timeout | 30 seconds default, 50 maximum | Assumed (Telegram-like) |
 | Bot shown as online | Last poll under 60 seconds ago | Assumed |
 | Bot status refresh in an open chat | Every 30 seconds | Assumed (milestone 7) |

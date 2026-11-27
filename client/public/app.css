@@ -58,10 +58,13 @@
   --message-pad-block: 6px;
   --message-pad-inline: 10px;
   --message-time: 12px;
+  /* CLI-76: section labels and the floor for small text on public pages; larger in Persian, which has no capitals. */
+  --text-label: 14px;
+  --text-small: 13px;
   /* CLI-07: a reply keyboard that does not resize is about as tall as a phone keyboard. */
   --keyboard-height: min(260px, 40dvh);
 }
-:lang(fa) { --mono: Vazirmatn, system-ui, sans-serif; --tracking: 0; }
+:lang(fa) { --mono: Vazirmatn, system-ui, sans-serif; --tracking: 0; --text-label: 15px; --text-small: 14px; }
 
 /* The same dark values twice: once for "like the device", once for the visitor's choice. */
 @media (prefers-color-scheme: dark) {
@@ -323,6 +326,13 @@ button.pinned[hidden] { display: none; }
 }
 .quote strong { color: var(--brand); font-weight: 600; }
 .quote span, .quote strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* CLI-74: command suggestions above the input; left to right, scrolls when long. */
+.suggest { flex: none; display: flex; flex-direction: column; max-height: 40dvh; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.suggest[hidden] { display: none; }
+.suggest button { display: flex; gap: 8px; align-items: baseline; justify-content: flex-start; text-align: left; min-height: 40px; border: 0; border-radius: 0; background: none; padding: 6px 10px; }
+.suggest button b { flex: none; color: var(--brand); }
+.suggest button span { min-width: 0; overflow-wrap: anywhere; }
+.suggest button.marked { background: var(--line); }
 .reply-bar { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .reply-bar[hidden] { display: none; }
 /* CLI-91: the bot is offline; a plain line above the input, like the reply bar. */
@@ -424,8 +434,8 @@ main.public { --gutter: max(16px, calc((100vw - var(--page-width)) / 2)); height
 /* Grow to fill the screen so the footer stays at the bottom of short pages. */
 main.public > .scroller { flex: 1 0 auto; overflow: visible; }
 main.public > header.site { position: sticky; top: 0; margin-block-start: -12px; padding-block: 12px; background: var(--bg); }
-.label { font: 600 12px/1.6 var(--mono); letter-spacing: var(--tracking); text-transform: uppercase; color: var(--muted); }
-.soon { padding: 0 6px; border-radius: 6px; background: rgb(242 180 90 / .15); color: var(--accent); font: 600 11px/1.7 var(--mono); letter-spacing: 0; }
+.label { font: 600 var(--text-label)/1.6 var(--mono); letter-spacing: var(--tracking); text-transform: uppercase; color: var(--muted); }
+.soon { padding: 0 6px; border-radius: 6px; background: rgb(242 180 90 / .15); color: var(--accent); font: 600 var(--text-small)/1.7 var(--mono); letter-spacing: 0; }
 :lang(en) .public h2 { font-weight: 600; letter-spacing: -.02em; }
 :lang(fa) .public h2 { font-weight: 800; }
 
@@ -590,7 +600,7 @@ a.button:hover, .public button:hover { border-color: var(--brand); }
 .product > .label { color: var(--brand); }
 .badge-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: var(--radius-s); background: var(--brand-soft); color: var(--brand); }
 .traffic { display: flex; flex-direction: column; align-items: center; margin: var(--space-m) 0 0; width: 100%; }
-.tag { padding: 2px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font: 13px/1.7 var(--mono); color: var(--text); }
+.tag { padding: 2px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font: var(--text-small)/1.7 var(--mono); color: var(--text); }
 .wire { position: relative; width: 0; height: 32px; border-inline-start: 2px dashed var(--brand); }
 /* The dot moves down from the users and up from your computer: the computer only calls out. */
 .wire::after { content: ""; position: absolute; inset-inline-start: -5px; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 10px var(--brand); animation: down 1.4s linear infinite; }
@@ -602,15 +612,15 @@ a.button:hover, .public button:hover { border-color: var(--brand); }
 .split::before { content: ""; position: absolute; top: 0; inset-inline: 25%; border-block-start: 2px dashed var(--brand); }
 .split::after { content: ""; position: absolute; inset-inline: 0; bottom: 8px; height: 76px; border: 1px solid var(--brand-soft); border-radius: 14px; pointer-events: none; }
 .branch { display: flex; flex-direction: column; align-items: center; min-width: 0; }
-.branch .box { position: relative; z-index: 1; max-width: 100%; padding: 8px 10px; font-size: 12px; }
-.frame-label { margin-block-start: -20px; padding: 0 8px; background: var(--surface); color: var(--muted); font: 12px/1.6 var(--mono); position: relative; z-index: 1; }
+.branch .box { position: relative; z-index: 1; max-width: 100%; padding: 8px 10px; font-size: var(--text-small); }
+.frame-label { margin-block-start: -20px; padding: 0 8px; background: var(--surface); color: var(--muted); font: var(--text-small)/1.6 var(--mono); position: relative; z-index: 1; }
 .hub { animation: pulse 2.4s ease-out infinite; }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgb(63 208 168 / .45); } 70% { box-shadow: 0 0 0 14px rgb(63 208 168 / 0); } 100% { box-shadow: 0 0 0 0 rgb(63 208 168 / 0); } }
 @media (prefers-reduced-motion: reduce) { .wire::after { animation: none; top: 10px; } .hub { animation: none; } }
 .hub-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-m); width: 100%; }
 .hub { grid-column: 2; display: grid; place-items: center; width: 72px; height: 72px; border: 1px solid var(--line); border-radius: 50%; background: var(--bg); color: var(--text); box-shadow: 0 0 0 6px var(--brand-soft); }
 .hub .icon { width: 34px; height: 34px; }
-ul.guards { grid-column: 3; gap: 4px; font: 12px/1.5 var(--mono); color: var(--muted); text-align: start; }
+ul.guards { grid-column: 3; gap: 4px; font: var(--text-small)/1.5 var(--mono); color: var(--muted); text-align: start; }
 ul.guards li { gap: 6px; }
 ul.ticks.guards li .icon { width: 14px; height: 14px; margin-block-start: calc((1lh - 14px) / 2); }
 .box { display: flex; align-items: center; gap: var(--space-s); padding: 10px 16px; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--bg); font: 13px/1.6 var(--mono); }
@@ -658,7 +668,7 @@ footer.site { position: relative; margin-block-start: auto; display: flex; flex-
 footer.site .columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-l); }
 footer.site .column { gap: 6px; font: 14px/1.8 var(--mono); color: var(--muted); }
 footer.site .column .label { color: var(--text); margin-block-end: 4px; }
-footer.site .copyright { margin: 0; font: 12px/1.6 var(--mono); color: var(--muted); }
+footer.site .copyright { margin: 0; font: var(--text-small)/1.6 var(--mono); color: var(--muted); }
 footer.site a { color: var(--muted); text-decoration: none; }
 footer.site a:hover { color: var(--text); }
 .wordmark { margin-block-end: -.32em; font-size: clamp(90px, 22vw, 240px); font-weight: 900; line-height: 1; color: color-mix(in srgb, var(--text) 6%, var(--bg)); text-align: end; user-select: none; }
@@ -741,6 +751,74 @@ dialog.modal { width: min(560px, calc(100% - 32px)); padding: 20px; border: 1px 
 dialog.modal::backdrop { background: rgb(0 0 0 / .5); }
 dialog.modal > h2 { margin-block-end: 12px; }
 
+/* Settings area (CLI-77, CLI-78; docs/UI.md, part "Settings"): a side menu, one section per page, rows of "what" and "control". */
+.settings .settings-body { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: var(--space-l); align-items: start; }
+.settings .card { max-width: none; }
+nav.side { display: flex; flex-direction: column; gap: 2px; }
+nav.side .label { margin-block: 16px 4px; padding-inline: 10px; }
+nav.side .label:first-child { margin-block-start: 0; }
+nav.side a { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 10px; border-radius: var(--radius-s); color: var(--text); text-decoration: none; }
+nav.side a:hover { background: var(--line); }
+nav.side a[aria-current="page"] { background: var(--brand-soft); }
+nav.side a .glyph { width: 18px; height: 18px; }
+nav.side a .name { flex: 1; }
+nav.side a > .glyph:last-child { display: none; }
+:lang(fa) nav.side a > .glyph:last-child { transform: scaleX(-1); }
+.to-menu { color: var(--brand); text-decoration: none; font-weight: 600; }
+.settings .page { display: flex; flex-direction: column; gap: var(--space-s); max-width: 720px; min-width: 0; }
+.settings .crumbs { color: var(--muted); font-size: 14px; }
+.settings .crumbs a { color: var(--muted); text-decoration: none; }
+.settings .crumbs a:hover { color: var(--text); }
+.settings .page > .head { margin: 0; font-size: var(--text-title); }
+.settings .rows { display: flex; flex-direction: column; margin-block-start: var(--space-m); }
+.setting-row { display: grid; grid-template-columns: 1fr 1.4fr; gap: var(--space-m) var(--space-l); padding-block: 16px; border-block-start: 1px solid var(--line); }
+.setting-row .what h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.setting-row .control { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+.setting-row .control input { max-width: 360px; }
+.setting-row .control label { font-size: 14px; }
+.badge.ok, .badge.off { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; padding: 0 10px; border-radius: 999px; font-size: var(--text-small); font-weight: 600; }
+.badge.ok { background: var(--brand-soft); color: var(--brand); }
+.badge.ok::before { content: "\2713"; }
+.badge.off { background: var(--line); color: var(--muted); }
+.methods { display: flex; flex-direction: column; gap: 12px; margin-block-end: var(--space-m); }
+.method.card { gap: 8px; }
+.method .head { display: flex; align-items: center; gap: 10px; }
+.method .head h3 { margin: 0; font-size: 16px; }
+.method .head .grow { flex: 1; }
+.method .detail { padding: 8px 10px; border-radius: var(--radius-s); background: var(--bg); color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.radio-cards { display: flex; flex-wrap: wrap; gap: 12px; }
+.radio-card { display: flex; flex-direction: column; gap: 8px; width: 140px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--surface); cursor: pointer; }
+.radio-card.chosen { border-color: var(--brand); background: var(--brand-soft); }
+.radio-card:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 2px; }
+.radio-card input { width: 16px; height: 16px; margin: 0; padding: 0; accent-color: var(--brand); }
+.swatch { display: flex; flex-direction: column; gap: 4px; height: 56px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; }
+.swatch i { height: 8px; border-radius: 4px; }
+.swatch.light { background: #fafafa; }
+.swatch.light i { background: #e2e5e9; }
+.swatch.dark { background: #141716; }
+.swatch.dark i { background: #2f3533; }
+.swatch.word { align-items: center; justify-content: center; background: var(--bg); font-size: 24px; font-weight: 700; }
+.card.danger { border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
+.card.danger button { align-self: flex-start; color: var(--danger); }
+.settings .empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: var(--space-l); color: var(--muted); text-align: center; }
+.settings .empty .glyph { width: 32px; height: 32px; }
+.settings .empty strong { color: var(--text); }
+/* The grouped menu: the name and a grey line, then groups with an icon per item and a line between groups. */
+.menu.user .panel { min-width: 240px; }
+.menu.user .panel .who { display: flex; flex-direction: column; padding: 10px; }
+.menu.user .panel .who .note { font-size: 13px; overflow-wrap: anywhere; }
+.menu.user .panel hr { margin: 4px 0; border: 0; border-block-start: 1px solid var(--line); }
+.menu.user .panel .item { flex-direction: row; justify-content: flex-start; align-items: center; gap: 10px; min-height: 40px; }
+.menu.user .panel .item .glyph { width: 18px; height: 18px; }
+@media (max-width: 759px) {
+  .settings .settings-body { grid-template-columns: 1fr; gap: var(--space-m); }
+  .settings:not(.menu-only) nav.side, .settings:not(.menu-only) header h1, .settings .crumbs { display: none; }
+  nav.side a { min-height: 48px; }
+  nav.side a > .glyph:last-child { display: block; }
+  .setting-row { grid-template-columns: 1fr; }
+  .setting-row .control input { max-width: none; }
+}
+@media (min-width: 760px) { .to-menu { display: none; } }
 /* CLI-75: while the live stream is down, a thin ring turns around the header icon. Nothing moves; there is no bar. */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .ring { position: relative; }
