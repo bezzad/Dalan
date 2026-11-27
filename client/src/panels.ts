@@ -15,6 +15,11 @@ export function builderView(user: { builder: BuilderState; admin: boolean; has_p
   return user.builder === "refused" ? "refused" : "request";
 }
 
+/** CLI-30: the account screen shows the access keys and the ready prompt only to an approved builder or an admin. */
+export function keysShown(user: { builder: BuilderState; admin: boolean; has_phone: boolean }): boolean {
+  return builderView(user) === "bots";
+}
+
 export interface BuilderBot {
   id: number;
   username: string;

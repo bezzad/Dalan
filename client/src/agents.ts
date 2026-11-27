@@ -1,4 +1,4 @@
-// CLI-30: the "AI agents" part of "My bots": access keys (AUTH-21) and the ready prompt.
+// CLI-30: the "AI agents" part of the account screen: access keys (AUTH-21) and the ready prompt.
 import { ApiError, api, type AccessKey } from "./api.ts";
 import { errorText, type App } from "./app.ts";
 import { h } from "./dom.ts";
@@ -81,7 +81,7 @@ export function agentsPart(app: App): HTMLElement {
     draw();
   }).catch(failed);
 
-  return h("section", { class: "card" },
+  return h("section", { id: "keys", class: "card" },
     h("h2", {}, t("aiAgents")),
     h("p", { class: "note" }, t("aiAgentsNote")),
     error, shown, list, form,

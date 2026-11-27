@@ -11,9 +11,10 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 
 ## Page frame
 - **Header on every page**: logo and "دالان" on one line, a link to `/`, at the start. At the end the same tools (`headerTools`): the round language button (only a globe; one click switches Persian and English, Persian first), the round theme button of the same size (36px), then "Log in" or the user menu. No page drops it; language never sits among the menu links.
+- **Connection ring** (CLI-75): no bar and no toast when the live stream is down. A thin `--brand` ring turns around the bot's icon in the chat header, or around the Dalan mark on other screens; with reduced motion it is still and dashed. Hover shows "Connected" or "Connecting…". A hidden `role="status"` text tells screen readers. The page never moves.
 - **Header links** (public pages, CLI-42): only Plans, Showcase and Guide. FAQ and Privacy live in the footer only, and so do About us and Contact us (CLI-56).
 - **Phone (below 760px)**: the links fold into a round ☰ button after the tools; it opens a panel with one 48px row per link, closed by a link, a click outside or Escape. "Log in or sign up" becomes "Log in"; a long user name is cut with "…". Under 360px the logo stands without the name. Every page fits 320px and 360 by 740 portrait and 740 by 360 landscape, with no sideways scroll.
-- **Public pages**: the full site header, and the footer with the big half-cut wordmark, always at the bottom of the screen.
+- **Public pages**: the full site header, and the footer with the big half-cut wordmark. On a short page the footer sits at the bottom of the screen (CLI-73: `margin-block-start: auto`, never fixed); on a long page it follows the content. Under the footer columns, one small grey line `© 2026 Dalan · v26.11.25.114726` (CLI-72): the year and version come from `/health`; the tooltip of the version is the commit.
 - **Landing page**: only what Dalan does, its features and its plans. No install steps or commands: each plan has "Get started" to its guide, and `/guide` first asks which plan.
 - **Width**: public pages up to `--page-width`. Inner pages (`main.wide`) up to 960px; a simple list or chat may stay narrow. Below that, a 16px side gutter. No sideways scroll on a phone.
 - **Page title row**: Back, the title, then the main action of the page as one primary button at the end (for example "Create bot").
@@ -29,9 +30,11 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - One height per size: 40px normal, 32px `small`, 36px in the header. The words sit in the middle on both axes (`inline-flex`). Buttons in one row line up with the text beside them; never push one button down with a margin.
 - Inside a wide page a button is as wide as its words, never full width. Full width only on the login card.
 - One primary (green) button per card or row: the main action. Others are plain. A link button for Back and small inline actions.
+- Plain buttons have the `--control-line` border (3:1 against the page, WCAG 1.4.11); cards, rows and dividers keep the soft `--line` (CLI-71).
 - A step that cannot be undone (new token, delete) asks first.
 
 ## Addresses
+- Access keys for AI assistants live in the account screen (`/account#keys`, CLI-30); "My bots" and "My apps" have one link to them.
 - One address per screen (CLI-51): `/chats`, `/@<username>` (a chat), `/bots` (My bots), `/bots/new`, `/bots/<username>` (one bot's page), `/account`, `/admin`, `/apps`. No screen hides behind another's address; reload and Back show the same screen.
 - A bot's page shows only that bot's values; a token shows only right after create or New token.
 
@@ -39,11 +42,12 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - Message text 14px, line 1.35, time 12px: the `--message-*` tokens (CLI-48).
 - The bot's reply keyboard sits under the input, where a phone keyboard would be. Rows exactly as sent; a row's buttons share its width. ⌨ in the input bar hides and shows it (not for a persistent one) (CLI-07).
 - Button colours: `success` green, `danger` red, `primary` blue (`--primary`), each with its `--on-*` text colour. Link buttons have a small ↗ (CLI-13).
-- 🎤 takes Send's place while the input is empty; voices and audio use Dalan's own player (CLI-16, CLI-46).
+- The microphone button (Dalan's line `mic` icon, CLI-80) takes Send's place while the input is empty; voices and audio use Dalan's own player (CLI-16, CLI-46).
 - 📎, paste and drop open one card above the input; the input is the caption (CLI-47).
 - Bot icons are round, cut to fill; no icon shows the first letter (CLI-50).
 - Reply: a message's menu (right-click, long press), a double-click or a swipe left. The bar above the input shows the quote with ✕; a bubble that replies shows the quote on top, and a click on it goes to the message (CLI-52).
 - Typing `/` opens a list above the input with the bot's commands that start with the typed text, each `/command` and its description, left to right. Click, tap or Enter sends; Tab completes; ↑ ↓ move the mark; Esc closes (CLI-74).
+- While the bot is offline, a plain bar above the input (red start edge, `--muted` text) says it won't answer now and that messages wait, then show "not delivered". It hides when the bot is online; a suspended bot shows its error instead (CLI-91).
 - A pressed inline button shows a moving skeleton; the buttons of its message are locked until the bot answers (CLI-53).
 - Bot formatting is drawn from entities, never as HTML: bold, italic, code, spoiler (tap to show), quotes (CLI-54).
 
