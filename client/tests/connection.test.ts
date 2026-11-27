@@ -74,3 +74,13 @@ test("CLI-75 the style sheet has no Connecting bar; the ring is still and dashed
   const main = readFileSync(new URL("../src/main.ts", import.meta.url), "utf8");
   assert.doesNotMatch(main, /offline|data-connecting|dataset\["connecting"\]/);
 });
+
+test("CLI-75 the ring is a true circle on the icon's centre, also around the square logo (owner, 2026-11-27)", () => {
+  const css = readFileSync(new URL("../public/app.css", import.meta.url), "utf8");
+  const ring = /\.ring::after \{([^}]*)\}/.exec(css)?.[1] ?? "";
+  assert.match(ring, /aspect-ratio: 1;/);
+  assert.match(ring, /border-radius: 50%;/);
+  assert.match(ring, /top: 50%;[^]*left: 50%;[^]*translate: -50% -50%;/);
+  // A turning rounded square looks like a bent line that wobbles: the logo gets no shape of its own.
+  assert.doesNotMatch(css, /\.mark\.ring::after \{/);
+});

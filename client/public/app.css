@@ -879,15 +879,20 @@ ol.recovery { columns: 2; margin: 0; padding-inline-start: 24px; font-family: va
 .ring::after {
   content: "";
   position: absolute;
-  inset: -4px;
-  border: 2px solid transparent;
+  /* Always a circle on the icon's centre, a little wider than the icon, so it clears the logo's rounded corners. */
+  top: 50%;
+  left: 50%;
+  width: calc(100% + 12px);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  box-sizing: border-box;
+  border: 2px solid color-mix(in srgb, var(--brand) 20%, transparent);
   border-top-color: var(--brand);
   border-radius: 50%;
   animation: ring-turn 1s linear infinite;
   pointer-events: none;
 }
-.mark.ring::after { border-radius: calc(var(--radius-s) + 4px); border-color: var(--brand) transparent transparent; }
 @keyframes ring-turn { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
-  .ring::after, .mark.ring::after { animation: none; border: 2px dashed var(--brand); }
+  .ring::after { animation: none; border: 2px dashed var(--brand); }
 }
