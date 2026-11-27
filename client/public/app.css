@@ -834,8 +834,13 @@ nav.side a > .glyph:last-child { display: none; }
 .swatch.dark { background: #141716; }
 .swatch.dark i { background: #2f3533; }
 .swatch.word { align-items: center; justify-content: center; background: var(--bg); font-size: 24px; font-weight: 700; }
+.swatch.date { align-items: center; justify-content: center; background: var(--bg); font-size: 14px; font-weight: 600; text-align: center; }
 .card.danger { border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
 .card.danger button { align-self: flex-start; color: var(--danger); }
+ul.sessions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+ul.sessions li { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-top: 1px solid var(--line); }
+ul.sessions li .line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+ul.sessions li button.link { align-self: flex-start; }
 .settings .empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: var(--space-l); color: var(--muted); text-align: center; }
 .settings .empty .glyph { width: 32px; height: 32px; }
 .settings .empty strong { color: var(--text); }

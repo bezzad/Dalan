@@ -9,4 +9,7 @@ public sealed class AccessKey
     public required byte[] KeyHash { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset ExpiresAt { get; set; }
+
+    /// <summary>AUTH-38: the addresses and ranges (CIDR) the key works from. Empty: any address.</summary>
+    public string[] Addresses { get; set; } = [];
 }

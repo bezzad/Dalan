@@ -269,6 +269,34 @@ export const texts = {
     themeDarkName: "تیره",
     languageLabel: "زبان",
     languageHelp: "فارسی یا انگلیسی؛ بلافاصله اعمال می‌شود.",
+    calendarLabel: "تقویم",
+    calendarHelp: "تاریخ‌ها به شمسی یا میلادی؛ روی همین دستگاه می‌ماند.",
+    calendarJalali: "شمسی",
+    calendarGregorian: "میلادی",
+    sessionsTitle: "نشست‌ها",
+    sessionsHelp: "دستگاه‌هایی که با این حساب وارد شده‌اند. نشستی را که نمی‌شناسید ببندید.",
+    endOthers: "خروج از دستگاه‌های دیگر",
+    endOthersConfirm: "از همه‌ی دستگاه‌های دیگر خارج شوید؟",
+    endOthersDone: "از دستگاه‌های دیگر خارج شدید.",
+    endSession: "بستن",
+    thisDevice: "همین دستگاه",
+    unknownDevice: "دستگاه ناشناس",
+    lastUsed: "آخرین استفاده: {n}",
+    deleteAccount: "حذف حساب من",
+    deleteAccountNote: "حساب، راه‌های ورود، کلیدها و نشست‌ها برای همیشه پاک می‌شوند. اول بات‌ها و سایت‌هایتان را حذف کنید. برای تأیید، کلمه‌ی «{w}» را بنویسید.",
+    deleteAccountConfirm: "حساب برای همیشه حذف شود؟ این کار برگشت ندارد.",
+    deleteWordLabel: "کلمه‌ی تأیید",
+    accountDeleted: "حساب شما حذف شد.",
+    ownsThings: "اول بات‌ها و سایت‌هایتان را حذف کنید.",
+    badDeleteWord: "کلمه‌ی تأیید درست نیست.",
+    badDeleteProof: "رمز یا کد درست نیست.",
+    adminDelete: "حساب مدیر از اینجا حذف نمی‌شود.",
+    keyAddresses: "نشانی‌ها",
+    keyAnyAddress: "از هر نشانی",
+    keyAddressesHelp: "نشانی‌ها یا بازه‌های IP (مثل 80.244.7.0/24)، هر کدام در یک خط. خالی یعنی از هر نشانی.",
+    badAddress: "یکی از نشانی‌ها درست نیست.",
+    tooManyAddresses: "تعداد نشانی‌ها از حد مجاز بیشتر است.",
+    keyAddressRefused: "این کلید از این نشانی پذیرفته نمی‌شود.",
     builderStateHelp: "ساخت بات و برنامه با تأیید مدیر.",
     builderApproved: "تأییدشده",
     myBotsHelp: "بات‌هایی که ساخته‌اید.",
@@ -656,6 +684,34 @@ export const texts = {
     themeDarkName: "Dark",
     languageLabel: "Language",
     languageHelp: "Persian or English. It applies at once.",
+    calendarLabel: "Calendar",
+    calendarHelp: "Dates in the Persian (Jalali) or the Gregorian calendar. Kept on this device.",
+    calendarJalali: "Persian (Jalali)",
+    calendarGregorian: "Gregorian",
+    sessionsTitle: "Sessions",
+    sessionsHelp: "The devices logged in to this account. End any you do not know.",
+    endOthers: "Log out other devices",
+    endOthersConfirm: "Log out of every other device?",
+    endOthersDone: "The other devices are logged out.",
+    endSession: "End",
+    thisDevice: "This device",
+    unknownDevice: "Unknown device",
+    lastUsed: "Last used {n}",
+    deleteAccount: "Delete my account",
+    deleteAccountNote: "The account, its ways to log in, keys and sessions are deleted for ever. First delete your bots and sites. To confirm, type {w}.",
+    deleteAccountConfirm: "Delete the account for ever? This cannot be undone.",
+    deleteWordLabel: "Confirm word",
+    accountDeleted: "Your account is deleted.",
+    ownsThings: "First delete your bots and sites.",
+    badDeleteWord: "The confirm word is wrong.",
+    badDeleteProof: "The password or code is wrong.",
+    adminDelete: "An admin account cannot be deleted here.",
+    keyAddresses: "Addresses",
+    keyAnyAddress: "From any address",
+    keyAddressesHelp: "IP addresses or ranges (like 80.244.7.0/24), one per line. Empty is any address.",
+    badAddress: "One of the addresses is not valid.",
+    tooManyAddresses: "Too many addresses.",
+    keyAddressRefused: "This key is not accepted from this address.",
     builderStateHelp: "Building bots and apps needs the admin's approval.",
     builderApproved: "Approved",
     myBotsHelp: "The bots you built.",
@@ -781,6 +837,10 @@ export type Lang = keyof typeof texts;
 export type TextKey = keyof (typeof texts)["fa"];
 
 const StorageKey = "dalan.lang";
+const CalendarKey = "dalan.calendar";
+
+/** CLI-79: the calendar of every date the client shows. */
+export type Calendar = "jalali" | "gregorian";
 
 /** The two things of the page that follow the language. `document.documentElement` fits. */
 export interface PageRoot {
@@ -798,12 +858,37 @@ export class Language {
   private readonly root: PageRoot;
   private readonly storage: LangStorage;
   current: Lang;
+  private chosenCalendar: Calendar | null;
 
   constructor(root: PageRoot, storage: LangStorage) {
     this.root = root;
     this.storage = storage;
     this.current = storage.getItem(StorageKey) === "en" ? "en" : "fa";
+    const calendar = storage.getItem(CalendarKey);
+    this.chosenCalendar = calendar === "jalali" || calendar === "gregorian" ? calendar : null;
     this.apply();
+  }
+
+  /** CLI-79: the chosen calendar; with no choice, Jalali in Persian and Gregorian in English. */
+  get calendar(): Calendar {
+    return this.chosenCalendar ?? (this.current === "fa" ? "jalali" : "gregorian");
+  }
+
+  /** CLI-79: kept on this device; every date shown after it uses it. */
+  chooseCalendar(calendar: Calendar): void {
+    this.chosenCalendar = calendar;
+    this.storage.setItem(CalendarKey, calendar);
+  }
+
+  /** CLI-79: the locale of dates: the language's digits and month names, in the chosen calendar. */
+  private dateLocale(calendar: Calendar = this.calendar): string {
+    if (this.current === "fa") return calendar === "jalali" ? "fa-IR-u-ca-persian" : "fa-IR-u-ca-gregory";
+    return calendar === "jalali" ? "en-GB-u-ca-persian" : "en-GB";
+  }
+
+  /** A date and time in the user's language and calendar (CLI-79). */
+  dateTime(date: string): string {
+    return new Intl.DateTimeFormat(this.dateLocale(), { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
   }
 
   /** Switches to the other language and remembers the choice on this device. */
@@ -829,9 +914,9 @@ export class Language {
   }
 
   /** CLI-19: "online", "last seen ...", or nothing for a bot never seen. */
-  /** CLI-30: a day, like "17 Nov 2026". */
-  day(date: string): string {
-    return new Intl.DateTimeFormat(this.current === "fa" ? "fa-IR" : "en-GB", { dateStyle: "medium" }).format(new Date(date));
+  /** CLI-30: a day, like "17 Nov 2026", in the chosen calendar or the one given (CLI-79). */
+  day(date: string, calendar: Calendar = this.calendar): string {
+    return new Intl.DateTimeFormat(this.dateLocale(calendar), { dateStyle: "medium" }).format(new Date(date));
   }
 
   seen(status: { online: boolean; last_seen: string | null }, now: Date): string {
@@ -843,8 +928,7 @@ export class Language {
     if (minutes < 1) return this.t("seenNow");
     if (minutes < 60) return this.t("seenMinutes").replace("{n}", this.number(minutes));
     if (minutes < 24 * 60) return this.t("seenHours").replace("{n}", this.number(Math.floor(minutes / 60)));
-    const date = new Intl.DateTimeFormat(this.current === "fa" ? "fa-IR" : "en-GB", { dateStyle: "medium" }).format(at);
-    return this.t("seenDate").replace("{n}", date);
+    return this.t("seenDate").replace("{n}", this.day(status.last_seen));
   }
 
   private apply(): void {
