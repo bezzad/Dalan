@@ -9,4 +9,5 @@ Each task: write the failing tests tagged with the rule IDs, then the code. CI r
 - [x] 5. `public.ts`, `api.ts`, `i18n.ts`: the line under the columns (CLI-72)
 - [x] 6. `app.css`: `footer.site { margin-block-start: auto }`; test that the rule is there (CLI-73)
 - [x] 7. `docs/UI.md` footer; `docs/SERVER.md`: the live version is at `/health` and in the footer
-- [ ] 8. CI green on GitHub, final review, merge; after the server deploys it, check the footer of dalanet.ir shows the version of the merge commit; archive
+- [x] 8. CI green on GitHub, final review, merge (#93; the version that counts up: #96)
+- [ ] 9. After the server deploys it: the footer of dalanet.ir shows `v1.1.<n>` of the live release; archive

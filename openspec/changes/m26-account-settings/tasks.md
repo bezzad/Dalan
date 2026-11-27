@@ -20,5 +20,5 @@ Each task: write the failing tests tagged with the rule IDs, then the code. CI r
 
 ## 4. Ship
 
-- [ ] 4.1 CI green on GitHub, final review, merge
+- [x] 4.1 CI green on GitHub, final review, merge (#95)
 - [ ] 4.2 On dalanet.ir, Persian and English, light and dark, desktop and 360px phone: every section; archive
