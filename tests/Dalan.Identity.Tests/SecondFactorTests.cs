@@ -378,21 +378,111 @@ public class SecondFactorTests(PostgresServer postgres)
         Assert.True(await TotpOnAsync(admin));
     }
 
-    [Fact]
-    [Trait("Rule", "SEC-15")]
-    public async Task SEC15_proving_the_admin_phone_from_another_account_cannot_merge_into_the_admin()
+
+    /// <summary>The admin (second factor on) and another account that proved the admin's phone: a pending merge.</summary>
+    private static async Task<(HttpClient Other, long AdminId, long OtherId, byte[] Secret, string[] Codes)> AdminMergeAsync(DalanApp app)
     {
-        await using var app = await StartAsync();
-        await app.TurnOnTotpAsync(await AdminWithoutTotpAsync(app));
-        var other = await app.LoginByEmailAsync("someone@example.com");
+        var admin = await AdminWithoutTotpAsync(app);
+        var adminId = (await admin.GetFromJsonAsync<JsonElement>("/api/me", Cancel)).GetProperty("id").GetInt64();
+        var (secret, codes) = await app.TurnOnTotpAsync(admin);
+        app.Time.Advance(TimeSpan.FromSeconds(30));
+        var other = await app.LoginByEmailAsync("owner@example.com");
+        var otherId = (await other.GetFromJsonAsync<JsonElement>("/api/me", Cancel)).GetProperty("id").GetInt64();
         (await DalanApp.AskCodeAsync(other, AdminPhone)).EnsureSuccessStatusCode();
         var proof = await other.PostAsJsonAsync("/api/account/phone", new { phone = AdminPhone, code = app.Sms.Sent[^1].Code }, Cancel);
         Assert.Equal(HttpStatusCode.Conflict, proof.StatusCode);
+        return (other, adminId, otherId, secret, codes);
+    }
 
-        var merge = await other.PostAsync("/api/account/merge", null, Cancel);
+    private static Task<HttpResponseMessage> MergeAsync(HttpClient browser, string? code) =>
+        browser.PostAsJsonAsync("/api/account/merge", new { code }, Cancel);
 
-        Assert.Equal(HttpStatusCode.Forbidden, merge.StatusCode);
-        Assert.Equal("admin_merge", await ErrorCodeAsync(merge));
+    private static Task<long> UsersAsync(DalanApp app) => PostgresServer.ScalarAsync<long>(app.ConnectionString, "SELECT count(*) FROM identity.users");
+
+    [Fact]
+    [Trait("Rule", "SEC-15")]
+    [Trait("Rule", "AUTH-32")]
+    public async Task SEC15_a_merge_with_an_admin_needs_the_admin_code_and_keeps_the_admin()
+    {
+        await using var app = await StartAsync();
+        var (other, adminId, otherId, secret, _) = await AdminMergeAsync(app);
+
+        var plan = await other.GetFromJsonAsync<JsonElement>("/api/account/merge", Cancel);
+        Assert.True(plan.GetProperty("needs_code").GetBoolean());
+        Assert.Equal("other", plan.GetProperty("keep").GetString());
+        Assert.Equal(JsonValueKind.Null, plan.GetProperty("refusal").ValueKind);
+
+        var none = await other.PostAsync("/api/account/merge", null, Cancel);
+        var wrong = await MergeAsync(other, app.TotpCode(secret, 5));
+        Assert.Equal((HttpStatusCode.Forbidden, "admin_merge"), (none.StatusCode, await ErrorCodeAsync(none)));
+        Assert.Equal((HttpStatusCode.Forbidden, "admin_merge"), (wrong.StatusCode, await ErrorCodeAsync(wrong)));
+        Assert.Equal(2, await UsersAsync(app));
         Assert.False((await other.GetFromJsonAsync<JsonElement>("/api/me", Cancel)).GetProperty("admin").GetBoolean());
+
+        var right = await MergeAsync(other, app.TotpCode(secret));
+
+        Assert.Equal(HttpStatusCode.OK, right.StatusCode);
+        var me = await other.GetFromJsonAsync<JsonElement>("/api/me", Cancel);
+        Assert.Equal(adminId, me.GetProperty("id").GetInt64());
+        Assert.True(me.GetProperty("admin").GetBoolean());
+        Assert.Equal("owner@example.com", me.GetProperty("email").GetString());
+        Assert.Equal(1, await UsersAsync(app));
+        Assert.Equal(0, await PostgresServer.ScalarAsync<long>(app.ConnectionString, $"SELECT count(*) FROM identity.users WHERE id = {otherId}"));
+        Assert.Equal(1, await PostgresServer.ScalarAsync<long>(app.ConnectionString,
+            $"SELECT count(*) FROM admin.audit_log WHERE action = 'account.merge' AND detail = 'user {otherId} merged into user {adminId} (phone)'"));
+    }
+
+    [Fact]
+    [Trait("Rule", "SEC-15")]
+    public async Task SEC15_a_recovery_code_merges_and_is_spent()
+    {
+        await using var app = await StartAsync();
+        var (other, adminId, _, _, codes) = await AdminMergeAsync(app);
+
+        var response = await MergeAsync(other, codes[0]);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(adminId, (await JsonAsync(response)).GetProperty("id").GetInt64());
+        Assert.Equal(codes.Length - 1, await PostgresServer.ScalarAsync<long>(app.ConnectionString,
+            $"SELECT count(*) FROM identity.recovery_codes WHERE user_id = {adminId}"));
+    }
+
+    [Fact]
+    [Trait("Rule", "SEC-15")]
+    public async Task SEC15_guessing_the_merge_code_is_limited_like_a_password()
+    {
+        await using var app = await StartAsync();
+        var (other, _, _, secret, _) = await AdminMergeAsync(app);
+
+        // Identity:PasswordTries (5) wrong codes, then even the right code waits.
+        for (var i = 0; i < 5; i++)
+            Assert.Equal(HttpStatusCode.Forbidden, (await MergeAsync(other, "000000")).StatusCode);
+        var limited = await MergeAsync(other, app.TotpCode(secret));
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+        Assert.Equal("rate_limited", await ErrorCodeAsync(limited));
+        Assert.Equal(2, await UsersAsync(app));
+    }
+
+    [Fact]
+    [Trait("Rule", "SEC-15")]
+    public async Task SEC15_two_admin_accounts_are_never_merged()
+    {
+        const string SecondAdmin = "09129990002";
+        await using var app = await Http.StartAsync(postgres, ("Identity:AdminPhones", $"{AdminPhone}, {SecondAdmin}"));
+        await app.AddUserAsync("Second admin", phone: "+989129990002");
+        var admin = await AdminWithoutTotpAsync(app);
+        var (secret, _) = await app.TurnOnTotpAsync(admin);
+        app.Time.Advance(TimeSpan.FromSeconds(30));
+        await PostgresServer.ExecuteAsync(app.ConnectionString, $"UPDATE identity.users SET email = 'second@example.com' WHERE phone = '+989129990002'");
+        (await DalanApp.AskEmailCodeAsync(admin, "second@example.com")).EnsureSuccessStatusCode();
+        var proof = await admin.PostAsJsonAsync("/api/account/email", new { email = "second@example.com", code = app.Email.Sent[^1].Code }, Cancel);
+        Assert.Equal(HttpStatusCode.Conflict, proof.StatusCode);
+
+        var response = await MergeAsync(admin, app.TotpCode(secret));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal("admin_merge", await ErrorCodeAsync(response));
+        Assert.Equal(2, await UsersAsync(app));
     }
 }
