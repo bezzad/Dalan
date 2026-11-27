@@ -83,6 +83,8 @@ test("CLI-51 each screen has its own address", () => {
   const paths = ["/chats", "/bots", "/bots/new", "/bots/mofidbot", "/account", "/admin", "/apps"];
   assert.deepEqual(paths.map(path => pageFor(path, true)), ["chats", "bots", "botNew", "botPage", "account", "admin", "apps"]);
   assert.deepEqual(paths.map(path => pageFor(path, false)), paths.map(() => "login"));
+  // CLI-77: each section of the settings area has its own address.
+  assert.equal(pageFor("/account/security", true), "account");
   assert.equal(botPageUsername("/bots/mofidbot"), "mofidbot");
   assert.equal(botPageUsername("/bots/new"), null);
   assert.equal(botPageUsername("/bots"), null);

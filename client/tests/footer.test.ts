@@ -5,32 +5,27 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { footerLine } from "../src/pages.ts";
 
-const live = { version: "v26.11.25.114726", commit: "7207d600e166" };
-const now = new Date(2030, 0, 1);
+const now = new Date(2026, 10, 25);
 
-test("CLI-72 the English line is the sign, the year of the version and the name; the tooltip is the commit", () => {
-  const line = footerLine("en", live, now);
-  assert.equal(line.text, "© 2026 Dalan");
-  assert.equal(line.version, "v26.11.25.114726");
-  assert.equal(line.commit, "7207d600e166");
+test("CLI-72 the English line is the sign, this year, the name and the version", () => {
+  const line = footerLine("en", "v1.1.0", now);
+  assert.equal(`${line.text} ${line.version}`, "© 2026 Dalan v1.1.0");
 });
 
-test("CLI-72 the Persian line has Persian digits in the year and the Persian name", () => {
-  const line = footerLine("fa", live, now);
+test("CLI-72 the Persian line has Persian digits in the year and the Persian name; the version stays Latin", () => {
+  const line = footerLine("fa", "v1.1.3", now);
   assert.equal(line.text, "© ۲۰۲۶ دالان");
-  assert.equal(line.version, "v26.11.25.114726");
+  assert.equal(line.version, "v1.1.3");
 });
 
-test("CLI-72 without an answer from /health the line has the current year and no version", () => {
-  for (const [lang, text] of [["en", "© 2030 Dalan"], ["fa", "© ۲۰۳۰ دالان"]] as const) {
-    const line = footerLine(lang, null, now);
-    assert.equal(line.text, text);
-    assert.equal(line.version, "");
-  }
+test("CLI-72 without a version (no answer, or a local run) the line has none", () => {
+  for (const version of [null, undefined, "dev", "8b92fba39af3"]) assert.equal(footerLine("en", version, now).version, "", String(version));
 });
 
-test("CLI-72 a local run (version dev) has the current year", () => {
-  assert.equal(footerLine("en", { version: "dev", commit: "" }, now).text, "© 2030 Dalan");
+test("CLI-72 the page reads the version from the public settings, never from the private /health", () => {
+  const page = readFileSync(new URL("../src/public.ts", import.meta.url), "utf8");
+  assert.match(page, /api\.publicSettings\(\)\)\.then\(settings => drawCopyright\(settings\.version\)/);
+  assert.doesNotMatch(page, /api\.health/);
 });
 
 test("CLI-73 the footer sits at the end of a column that fills the screen, and is never fixed or sticky", () => {

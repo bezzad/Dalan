@@ -286,7 +286,6 @@ export const api = {
     (await call<{ rows: AuditRow[] }>("GET", `/api/admin/audit${before ? `?before=${before}` : ""}`)).rows,
   /** ADM-14 */
   /** CLI-72: the live version and commit. */
-  health: () => call<{ version: string; commit: string }>("GET", "/health"),
   publicSettings: () => call<PublicNumbers>("GET", "/api/public/settings"),
   /** ADM-17 */
   contact: (email: string, text: string) => call<{ id: number }>("POST", "/api/contact", { email, text }),

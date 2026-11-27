@@ -22,6 +22,8 @@ export interface App {
   pressWaitSeconds: number;
   /** CLI-51: goes to the screen of an address ("/chats", "/bots/new", "/@name") without a page load. */
   go(path: string): void;
+  /** CLI-77: draws the open screen again (the language or the theme changed). */
+  refresh(): void;
   logout(): void;
 }
 

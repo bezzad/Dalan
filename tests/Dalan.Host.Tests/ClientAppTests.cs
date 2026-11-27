@@ -33,6 +33,7 @@ public class ClientAppTests(PostgresServer postgres)
 
     [Theory]
     [Trait("Rule", "CLI-01")]
+    [Trait("Rule", "CLI-77")]
     [InlineData("/")]
     [InlineData("/bots")]
     [InlineData("/apps")]
@@ -47,6 +48,12 @@ public class ClientAppTests(PostgresServer postgres)
     [InlineData("/bots/new")]
     [InlineData("/bots/mofidbot")]
     [InlineData("/account")]
+    [InlineData("/account/profile")]
+    [InlineData("/account/security")]
+    [InlineData("/account/notifications")]
+    [InlineData("/account/preferences")]
+    [InlineData("/account/builder")]
+    [InlineData("/account/keys")]
     [InlineData("/admin")]
     public async Task CLI01_page_is_served_and_not_cached(string path)
     {

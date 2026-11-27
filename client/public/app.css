@@ -784,6 +784,74 @@ dialog.modal { width: min(560px, calc(100% - 32px)); padding: 20px; border: 1px 
 dialog.modal::backdrop { background: rgb(0 0 0 / .5); }
 dialog.modal > h2 { margin-block-end: 12px; }
 
+/* Settings area (CLI-77, CLI-78; docs/UI.md, part "Settings"): a side menu, one section per page, rows of "what" and "control". */
+.settings .settings-body { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: var(--space-l); align-items: start; }
+.settings .card { max-width: none; }
+nav.side { display: flex; flex-direction: column; gap: 2px; }
+nav.side .label { margin-block: 16px 4px; padding-inline: 10px; }
+nav.side .label:first-child { margin-block-start: 0; }
+nav.side a { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 10px; border-radius: var(--radius-s); color: var(--text); text-decoration: none; }
+nav.side a:hover { background: var(--line); }
+nav.side a[aria-current="page"] { background: var(--brand-soft); }
+nav.side a .glyph { width: 18px; height: 18px; }
+nav.side a .name { flex: 1; }
+nav.side a > .glyph:last-child { display: none; }
+:lang(fa) nav.side a > .glyph:last-child { transform: scaleX(-1); }
+.to-menu { color: var(--brand); text-decoration: none; font-weight: 600; }
+.settings .page { display: flex; flex-direction: column; gap: var(--space-s); max-width: 720px; min-width: 0; }
+.settings .crumbs { color: var(--muted); font-size: 14px; }
+.settings .crumbs a { color: var(--muted); text-decoration: none; }
+.settings .crumbs a:hover { color: var(--text); }
+.settings .page > .head { margin: 0; font-size: var(--text-title); }
+.settings .rows { display: flex; flex-direction: column; margin-block-start: var(--space-m); }
+.setting-row { display: grid; grid-template-columns: 1fr 1.4fr; gap: var(--space-m) var(--space-l); padding-block: 16px; border-block-start: 1px solid var(--line); }
+.setting-row .what h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.setting-row .control { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+.setting-row .control input { max-width: 360px; }
+.setting-row .control label { font-size: 14px; }
+.badge.ok, .badge.off { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; padding: 0 10px; border-radius: 999px; font-size: var(--text-small); font-weight: 600; }
+.badge.ok { background: var(--brand-soft); color: var(--brand); }
+.badge.ok::before { content: "\2713"; }
+.badge.off { background: var(--line); color: var(--muted); }
+.methods { display: flex; flex-direction: column; gap: 12px; margin-block-end: var(--space-m); }
+.method.card { gap: 8px; }
+.method .head { display: flex; align-items: center; gap: 10px; }
+.method .head h3 { margin: 0; font-size: 16px; }
+.method .head .grow { flex: 1; }
+.method .detail { padding: 8px 10px; border-radius: var(--radius-s); background: var(--bg); color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.radio-cards { display: flex; flex-wrap: wrap; gap: 12px; }
+.radio-card { display: flex; flex-direction: column; gap: 8px; width: 140px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--surface); cursor: pointer; }
+.radio-card.chosen { border-color: var(--brand); background: var(--brand-soft); }
+.radio-card:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 2px; }
+.radio-card input { width: 16px; height: 16px; margin: 0; padding: 0; accent-color: var(--brand); }
+.swatch { display: flex; flex-direction: column; gap: 4px; height: 56px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; }
+.swatch i { height: 8px; border-radius: 4px; }
+.swatch.light { background: #fafafa; }
+.swatch.light i { background: #e2e5e9; }
+.swatch.dark { background: #141716; }
+.swatch.dark i { background: #2f3533; }
+.swatch.word { align-items: center; justify-content: center; background: var(--bg); font-size: 24px; font-weight: 700; }
+.card.danger { border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
+.card.danger button { align-self: flex-start; color: var(--danger); }
+.settings .empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: var(--space-l); color: var(--muted); text-align: center; }
+.settings .empty .glyph { width: 32px; height: 32px; }
+.settings .empty strong { color: var(--text); }
+/* The grouped menu: the name and a grey line, then groups with an icon per item and a line between groups. */
+.menu.user .panel { min-width: 240px; }
+.menu.user .panel .who { display: flex; flex-direction: column; padding: 10px; }
+.menu.user .panel .who .note { font-size: 13px; overflow-wrap: anywhere; }
+.menu.user .panel hr { margin: 4px 0; border: 0; border-block-start: 1px solid var(--line); }
+.menu.user .panel .item { flex-direction: row; justify-content: flex-start; align-items: center; gap: 10px; min-height: 40px; }
+.menu.user .panel .item .glyph { width: 18px; height: 18px; }
+@media (max-width: 759px) {
+  .settings .settings-body { grid-template-columns: 1fr; gap: var(--space-m); }
+  .settings:not(.menu-only) nav.side, .settings:not(.menu-only) header h1, .settings .crumbs { display: none; }
+  nav.side a { min-height: 48px; }
+  nav.side a > .glyph:last-child { display: block; }
+  .setting-row { grid-template-columns: 1fr; }
+  .setting-row .control input { max-width: none; }
+}
+@media (min-width: 760px) { .to-menu { display: none; } }
 /* CLI-75: while the live stream is down, a thin ring turns around the header icon. Nothing moves; there is no bar. */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .ring { position: relative; }
