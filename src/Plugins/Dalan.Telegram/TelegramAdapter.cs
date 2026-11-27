@@ -17,14 +17,17 @@ public static class TelegramAdapter
     {
         // TG-01: the address of Telegram, at the root: some libraries keep only the host of their base address.
         // The token is part of the path, so nothing may log the path (TG-10).
-        endpoints.MapMethods("/bot{token}/{method}", ["GET", "POST"], HandleAsync);
+        // The segment is one parameter that starts with "bot", not "bot{token}": ASP.NET matches the literal of such a segment
+        // from the right, so a secret holding "bot" in any letter case (about one token in a thousand) missed the route.
+        endpoints.MapMethods("/{segment:regex(^bot)}/{method}", ["GET", "POST"], HandleAsync);
         // TG-21: Telegram's file download address.
-        endpoints.MapGet("/file/bot{token}/{path}", DownloadAsync);
+        endpoints.MapGet("/file/{segment:regex(^bot)}/{path}", DownloadAsync);
         return endpoints;
     }
 
-    private static async Task<IResult> HandleAsync(string token, string method, HttpContext http, IBotGateway gateway)
+    private static async Task<IResult> HandleAsync(string segment, string method, HttpContext http, IBotGateway gateway)
     {
+        var token = Token(segment);
         // ADM-01: the gateway records the call with the real address (CLAUDE.md rule 13: never read X-Forwarded-For here).
         var access = await gateway.EnterAsync(
             token, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
@@ -77,9 +80,13 @@ public static class TelegramAdapter
         };
     }
 
+    /// <summary>TG-01: the token is the path segment after "bot".</summary>
+    private static string Token(string segment) => segment["bot".Length..];
+
     /// <summary>TG-21: the bytes of a file, as Telegram serves them at /file/bot&lt;token&gt;/&lt;file_path&gt;.</summary>
-    private static async Task<IResult> DownloadAsync(string token, string path, HttpContext http, IBotGateway gateway)
+    private static async Task<IResult> DownloadAsync(string segment, string path, HttpContext http, IBotGateway gateway)
     {
+        var token = Token(segment);
         var access = await gateway.EnterAsync(
             token, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
         if (access.RetryAfter is { } wait) return TelegramJson.TooManyRequests(http, wait);
