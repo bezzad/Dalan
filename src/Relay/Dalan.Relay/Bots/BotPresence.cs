@@ -59,7 +59,14 @@ public sealed class BotPresence(IDbContextFactory<RelayDb> dbFactory, IOptionsMo
             return new BotStatus(state.Polls > 0 || IsRecent(state.LastSeen), state.LastSeen);
     }
 
-    private TimeSpan OnlineTime => TimeSpan.FromSeconds(options.CurrentValue.BotOnlineSeconds);
+    /// <summary>ADM-19: bots online now: those in memory, and those only <paramref name="recent"/> (saved before a restart) knows.</summary>
+    public int CountOnline(IReadOnlyDictionary<long, DateTimeOffset?> recent)
+    {
+        var known = _bots.Keys.ToHashSet();
+        return known.Count(id => Of(id, null).Online) + recent.Count(b => !known.Contains(b.Key) && IsRecent(b.Value));
+    }
+
+    public TimeSpan OnlineTime => TimeSpan.FromSeconds(options.CurrentValue.BotOnlineSeconds);
 
     private bool IsRecent(DateTimeOffset? seen) => seen is { } at && time.GetUtcNow() - at < OnlineTime;
 }

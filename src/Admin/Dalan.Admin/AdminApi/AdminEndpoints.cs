@@ -1,10 +1,12 @@
 using System.Globalization;
 using System.Net;
+using System.Text.Json.Serialization;
 using Dalan.Admin.Contracts;
 using Dalan.Admin.Data;
 using Dalan.Admin.Settings;
 using Dalan.Identity.Contracts;
 using Dalan.Relay.Contracts;
+using Dalan.Sites.Contracts;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -32,6 +34,17 @@ internal sealed record UsersResponse(IEnumerable<AdminUser> Users);
 
 internal sealed record BotsResponse(IEnumerable<AdminBot> Bots);
 
+/// <summary>ADM-19, CLI-82: the counts of the admin overview.</summary>
+internal sealed record OverviewJson(
+    int Users,
+    [property: JsonPropertyName("users_new_7d")] int UsersNew7d,
+    int Bots,
+    int BotsOnline,
+    int BuilderRequests,
+    int ShowcaseRequests,
+    int UnreadMessages,
+    int SitesOnline);
+
 internal sealed record ShowcaseResponse(IEnumerable<ShowcaseRequest> Entries);
 
 /// <summary>ADM-05 to ADM-13: the one admin door. Identity and Relay keep their data; Admin calls their contracts.</summary>
@@ -40,6 +53,7 @@ internal static class AdminEndpoints
     public static void MapAdminApi(this IEndpointRouteBuilder endpoints)
     {
         var admin = endpoints.MapGroup("/api/admin").RequireAuthorization().AddEndpointFilter<AdminFilter>();
+        admin.MapGet("/overview", OverviewAsync);
         admin.MapGet("/settings", (SettingsCatalog catalog) => AdminJson.Ok(new SettingsResponse(catalog.List())));
         admin.MapPut("/settings/{key}", SetSettingAsync);
         admin.MapDelete("/settings/{key}", ResetSettingAsync);
@@ -52,6 +66,23 @@ internal static class AdminEndpoints
         admin.MapPost("/bots/{botId:long}/suspend", SuspendBotAsync);
         admin.MapGet("/showcase", ShowcaseAsync);
         admin.MapPost("/showcase/{botId:long}", ReviewShowcaseAsync);
+    }
+
+    /// <summary>"New" users of the overview card: made in the last 7 days (CLI-82).</summary>
+    private static readonly TimeSpan NewUserTime = TimeSpan.FromDays(7);
+
+    /// <summary>ADM-19: each service counts its own data through its contract; the support messages are Admin's own.</summary>
+    private static async Task<IResult> OverviewAsync(
+        HttpContext http, IUserAdmin users, IBotAdmin bots, ISiteAdmin sites, IDbContextFactory<AdminDb> dbFactory, TimeProvider time)
+    {
+        var cancel = http.RequestAborted;
+        var userCounts = await users.CountAsync(time.GetUtcNow() - NewUserTime, cancel);
+        var botCounts = await bots.CountAsync(cancel);
+        await using var db = await dbFactory.CreateDbContextAsync(cancel);
+        var unread = await db.ContactMessages.CountAsync(m => !m.Read, cancel);
+        return AdminJson.Ok(new OverviewJson(
+            userCounts.Users, userCounts.NewUsers, botCounts.Bots, botCounts.Online, userCounts.BuilderRequests,
+            botCounts.ShowcaseRequests, unread, sites.CountOnline()));
     }
 
     private static readonly string[] AccessFilters = ["user", "bot", "phone", "email", "address"];
@@ -69,6 +100,8 @@ internal static class AdminEndpoints
         {
             SettingsService.Outcome.Done => AdminJson.Ok(entry),
             SettingsService.Outcome.BadValue => AdminJson.Error(StatusCodes.Status400BadRequest, "bad_value",
+                $"{entry!.Key} must be {rule}."),
+            SettingsService.Outcome.OutOfRange => AdminJson.Error(StatusCodes.Status400BadRequest, "out_of_range",
                 $"{entry!.Key} must be {rule}."),
             _ => SettingNotFound(),
         };

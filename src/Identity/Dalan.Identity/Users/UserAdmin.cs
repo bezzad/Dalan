@@ -119,6 +119,15 @@ internal sealed class UserAdmin(
         _ => "none",
     };
 
+    public async Task<UserCounts> CountAsync(DateTimeOffset newSince, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return new UserCounts(
+            await db.Users.CountAsync(cancellationToken),
+            await db.Users.CountAsync(u => u.CreatedAt >= newSince, cancellationToken),
+            await db.Users.CountAsync(u => u.Builder == BuilderState.Requested, cancellationToken));
+    }
+
     public string? NormalizePhone(string? input) => PhoneNumber.Normalize(input?.Replace(" ", "", StringComparison.Ordinal));
 
     public string? NormalizeEmail(string? input) => EmailAddress.Normalize(input);

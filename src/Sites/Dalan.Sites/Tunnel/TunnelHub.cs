@@ -1,5 +1,6 @@
 using System.Net;
 using System.Security.Cryptography;
+using Dalan.Sites.Contracts;
 using Microsoft.Extensions.Options;
 
 namespace Dalan.Sites.Tunnel;
@@ -8,7 +9,7 @@ namespace Dalan.Sites.Tunnel;
 /// In memory: the session of each site name, and the requests that wait for an answer.
 /// With more than one server this becomes shared, like the bot queue.
 /// </summary>
-public sealed class TunnelHub(TimeProvider time, IOptionsMonitor<SitesOptions> options)
+public sealed class TunnelHub(TimeProvider time, IOptionsMonitor<SitesOptions> options) : ISiteAdmin
 {
     private readonly Lock _lock = new();
     private readonly Dictionary<string, TunnelSession> _bySite = [];
@@ -54,6 +55,13 @@ public sealed class TunnelHub(TimeProvider time, IOptionsMonitor<SitesOptions> o
             EndLocked(session);
             return null;
         }
+    }
+
+    /// <summary>ADM-19: sites whose session is alive.</summary>
+    public int CountOnline()
+    {
+        var now = time.GetUtcNow();
+        lock (_lock) return _bySite.Values.Count(session => session.IsAlive(now, Idle));
     }
 
     public bool IsOnline(string site) => Find(site) is not null;

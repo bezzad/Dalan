@@ -13,5 +13,6 @@
     <ProjectReference Include="../../Admin/Dalan.Admin.Contracts/Dalan.Admin.Contracts.csproj" />
     <ProjectReference Include="../../Identity/Dalan.Identity.Contracts/Dalan.Identity.Contracts.csproj" />
     <ProjectReference Include="../../Relay/Dalan.Relay.Contracts/Dalan.Relay.Contracts.csproj" />
+    <ProjectReference Include="../Dalan.Sites.Contracts/Dalan.Sites.Contracts.csproj" />
   </ItemGroup>
 </Project>

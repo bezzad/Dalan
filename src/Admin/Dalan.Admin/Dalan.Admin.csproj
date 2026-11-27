@@ -8,10 +8,12 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="PublicPages/llms.txt" LogicalName="Dalan.Admin.llms.txt" />
+    <EmbeddedResource Include="Settings/settings.json" LogicalName="Dalan.Admin.settings.json" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Dalan.Admin.Contracts/Dalan.Admin.Contracts.csproj" />
     <ProjectReference Include="../../Identity/Dalan.Identity.Contracts/Dalan.Identity.Contracts.csproj" />
     <ProjectReference Include="../../Relay/Dalan.Relay.Contracts/Dalan.Relay.Contracts.csproj" />
+    <ProjectReference Include="../../Sites/Dalan.Sites.Contracts/Dalan.Sites.Contracts.csproj" />
   </ItemGroup>
 </Project>
