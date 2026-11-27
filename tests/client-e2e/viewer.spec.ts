@@ -29,10 +29,12 @@ test("CLI-90 SEC-16 the report opens in a sandboxed frame, turns its pages, and 
   const hit = await page.evaluate(([x, y]) => document.elementFromPoint(x!, y!)?.tagName, [box.x + box.width / 2, box.y + box.height / 2]);
   expect(hit).toBe("IFRAME");
   const frame = page.frames().find(f => f.url().startsWith(view))!;
+  // WebKit does not let a script make Touch objects; pointer events work in every browser.
   await frame.evaluate(() => {
-    const touch = (x: number) => new Touch({ identifier: 1, target: document.body, clientX: x, clientY: 200 });
-    document.body.dispatchEvent(new TouchEvent("touchstart", { touches: [touch(300)], changedTouches: [touch(300)], bubbles: true }));
-    document.body.dispatchEvent(new TouchEvent("touchend", { touches: [], changedTouches: [touch(100)], bubbles: true }));
+    const finger = (type: string, x: number) =>
+      new PointerEvent(type, { pointerId: 1, pointerType: "touch", isPrimary: true, clientX: x, clientY: 200, bubbles: true });
+    document.body.dispatchEvent(finger("pointerdown", 300));
+    document.body.dispatchEvent(finger("pointerup", 100));
   });
   await expect(report.locator("body")).toHaveAttribute("data-page", "3");
 

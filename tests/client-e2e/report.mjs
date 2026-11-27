@@ -33,7 +33,7 @@ export function report({ appOrigin, fonts, pictures }) {
 <title>Sprint review</title>
 <style>
 ${fonts.map((path, i) => font(path, `F${i}`)).join("\n")}
-html, body { margin: 0; height: 100%; font-family: F0, F1, sans-serif; }
+html, body { margin: 0; height: 100%; font-family: F0, F1, sans-serif; touch-action: pan-y; }
 section { display: none; height: 100%; box-sizing: border-box; padding: 24px; }
 section.on { display: block; }
 img { max-width: 40%; }
@@ -53,11 +53,12 @@ nav { position: fixed; inset-block-end: 12px; inset-inline: 0; display: flex; ju
   addEventListener("keydown", e => { if (e.key === "ArrowRight") show(page + 1); if (e.key === "ArrowLeft") show(page - 1); });
   document.getElementById("next").onclick = () => show(page + 1);
   document.getElementById("prev").onclick = () => show(page - 1);
+  // A swipe, as many reports do it: pointer events (a finger on an iPhone sends them too).
   let startX = null;
-  addEventListener("touchstart", e => { startX = e.touches[0].clientX; }, { passive: true });
-  addEventListener("touchend", e => {
+  addEventListener("pointerdown", e => { startX = e.clientX; });
+  addEventListener("pointerup", e => {
     if (startX === null) return;
-    const dx = e.changedTouches[0].clientX - startX;
+    const dx = e.clientX - startX;
     startX = null;
     if (Math.abs(dx) > 40) show(page + (dx < 0 ? 1 : -1));
   });
