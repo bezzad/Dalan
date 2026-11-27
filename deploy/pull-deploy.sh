@@ -32,6 +32,10 @@ echo "Building $version"
 [ -d "$src/.git" ] || git init --quiet "$src"
 retry git -C "$src" fetch --quiet --no-tags "$repo" "$ref"
 git -C "$src" checkout --quiet --force --detach "$sha"
+# OPS-16: the copy setup installed only fetches; the steps below come from the commit being built, so a change here reaches the server.
+if [ -z "${DALAN_PULL_INNER:-}" ] && [ -f "$src/deploy/pull-deploy.sh" ] && ! cmp -s "$0" "$src/deploy/pull-deploy.sh"; then
+  exec env DALAN_PULL_INNER=1 bash "$src/deploy/pull-deploy.sh"
+fi
 out="$dir/build"
 rm -rf "$out"
 # build-release.sh smoke-tests /health before the switch; deploy.sh checks /ready after it and rolls back.
