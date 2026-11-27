@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { formatNodes, formatTree, type Part } from "../src/format.ts";
-import { buttonAction, fillText, isReplySwipe, manifestFor, PressState, quoteLine, type Message } from "../src/messages.ts";
+import { buttonAction, fillText, appLinksFor, isReplySwipe, PressState, quoteLine, type Message } from "../src/messages.ts";
 
 const m = (id: number, version = id): Message => ({ id, version, from: "bot", text: `text ${id}`, date: "2026-11-24T12:00:00Z" });
 
@@ -72,10 +72,14 @@ test("CLI-53: a late answer or failure of an older press never ends a newer pres
   assert.equal(presses.pending(m(2), 18_000), 1);
 });
 
-test("CLI-55: a bot's chat links that bot's manifest; other screens the main one", () => {
-  assert.equal(manifestFor("/@mofidbot"), "/@mofidbot/manifest.webmanifest");
-  assert.equal(manifestFor("/chats"), "/manifest.webmanifest");
-  assert.equal(manifestFor("/@bad\"name"), "/manifest.webmanifest");
+test("CLI-55: a bot's chat links that bot's manifest and icons; other screens Dalan's", () => {
+  assert.deepEqual(appLinksFor("/@mofidbot"), {
+    manifest: "/@mofidbot/manifest.webmanifest", icon: "/@mofidbot/icon", iconType: null, appleIcon: "/@mofidbot/icon",
+  });
+  assert.deepEqual(appLinksFor("/chats"), {
+    manifest: "/manifest.webmanifest", icon: "/icons/icon.svg", iconType: "image/svg+xml", appleIcon: "/icons/icon-192.png",
+  });
+  assert.equal(appLinksFor("/@bad\"name").manifest, "/manifest.webmanifest");
 });
 
 /** The tree as short text: [type: parts]. */
