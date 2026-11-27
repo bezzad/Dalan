@@ -12,23 +12,49 @@ internal sealed class BotAdmin(
     IDbContextFactory<RelayDb> dbFactory, SuspendedBots suspendedBots, IMessageNotifier notifier, BotPresence presence, TimeProvider time)
     : IBotAdmin
 {
-    public async Task<IReadOnlyList<AdminBot>> SearchAsync(string query, int limit, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<AdminBot>> SearchAsync(
+        string query, long? before, int limit, CancellationToken cancellationToken)
     {
         var text = query.Trim().TrimStart('@');
-        if (text.Length == 0) return [];
-        var id = long.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var number) ? number : -1;
-#pragma warning disable CA1308 // Bot usernames are stored in lower case (REL-36).
-        var lower = text.ToLowerInvariant();
-#pragma warning restore CA1308
-
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        return await Shape(db.Bots
+        var bots = db.Bots.Where(b => before == null || b.Id < before);
+        if (text.Length > 0)
+        {
+            var id = long.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var number) ? number : -1;
+#pragma warning disable CA1308 // Bot usernames are stored in lower case (REL-36).
+            var lower = text.ToLowerInvariant();
+#pragma warning restore CA1308
 #pragma warning disable CA1304, CA1311, CA1862 // Runs in PostgreSQL as lower(username), which the unique index covers.
-                .Where(b => b.Id == id || b.OwnerUserId == id || b.Username.ToLower() == lower)
+            bots = bots.Where(b => b.Id == id || b.OwnerUserId == id || b.Username.ToLower() == lower);
 #pragma warning restore CA1304, CA1311, CA1862
-                .OrderBy(b => b.Id)
-                .Take(limit))
+        }
+
+        return await Shape(db, bots.OrderByDescending(b => b.Id).Take(limit)).ToListAsync(cancellationToken);
+    }
+
+    public async Task<AdminBot?> FindAsync(long botId, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return await Shape(db, db.Bots.Where(b => b.Id == botId)).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<AdminBot>> OwnedByAsync(long ownerUserId, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return await Shape(db, db.Bots.Where(b => b.OwnerUserId == ownerUserId && b.DeletedAt == null).OrderByDescending(b => b.Id))
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<long, int>> CountByOwnerAsync(
+        IReadOnlyCollection<long> ownerUserIds, CancellationToken cancellationToken)
+    {
+        if (ownerUserIds.Count == 0) return new Dictionary<long, int>();
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.Bots.AsNoTracking()
+            .Where(b => ownerUserIds.Contains(b.OwnerUserId) && b.DeletedAt == null)
+            .GroupBy(b => b.OwnerUserId)
+            .Select(g => new { Owner = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.Owner, g => g.Count, cancellationToken);
     }
 
     public async Task<AdminBot?> SetSuspendedAsync(long botId, bool suspended, CancellationToken cancellationToken)
@@ -40,7 +66,7 @@ internal sealed class BotAdmin(
         if (changed == 0) return null;
 
         suspendedBots.Set(botId, suspended);
-        return await Shape(db.Bots.Where(b => b.Id == botId)).FirstAsync(cancellationToken);
+        return await Shape(db, db.Bots.Where(b => b.Id == botId)).FirstAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<ShowcaseRequest>> ShowcaseRequestsAsync(int limit, CancellationToken cancellationToken)
@@ -78,6 +104,8 @@ internal sealed class BotAdmin(
 
     public void EndUserStreams(long userId) => notifier.EndStreams(userId);
 
-    private static IQueryable<AdminBot> Shape(IQueryable<Bot> bots) => bots.AsNoTracking().Select(b => new AdminBot(
-        b.Id, b.Username, b.Name, b.OwnerUserId, b.CreatedAt, b.LastSeenAt, b.SuspendedAt != null));
+    /// <summary>ADM-12: "users" counts every chat of the bot, whatever its state: each is a person who started it.</summary>
+    private static IQueryable<AdminBot> Shape(RelayDb db, IQueryable<Bot> bots) => bots.AsNoTracking().Select(b => new AdminBot(
+        b.Id, b.Username, b.Name, b.OwnerUserId, b.CreatedAt, b.LastSeenAt, b.SuspendedAt != null,
+        db.Memberships.Count(m => m.BotId == b.Id)));
 }

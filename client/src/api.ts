@@ -1,4 +1,5 @@
 // Calls to the server. Same origin only; the session is a cookie the browser sends by itself.
+import { adminListQuery } from "./adminTables.ts";
 import { createCaller } from "./caller.ts";
 import type { Message, Page } from "./messages.ts";
 import type { PublicNumbers, ShowcaseBot } from "./pages.ts";
@@ -57,6 +58,9 @@ export interface AdminUser {
   builder: BuilderState;
   builder_requested_at: string | null;
   suspended: boolean;
+  /** ADM-11: how many bots the user owns, and the last use of a session. */
+  bots?: number;
+  last_active_at?: string | null;
 }
 
 /** ADM-12 */
@@ -68,6 +72,8 @@ export interface AdminBot {
   created_at: string;
   last_seen_at: string | null;
   suspended: boolean;
+  /** ADM-12: the people who started its chat. */
+  users?: number;
 }
 
 /** ADM-13: an entry that waits for review. */
@@ -329,12 +335,17 @@ export const api = {
   adminSettings: async () => (await call<{ settings: Setting[] }>("GET", "/api/admin/settings")).settings,
   setSetting: (key: string, value: string) => call<Setting>("PUT", `/api/admin/settings/${encodeURIComponent(key)}`, { value }),
   resetSetting: (key: string) => call<Setting>("DELETE", `/api/admin/settings/${encodeURIComponent(key)}`),
-  adminUsers: async (query: string) =>
-    (await call<{ users: AdminUser[] }>("GET", `/api/admin/users?${new URLSearchParams(query ? { q: query } : { builder: "requested" })}`)).users,
+  /** ADM-11: with no search, everyone, newest first; `before` is the last id of the page shown. */
+  adminUsers: async (query: string, before?: number) =>
+    (await call<{ users: AdminUser[] }>("GET", `/api/admin/users?${adminListQuery(query, before)}`)).users,
+  builderRequests: async () => (await call<{ users: AdminUser[] }>("GET", "/api/admin/users?builder=requested")).users,
+  /** ADM-20 */
+  adminUser: (userId: number) => call<{ user: AdminUser; bots: AdminBot[] }>("GET", `/api/admin/users/${userId}`),
+  adminBot: (botId: number) => call<{ bot: AdminBot; owner: AdminUser | null }>("GET", `/api/admin/bots/${botId}`),
   setBuilder: (userId: number, approve: boolean) => call<AdminUser>("POST", `/api/admin/users/${userId}/builder`, { approve }),
   suspendUser: (userId: number, suspended: boolean) => call<AdminUser>("POST", `/api/admin/users/${userId}/suspend`, { suspended }),
-  adminBots: async (query: string) =>
-    (await call<{ bots: AdminBot[] }>("GET", `/api/admin/bots?${new URLSearchParams({ q: query })}`)).bots,
+  adminBots: async (query: string, before?: number) =>
+    (await call<{ bots: AdminBot[] }>("GET", `/api/admin/bots?${adminListQuery(query, before)}`)).bots,
   suspendBot: (botId: number, suspended: boolean) => call<AdminBot>("POST", `/api/admin/bots/${botId}/suspend`, { suspended }),
   accessLog: async (filter: string, value: string, before?: number) => {
     const query = new URLSearchParams({ [filter]: value, ...(before ? { before: String(before) } : {}) });

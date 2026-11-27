@@ -901,3 +901,17 @@ ol.recovery { columns: 2; margin: 0; padding-inline-start: 24px; font-family: va
 @media (prefers-reduced-motion: reduce) {
   .ring::after { animation: none; border: 2px dashed var(--brand); }
 }
+/* CLI-93: the admin tables (ngrok-like): a header row, a line between rows, the row lights up and opens its page. */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--surface); }
+table.admin-table { width: 100%; border-collapse: collapse; font-size: var(--text-small); }
+table.admin-table th { text-align: start; font-weight: 600; color: var(--muted); padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.admin-table td { padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.admin-table tbody tr:last-child td { border-bottom: 0; }
+table.admin-table tbody tr { cursor: pointer; }
+table.admin-table tbody tr:hover { background: color-mix(in srgb, var(--line) 45%, transparent); }
+table.admin-table td a { color: inherit; font-weight: 600; text-decoration: none; }
+table.admin-table tr.suspended td { color: var(--muted); }
+dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 8px 24px; margin: 0; }
+dl.facts dt { color: var(--muted); }
+dl.facts dd { margin: 0; overflow-wrap: anywhere; }
+a.back { align-self: flex-start; color: var(--muted); text-decoration: none; }

@@ -145,7 +145,7 @@ test("CLI-92 the card: QR as SVG nodes (never HTML), recovery codes once with Co
   assert.equal(recoveryFile(["a1", "b2"], "Recovery codes"), "Recovery codes\n\na1\nb2\n");
   // In Login and security for a user with a password or an admin; the admin pages show only it until it is on (SEC-15).
   assert.match(source("../src/settings/security.ts"), /app\.user\.has_password \|\| app\.user\.admin \? \[secondFactor\] : \[\]/);
-  assert.match(source("../src/settings/index.ts"), /app\.user\.totp \? adminPage\(app, section as AdminSection\) : h\("div", \{ class: "column" \},\n\s*h\("p", \{ class: "note" \}, t\("adminNeeds2fa"\)\), totpCard\(app\)\)/);
+  assert.match(source("../src/settings/index.ts"), /app\.user\.totp \? adminPage\(app, section as AdminSection, target\.sub\) : h\("div", \{ class: "column" \},\n\s*h\("p", \{ class: "note" \}, t\("adminNeeds2fa"\)\), totpCard\(app\)\)/);
 });
 
 test("CLI-81 CLI-82 CLI-83 CLI-92 every new text in both languages, every menu icon drawn in the page", () => {

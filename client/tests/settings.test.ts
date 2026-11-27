@@ -8,7 +8,7 @@ import { texts, type TextKey } from "../src/i18n.ts";
 import { glyphs } from "../src/icon.ts";
 import { pageFor } from "../src/pages.ts";
 import {
-  changedValue, dashboardMenu as settingsMenu, dashboardTarget as settingsTarget, loginMethods, menuSecondLine, sectionPath, sections, userMenuGroups,
+  adminDetailPath, changedValue, dashboardMenu as settingsMenu, dashboardTarget as settingsTarget, loginMethods, menuSecondLine, sectionPath, sections, userMenuGroups,
   type SettingsUser,
 } from "../src/settings/model.ts";
 
@@ -162,16 +162,26 @@ test("CLI-77 the design system describes the settings area and its pieces", () =
     assert.ok(css.includes(rule), rule);
 });
 
-test("CLI-78 the user menu for an admin: three groups, an icon per item", () => {
+test("CLI-78 the user menu for an admin: three groups, an icon per item; Dashboard opens the admin overview", () => {
   const groups = userMenuGroups({ admin: true });
-  assert.deepEqual(groups.map(group => group.map(item => item.id)), [["myBots", "chats", "myApps"], ["settings", "admin"], ["logout"]]);
+  assert.deepEqual(groups.map(group => group.map(item => item.id)), [["myBots", "chats", "myApps"], ["dashboard"], ["logout"]]);
   for (const item of groups.flat()) assert.ok(item.glyph in glyphs, item.id);
   // CLI-81: each item opens its place in the dashboard.
-  assert.deepEqual(groups.flat().map(item => item.path), ["/dashboard/bots", "/dashboard/chats", "/dashboard/apps", "/dashboard/profile", "/dashboard/admin", null]);
+  assert.deepEqual(groups.flat().map(item => item.path), ["/dashboard/bots", "/dashboard/chats", "/dashboard/apps", "/dashboard/admin", null]);
 });
 
-test("CLI-78 a user who is not an admin has only Settings in the second group", () => {
-  assert.deepEqual(userMenuGroups({ admin: false })[1]!.map(item => item.id), ["settings"]);
+test("CLI-78 a user who is not an admin has only Dashboard in the second group, opening /dashboard", () => {
+  const second = userMenuGroups({ admin: false })[1]!;
+  assert.deepEqual(second.map(item => [item.id, item.path]), [["dashboard", "/dashboard"]]);
+});
+
+test("CLI-93 a user's and a bot's page have their own address, only for an admin", () => {
+  assert.deepEqual(settingsTarget("/dashboard/admin/users/7", "", admin, true), { section: "users", path: "/dashboard/admin/users/7", sub: "7" });
+  assert.deepEqual(settingsTarget("/dashboard/admin/bots/5", "", admin, false), { section: "adminBots", path: "/dashboard/admin/bots/5", sub: "5" });
+  assert.equal(settingsTarget("/dashboard/admin/users/7", "", user, true).notFound, true);
+  assert.equal(settingsTarget("/dashboard/admin/users/x7", "", admin, true).notFound, true);
+  assert.equal(adminDetailPath("users", 7), "/dashboard/admin/users/7");
+  assert.equal(adminDetailPath("adminBots", 5), "/dashboard/admin/bots/5");
 });
 
 test("CLI-78 the menu opens with the name and, in grey, the email", () => {

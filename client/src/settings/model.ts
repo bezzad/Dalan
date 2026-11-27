@@ -68,6 +68,11 @@ export function sectionPath(id: SectionId): string {
 
 const isAdminSection = (section: Section) => section.group === "admin";
 
+/** CLI-93: the address of one user's or one bot's page in the admin dashboard. */
+export function adminDetailPath(section: "users" | "adminBots", id: number): string {
+  return `${sectionPath(section)}/${id}`;
+}
+
 /** CLI-81: what a user may see. The menu only hides; the server still refuses (SEC-14). */
 function visible(section: Section, user: SettingsUser): boolean {
   if (isAdminSection(section)) return user.admin;
@@ -90,7 +95,7 @@ export interface Target {
   path: string;
   /** CLI-81: an admin address for a user who is not an admin, or an address that does not exist. */
   notFound?: boolean;
-  /** Inside My bots: "new" or a bot's username (CLI-49). */
+  /** Inside My bots: "new" or a bot's username (CLI-49); in the admin Users or Bots: the id (CLI-93). */
   sub?: string;
 }
 
@@ -108,6 +113,9 @@ export function dashboardTarget(path: string, search: string, user: SettingsUser
     if (isAdminSection(found)) return { section: null, path, notFound: true };
     return found.group === "workspace" ? toBuilder : { section: "profile", path: sectionPath("profile") };
   }
+  // CLI-93: a user's or a bot's page in the admin dashboard; the same "Not found" as every admin address for anyone else.
+  const detail = /^\/dashboard\/admin\/(users|bots)\/([1-9][0-9]*)$/.exec(path);
+  if (detail) return user.admin ? { section: detail[1] === "users" ? "users" : "adminBots", path, sub: detail[2]! } : { section: null, path, notFound: true };
   const bot = /^\/dashboard\/bots\/(new|[A-Za-z][A-Za-z0-9_]*)$/.exec(path)?.[1];
   if (bot) return builderView(user) === "bots" ? { section: "bots", path, sub: bot } : toBuilder;
   const query = new URLSearchParams(search);
@@ -156,14 +164,17 @@ export function loginMethods(user: SettingsUser, githubLogin: boolean): LoginMet
 }
 
 export interface MenuItem {
-  id: "myBots" | "chats" | "myApps" | "settings" | "admin" | "logout";
+  id: "myBots" | "chats" | "myApps" | "dashboard" | "logout";
   glyph: GlyphName;
   text: TextKey;
   /** Null for Log out, which is an action. */
   path: string | null;
 }
 
-/** CLI-78: the user menu groups: (My bots, Chats, My apps), (Settings, and Admin for an admin), (Log out). CLI-81: each opens the dashboard. */
+/**
+ * CLI-78: the user menu groups: (My bots, Chats, My apps), (Dashboard), (Log out). Dashboard opens the admin overview for an
+ * admin and the dashboard for anyone else (owner, 2026-11-27: no separate Settings or Admin item; the side menu has both).
+ */
 export function userMenuGroups(user: { admin: boolean }): MenuItem[][] {
   return [
     [
@@ -171,10 +182,7 @@ export function userMenuGroups(user: { admin: boolean }): MenuItem[][] {
       { id: "chats", glyph: "chats", text: "chats", path: sectionPath("chats") },
       { id: "myApps", glyph: "apps", text: "myApps", path: sectionPath("apps") },
     ],
-    [
-      { id: "settings", glyph: "settings", text: "settings", path: sectionPath("profile") },
-      ...(user.admin ? [{ id: "admin", glyph: "shield", text: "adminScreen", path: sectionPath("overview") } satisfies MenuItem] : []),
-    ],
+    [{ id: "dashboard", glyph: "grid", text: "dashboard", path: user.admin ? sectionPath("overview") : dashboardPath }],
     [{ id: "logout", glyph: "logout", text: "logout", path: null }],
   ];
 }
