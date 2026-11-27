@@ -57,7 +57,7 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
   const start = h("button", { type: "button", class: "primary start", hidden: true }, t("start"));
   // CLI-87: over 3 lines, the expand button in the corner of the box opens the big editor.
   const expand = h("button", { type: "button", class: "expand", hidden: true, "aria-label": t("expand"), title: t("expand") }, icon("expand"));
-  const box = h("div", { class: "box" }, input, expand);
+  const box = h("div", { class: "compose-box" }, input, expand);
   const form = h("form", { class: "row compose", hidden: true }, menuButton, attach, picker, box, keyToggle, sendButton, mic);
   // CLI-88: the unsent text of each chat, in this browser only.
   const drafts = new Drafts(localStorage, app.user.id);

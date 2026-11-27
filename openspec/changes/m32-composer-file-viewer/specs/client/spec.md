@@ -26,11 +26,11 @@ In the message box and in the big editor (CLI-87), the client SHALL decide Enter
 - **THEN** nothing is sent
 
 ### Requirement: CLI-86 The message box grows
-The message box SHALL grow with its text up to `--compose-max-height` (40% of the screen height) and then scroll. After a send it SHALL be one row high again.
+The message box SHALL grow with its text up to `--compose-max-height` (about six lines, at most 30% of the screen height, like Telegram) and then scroll. Its buttons SHALL keep their size at the bottom. After a send it SHALL be one row high again.
 
 #### Scenario: Long text
 - **WHEN** the user types 30 lines
-- **THEN** the box is 40% of the screen high and scrolls
+- **THEN** the box is about six lines high and scrolls, and Send stays its own size at the bottom
 
 #### Scenario: After send
 - **WHEN** the user sends 5 lines

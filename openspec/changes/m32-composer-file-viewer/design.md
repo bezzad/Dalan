@@ -9,7 +9,7 @@
 
 ## Growing box and big editor (CLI-86, CLI-87)
 
-- Growing: on `input`, set `height: auto`, then `height = min(scrollHeight, 40vh)`; CSS `overflow-y: auto` past that. The 40% is the UI token `--compose-max-height: 40vh` in `app.css` and `docs/UI.md`, not a server setting: it is a look, not a limit (rule 4 is about limits).
+- Growing: on `input`, set `height: auto`, then `height = scrollHeight`; CSS stops it at `--compose-max-height: min(30dvh, 10.5em)` (about six lines, like Telegram; owner, 2026-11-27, after 40vh looked too big) and scrolls past that. It is a UI token in `app.css` and `docs/UI.md`, not a server setting: a look, not a limit (rule 4 is about limits). The buttons beside it stay at the bottom (`align-items: flex-end`). The box has its own class, `.compose-box`: `.box` is the landing page's diagram box.
 - Lines are counted as `round(scrollHeight / line height)`, so wrapped lines count too. Over 3 shows the expand button.
 - The big editor is `dialog.modal` (docs/UI.md). It does not copy the text: it **moves the same textarea element** into the dialog and back on close. So the text, the selection, `dir="auto"` and the undo stack are never lost, and there is no sync code. Full screen when `(pointer: coarse)` or the screen is narrower than 600px; otherwise 80% of the screen, in the middle.
 - Ctrl+B / Ctrl+I (Cmd on macOS) put `**` / `_` around the selection with `insertText`, so undo works. Dalan does not parse user formatting: the bot gets these marks as plain text.
