@@ -39,7 +39,9 @@ public class AuditTests(PostgresServer postgres)
         (await admin.PostAsJsonAsync($"/api/admin/bots/{botId}/suspend", new { suspended = true }, AdminApp.Cancel)).EnsureSuccessStatusCode();
         (await admin.PostAsJsonAsync($"/api/admin/bots/{botId}/suspend", new { suspended = false }, AdminApp.Cancel)).EnsureSuccessStatusCode();
 
-        var actions = (await admin.JsonAsync("/api/admin/audit")).Rows().Select(r => r.GetProperty("action").GetString()).Reverse();
+        // The admin of a test turned the second factor on first (SEC-15); that row is not an admin action.
+        var actions = (await admin.JsonAsync("/api/admin/audit")).Rows().Select(r => r.GetProperty("action").GetString())
+            .Where(action => action != "totp.on").Reverse();
         Assert.Equal(
             ["setting.reset", "builder.approve", "builder.refuse", "user.suspend", "user.unsuspend", "bot.suspend", "bot.unsuspend"],
             actions);
@@ -58,6 +60,7 @@ public class AuditTests(PostgresServer postgres)
         var second = (await admin.JsonAsync($"/api/admin/audit?before={first[^1].GetProperty("id").GetInt64()}")).Rows();
 
         Assert.Equal(["11 -> 12", "10 -> 11"], first.Select(r => r.GetProperty("detail").GetString()));
-        Assert.Equal(["4096 -> 10"], second.Select(r => r.GetProperty("detail").GetString()));
+        // The row after it is the admin turning the second factor on (SEC-15).
+        Assert.Equal(["4096 -> 10", null], second.Select(r => r.GetProperty("detail").GetString()));
     }
 }

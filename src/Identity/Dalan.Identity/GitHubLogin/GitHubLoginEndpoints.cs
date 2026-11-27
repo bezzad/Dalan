@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using Dalan.Admin.Contracts;
 using Dalan.Identity.Data;
+using Dalan.Identity.SecondFactor;
 using Dalan.Identity.Sessions;
 using Dalan.Identity.Users;
 using Microsoft.AspNetCore.Builder;
@@ -64,7 +65,8 @@ internal static class GitHubLoginEndpoints
         IOptionsMonitor<IdentityOptions> options,
         UserAdmin users,
         AccountMerger merger,
-        TimeProvider time)
+        TimeProvider time,
+        SecondFactors factors)
     {
         if (!options.CurrentValue.GitHub.IsOn) return Results.NotFound();
 
@@ -114,6 +116,10 @@ internal static class GitHubLoginEndpoints
         // ADM-01: this door knows its caller, so it records the real address before the login.
         await accessLog.RecordAsync(
             AccessActor.User, userId.Value, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
+        // SEC-15: an admin with the second factor on gives its code on the page, then POST /api/auth/totp makes the session.
+        if (await factors.TicketIfNeededAsync(userId.Value, SessionTokens.ByGitHub, http.RequestAborted) is { } ticket)
+            return Results.Redirect($"/?totp={Uri.EscapeDataString(ticket)}");
+
         await sessions.SignInAsync(http, userId.Value, SessionTokens.ByGitHub);
         return Results.Redirect("/");
     }

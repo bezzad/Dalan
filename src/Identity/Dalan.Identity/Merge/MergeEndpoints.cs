@@ -153,6 +153,8 @@ internal static class MergeEndpoints
             "Both accounts have bots, sites or access keys. Dalan does not move them, so these accounts cannot be merged."),
         "merge_conflict" => AuthJson.Error(StatusCodes.Status409Conflict, "merge_conflict",
             $"Both accounts have a different {field}. An account has only one, so these accounts cannot be merged."),
+        "admin" => AuthJson.Error(StatusCodes.Status403Forbidden, "admin_merge",
+            "One of these accounts is an admin of Dalan. An admin account cannot be merged."),
         _ => AuthJson.Suspended(),
     };
 }

@@ -12,7 +12,11 @@ public enum BuilderState
 }
 
 /// <summary>What a user may do now. A user that does not exist has every flag false.</summary>
-public sealed record UserAccess(bool IsAdmin, bool IsBuilder, bool IsSuspended);
+public sealed record UserAccess(bool IsAdmin, bool IsBuilder, bool IsSuspended)
+{
+    /// <summary>AUTH-37: the user has the second factor on. Read only for an admin (SEC-15); false for others.</summary>
+    public bool HasSecondFactor { get; init; }
+}
 
 /// <summary>A user as the admin sees it: with the phone number and email, for legal complaints (ADM-11).</summary>
 public sealed record AdminUser(

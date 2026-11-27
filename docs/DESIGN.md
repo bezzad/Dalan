@@ -517,6 +517,9 @@ None of these is planned work. They are recorded so the design does not block th
 | Site request timeout, for the first part of the answer (Layer 2) | 30 seconds | Assumed |
 | HTML file viewer host (`Relay:FileViewHost`) | Empty: `view.<Sites:Domain>`; both empty: viewer off | Assumed (milestone 32) |
 | HTML file view link (`Relay:FileViewMinutes`) | 10 minutes | Assumed (milestone 32) |
+| Second factor (TOTP) time step and window (`Identity:TotpStepSeconds`, `Identity:TotpWindowSteps`) | 30 seconds, 1 step before and after | Assumed (milestone 29, RFC 6238) |
+| Recovery codes (`Identity:RecoveryCodes`) | 10 | Assumed (milestone 29) |
+| Second factor login ticket (`Identity:TotpTicketMinutes`, `Identity:TotpMaxTries`) | 5 minutes, 5 wrong codes | Assumed (milestone 29) |
 
 **Confirmed by the owner on 2026-11-16:**
 

@@ -9,6 +9,7 @@ using Dalan.Identity.Codes;
 using Dalan.Identity.EmailLogin;
 using Dalan.Identity.GitHubLogin;
 using Dalan.Identity.Merge;
+using Dalan.Identity.SecondFactor;
 using Dalan.Identity.SmsLogin;
 using Dalan.Identity.Users;
 using Microsoft.AspNetCore.Authentication;
@@ -47,6 +48,7 @@ public static class IdentityService
         services.AddSingleton<EmailCodes>();
         services.AddSingleton<PasswordHasher>();
         services.AddSingleton<PasswordTries>();
+        services.AddSingleton<SecondFactors>();
         services.AddSingleton<AccountMerger>();
         services.AddSingleton<MergeFollowUp>();
         services.AddHostedService(provider => provider.GetRequiredService<MergeFollowUp>());
@@ -79,6 +81,7 @@ public static class IdentityService
         endpoints.MapGitHubLogin();
         endpoints.MapPasswordLogin();
         endpoints.MapAccount();
+        endpoints.MapSecondFactor();
         endpoints.MapMerge();
         endpoints.MapAccessKeys();
         endpoints.MapDevLogin();

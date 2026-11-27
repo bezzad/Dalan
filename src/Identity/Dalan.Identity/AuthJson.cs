@@ -7,7 +7,8 @@ namespace Dalan.Identity;
 
 /// <summary>What a person may see of an account. Never the phone number or the password hash (AUTH-04).</summary>
 internal sealed record ProfileJson(
-    long Id, string Name, string? Username, string? Email, bool HasPassword, bool HasPhone, bool Admin, string Builder, bool HasGithub);
+    long Id, string Name, string? Username, string? Email, bool HasPassword, bool HasPhone, bool Admin, string Builder, bool HasGithub,
+    bool Totp);
 
 internal sealed record ErrorJson(string Error, string Message);
 
