@@ -13,6 +13,7 @@
     <Project Path="src/Plugins/Dalan.Telegram/Dalan.Telegram.csproj" />
     <Project Path="src/Relay/Dalan.Relay.Contracts/Dalan.Relay.Contracts.csproj" />
     <Project Path="src/Relay/Dalan.Relay/Dalan.Relay.csproj" />
+    <Project Path="src/Sites/Dalan.Sites.Contracts/Dalan.Sites.Contracts.csproj" />
     <Project Path="src/Sites/Dalan.Sites/Dalan.Sites.csproj" />
   </Folder>
   <Folder Name="/tests/">

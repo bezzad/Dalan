@@ -1,4 +1,5 @@
 using Dalan.Identity.Contracts;
+using Dalan.Sites.Contracts;
 using Dalan.Sites.Data;
 using Dalan.Sites.Demos;
 using Dalan.Sites.Downloads;
@@ -37,6 +38,7 @@ public static class SitesService
         services.AddSingleton<IUserHoldings, SiteHoldings>();
         services.AddSingleton<DemoBook>();
         services.AddSingleton<TunnelHub>();
+        services.AddSingleton<ISiteAdmin>(provider => provider.GetRequiredService<TunnelHub>());
         services.AddSingleton<SiteProxy>();
         return services;
     }

@@ -29,7 +29,7 @@ Identity    Relay      Notification     Admin       Sites
 | **Relay** (core) | bots, memberships, messages, the in-memory queue of each bot | sync in; **async** out to bots (queue + long polling) |
 | **Notification** | push subscriptions | **async**, except the login SMS (`ISmsSender`) and the subscription calls (`IWebPush`), which are sync. It gets "send this to this receiver by this channel" and knows no business. Channels: Web Push and SMS, later Email |
 | **Admin** | settings the admin changed, audit log, access log; the one admin door `/api/admin/...` | sync. Other services write the access log and audit log through `IAccessLog` and `IAuditLog`; Admin calls `IUserAdmin` (Identity) and `IBotAdmin` (Relay) for users and bots |
-| **Sites** (Layer 2) | site names (`sites.sites`), the open agent sessions and waiting requests (in memory, `TunnelHub`) | sync in (`/api/tunnel`, `/api/sites`); site hosts go through `SiteProxy` before anything else. Uses `IUserDirectory` and `IAccessLog` only. No `.Contracts` yet: no service needs it |
+| **Sites** (Layer 2) | site names (`sites.sites`), the open agent sessions and waiting requests (in memory, `TunnelHub`) | sync in (`/api/tunnel`, `/api/sites`); site hosts go through `SiteProxy` before anything else. Uses `IUserDirectory` and `IAccessLog` only. `.Contracts`: `ISiteAdmin` (sites online, for the admin overview) |
 
 Relay has two thin HTTP doors, both inside Relay:
 
@@ -55,7 +55,7 @@ src/
   Relay/Dalan.Relay(.Contracts)
   Notification/Dalan.Notification(.Contracts)
   Admin/Dalan.Admin(.Contracts)
-  Sites/Dalan.Sites
+  Sites/Dalan.Sites(.Contracts)
   Plugins/Dalan.Telegram
 agent/Dalan.Agent                     the program on the home computer (Native AOT, stands alone: ARC-06)
 tests/                                one test project per area

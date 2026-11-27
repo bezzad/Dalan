@@ -26,6 +26,9 @@ public sealed record AdminUser(
     DateTimeOffset? BuilderRequestedAt,
     bool Suspended);
 
+/// <summary>ADM-19: counts for the admin overview.</summary>
+public sealed record UserCounts(int Users, int NewUsers, int BuilderRequests);
+
 /// <summary>
 /// What the admin door asks of Identity (ADM-11, AUTH-19, AUTH-20). It carries phone numbers,
 /// so only the Admin service may use it (AUTH-02).
@@ -46,6 +49,9 @@ public interface IUserAdmin
 
     /// <summary>ADM-17: one user by id, or null.</summary>
     Task<AdminUser?> FindAsync(long userId, CancellationToken cancellationToken);
+
+    /// <summary>ADM-19: all users, those made since <paramref name="newSince"/>, and open builder requests.</summary>
+    Task<UserCounts> CountAsync(DateTimeOffset newSince, CancellationToken cancellationToken);
 
     /// <summary>An Iranian mobile number in any form as +989121234567, or null.</summary>
     string? NormalizePhone(string? input);
