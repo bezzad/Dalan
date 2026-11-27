@@ -34,4 +34,4 @@ None.
 - Identity: session list and revoke, account delete, key address lists; migrations; audit log entries for each.
 - Relay and Sites: refuse delete while the user owns bots or sites (through contracts).
 - Client: settings sections of m26.
-- New settings (rule 4): `Identity:TotpStepSeconds` 30, `Identity:TotpWindowSteps` 1, `Identity:RecoveryCodes` 10, `Identity:DeleteConfirmWord` "DELETE" / "حذف", `Identity:MaxKeyAddresses` 20.
+- New settings (rule 4): `Identity:DeleteConfirmWords` "DELETE,حذف" (either one), `Identity:MaxKeyAddresses` 20. (The TOTP settings came with m29.)

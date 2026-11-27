@@ -20,6 +20,15 @@ With a session, `POST /api/account/delete` with the password (or, for a user wit
 - **WHEN** the user asks to delete the account
 - **THEN** the answer is 409 `owns_things` and nothing is deleted
 
+#### Scenario: No password
+- **GIVEN** a user with no password
+- **WHEN** the user asks `POST /api/account/delete/challenge`, solves it and calls `POST /api/account/delete/code`
+- **THEN** a code goes to the account's own phone (else its email), and that code with the word deletes the account
+
+#### Scenario: Admin
+- **WHEN** an admin asks to delete the account
+- **THEN** the answer is 403 `admin_delete`: admins come only from the server's environment
+
 #### Scenario: Deleted
 - **GIVEN** the user owns no bot or site
 - **WHEN** the user sends the right password and word
@@ -27,6 +36,10 @@ With a session, `POST /api/account/delete` with the password (or, for a user wit
 
 ### Requirement: AUTH-38 Address limits on access keys
 An access key MAY have up to `Identity:MaxKeyAddresses` addresses or ranges (IPv4 or IPv6, CIDR). A call with that key from another address SHALL get 403 `key_address_refused`, recorded in the access log. A key with no list SHALL work from any address, as today.
+
+#### Scenario: Set the list
+- **WHEN** the owner sends `PUT /api/account/keys/{id}/addresses` with `["80.244.7.0/24", "2a01::1"]`
+- **THEN** the key lists them; a bad address gets 400 `bad_address`, more than the limit 400 `too_many_addresses`
 
 #### Scenario: Refused
 - **GIVEN** a key limited to `80.244.7.0/24`
