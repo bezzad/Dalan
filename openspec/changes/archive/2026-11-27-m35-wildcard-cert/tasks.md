@@ -6,5 +6,7 @@ Owner asked 2026-11-27 (internet shutdown); choice: Let's Encrypt with ArvanClou
 - [x] 2. `install.sh` downloads lego with its checksum; `setup.sh` installs it, the root-only key file, the group Caddy reads with, the units (OPS-18)
 - [x] 3. Caddyfile imports the wildcard site block when it exists; `caddy_test.sh` checks both cases (OPS-18)
 - [x] 4. `docs/SERVER.md`, `docs/ARCHITECTURE.md` decision
-- [ ] 4b. CI green, final review, merge, archive
-- [ ] 5. Owner: make an ArvanCloud API key (DNS administrator) and run install.sh once with `ARVAN_API_KEY`
+- [x] 4b. CI green, final review, merge, archive
+- [x] 5. Owner: make an ArvanCloud API key (DNS administrator) and run install.sh once with `ARVAN_API_KEY`
+
+Archived 2026-11-27 with its code merged (#110). Task 5 is the owner's: until the key is given, each site keeps its own certificate (OPS-15).
