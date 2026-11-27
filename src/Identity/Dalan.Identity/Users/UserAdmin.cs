@@ -37,33 +37,34 @@ internal sealed class UserAdmin(
         };
     }
 
-    public async Task<IReadOnlyList<AdminUser>> SearchAsync(string query, int limit, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<AdminUser>> SearchAsync(
+        string query, long? before, int limit, CancellationToken cancellationToken)
     {
         var text = query.Trim();
-        var phone = PhoneNumber.Normalize(text.Replace(" ", "", StringComparison.Ordinal));
-        var email = EmailAddress.Normalize(text);
-        var id = long.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var number) ? number : -1;
-#pragma warning disable CA1308 // Usernames are compared in lower case, as the unique index does (AUTH-01).
-        var lower = text.ToLowerInvariant();
-#pragma warning restore CA1308
-        if (text.Length == 0) return [];
-
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        return await Shape(db.Users
+        var users = db.Users.Where(u => before == null || u.Id < before);
+        if (text.Length > 0)
+        {
+            var phone = PhoneNumber.Normalize(text.Replace(" ", "", StringComparison.Ordinal));
+            var email = EmailAddress.Normalize(text);
+            var id = long.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var number) ? number : -1;
+#pragma warning disable CA1308 // Usernames are compared in lower case, as the unique index does (AUTH-01).
+            var lower = text.ToLowerInvariant();
+#pragma warning restore CA1308
 #pragma warning disable CA1304, CA1311, CA1862 // Runs in PostgreSQL.
-                .Where(u => u.Id == id || (phone != null && u.Phone == phone) || (email != null && u.Email == email)
-                    || (u.Username != null && u.Username.ToLower() == lower)
-                    || u.DisplayName.StartsWith(text))
+            users = users.Where(u => u.Id == id || (phone != null && u.Phone == phone) || (email != null && u.Email == email)
+                || (u.Username != null && u.Username.ToLower() == lower)
+                || u.DisplayName.StartsWith(text));
 #pragma warning restore CA1304, CA1311, CA1862
-                .OrderBy(u => u.Id)
-                .Take(limit))
-            .ToListAsync(cancellationToken);
+        }
+
+        return await Shape(db, users.OrderByDescending(u => u.Id).Take(limit)).ToListAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<AdminUser>> BuilderRequestsAsync(int limit, CancellationToken cancellationToken)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        return await Shape(db.Users
+        return await Shape(db, db.Users
                 .Where(u => u.Builder == BuilderState.Requested)
                 .OrderBy(u => u.BuilderRequestedAt).ThenBy(u => u.Id)
                 .Take(limit))
@@ -145,8 +146,9 @@ internal sealed class UserAdmin(
     }
 
     private static Task<AdminUser?> FindAsync(IdentityDb db, long userId, CancellationToken cancellationToken) =>
-        Shape(db.Users.Where(u => u.Id == userId)).FirstOrDefaultAsync(cancellationToken);
+        Shape(db, db.Users.Where(u => u.Id == userId)).FirstOrDefaultAsync(cancellationToken);
 
-    private static IQueryable<AdminUser> Shape(IQueryable<User> users) => users.AsNoTracking().Select(u => new AdminUser(
-        u.Id, u.Phone, u.Email, u.DisplayName, u.Username, u.CreatedAt, u.Builder, u.BuilderRequestedAt, u.SuspendedAt != null));
+    private static IQueryable<AdminUser> Shape(IdentityDb db, IQueryable<User> users) => users.AsNoTracking().Select(u => new AdminUser(
+        u.Id, u.Phone, u.Email, u.DisplayName, u.Username, u.CreatedAt, u.Builder, u.BuilderRequestedAt, u.SuspendedAt != null,
+        db.Sessions.Where(s => s.UserId == u.Id).Max(s => (DateTimeOffset?)s.RotatedAt)));
 }
