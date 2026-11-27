@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rule: OPS-16
+# Rules: OPS-16, OPS-17
 # Rule: DEL-08
 # deploy/pull-deploy.sh against a local git repository whose build and deploy scripts are fakes.
 set -euo pipefail
@@ -31,7 +31,7 @@ SH
 cat > "$work/deploy/deploy.sh" <<'SH'
 #!/bin/bash
 [ "$DEPLOY_HOST" = local ] || exit 9
-echo "deploy $2" >> "$DEPLOY_DIR/deploys.log"
+echo "deploy $2" >> "$DEPLOY_DIR/deploys.log"; echo "$3" >> "$DEPLOY_DIR/versions.log"
 if grep -qx NOTREADY "$(dirname "$0")/../state"; then echo "Release $2 is not ready after 30s" >&2; exit 1; fi
 cp -r "$1" "$DEPLOY_DIR/releases/$2"
 SH
@@ -90,6 +90,17 @@ DALAN_REPO="$tmp/nowhere.git" bash "$script" > /dev/null 2>&1 && fail "a failed 
 bash "$script" > /dev/null || fail "the next run after a failed fetch failed"
 [ "$(deploys)" = 3 ] || fail "the next run after a failed fetch did not deploy"
 echo "PASS OPS-16 a failed fetch fails the run, the next run tries again"
+
+# Rule: OPS-17 the version is the commit time in Tehran time; the release folder keeps the sha name
+commit versioned
+GIT_COMMITTER_DATE="2026-11-25 11:47:26 +0330" git -C "$work" -c user.name=t -c user.email=t@t commit -q --amend --no-edit
+git -C "$work" push -q --force "$DALAN_REPO" main
+sha=$(git -C "$work" rev-parse HEAD | cut -c1-12)
+TZ=UTC bash "$script" > /dev/null || fail "the run for a dated commit failed"
+[ "$(tail -1 "$DEPLOY_DIR/deploys.log")" = "deploy $sha" ] || fail "the release is not named by the sha: $(tail -1 "$DEPLOY_DIR/deploys.log")"
+[ "$(tail -1 "$DEPLOY_DIR/versions.log")" = "v26.11.25.114726" ] || fail "version is not the Tehran commit time: $(tail -1 "$DEPLOY_DIR/versions.log")"
+[ -d "$DEPLOY_DIR/releases/$sha" ] || fail "no releases/$sha"
+echo "PASS OPS-17 the version is v<yy.mm.dd.HHMMSS> of the commit time in Tehran time; the folder keeps the sha"
 
 # The units and the build: every minute; /health before the switch (build-release.sh), /ready after it (deploy.sh).
 grep -qx 'OnUnitInactiveSec=1min' "$root/deploy/dalan-pull.timer" || fail "the timer does not run every minute"

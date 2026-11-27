@@ -41,5 +41,8 @@ bash "$src/scripts/build-release.sh" "$out" || give_up "Build"
 for file in "$dir/current/agent/"*; do
   [ -e "$file" ] && [ ! -e "$out/agent/$(basename "$file")" ] && cp "$file" "$out/agent/"
 done
-DEPLOY_HOST=local DEPLOY_DIR="$dir" bash "$src/deploy/deploy.sh" "$out" "$version" || give_up "Deploy"
+# OPS-17: the shown version is the commit time in Tehran time, like ArcaneBot; the folder keeps the sha name.
+committed=$(git -C "$src" log -1 --format=%ct "$sha")
+shown="v$(TZ=Asia/Tehran date -d "@$committed" +%y.%m.%d.%H%M%S)"
+DEPLOY_HOST=local DEPLOY_DIR="$dir" bash "$src/deploy/deploy.sh" "$out" "$version" "$shown" || give_up "Deploy"
 rm -rf "$out"
