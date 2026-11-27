@@ -217,6 +217,20 @@
     "risky": false,
     "restart": false
   },
+  "Identity:DeleteConfirmWords": {
+    "group": "Identity",
+    "name": {
+      "fa": "کلمه‌های تأیید حذف حساب",
+      "en": "Account delete confirm words"
+    },
+    "help": {
+      "fa": "کلمه‌هایی که کاربر برای حذف حساب خودش باید بنویسد، با کاما جدا شده. بزرگی و کوچکی حروف لاتین مهم نیست.",
+      "en": "Words a user must type to delete the own account, comma separated. Case does not matter."
+    },
+    "unit": "",
+    "risky": false,
+    "restart": false
+  },
   "Identity:EmailCodeDigits": {
     "group": "Identity",
     "name": {
@@ -406,6 +420,22 @@
     "unit": "keys",
     "min": 1,
     "max": 100,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:MaxKeyAddresses": {
+    "group": "Identity",
+    "name": {
+      "fa": "نشانی برای هر کلید دسترسی",
+      "en": "Addresses per access key"
+    },
+    "help": {
+      "fa": "تعداد نشانی یا بازه IP که فهرست یک کلید دسترسی می‌تواند داشته باشد.",
+      "en": "IP addresses or ranges one access key's list may have."
+    },
+    "unit": "addresses",
+    "min": 1,
+    "max": 1000,
     "risky": false,
     "restart": false
   },

@@ -20,7 +20,7 @@ export function adminPage(app: App, section: AdminSection): HTMLElement {
   const failed = (failure: unknown) => {
     toast(failure instanceof ApiError && failure.code === "bad_request" ? t("badSearch") : t(errorText(failure)), "error");
   };
-  const local = (iso: string | null) => iso ? `${utc(iso)} · ${new Date(iso).toLocaleString(app.language.current === "fa" ? "fa-IR" : "en-GB")}` : "";
+  const local = (iso: string | null) => iso ? `${utc(iso)} · ${app.language.dateTime(iso)}` : "";
 
   /** A search box over a result list; `run` draws the results for the text. */
   function search(placeholder: string, run: (text: string, results: HTMLElement) => Promise<void>, start = ""): [HTMLFormElement, HTMLElement] {

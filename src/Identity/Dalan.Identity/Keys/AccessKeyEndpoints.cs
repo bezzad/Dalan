@@ -13,9 +13,12 @@ namespace Dalan.Identity.Keys;
 
 internal sealed record KeyRequest(string? Name);
 
-internal sealed record KeyJson(long Id, string Name, DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt);
+internal sealed record AddressesRequest(string?[]? Addresses);
 
-internal sealed record NewKeyJson(long Id, string Name, string Key, DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt);
+/// <summary>AUTH-23, AUTH-38: a key in the list. An empty <see cref="Addresses"/> means any address.</summary>
+internal sealed record KeyJson(long Id, string Name, DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt, string[] Addresses);
+
+internal sealed record NewKeyJson(long Id, string Name, string Key, DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt, string[] Addresses);
 
 internal sealed record KeysResponse(IEnumerable<KeyJson> Keys);
 
@@ -37,6 +40,7 @@ internal static class AccessKeyEndpoints
         keys.MapGet("", ListAsync);
         keys.MapPost("", CreateAsync);
         keys.MapDelete("/{keyId:long}", DeleteAsync);
+        keys.MapPut("/{keyId:long}/addresses", SetAddressesAsync);
     }
 
     private static async Task<IResult> ListAsync(HttpContext http, IDbContextFactory<IdentityDb> dbFactory)
@@ -44,7 +48,7 @@ internal static class AccessKeyEndpoints
         var userId = SessionTokens.UserId(http.User);
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
         var keys = await db.AccessKeys.AsNoTracking().Where(k => k.UserId == userId).OrderBy(k => k.Id)
-            .Select(k => new KeyJson(k.Id, k.Name, k.CreatedAt, k.ExpiresAt))
+            .Select(k => new KeyJson(k.Id, k.Name, k.CreatedAt, k.ExpiresAt, k.Addresses))
             .ToListAsync(http.RequestAborted);
         return AuthJson.Ok(new KeysResponse(keys));
     }
@@ -84,7 +88,7 @@ internal static class AccessKeyEndpoints
         db.AccessKeys.Add(key);
         await db.SaveChangesAsync(http.RequestAborted);
         await audit.RecordAsync(userId, "key.create", Target(key.Id), name, http.RequestAborted);
-        return Results.Json(new NewKeyJson(key.Id, key.Name, text, key.CreatedAt, key.ExpiresAt), AuthJson.Options,
+        return Results.Json(new NewKeyJson(key.Id, key.Name, text, key.CreatedAt, key.ExpiresAt, key.Addresses), AuthJson.Options,
             statusCode: StatusCodes.Status201Created);
     }
 
@@ -97,6 +101,34 @@ internal static class AccessKeyEndpoints
 
         await audit.RecordAsync(userId, "key.delete", Target(keyId), null, http.RequestAborted);
         return Results.NoContent();
+    }
+
+    /// <summary>AUTH-38: replaces the address list of a key. An empty list: the key works from any address.</summary>
+    private static async Task<IResult> SetAddressesAsync(
+        long keyId, HttpContext http, IDbContextFactory<IdentityDb> dbFactory, IAuditLog audit, IOptionsMonitor<IdentityOptions> options)
+    {
+        var max = options.CurrentValue.MaxKeyAddresses;
+        var given = (await AuthJson.ReadAsync<AddressesRequest>(http))?.Addresses;
+        var addresses = given?.Select(KeyAddresses.Normalize).ToList();
+        if (addresses is null || addresses.Contains(null))
+        {
+            return AuthJson.BadRequest("bad_address",
+                """Send JSON like {"addresses": ["80.244.7.0/24", "2a01::1"]}: IPv4 or IPv6 addresses, or CIDR ranges that start at their first address.""");
+        }
+
+        string[] list = [.. addresses.OfType<string>().Distinct()];
+        if (list.Length > max)
+            return AuthJson.BadRequest("too_many_addresses", $"A key may have at most {max} addresses or ranges.");
+
+        var userId = SessionTokens.UserId(http.User);
+        await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
+        var key = await db.AccessKeys.FirstOrDefaultAsync(k => k.Id == keyId && k.UserId == userId, http.RequestAborted);
+        if (key is null) return AuthJson.Error(StatusCodes.Status404NotFound, "key_not_found", "You have no access key with this id.");
+
+        key.Addresses = list;
+        await db.SaveChangesAsync(http.RequestAborted);
+        await audit.RecordAsync(userId, "key.addresses", Target(keyId), list.Length == 0 ? "any" : string.Join(' ', list), http.RequestAborted);
+        return AuthJson.Ok(new KeyJson(key.Id, key.Name, key.CreatedAt, key.ExpiresAt, key.Addresses));
     }
 
     private static string Target(long keyId) => string.Create(CultureInfo.InvariantCulture, $"key {keyId}");

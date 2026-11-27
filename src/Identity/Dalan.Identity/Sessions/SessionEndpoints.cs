@@ -44,5 +44,11 @@ internal static class SessionEndpoints
             GithubLogin = options.CurrentValue.GitHub.IsOn,
             options.CurrentValue.PasswordMinLength,
             NameMaxLength = options.CurrentValue.MaxNameLength,
+            // AUTH-36: the client shows a word of the user's language in the delete card.
+            DeleteWords = DeleteWords(options.CurrentValue),
         });
+
+    /// <summary>AUTH-36: the words that confirm "delete my account" (Identity:DeleteConfirmWords).</summary>
+    public static string[] DeleteWords(IdentityOptions options) =>
+        (options.DeleteConfirmWords ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 }

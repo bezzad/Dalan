@@ -78,6 +78,13 @@ export function errorText(error: unknown): TextKey {
     case "has_phone": return "hasPhone";
     case "has_email": return "hasEmail";
     case "has_github": return "hasGithub";
+    case "owns_things": return "ownsThings";
+    case "bad_word": return "badDeleteWord";
+    case "bad_proof": return "badDeleteProof";
+    case "admin_delete": return "adminDelete";
+    case "bad_address": return "badAddress";
+    case "too_many_addresses": return "tooManyAddresses";
+    case "key_address_refused": return "keyAddressRefused";
     case "merge_needed": return "mergeNeeded";
     case "no_merge": return "noMerge";
     case "both_have_products": return "bothHaveProducts";

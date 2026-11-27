@@ -81,6 +81,8 @@ public static class IdentityService
         endpoints.MapGitHubLogin();
         endpoints.MapPasswordLogin();
         endpoints.MapAccount();
+        endpoints.MapDeleteAccount();
+        endpoints.MapSessionList();
         endpoints.MapSecondFactor();
         endpoints.MapMerge();
         endpoints.MapAccessKeys();

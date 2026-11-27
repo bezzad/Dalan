@@ -1,7 +1,7 @@
-// CLI-77: the Preferences section: theme (CLI-35) and language (CLI-04) as radio cards. A choice applies at once, like the header buttons.
+// CLI-77: the Preferences section: theme (CLI-35), language (CLI-04) and calendar (CLI-79) as radio cards. A choice applies at once, like the header buttons.
 import type { App } from "../app.ts";
 import { h } from "../dom.ts";
-import type { Lang } from "../i18n.ts";
+import type { Calendar, Lang } from "../i18n.ts";
 import type { ThemeName } from "../theme.ts";
 import { settingRow } from "./row.ts";
 
@@ -26,7 +26,16 @@ export function preferencesSection(app: App): HTMLElement {
         if (app.language.current !== lang) app.language.toggle();
         app.refresh();
       }));
+  // CLI-79: today's date in each calendar is the example on its card.
+  const today = new Date().toISOString();
+  const calendars = (["jalali", "gregorian"] as const satisfies readonly Calendar[]).map(calendar =>
+    radioCard("calendar", calendar, app.language.calendar === calendar, h("span", { class: "swatch date", "aria-hidden": "true" }, app.language.day(today, calendar)),
+      t(calendar === "jalali" ? "calendarJalali" : "calendarGregorian"), () => {
+        app.language.chooseCalendar(calendar);
+        app.refresh();
+      }));
   return h("div", { class: "rows" },
     settingRow(t("themeLabel"), t("themeHelp"), h("div", { class: "radio-cards" }, ...themes)),
-    settingRow(t("languageLabel"), t("languageHelp"), h("div", { class: "radio-cards" }, ...languages)));
+    settingRow(t("languageLabel"), t("languageHelp"), h("div", { class: "radio-cards" }, ...languages)),
+    settingRow(t("calendarLabel"), t("calendarHelp"), h("div", { class: "radio-cards" }, ...calendars)));
 }
