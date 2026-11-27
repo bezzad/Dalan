@@ -48,7 +48,8 @@ export const settingsPaths: readonly string[] = [settingsPath, ...sections.map(s
 
 /** CLI-77: the Building group is for an approved builder or an admin only. */
 function visible(section: Section, user: SettingsUser): boolean {
-  return section.group === "account" || keysShown(user);
+  // CLI-23: every user sees the Builder section (ask, wait or open); the keys only a builder or an admin (CLI-30).
+  return section.id !== "keys" || keysShown(user);
 }
 
 /** The side menu: groups with their sections. A group with no section is left out. */

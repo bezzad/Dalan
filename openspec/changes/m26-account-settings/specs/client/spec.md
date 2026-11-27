@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: CLI-77 Settings area
-The account screen SHALL be a settings area: a side menu, one section per page, each at its own address (`/account/profile`, `/account/security`, `/account/notifications`, `/account/preferences` and, only for an approved builder or an admin, `/account/builder` and `/account/keys`). `/account` SHALL open Profile at 760px and wider, and the menu list below. A section page SHALL show a breadcrumb, a title, a description and rows. A row's button SHALL be primary only while its value is changed.
+The account screen SHALL be a settings area: a side menu and one section per page, each at its own address: `/account/profile`, `/account/security`, `/account/notifications`, `/account/preferences`, `/account/builder` (the CLI-23 state, for every user) and `/account/keys` (only an approved builder or an admin). `/account` SHALL open Profile at 760px and wider, and the menu list below. A section page SHALL show a breadcrumb, a title, a description and rows.
 
 #### Scenario: Desktop
 - **WHEN** a user opens `/account` in a 1280px wide browser
@@ -11,10 +11,14 @@ The account screen SHALL be a settings area: a side menu, one section per page, 
 - **WHEN** the user picks "Login and security", then presses Back
 - **THEN** the address was `/account/security`, and Back shows Profile again
 
+#### Scenario: A row's button
+- **WHEN** a row's value is changed
+- **THEN** its button is primary, and plain again when the value is as saved
+
 #### Scenario: Builder group
 - **GIVEN** a user who is not an approved builder or an admin
 - **WHEN** the settings area opens
-- **THEN** there is no Building group, and `/account/keys` opens Profile
+- **THEN** the Building group has only Builder, with the request button, the waiting note or the phone note (CLI-23), and `/account/keys` opens Profile
 
 #### Scenario: Login methods
 - **GIVEN** a user with a password and a phone, no email and no GitHub

@@ -759,7 +759,7 @@ nav.side a > .glyph:last-child { display: none; }
 .settings .crumbs { color: var(--muted); font-size: 14px; }
 .settings .crumbs a { color: var(--muted); text-decoration: none; }
 .settings .crumbs a:hover { color: var(--text); }
-.settings .head { margin: 0; font-size: var(--text-title); }
+.settings .page > .head { margin: 0; font-size: var(--text-title); }
 .settings .rows { display: flex; flex-direction: column; margin-block-start: var(--space-m); }
 .setting-row { display: grid; grid-template-columns: 1fr 1.4fr; gap: var(--space-m) var(--space-l); padding-block: 16px; border-block-start: 1px solid var(--line); }
 .setting-row .what h3 { margin: 0; font-size: 16px; font-weight: 600; }

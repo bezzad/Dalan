@@ -19,6 +19,7 @@ export function notificationsSection(app: App): HTMLElement {
     button.hidden = state === "hidden" || state === "unsupported" || state === "blocked";
     button.textContent = t(state === "on" ? "notificationsOff" : "notificationsOn");
     note.textContent = t(state === "on" ? "notificationsAreOn" : state === "blocked" ? "pushBlocked" : state === "off" ? "notificationsOffNow" : "pushUnsupported");
+    if (state === "hidden") note.textContent = "";
   }
   show("hidden");
 

@@ -18,7 +18,7 @@ const admin: SettingsUser = { ...user, admin: true };
 
 test("CLI-77 desktop: the side menu has the Account group, the current item is Profile", () => {
   const menu = settingsMenu(user);
-  assert.deepEqual(menu.map(entry => entry.group), ["account"]);
+  assert.deepEqual(menu.map(entry => entry.group), ["account", "building"]);
   assert.deepEqual(menu[0]!.sections.map(section => section.id), ["profile", "security", "notifications", "preferences"]);
   assert.deepEqual(settingsTarget("/account", "", user, true), { section: "profile", path: "/account/profile" });
 });
@@ -36,7 +36,7 @@ test("CLI-77 one address per section", () => {
   for (const path of settingsPaths) assert.ok(host.includes(`"${path}"`), `the host serves ${path}`);
 });
 
-test("CLI-77 the Building group is only for an approved builder or an admin", () => {
+test("CLI-77 the Builder section is for every user (CLI-23); the access keys only for an approved builder or an admin", () => {
   for (const who of [builder, admin]) {
     assert.deepEqual(settingsMenu(who).map(entry => entry.group), ["account", "building"]);
     assert.deepEqual(settingsMenu(who)[1]!.sections.map(section => section.id), ["builder", "keys"]);
@@ -44,12 +44,16 @@ test("CLI-77 the Building group is only for an approved builder or an admin", ()
   }
   for (const waiting of ["none", "requested", "refused"] as const) {
     const who = { ...user, builder: waiting };
-    assert.ok(settingsMenu(who).every(entry => entry.group === "account"), waiting);
+    assert.deepEqual(settingsMenu(who)[1]!.sections.map(section => section.id), ["builder"], waiting);
     assert.deepEqual(settingsTarget("/account/keys", "", who, true), { section: "profile", path: "/account/profile" });
-    assert.deepEqual(settingsTarget("/account/builder", "", who, true), { section: "profile", path: "/account/profile" });
+    assert.deepEqual(settingsTarget("/account/builder", "", who, true), { section: "builder", path: "/account/builder" });
   }
-  // Waiting for the phone: not a builder yet, so no Building group (CLI-34).
-  assert.deepEqual(settingsMenu({ ...user, has_phone: false }).map(entry => entry.group), ["account"]);
+  // Waiting for the phone: the Builder section says a phone is needed (CLI-34); no keys.
+  assert.deepEqual(settingsMenu({ ...user, has_phone: false })[1]!.sections.map(section => section.id), ["builder"]);
+  // CLI-23: the section asks, waits or opens My bots; My apps sends a non-builder there.
+  const section = source("../src/settings/building.ts");
+  for (const key of ["askBuilder", "builderWaiting", "phoneRequired", "builderRefused"]) assert.match(section, new RegExp(`t\\("${key}"\\)`), key);
+  assert.match(source("../src/apps.ts"), /app\.go\("\/account\/builder"\)/);
 });
 
 test("CLI-77 /account on a phone is the menu, with the section's own address for each item", () => {
