@@ -21,6 +21,14 @@ source="${1%/}"
 version="$2"
 # OPS-17: $version names the release folder and is the Dalan__Commit; the optional $3 is the shown version (default: $version).
 shown="${3:-$version}"
+# The copy of pull-deploy.sh that setup installed may be older than OPS-17 and pass no shown version (or an old one):
+# this script comes from the commit being deployed, so it works the version out itself when its checkout is that commit.
+here=$(cd "$(dirname "$0")/.." && pwd)
+# pull-deploy.sh leaves the checkout detached, so .git/HEAD is the commit itself.
+head=$(cat "$here/.git/HEAD" 2>/dev/null || true)
+if ! [[ "$shown" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] && [[ "$head" =~ ^[0-9a-f]{40}$ ]] && [ "${head::${#version}}" = "$version" ]; then
+  shown=$(bash "$here/deploy/version.sh" "$here" "$head")
+fi
 host="${DEPLOY_HOST:?DEPLOY_HOST is required}"
 dir="${DEPLOY_DIR:-/opt/dalan}"
 keep="${KEEP_RELEASES:-5}"

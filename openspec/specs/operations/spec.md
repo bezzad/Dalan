@@ -92,7 +92,12 @@ With `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in its environment, `deploy/i
 - **THEN** no `ssh` or `scp` command line holds the secret, and the file sent holds it
 
 ### Requirement: OPS-16 The server builds main itself
-With `PULL_DEPLOY=1`, setup SHALL install the .NET SDK and Node brought by `install.sh`, a read-only GitHub key (`ssh.github.com` port 443, pinned host keys) and `dalan-pull.timer`, every minute. Each run SHALL ask GitHub only for `refs/heads/main`, and build and deploy each new commit once: `/health` before the switch, `/ready` after it with rollback. A failed build or deploy SHALL keep the running release and its Windows agent file, and SHALL NOT be tried again.
+With `PULL_DEPLOY=1`, setup SHALL install the .NET SDK, Node, a read-only GitHub key (port 443, pinned host keys) and `dalan-pull.timer`, every minute. Each run SHALL ask GitHub only for `refs/heads/main`, and build and deploy each new commit once, by the commit's own `deploy/pull-deploy.sh`: `/health` before the switch, `/ready` after it with rollback. A failed build or deploy SHALL keep the running release and its Windows agent file, and SHALL NOT be tried again.
+
+#### Scenario: A changed pull script
+- **GIVEN** a commit that changes `deploy/pull-deploy.sh`
+- **WHEN** the installed older copy runs
+- **THEN** the commit's own copy builds and deploys it
 
 #### Scenario: New main
 - **GIVEN** a new commit on main

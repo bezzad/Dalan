@@ -32,6 +32,10 @@ echo "Building $version"
 [ -d "$src/.git" ] || git init --quiet "$src"
 retry git -C "$src" fetch --quiet --no-tags "$repo" "$ref"
 git -C "$src" checkout --quiet --force --detach "$sha"
+# OPS-16: the copy setup installed only fetches; the steps below come from the commit being built, so a change here reaches the server.
+if [ -z "${DALAN_PULL_INNER:-}" ] && [ -f "$src/deploy/pull-deploy.sh" ] && ! cmp -s "$0" "$src/deploy/pull-deploy.sh"; then
+  exec env DALAN_PULL_INNER=1 bash "$src/deploy/pull-deploy.sh"
+fi
 out="$dir/build"
 rm -rf "$out"
 # build-release.sh smoke-tests /health before the switch; deploy.sh checks /ready after it and rolls back.
@@ -43,12 +47,6 @@ for file in "$dir/current/agent/"*; do
 done
 # OPS-17: the shown version is v<major.minor from VERSION>.<commits on main since VERSION changed>, so every update counts up;
 # the owner raises VERSION for a bigger step. The release folder keeps the sha name.
-base=$(tr -d ' \n' < "$src/VERSION" 2>/dev/null || true)
-since=$(git -C "$src" log -1 --format=%H -- VERSION)
-if [ -n "$base" ] && [ -n "$since" ]; then
-  shown="v$base.$(git -C "$src" rev-list --count --first-parent "$since..$sha")"
-else
-  shown="v0.0.$(git -C "$src" rev-list --count --first-parent "$sha")"
-fi
+shown=$(bash "$src/deploy/version.sh" "$src" "$sha")
 DEPLOY_HOST=local DEPLOY_DIR="$dir" bash "$src/deploy/deploy.sh" "$out" "$version" "$shown" || give_up "Deploy"
 rm -rf "$out"

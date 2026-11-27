@@ -114,3 +114,22 @@ env_file="$tmp/server/releases/7207d600e166/version.env"
 grep -qx "Dalan__Version=v1.1.3" "$env_file" || fail "shown version not written: $(cat "$env_file")"
 grep -qx "Dalan__Commit=7207d600e166" "$env_file" || fail "commit not written: $(cat "$env_file")"
 echo "PASS OPS-17 version.env has the shown version and the commit"
+
+# Rule: OPS-17 a pull-deploy.sh installed before OPS-17 passes no shown version (or an old text): deploy.sh, from the
+# commit's own detached checkout, works it out, so the footer shows it. Another folder keeps the given text.
+setup
+touch "$tmp/ready"
+ln -sf "$(PATH=/usr/local/bin:/usr/bin:/bin command -v git)" "$tmp/bin/git"
+src="$tmp/src"; git init -q -b main "$src"
+mkdir -p "$src/deploy"
+cp "$deploy" "$(dirname "$deploy")/version.sh" "$src/deploy/"
+echo 1.1 > "$src/VERSION"
+git -C "$src" add -A && git -C "$src" -c user.name=t -c user.email=t@t commit -qm one
+echo x > "$src/a" && git -C "$src" add -A && git -C "$src" -c user.name=t -c user.email=t@t commit -qm two
+sha=$(git -C "$src" rev-parse HEAD); git -C "$src" checkout -q --detach "$sha"
+bash "$src/deploy/deploy.sh" "$tmp/pkg" "${sha::12}" >/dev/null || fail "deploy with no shown version failed"
+grep -qx "Dalan__Version=v1.1.1" "$tmp/server/releases/${sha::12}/version.env" || fail "old copy, no version: $(cat "$tmp/server/releases/${sha::12}/version.env")"
+git -C "$src" checkout -q main
+bash "$src/deploy/deploy.sh" "$tmp/pkg" "${sha::11}" "2026.11.20-old" >/dev/null || fail "deploy from a checkout on a branch failed"
+grep -qx "Dalan__Version=2026.11.20-old" "$tmp/server/releases/${sha::11}/version.env" || fail "a checkout on a branch changed the given text"
+echo "PASS OPS-17 deploy.sh works out the shown version when an old installed pull-deploy.sh passes none"

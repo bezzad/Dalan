@@ -23,6 +23,7 @@ export PATH="$tmp/bin:$PATH"
 # and a deploy that records its call (and fails, as after a rollback, when NOTREADY is in the file).
 work="$tmp/work"; git init -q -b main "$work"
 mkdir -p "$work/scripts" "$work/deploy"
+cp "$root/deploy/version.sh" "$work/deploy/version.sh"
 cat > "$work/scripts/build-release.sh" <<'SH'
 #!/bin/bash
 grep -qx FAIL "$(dirname "$0")/../state" && exit 1
@@ -105,6 +106,22 @@ git -C "$work" push -q "$DALAN_REPO" main
 bash "$script" > /dev/null || fail "the next update failed"
 [ "$(tail -1 "$DEPLOY_DIR/versions.log")" = "v1.1.1" ] || fail "the next update does not count up: $(tail -1 "$DEPLOY_DIR/versions.log")"
 echo "PASS OPS-17 the version is v<VERSION>.<updates since>; each update counts up; the folder keeps the sha"
+
+# Rule: OPS-16 the copy setup installed only fetches; the steps come from the commit it builds, so a change to this
+# script reaches the server with the next build (the installed copy made the old version text, and the footer showed none).
+installed="$tmp/installed-pull-deploy.sh"
+# An installed copy with older steps (it makes an old version text); deploy_test.sh covers a copy from before the handover.
+sed 's/^shown=\$(bash .*version\.sh.*$/shown="old-text"/' "$script" > "$installed"
+grep -q 'shown="old-text"' "$installed" || fail "the test could not make an old installed copy"
+grep -q 'shown="old-text"' "$installed" || fail "the test could not make an old installed copy"
+cp "$script" "$work/deploy/pull-deploy.sh"
+commit "pull-deploy in the repository"
+git -C "$work" push -q "$DALAN_REPO" main
+before=$(deploys)
+bash "$installed" > /dev/null || fail "the run of the installed copy failed"
+[ "$(deploys)" = $((before + 1)) ] || fail "the commit was not deployed exactly once: $(( $(deploys) - before ))"
+[ "$(tail -1 "$DEPLOY_DIR/versions.log")" = "v1.1.2" ] || fail "the old installed copy chose the version: $(tail -1 "$DEPLOY_DIR/versions.log")"
+echo "PASS OPS-16 the installed copy hands over to the pull-deploy.sh of the commit it builds"
 
 # The units and the build: every minute; /health before the switch (build-release.sh), /ready after it (deploy.sh).
 grep -qx 'OnUnitInactiveSec=1min' "$root/deploy/dalan-pull.timer" || fail "the timer does not run every minute"
