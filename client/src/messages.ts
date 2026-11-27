@@ -274,6 +274,13 @@ export function commandMessage(command: string): string {
   return `/${command}`;
 }
 
+/** CLI-74: the commands whose name starts with what follows "/" (no case), in the bot's order; none once the input has a space or does not start with "/". */
+export function suggest<T extends { command: string }>(commands: readonly T[], input: string): T[] {
+  if (!input.startsWith("/") || /\s/.test(input)) return [];
+  const typed = input.slice(1).toLowerCase();
+  return commands.filter(c => c.command.toLowerCase().startsWith(typed));
+}
+
 /** CLI-17 and CLI-20: the time under a message, with the "edited" and the "not delivered" marks. */
 export function stamp(message: Message, time: string, words: { edited: string; notDelivered: string }): string {
   return [time, ...(message.edited ? [words.edited] : []), ...(message.not_delivered ? [words.notDelivered] : [])].join(" · ");
