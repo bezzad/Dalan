@@ -25,7 +25,8 @@ None.
 
 ### Modified Capabilities
 
-- `client`: new CLI-81, CLI-82, CLI-83.
+- `client`: new CLI-81, CLI-82, CLI-83, CLI-92.
+- `identity`: new AUTH-37.
 - `admin`: new ADM-19.
 - `security`: new SEC-14, SEC-15.
 
@@ -34,6 +35,6 @@ None.
 - Client: a `dashboard/` folder (frame, menu, routes), the admin screens moved into it and split per page, `admin.ts` settings rebuilt, `i18n.ts`, `app.css`, `docs/UI.md`.
 - Admin: a settings description file (`settings.json` embedded: name and help in both languages, unit, min, max, group, risky) read by `SettingsCatalog`; `/api/admin/settings` returns them; range check on save; `/api/admin/overview` (counts).
 - Host: `/dashboard/*` serves the page; redirects from the old addresses.
-- Depends on m26 (the frame and pieces), m25 (keys in the account) and AUTH-37 of m27 (TOTP), which therefore stays.
+- Depends on m26 (the frame and pieces) and m25 (keys in the account). AUTH-37 (TOTP) moved here from m27 (2026-11-27), because SEC-15 needs it; its client part is CLI-92.
 - Identity: the admin login step and `admin_needs_2fa` (SEC-15).
 - No new admin settings.

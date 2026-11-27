@@ -3,7 +3,8 @@
 Needs m26 (frame and pieces) and m25. Each task: write the failing tests tagged with the rule IDs, then the code. CI runs on GitHub (rule 11).
 
 - [x] 0. Owner: `dalanet.ir/dashboard` (2026-11-25); second factor for admins (SEC-15); the owner is the only admin. Other security ideas: later
-- [ ] 0.1 AUTH-37 (m27) is built first: SEC-15 needs it
+- [ ] 0.1 Identity: second factor (AUTH-37, moved here from m27): set up with QR (SVG from the server), confirm, recovery codes, password login step with a ticket, turn off; settings `Identity:TotpStepSeconds`, `TotpWindowSteps`, `RecoveryCodes`, `TotpTicketMinutes`, `TotpMaxTries`
+- [ ] 0.2 Client: second-factor card in "Login and security", login code step (CLI-92)
 - [ ] 1. Admin: `settings.json` descriptions for every key (both languages, unit, range, group, risky); `/api/admin/settings` gives them; `out_of_range`; test for keys with no description (ADM-19)
 - [ ] 2. Admin: `/api/admin/overview` counts through the Identity, Relay and Sites contracts (ADM-19, CLI-82)
 - [ ] 3. Security tests: every `/api/admin` call refused for a common user and logged; no API makes an admin; no admin data in common answers (SEC-14)

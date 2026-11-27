@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: CLI-81 One dashboard for signed-in pages
-Every signed-in page except a bot's chat SHALL be in one dashboard frame at `/dashboard/...` with a side menu in groups: Workspace (Chats; My bots and My apps for a builder or an admin), Account (the sections of CLI-77), and Admin (Overview, Requests, Users, Bots, Showcase, Messages, Settings, Access log, Audit log) only for an admin. The old addresses (`/account/*`, `/chats`, `/bots`, `/apps`, `/admin`) SHALL redirect to their new place. An admin page opened by a user who is not an admin SHALL show "Not found".
+Every signed-in page except a bot's chat SHALL be in one dashboard frame at `/dashboard/...` with a side menu in groups: Workspace (Chats; My bots and My apps for a builder or an admin), Account (the sections of CLI-77), and Admin only for an admin. The old addresses (`/account/*`, `/chats`, `/bots`, `/apps`, `/admin`) SHALL redirect to their new place. An admin page opened by a user who is not an admin SHALL show "Not found".
 
 #### Scenario: Common user
 - **GIVEN** a user who is not a builder or an admin
@@ -11,7 +11,7 @@ Every signed-in page except a bot's chat SHALL be in one dashboard frame at `/da
 #### Scenario: Admin
 - **GIVEN** an admin
 - **WHEN** the dashboard opens
-- **THEN** the menu also has the Admin group with its nine items
+- **THEN** the menu also has the Admin group with its nine items: Overview, Requests, Users, Bots, Showcase, Messages, Settings, Access log, Audit log
 
 #### Scenario: Typed admin address
 - **GIVEN** a user who is not an admin
@@ -31,7 +31,7 @@ The first admin page SHALL show cards with counts, each a link to its page: user
 - **THEN** the requests card says 3 and opens Requests
 
 ### Requirement: CLI-83 Readable admin settings
-The admin settings page SHALL group the settings by service and show each as a setting row: its name and help in the page language (its key in small grey text), the control by kind (a number with its unit and range, a switch, a text), a "Changed" badge with the start value and "Reset" when it differs, and a "Needs restart" badge when it applies after a restart. A row's Save SHALL be primary only when its value changed. A search box SHALL filter rows by name, key or help. A risky setting SHALL ask with the old and new value before it saves.
+The admin settings page SHALL group the settings by service and show each as a setting row: name and help in the page language, its key in small grey text, the control by kind (a number with unit and range, a switch, a text), "Changed" with "Reset", and "Needs restart". Save SHALL be primary only when the value changed. A search box SHALL filter rows. A risky setting SHALL ask before it saves.
 
 #### Scenario: Readable row
 - **WHEN** the Admin group of settings is shown in English
@@ -41,6 +41,23 @@ The admin settings page SHALL group the settings by service and show each as a s
 - **WHEN** the admin types "log" in the search box
 - **THEN** only rows whose name, key or help has "log" stay
 
+#### Scenario: Changed and restart
+- **GIVEN** a setting whose value differs from its start value, and one that applies only after a restart
+- **WHEN** the settings page shows them
+- **THEN** the first has "Changed" with its start value and "Reset", and the second has "Needs restart"
+
 #### Scenario: Risky
 - **WHEN** the admin changes the Bot API address and presses Save
 - **THEN** a question shows the old and the new value, and nothing saves until the admin confirms
+
+### Requirement: CLI-92 Second factor in the app
+"Login and security" (CLI-77) SHALL have a second-factor card: Set up shows the QR (from the server), the secret to copy and a code box; a right code shows the recovery codes once with Copy and Download. When a login answers `totp_required`, the login screen SHALL ask for the code (or a recovery code) and then finish the login. For an admin the card SHALL have no Turn off.
+
+#### Scenario: Set up
+- **WHEN** the user presses Set up and types the code from the authenticator app
+- **THEN** the card says it is on, and the ten recovery codes show once
+
+#### Scenario: Login step
+- **GIVEN** a password login answered `totp_required`
+- **WHEN** the user types a right code
+- **THEN** the login finishes as usual
