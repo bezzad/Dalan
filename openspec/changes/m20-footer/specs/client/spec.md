@@ -1,20 +1,20 @@
 ## ADDED Requirements
 
 ### Requirement: CLI-72 Copyright and version in the footer
-Under the footer columns of every public page SHALL be one small grey line: `© <year> Dalan · <version>` in English and `© <year in Persian digits> دالان · <version>` in Persian, where `<version>` and the year come from `/health` (OPS-17). The version SHALL keep Latin digits, read left to right in both languages, and have the commit as its tooltip. When `/health` fails, the line SHALL be `© <current year> Dalan` without a version.
+Under the footer columns of every public page SHALL be one small grey line: `© <this year> Dalan <version>` in English and `© <this year in Persian digits> دالان <version>` in Persian. `<version>` (OPS-17) SHALL come from `GET /api/public/settings` (`version`), because `/health` is private (OPS-06); it SHALL keep Latin digits and read left to right in both languages. Without a version like `v1.1.0` (no answer, or a local run) the line SHALL have none.
 
 #### Scenario: Live version
-- **GIVEN** `/health` gives `version` `v26.11.25.114726` and `commit` `7207d600e166`
+- **GIVEN** the public settings give `version` `v1.1.0` in 2026
 - **WHEN** an English public page opens
-- **THEN** the footer line is `© 2026 Dalan · v26.11.25.114726`, and the version's tooltip is `7207d600e166`
+- **THEN** the footer line is `© 2026 Dalan v1.1.0`
 
 #### Scenario: Persian
 - **WHEN** the same page opens in Persian
-- **THEN** the line is `© ۲۰۲۶ دالان · v26.11.25.114726`, with the version left to right
+- **THEN** the line is `© ۲۰۲۶ دالان v1.1.0`, with the version left to right
 
-#### Scenario: No answer
-- **WHEN** `/health` fails
-- **THEN** the line is `© <current year> Dalan` with no version
+#### Scenario: No version
+- **WHEN** the public settings fail, or give `dev`
+- **THEN** the line is `© <this year> Dalan` with no version
 
 ### Requirement: CLI-73 Footer at the bottom
 On a public page shorter than the screen, the footer SHALL sit at the bottom of the screen; on a longer page it SHALL come after the content. The footer SHALL NOT be fixed while scrolling and SHALL NOT cover content, at every screen size (320px to wide, portrait and landscape).

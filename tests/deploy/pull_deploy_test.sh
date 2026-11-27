@@ -91,16 +91,20 @@ bash "$script" > /dev/null || fail "the next run after a failed fetch failed"
 [ "$(deploys)" = 3 ] || fail "the next run after a failed fetch did not deploy"
 echo "PASS OPS-16 a failed fetch fails the run, the next run tries again"
 
-# Rule: OPS-17 the version is the commit time in Tehran time; the release folder keeps the sha name
-commit versioned
-GIT_COMMITTER_DATE="2026-11-25 11:47:26 +0330" git -C "$work" -c user.name=t -c user.email=t@t commit -q --amend --no-edit
-git -C "$work" push -q --force "$DALAN_REPO" main
+# Rule: OPS-17 the version is v<VERSION>.<commits since VERSION changed>; the release folder keeps the sha name
+echo 1.1 > "$work/VERSION"
+commit "version 1.1"
+git -C "$work" push -q "$DALAN_REPO" main
 sha=$(git -C "$work" rev-parse HEAD | cut -c1-12)
-TZ=UTC bash "$script" > /dev/null || fail "the run for a dated commit failed"
+bash "$script" > /dev/null || fail "the run after VERSION changed failed"
 [ "$(tail -1 "$DEPLOY_DIR/deploys.log")" = "deploy $sha" ] || fail "the release is not named by the sha: $(tail -1 "$DEPLOY_DIR/deploys.log")"
-[ "$(tail -1 "$DEPLOY_DIR/versions.log")" = "v26.11.25.114726" ] || fail "version is not the Tehran commit time: $(tail -1 "$DEPLOY_DIR/versions.log")"
+[ "$(tail -1 "$DEPLOY_DIR/versions.log")" = "v1.1.0" ] || fail "a new VERSION does not start at .0: $(tail -1 "$DEPLOY_DIR/versions.log")"
 [ -d "$DEPLOY_DIR/releases/$sha" ] || fail "no releases/$sha"
-echo "PASS OPS-17 the version is v<yy.mm.dd.HHMMSS> of the commit time in Tehran time; the folder keeps the sha"
+commit "next update"
+git -C "$work" push -q "$DALAN_REPO" main
+bash "$script" > /dev/null || fail "the next update failed"
+[ "$(tail -1 "$DEPLOY_DIR/versions.log")" = "v1.1.1" ] || fail "the next update does not count up: $(tail -1 "$DEPLOY_DIR/versions.log")"
+echo "PASS OPS-17 the version is v<VERSION>.<updates since>; each update counts up; the folder keeps the sha"
 
 # The units and the build: every minute; /health before the switch (build-release.sh), /ready after it (deploy.sh).
 grep -qx 'OnUnitInactiveSec=1min' "$root/deploy/dalan-pull.timer" || fail "the timer does not run every minute"

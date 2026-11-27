@@ -31,3 +31,5 @@ None.
 - Client: `public.ts` (the line), `api.ts` (`/health`), `i18n.ts`, `app.css` (`footer.site` pushed to the end).
 - Docs: `docs/UI.md` footer, `docs/SERVER.md` (how to read the live version).
 - No new admin settings: the version is set by the build, not by the admin.
+
+**Changed 2026-11-25 (owner):** the version is `v<major>.<minor>.<n>` from `VERSION` and the count of commits since it changed (`v1.1.0`, `v1.1.1`, …), not the commit time; the footer is `© <this year> Dalan v1.1.0` and reads the version from `/api/public/settings`, because `/health` is private (OPS-06) and gave the browser a 404.

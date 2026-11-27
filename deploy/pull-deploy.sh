@@ -41,8 +41,14 @@ bash "$src/scripts/build-release.sh" "$out" || give_up "Build"
 for file in "$dir/current/agent/"*; do
   [ -e "$file" ] && [ ! -e "$out/agent/$(basename "$file")" ] && cp "$file" "$out/agent/"
 done
-# OPS-17: the shown version is the commit time in Tehran time, like ArcaneBot; the folder keeps the sha name.
-committed=$(git -C "$src" log -1 --format=%ct "$sha")
-shown="v$(TZ=Asia/Tehran date -d "@$committed" +%y.%m.%d.%H%M%S)"
+# OPS-17: the shown version is v<major.minor from VERSION>.<commits on main since VERSION changed>, so every update counts up;
+# the owner raises VERSION for a bigger step. The release folder keeps the sha name.
+base=$(tr -d ' \n' < "$src/VERSION" 2>/dev/null || true)
+since=$(git -C "$src" log -1 --format=%H -- VERSION)
+if [ -n "$base" ] && [ -n "$since" ]; then
+  shown="v$base.$(git -C "$src" rev-list --count --first-parent "$since..$sha")"
+else
+  shown="v0.0.$(git -C "$src" rev-list --count --first-parent "$sha")"
+fi
 DEPLOY_HOST=local DEPLOY_DIR="$dir" bash "$src/deploy/deploy.sh" "$out" "$version" "$shown" || give_up "Deploy"
 rm -rf "$out"

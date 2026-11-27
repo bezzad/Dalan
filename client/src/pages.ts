@@ -15,6 +15,8 @@ export interface PublicNumbers {
   bot_api_url: string;
   /** ADM-17: the longest contact message. */
   contact_max_length: number;
+  /** CLI-72: the running version, like v1.1.3 (OPS-17); "dev" on a local run. */
+  version?: string;
 }
 
 /** CLI-26: which screen an address shows. Unknown addresses never reach the page: the server answers 404. */
@@ -324,12 +326,12 @@ Never put the key or a token in the repository.`;
 }
 
 /** CLI-72: what `/health` tells about the build. */
-export interface BuildInfo { version: string; commit: string }
-
-/** CLI-72: the copyright line under the footer. The year is the year of the version (`v26.11.25.114726` is 2026); without one it is `now`. */
-export function footerLine(lang: Lang, build: BuildInfo | null, now: Date): { text: string; version: string; commit: string } {
-  const made = /^v(\d\d)\./.exec(build?.version ?? "");
-  const year = made ? 2000 + Number(made[1]) : now.getFullYear();
-  const shown = new Intl.NumberFormat(lang === "fa" ? "fa-IR" : "en-GB", { useGrouping: false }).format(year);
-  return { text: `© ${shown} ${lang === "fa" ? "دالان" : "Dalan"}`, version: build?.version ?? "", commit: build?.commit ?? "" };
+/**
+ * CLI-72: the copyright line under the footer: the sign, this year, the name and the running version
+ * (`© 2026 Dalan v1.1.0`). Without a version (no answer yet, or a local run) the line has none.
+ */
+export function footerLine(lang: Lang, version: string | null | undefined, now: Date): { text: string; version: string } {
+  const year = new Intl.NumberFormat(lang === "fa" ? "fa-IR" : "en-GB", { useGrouping: false }).format(now.getFullYear());
+  const shown = version && /^v\d+\.\d+\.\d+$/.test(version) ? version : "";
+  return { text: `© ${year} ${lang === "fa" ? "دالان" : "Dalan"}`, version: shown };
 }
