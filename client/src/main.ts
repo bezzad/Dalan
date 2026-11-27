@@ -1,5 +1,4 @@
 // PWA entry point: who is logged in, which screen is open, and the live stream.
-import { accountScreen } from "./account.ts";
 import { ApiError, api, type AuthSettings, type User } from "./api.ts";
 import { adminScreen } from "./admin.ts";
 import { appsScreen } from "./apps.ts";
@@ -8,16 +7,22 @@ import { Backoff } from "./backoff.ts";
 import { botsScreen } from "./bots.ts";
 import { botPageScreen, myBotsScreen, newBotScreen } from "./builder.ts";
 import { chatScreen } from "./chat.ts";
+import { Connection } from "./connection.ts";
+import { Drafts } from "./compose.ts";
+import { closeOverlays } from "./overlays.ts";
 import { Language, type TextKey } from "./i18n.ts";
 import { Live } from "./live.ts";
 import { loginScreen, markReturning } from "./login.ts";
 import { askedNext, loginTarget, rememberNext, startsAtTop, takeNext } from "./next.ts";
 import { botPageUsername, initial, pageFor } from "./pages.ts";
 import { h } from "./dom.ts";
+import { glyph } from "./icon.ts";
 import { toastRegion } from "./toast.ts";
 import { headerTools, homeMark, publicPages, publicScreen, siteBrand, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
-import { Chats, manifestFor } from "./messages.ts";
+import { appLinksFor, Chats } from "./messages.ts";
+import { settingsScreen } from "./settings/index.ts";
+import { menuSecondLine, userMenuGroups } from "./settings/model.ts";
 import { Theme, themeButton } from "./theme.ts";
 
 const language = new Language(document.documentElement, localStorage);
@@ -26,6 +31,10 @@ let app: App | null = null;
 let live: Live | null = null;
 let screen: Screen | null = null;
 let auth: AuthSettings | null = null;
+// CLI-75: the ring on the bot's icon in a chat, on the Dalan mark elsewhere.
+const connection = new Connection(
+  () => document.querySelector<HTMLElement>("header .who .face") ?? document.querySelector<HTMLElement>("header .mark"),
+  () => ({ connected: language.t("connected"), connecting: language.t("connecting") }));
 
 /** AUTH-16: read once; the login and account screens need it. */
 async function authSettings(): Promise<AuthSettings> {
@@ -33,19 +42,28 @@ async function authSettings(): Promise<AuthSettings> {
 }
 
 function show(element: HTMLElement): void {
+  // CLI-87, CLI-89, CLI-90: no viewer or editor stays over the next screen.
+  closeOverlays();
   document.title = language.t("appName");
-  // CLI-55: Install on a bot's chat installs that bot; every other screen links the main manifest again.
-  document.querySelector("link[rel=manifest]")?.setAttribute("href", manifestFor(location.pathname));
-  // Shown by the style sheet while the server cannot be reached.
-  document.body.dataset["connecting"] = language.t("connecting");
-  document.body.replaceChildren(element, toastRegion());
+  // CLI-55: a bot's chat links that bot's manifest and icons; every other screen links Dalan's again.
+  const links = appLinksFor(location.pathname);
+  document.querySelector("link[rel=manifest]")?.setAttribute("href", links.manifest);
+  const icon = document.querySelector("link[rel=icon]");
+  icon?.setAttribute("href", links.icon);
+  if (links.iconType) icon?.setAttribute("type", links.iconType); else icon?.removeAttribute("type");
+  document.querySelector("link[rel=apple-touch-icon]")?.setAttribute("href", links.appleIcon);
+  document.body.replaceChildren(element, toastRegion(), connection.status);
+  connection.apply();
   // An address like "/#plans": the part is drawn now, so go to it.
   if (location.hash.length > 1) document.getElementById(location.hash.slice(1))?.scrollIntoView();
 }
 
 function showLogin(error: TextKey | null = null): void {
+  // CLI-88: a logout, or a session that ended (401), leaves no draft in this browser.
+  Drafts.clearAll(localStorage);
   live?.stop();
   app = live = screen = null;
+  connection.reset();
   authSettings().then(settings => show(loginScreen(language, settings, user => {
     // CLI-63: after login, the address the person came from; from the landing page, "My bots".
     history.replaceState(null, "", loginTarget(location.pathname, location.search, takeNext()));
@@ -53,7 +71,7 @@ function showLogin(error: TextKey | null = null): void {
   }, () => {
     language.toggle();
     showLogin();
-  }, () => navigate("/"), error)), () => document.body.classList.add("offline"));
+  }, () => navigate("/"), error)), () => connection.setDown());
 }
 
 /** Goes to an address of the site without a page load. */
@@ -101,18 +119,20 @@ function userArea(face = false): HTMLElement {
   if (!app) return h("button", { type: "button", class: "primary", "aria-label": t("enter"), onclick: () => showLogin() },
     h("span", { class: "long" }, t("enter")), h("span", { class: "short" }, t("login")));
   const current = app;
-  const item = (label: string, onclick: () => void) => h("button", { type: "button", class: "item", onclick }, label);
+  // CLI-78: the name and the phone or email, then groups with an icon per item and a line between groups.
+  const second = menuSecondLine(current.user);
+  const groups = userMenuGroups(current.user).flatMap((group, index) => [
+    ...(index > 0 ? [h("hr", {})] : []),
+    ...group.map(entry => h("button", {
+      type: "button", class: "item", onclick: () => entry.path === null ? current.logout() : navigate(entry.path),
+    }, glyph(entry.glyph), h("span", {}, t(entry.text)))),
+  ]);
   return h("details", { class: face ? "menu user face" : "menu user" },
     h("summary", { "aria-label": current.user.name, title: current.user.name },
       face ? h("span", { class: "avatar" }, initial(current.user.name)) : h("bdi", {}, current.user.name)),
     h("div", { class: "panel" },
-      // "My bots" are the bots this user built; "Chats" the bots they talk to (owner, 2026-11-20). CLI-51: one address each.
-      item(t("myBots"), () => navigate("/bots")),
-      item(t("chats"), () => navigate("/chats")),
-      item(t("myApps"), () => navigate("/apps")),
-      item(t("account"), () => navigate("/account")),
-      ...(current.user.admin ? [item(t("adminScreen"), () => navigate("/admin"))] : []),
-      item(t("logout"), () => current.logout())));
+      h("div", { class: "who" }, h("strong", { dir: "auto" }, current.user.name), ...(second ? [h("span", { class: "note", dir: "ltr" }, second)] : [])),
+      ...groups));
 }
 
 /** Language, theme and the user area: the same end of the header on every page. */
@@ -150,7 +170,7 @@ function route(): void {
     // CLI-45: the chat page has its own header, with no site header above it.
     : username ? chatScreen(app, username, [themeButton(theme, language.t.bind(language)), userArea(true), homeMark(language.t("appName"), navigate)])
     : page === "apps" ? appsScreen(app)
-    : page === "account" ? accountScreen(app)
+    : page === "account" ? settingsScreen(app)
     : page === "admin" ? adminScreen(app)
     : page === "bots" ? myBotsScreen(app)
     : page === "botNew" ? newBotScreen(app)
@@ -175,10 +195,12 @@ async function enter(user: User): Promise<void> {
     chats: new Chats(api.messages, settings.sync_page_size),
     maxTextLength: settings.max_text_length,
     maxFileSizeMb: settings.max_file_size_mb,
+    fileView: settings.file_view ?? false,
     statusRefreshSeconds: settings.status_refresh_seconds,
     maxBotIconKb: settings.max_bot_icon_kb,
     pressWaitSeconds: settings.press_wait_seconds,
     go: navigate,
+    refresh: render,
     logout() {
       // CLI-21: the next person on this browser must not get this user's notifications.
       void turnOff().catch(() => {}).then(() => api.logout()).finally(showLogin);
@@ -187,7 +209,7 @@ async function enter(user: User): Promise<void> {
 
   live = new Live(new Backoff(settings.reconnect_min_seconds, settings.reconnect_max_seconds), {
     onOpen() {
-      document.body.classList.remove("offline");
+      connection.setUp();
       // CLI-06: every time the stream opens, ask for what was missed.
       void app?.chats.sync().then(() => app?.chats.openedIds().forEach(botId => screen?.onMessage?.(botId)), fail);
     },
@@ -197,7 +219,7 @@ async function enter(user: User): Promise<void> {
     },
     onAnswer: (botId, answer) => screen?.onAnswer?.(botId, answer),
     onRead: botId => screen?.onRead?.(botId),
-    onDown: () => document.body.classList.add("offline"),
+    onDown: () => connection.setDown(),
     onLoggedOut: showLogin,
   });
   live.start();
@@ -210,7 +232,7 @@ function fail(error: unknown): void {
     if (app) showLogin();
     else guest();
   }
-  else document.body.classList.add("offline");
+  else connection.setDown();
 }
 
 window.addEventListener("popstate", render);
@@ -226,7 +248,6 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-document.body.dataset["connecting"] = language.t("connecting");
 // CLI-63: back from GitHub on "/": go to the address kept before the round trip (or `?next=`).
 api.me().then(user => {
   const asked = askedNext(location.search, takeNext());

@@ -1,5 +1,4 @@
 // "My bots" (CLI-24, CLI-49): /bots is the list, /bots/new the create form, /bots/<username> one bot's own page.
-import { agentsPart } from "./agents.ts";
 import { ApiError, api } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { codeBlock, stepCards, tabbed } from "./codeView.ts";
@@ -31,10 +30,10 @@ function builderStep(app: App, redraw: () => void): HTMLElement {
   const view = builderView(app.user);
   const body = view === "phone"
     ? [h("p", { class: "note" }, t("phoneRequired")),
-      h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => app.go("/account") }, t("verifyPhone")))]
+      h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => app.go("/account/profile") }, t("verifyPhone")))]
     : view === "waiting"
       ? [h("p", { class: "note" }, t("builderWaiting"))]
-      : [h("div", { class: "row" }, h("button", {
+      : [...(view === "refused" ? [h("p", { class: "note" }, t("builderRefused"))] : []), h("div", { class: "row" }, h("button", {
         type: "button", class: "primary", onclick: async () => {
           try {
             app.user = await api.askBuilder();
@@ -45,6 +44,17 @@ function builderStep(app: App, redraw: () => void): HTMLElement {
         },
       }, t("askBuilder")))];
   return h("section", { class: "card" }, h("h2", {}, t("building")), h("p", { class: "note" }, t("buildingNote")), ...body);
+}
+
+/** CLI-30: the access keys are an account matter; "My bots" and "My apps" only point to them. */
+export function keysLink(app: App): HTMLElement {
+  return h("p", {}, h("a", {
+    href: "/account/keys",
+    onclick: event => {
+      event.preventDefault();
+      app.go("/account/keys");
+    },
+  }, app.language.t("keysLink")));
 }
 
 /** CLI-24: the list of my bots, or the next step for a user who cannot build yet. */
@@ -63,7 +73,7 @@ export function myBotsScreen(app: App): Screen {
       return;
     }
     const list = h("ul", { class: "rows bot-list" });
-    body.replaceChildren(h("section", { class: "card" }, list), agentsPart(app));
+    body.replaceChildren(h("section", { class: "card" }, list), keysLink(app));
     api.builderBots().then(bots => {
       list.replaceChildren(...(bots.length === 0
         ? [h("li", { class: "empty" }, h("p", { class: "note" }, t("noBuilderBots")),

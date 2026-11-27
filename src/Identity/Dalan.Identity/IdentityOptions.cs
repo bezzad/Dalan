@@ -94,6 +94,9 @@ public sealed class IdentityOptions
     public int MaxAccessKeys { get; set; }
 
     /// <summary>AUTH-27 to AUTH-29.</summary>
+    /// <summary>AUTH-39: a verified phone makes a builder without the admin.</summary>
+    public bool AutoBuilder { get; set; }
+
     /// <summary>AUTH-31: seconds a pending merge waits for "Merge" after the proof.</summary>
     public int MergeSeconds { get; set; }
 

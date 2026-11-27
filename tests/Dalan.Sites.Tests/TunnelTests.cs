@@ -39,10 +39,12 @@ public class TunnelTests(PostgresServer postgres)
 
     [Theory]
     [Trait("Rule", "SITE-02")]
+    [Trait("Rule", "SEC-16")]
     [InlineData("-x")]
     [InlineData("ab")]
     [InlineData("a_b")]
     [InlineData("api")]
+    [InlineData("view")]
     [InlineData("end-")]
     public async Task SITE02_bad_or_reserved_name_is_refused(string name)
     {

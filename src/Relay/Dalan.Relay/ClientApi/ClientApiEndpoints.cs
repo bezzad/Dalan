@@ -29,6 +29,7 @@ internal static class ClientApiEndpoints
         api.MapGet("/bots/{botId:long}/messages", GetMessagesAsync);
         api.MapPost("/bots/{botId:long}/files", SendFileAsync);
         api.MapGet("/bots/{botId:long}/files/{fileId}", GetFileAsync);
+        api.MapPost("/bots/{botId:long}/files/{fileId}/view", FileView.LinkAsync);
         api.MapPost("/bots/{botId:long}/callbacks", PressAsync);
         api.MapGet("/bots/{botId:long}/commands", GetCommandsAsync);
         api.MapPost("/bots/{botId:long}/read", ReadAsync);
@@ -39,13 +40,13 @@ internal static class ClientApiEndpoints
         api.MapMcpDoor();
     }
 
-    private static IResult Settings(IOptionsMonitor<RelayOptions> options)
+    private static IResult Settings(IOptionsMonitor<RelayOptions> options, FileView view)
     {
         var relay = options.CurrentValue;
         return ApiJson.Ok(new ClientSettingsJson(
             relay.MaxTextLength, relay.MaxCaptionLength, relay.MaxFileSizeMb, relay.MaxMessagesPerSync,
             relay.ClientReconnectMinSeconds, relay.ClientReconnectMaxSeconds, relay.ClientStatusRefreshSeconds, relay.MaxBotIconKb,
-            relay.ClientPressWaitSeconds));
+            relay.ClientPressWaitSeconds, view.Host is not null));
     }
 
     /// <summary>REL-14: the bots this user has a chat with, newest chat first.</summary>
@@ -148,21 +149,10 @@ internal static class ClientApiEndpoints
     }
 
     /// <summary>REL-29: only a file that a message of this user's chat carries.</summary>
-    private static async Task<IResult> GetFileAsync(
-        long botId, string fileId, HttpContext http, IDbContextFactory<RelayDb> dbFactory, ChatService chats, FileStore files)
-    {
-        var userId = ClientApiFilter.UserId(http);
-        await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
-        var inChat = await db.Messages.AnyAsync(
-            m => m.BotId == botId && m.UserId == userId && !m.Deleted && m.Content.File != null && m.Content.File.Id == fileId,
-            http.RequestAborted);
-
-        if (inChat && await chats.FindFileAsync(botId, fileId, http.RequestAborted) is { } file && files.Open(file.Id) is { } content)
-            return FileResponse.Of(http, file, content);
-
-        return ApiJson.Error(StatusCodes.Status404NotFound, "file_not_found",
-            "This file is not in your chat, or it expired. A file is kept for a limited time.");
-    }
+    private static async Task<IResult> GetFileAsync(long botId, string fileId, HttpContext http, UserFiles userFiles, FileStore files) =>
+        await userFiles.FindAsync(ClientApiFilter.UserId(http), botId, fileId, http.RequestAborted) is { } file && files.Open(file.Id) is { } content
+            ? FileResponse.Of(http, file, content)
+            : UserFiles.NotFound();
 
     /// <summary>REL-21: a press on an inline button.</summary>
     private static async Task<IResult> PressAsync(long botId, HttpContext http, ButtonPresses presses, SuspendedBots suspendedBots)

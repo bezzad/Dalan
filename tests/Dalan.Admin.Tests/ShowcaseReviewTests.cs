@@ -115,6 +115,17 @@ public class ShowcaseReviewTests(PostgresServer postgres)
     }
 
     [Fact]
+    [Trait("Rule", "CLI-72")]
+    public async Task CLI72_visitor_reads_the_running_version_from_the_public_settings()
+    {
+        await using var app = await AdminApp.StartAsync(postgres, ("Dalan:Version", "v1.1.3"));
+
+        var numbers = await app.CreateClient().JsonAsync("/api/public/settings");
+
+        Assert.Equal("v1.1.3", numbers.GetProperty("version").GetString());
+    }
+
+    [Fact]
     [Trait("Rule", "ADM-14")]
     public async Task ADM14_a_panel_change_shows_at_once()
     {
@@ -146,6 +157,18 @@ public class ShowcaseReviewTests(PostgresServer postgres)
         Assert.DoesNotContain("{site}", text, StringComparison.Ordinal);
         Assert.Equal("https://dalanet.ir", numbers.GetProperty("site_url").GetString());
         Assert.Equal("https://api.dalanet.ir", numbers.GetProperty("bot_api_url").GetString());
+    }
+
+    [Fact]
+    [Trait("Rule", "CLI-30")]
+    public async Task CLI30_llms_txt_says_the_access_key_is_made_in_the_account()
+    {
+        await using var app = await AdminApp.StartAsync(postgres);
+
+        var text = await app.CreateClient().GetStringAsync("/llms.txt", TestContext.Current.CancellationToken);
+
+        Assert.Contains("opens \"Account\", and makes an access key", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("opens \"My bots\", and makes an access key", text, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -44,6 +44,10 @@ namespace Dalan.Relay.Data.Migrations
                         .HasColumnType("bytea")
                         .HasColumnName("icon");
 
+                    b.Property<int?>("IconHeight")
+                        .HasColumnType("integer")
+                        .HasColumnName("icon_height");
+
                     b.Property<string>("IconType")
                         .HasColumnType("text")
                         .HasColumnName("icon_type");
@@ -51,6 +55,10 @@ namespace Dalan.Relay.Data.Migrations
                     b.Property<int>("IconVersion")
                         .HasColumnType("integer")
                         .HasColumnName("icon_version");
+
+                    b.Property<int?>("IconWidth")
+                        .HasColumnType("integer")
+                        .HasColumnName("icon_width");
 
                     b.Property<DateTimeOffset?>("LastSeenAt")
                         .HasColumnType("timestamp with time zone")

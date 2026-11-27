@@ -75,4 +75,24 @@ public class DeliveryTests(PostgresServer postgres)
         Assert.Equal(HttpStatusCode.NotFound, (await offServer.GetAsync("/api/sites/tls?domain=demo.test", Cancel)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await outside.GetAsync("/api/sites/tls?domain=demo.test", Cancel)).StatusCode);
     }
+
+    [Fact]
+    [Trait("Rule", "SEC-16")]
+    [Trait("Rule", "SITE-17")]
+    public async Task SEC16_certificate_for_the_view_host_only_when_the_viewer_is_on()
+    {
+        await using var on = await StartAsync(postgres);
+        await using var set = await StartAsync(postgres, ("Relay:FileViewHost", "files.test"));
+        await using var off = await StartAsync(postgres, ("Sites:Domain", ""), ("Relay:FileViewHost", ""));
+        var onServer = DalanApp.From(on.CreateClient(), "127.0.0.1:40000");
+        var setServer = DalanApp.From(set.CreateClient(), "127.0.0.1:40000");
+        var offServer = DalanApp.From(off.CreateClient(), "127.0.0.1:40000");
+        var outside = DalanApp.From(on.CreateClient(), "5.6.7.8:1234");
+
+        Assert.Equal(HttpStatusCode.OK, (await onServer.GetAsync($"/api/sites/tls?domain=view.{Domain}", Cancel)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await setServer.GetAsync("/api/sites/tls?domain=files.test", Cancel)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await setServer.GetAsync($"/api/sites/tls?domain=view.{Domain}", Cancel)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await offServer.GetAsync("/api/sites/tls?domain=view.", Cancel)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await outside.GetAsync($"/api/sites/tls?domain=view.{Domain}", Cancel)).StatusCode);
+    }
 }

@@ -34,16 +34,16 @@ test("CLI-70 the question names the way, the kept account and what each side has
 test("CLI-70 a refusal has its own text and the question then has no Merge button", () => {
   assert.equal(mergeRefusal({ ...plan, refusal: "both_have_products" }, en), en("bothHaveProducts"));
   assert.match(mergeRefusal({ ...plan, refusal: "merge_conflict", field: "email" }, en)!, /different email address/);
-  assert.match(source("../src/account.ts"), /\.\.\.\(refusal \? \[\] : \[mergeButton\]\)/);
+  assert.match(source("../src/settings/mergeCard.ts"), /\.\.\.\(refusal \? \[\] : \[mergeButton\]\)/);
 });
 
-test("CLI-70 the account screen links an email and GitHub, and asks the merge after merge_needed", () => {
-  const account = source("../src/account.ts");
-  assert.match(account, /api\.addEmail\(/);
-  assert.match(account, /href: "\/api\/account\/github"/);
-  assert.match(account, /failure\.code === "merge_needed"/);
-  assert.match(account, /query\.get\("merge"\) === "1"/);
-  assert.match(account, /api\.dropMerge\(\)/);
+test("CLI-70 the settings area links an email and GitHub, and asks the merge after merge_needed", () => {
+  const settings = (file: string) => source(`../src/settings/${file}.ts`);
+  assert.match(settings("profile"), /api\.addEmail\(/);
+  assert.match(settings("security"), /href: "\/api\/account\/github"/);
+  assert.match(settings("mergeCard"), /failure\.code === "merge_needed"/);
+  assert.match(settings("security"), /query\.get\("merge"\) === "1"/);
+  assert.match(settings("mergeCard"), /api\.dropMerge\(\)/);
 });
 
 test("CLI-70 the texts exist in Persian and in English", () => {

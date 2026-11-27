@@ -82,13 +82,15 @@ export function adminScreen(app: App): Screen {
     card.append(
       h("strong", { dir: "auto" }, `${user.name} (#${user.id})`),
       h("span", { dir: "ltr" }, [user.phone, user.email, user.username ? `@${user.username}` : ""].filter(Boolean).join(" · ")),
-      h("span", { class: "note" }, `${t("builderState")}: ${t(user.builder === "approved" ? "approved" : user.builder === "requested" ? "requested" : "none")}`
+      h("span", { class: "note" }, `${t("builderState")}: ${t(user.builder === "approved" ? "approved" : user.builder === "requested" ? "requested" : user.builder === "refused" ? "refused" : "none")}`
         + (user.suspended ? ` · ${t("suspended")}` : "")),
       h("div", { class: "row wrap" },
         ...(user.builder === "requested" ? [
           action("approve", async () => redraw(await api.setBuilder(user.id, true))),
           action("refuse", async () => redraw(await api.setBuilder(user.id, false))),
         ] : []),
+        // CLI-84: the admin may change a "no" into a "yes".
+        ...(user.builder === "refused" ? [action("approve", async () => redraw(await api.setBuilder(user.id, true)))] : []),
         action(user.suspended ? "unsuspend" : "suspend", async () => {
           if (user.suspended || confirm(t("suspendConfirm"))) redraw(await api.suspendUser(user.id, !user.suspended));
         }),

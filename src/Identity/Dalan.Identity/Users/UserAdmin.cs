@@ -70,7 +70,7 @@ internal sealed class UserAdmin(
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var changed = await db.Users.Where(u => u.Id == userId)
             .ExecuteUpdateAsync(set => set
-                .SetProperty(u => u.Builder, approve ? BuilderState.Approved : BuilderState.None)
+                .SetProperty(u => u.Builder, approve ? BuilderState.Approved : BuilderState.Refused)
                 .SetProperty(u => u.BuilderRequestedAt, (DateTimeOffset?)null), cancellationToken);
         return changed == 0 ? null : await FindAsync(db, userId, cancellationToken);
     }
@@ -99,10 +99,23 @@ internal sealed class UserAdmin(
             IsAdminPhone(user.Phone), BuilderName(user.Builder), user.GithubId != null);
     }
 
+    /// <summary>
+    /// AUTH-39: with Identity:AutoBuilder on, a user with a verified phone and no builder state becomes a builder.
+    /// "requested" and "refused" wait for the admin.
+    /// </summary>
+    public async Task ApproveByPhoneAsync(long userId, CancellationToken cancellationToken)
+    {
+        if (!options.CurrentValue.AutoBuilder) return;
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        await db.Users.Where(u => u.Id == userId && u.Phone != null && u.Builder == BuilderState.None)
+            .ExecuteUpdateAsync(set => set.SetProperty(u => u.Builder, BuilderState.Approved), cancellationToken);
+    }
+
     private static string BuilderName(BuilderState state) => state switch
     {
         BuilderState.Requested => "requested",
         BuilderState.Approved => "approved",
+        BuilderState.Refused => "refused",
         _ => "none",
     };
 

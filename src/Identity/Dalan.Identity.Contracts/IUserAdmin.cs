@@ -6,6 +6,9 @@ public enum BuilderState
     None = 0,
     Requested = 1,
     Approved = 2,
+
+    /// <summary>AUTH-19: the admin said no. Auto-approval (AUTH-39) never changes it; a new request waits for the admin.</summary>
+    Refused = 3,
 }
 
 /// <summary>What a user may do now. A user that does not exist has every flag false.</summary>

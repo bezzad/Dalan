@@ -59,6 +59,12 @@ public sealed class RelayOptions
     public int HistoryDays { get; set; }
     public int HistorySweepMinutes { get; set; }
 
+    /// <summary>REL-57: the host of the HTML file viewer. Empty: "view." + Sites:Domain; both empty: the viewer is off.</summary>
+    public string FileViewHost { get; set; } = "";
+
+    /// <summary>REL-57: minutes a view link works.</summary>
+    public int FileViewMinutes { get; set; }
+
     public IReadOnlyList<string> Categories =>
         ShowcaseCategories.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 

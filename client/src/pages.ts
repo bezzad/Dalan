@@ -1,6 +1,8 @@
 // Pure logic and long texts of the public pages (CLI-26 to CLI-29), kept apart so tests run without a browser.
 // The owner may change these texts; a lawyer should read them before the public launch (DESIGN section 13).
 
+import { settingsPaths } from "./settings/model.ts";
+
 export type Lang = "fa" | "en";
 
 /** ADM-14: the numbers the pages print. They come from the server, never from this file (rule 4). */
@@ -15,6 +17,8 @@ export interface PublicNumbers {
   bot_api_url: string;
   /** ADM-17: the longest contact message. */
   contact_max_length: number;
+  /** CLI-72: the running version, like v1.1.3 (OPS-17); "dev" on a local run. */
+  version?: string;
 }
 
 /** CLI-26: which screen an address shows. Unknown addresses never reach the page: the server answers 404. */
@@ -22,7 +26,11 @@ export type Page = "landing" | "privacy" | "faq" | "showcase" | "guide" | "about
   | "chats" | "bots" | "botNew" | "botPage" | "account" | "admin" | "apps" | "chat" | "notFound";
 
 /** CLI-51: the screens of a logged-in user, each at its own address. */
-const appPages: Record<string, Page> = { "/chats": "chats", "/bots": "bots", "/bots/new": "botNew", "/account": "account", "/admin": "admin", "/apps": "apps" };
+const appPages: Record<string, Page> = {
+  "/chats": "chats", "/bots": "bots", "/bots/new": "botNew", "/admin": "admin", "/apps": "apps",
+  // CLI-77: the settings area: "/account" and one address per section.
+  ...Object.fromEntries(settingsPaths.map(path => [path, "account" as const])),
+};
 
 /** CLI-49: the username of a bot's own page (`/bots/<username>`), or null. */
 export function botPageUsername(path: string): string | null {
@@ -321,4 +329,15 @@ First read: ${site}/llms.txt
 - To create the bot and its token, use Dalan's MCP server: ${site}/api/mcp (the access key is in DALAN_KEY).
 - Or the command line tool: ${site}/dalan.mjs
 Never put the key or a token in the repository.`;
+}
+
+/** CLI-72: what `/health` tells about the build. */
+/**
+ * CLI-72: the copyright line under the footer: the sign, this year, the name and the running version
+ * (`© 2026 Dalan v1.1.0`). Without a version (no answer yet, or a local run) the line has none.
+ */
+export function footerLine(lang: Lang, version: string | null | undefined, now: Date): { text: string; version: string } {
+  const year = new Intl.NumberFormat(lang === "fa" ? "fa-IR" : "en-GB", { useGrouping: false }).format(now.getFullYear());
+  const shown = version && /^v\d+\.\d+\.\d+$/.test(version) ? version : "";
+  return { text: `© ${year} ${lang === "fa" ? "دالان" : "Dalan"}`, version: shown };
 }

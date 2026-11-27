@@ -224,6 +224,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 | 68 | 2026-11-24 | The SMS provider is SMS.ir, not Kavenegar (its licence steps were too hard); Kavenegar code removed. Plain `HttpClient`, not the `IPE.SmsIR` package. Sent = HTTP 200 and `status` 1 |
 | 69 | 2026-11-24 | Site answers stream: the agent sends parts as the app writes them, with a window of parts and an ack per part over WebSocket (a POST that returns after the write over long polling), and the server tells the agent to stop when the visitor leaves. Needed for Server-Sent Events (PocketBase realtime, OAuth). WebSocket from visitors is still left out |
 | 70 | 2026-11-25 | Account merge: only after the proof, only when one side has no products (bots, sites, keys), which never move; chats join in time order with ids after the largest old one; bots get `chat_moved` (Telegram door: `migrate_to_chat_id`) |
+| 71 | 2026-11-27 | An HTML file of a chat opens from `view.<Sites:Domain>` (or `Relay:FileViewHost`), a registered domain other than Dalan's, like GitHub's `githubusercontent.com`: its script runs, but it cannot set Dalan's cookies or touch its page. A sandboxed frame plus `CSP: sandbox` (no same origin), `connect-src 'none'`. The link is a Data Protection token (user, bot, file, end time) good for 10 minutes; no table, no cookie. The host routes the view host before the sites |
 
 ## 11. Client address and access log
 

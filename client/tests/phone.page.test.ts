@@ -21,7 +21,9 @@ test("CLI-69 the viewport has scale 1 and a person can still pinch zoom", () => 
   const html = read("../public/index.html");
   assert.match(html, /name="viewport" content="[^"]*initial-scale=1/);
   assert.doesNotMatch(html, /maximum-scale|user-scalable/);
-  assert.doesNotMatch(read("../public/app.css"), /touch-action/);
+  // Only the picture viewer stops the page zoom, on its own stage, where its own pinch zoom takes over (CLI-89).
+  const touch = [...read("../public/app.css").matchAll(/^([^{\n]+)\{[^}]*touch-action/gm)].map(m => m[1]!.trim());
+  assert.deepEqual(touch, [".viewer.picture .stage"]);
 });
 
 test("CLI-69 every field is at least 16px, so a focused field never zooms", () => {

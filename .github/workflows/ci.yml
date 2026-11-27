@@ -150,6 +150,21 @@ jobs:
       - name: Proxy test
         run: bash tests/proxy/caddy_test.sh
 
+  # CLI-90 and SEC-16: the viewers and the message box in real browsers, Chromium and WebKit as an iPhone (m32).
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+
+      - name: Browser tests
+        run: |
+          (cd client && npm ci && npm run build)
+          bash tests/client-e2e/e2e_test.sh
+
   # The image for local runs and container platforms; production does not use it.
   docker:
     runs-on: ubuntu-24.04
@@ -193,7 +208,7 @@ jobs:
           retention-days: 3
 
   deploy:
-    needs: [build, test, checks, docker, agent]
+    needs: [build, test, checks, e2e, docker, agent]
     # Only when "Deploy" is ticked (DEL-06: a merge to main reaches the server by the server's own build).
     if: inputs.deploy
     runs-on: ubuntu-24.04

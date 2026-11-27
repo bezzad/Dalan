@@ -9,9 +9,9 @@ public class ClientAppTests(PostgresServer postgres)
 {
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
-    private async Task<DalanApp> StartAsync()
+    private async Task<DalanApp> StartAsync(params (string Key, string Value)[] settings)
     {
-        var app = new DalanApp(await postgres.NewDatabaseAsync());
+        var app = new DalanApp(await postgres.NewDatabaseAsync(), settings.ToDictionary(s => s.Key, s => s.Value));
         await app.ReadyAsync();
         return app;
     }
@@ -33,6 +33,7 @@ public class ClientAppTests(PostgresServer postgres)
 
     [Theory]
     [Trait("Rule", "CLI-01")]
+    [Trait("Rule", "CLI-77")]
     [InlineData("/")]
     [InlineData("/bots")]
     [InlineData("/apps")]
@@ -47,6 +48,12 @@ public class ClientAppTests(PostgresServer postgres)
     [InlineData("/bots/new")]
     [InlineData("/bots/mofidbot")]
     [InlineData("/account")]
+    [InlineData("/account/profile")]
+    [InlineData("/account/security")]
+    [InlineData("/account/notifications")]
+    [InlineData("/account/preferences")]
+    [InlineData("/account/builder")]
+    [InlineData("/account/keys")]
     [InlineData("/admin")]
     public async Task CLI01_page_is_served_and_not_cached(string path)
     {
@@ -152,7 +159,8 @@ public class ClientAppTests(PostgresServer postgres)
     [InlineData("/nothing-here")]
     public async Task SEC04_every_response_tells_the_browser_to_load_only_from_our_origin(string path)
     {
-        await using var app = await StartAsync();
+        // The file viewer off (SEC-16 adds only its frame-src when it is on).
+        await using var app = await StartAsync(("Sites:Domain", ""), ("Relay:FileViewHost", ""));
 
         var response = await app.CreateClient().GetAsync(path, Cancel);
 
@@ -161,5 +169,34 @@ public class ClientAppTests(PostgresServer postgres)
             Assert.Single(response.Headers.GetValues("Content-Security-Policy")));
         Assert.Equal("nosniff", Assert.Single(response.Headers.GetValues("X-Content-Type-Options")));
         Assert.Equal("same-origin", Assert.Single(response.Headers.GetValues("Referrer-Policy")));
+    }
+
+    [Theory]
+    [Trait("Rule", "SEC-16")]
+    [InlineData("/")]
+    [InlineData("/api/me")]
+    public async Task SEC16_app_may_frame_only_the_view_host(string path)
+    {
+        await using var app = await StartAsync(("Sites:Domain", "dalans.ir"), ("Sites:Scheme", "https"), ("Relay:FileViewHost", ""));
+
+        var response = await app.CreateClient().GetAsync(path, Cancel);
+
+        Assert.Equal(
+            "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; frame-src https://view.dalans.ir",
+            Assert.Single(response.Headers.GetValues("Content-Security-Policy")));
+    }
+
+    [Fact]
+    [Trait("Rule", "SEC-16")]
+    public async Task SEC16_view_host_goes_before_the_sites()
+    {
+        // "view" is under the sites domain, so the sites routing would take it as a site (SITE-08).
+        await using var app = await StartAsync(("Sites:Domain", "dalans.ir"), ("Relay:FileViewHost", ""));
+        var tab = app.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://view.dalans.ir") });
+
+        var response = await tab.GetAsync("/v/nothing", Cancel);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("", await response.Content.ReadAsStringAsync(Cancel));
     }
 }

@@ -3,6 +3,7 @@
 import { api, type MySites, type Site } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { defaultSiteName, httpCommand, installCommands, loginCommand, serviceCommands } from "./appGuide.ts";
+import { keysLink } from "./builder.ts";
 import { h } from "./dom.ts";
 import { builderView } from "./panels.ts";
 import { toast } from "./toast.ts";
@@ -24,7 +25,7 @@ export function appsScreen(app: App): Screen {
   if (builderView(app.user) !== "bots") {
     body.append(h("section", { class: "card" },
       h("p", {}, t("appsNeedBuilder")),
-      h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => app.go("/account") }, t("account")))));
+      h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => app.go("/account/builder") }, t("account")))));
     return { element };
   }
 
@@ -73,6 +74,7 @@ export function appsScreen(app: App): Screen {
       h("p", { class: "note" }, t("appsNote")),
       ...(mine.domain === "" ? [h("p", { class: "note", role: "status" }, t("sitesOff"))] : []),
       h("section", { class: "card" }, list),
+      keysLink(app),
       guide(mine, siteUrl, site => {
         mine.sites = [...mine.sites.filter(other => other.id !== site.id), site].sort((a, b) => a.name.localeCompare(b.name));
         drawList();

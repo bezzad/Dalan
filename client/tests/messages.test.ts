@@ -1,8 +1,8 @@
-// Rules: CLI-05, CLI-06, CLI-07, CLI-13, CLI-14, CLI-15, CLI-16, CLI-17
+// Rules: CLI-89, CLI-90, CLI-74, CLI-05, CLI-06, CLI-07, CLI-13, CLI-14, CLI-15, CLI-16, CLI-17
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  buttonAction, Chat, Chats, clock, commandMessage, currentKeyboard, fileView, firstFile, fitsSize, KeyboardState, merge, replyKeyboard, stamp,
+  buttonAction, Chat, Chats, clock, commandMessage, currentKeyboard, fileView, firstFile, fitsSize, KeyboardState, merge, replyKeyboard, stamp, suggest,
   type FileInfo, type Message,
 } from "../src/messages.ts";
 
@@ -234,6 +234,32 @@ test("CLI-16 each kind of file has its view", () => {
     ["image", "player", "player", "video", "link"]);
 });
 
+test("CLI-16 the kind of view: photo, PNG document, HTML document, voice, video and PDF", () => {
+  const doc = (name: string, type: string): FileInfo => ({ id: "x", kind: "document", name, type, size: 1 });
+  const files: FileInfo[] = [
+    { id: "x", kind: "photo", name: "p.jpg", type: "image/jpeg", size: 1 }, doc("chart.png", "image/png"),
+    doc("report.html", "text/html"), { id: "x", kind: "voice", name: "v.ogg", type: "audio/ogg", size: 1 },
+    { id: "x", kind: "video", name: "v.mp4", type: "video/mp4", size: 1 }, doc("a.pdf", "application/pdf"),
+  ];
+  assert.deepEqual(files.map(fileView), ["image", "image", "html", "player", "video", "link"]);
+});
+
+test("CLI-89 picture documents of the SEC-12 inline types show as pictures; SVG stays a download", () => {
+  const doc = (name: string, type: string): FileInfo => ({ id: "x", kind: "document", name, type, size: 1 });
+  for (const type of ["image/jpeg", "image/png", "image/gif", "image/webp", "IMAGE/PNG"]) assert.equal(fileView(doc("a", type)), "image", type);
+  for (const type of ["image/svg+xml", "image/tiff", "image/heic"]) assert.equal(fileView(doc("a", type)), "link", type);
+});
+
+test("CLI-90 an HTML document, or one with no clear type named .html or .htm, is an HTML card", () => {
+  const doc = (name: string, type: string): FileInfo => ({ id: "x", kind: "document", name, type, size: 1 });
+  assert.equal(fileView(doc("sprint-review.html", "text/html")), "html");
+  assert.equal(fileView(doc("x", "text/html; charset=utf-8")), "html");
+  assert.equal(fileView(doc("page.HTM", "application/octet-stream")), "html");
+  assert.equal(fileView(doc("page.html", "")), "html");
+  assert.equal(fileView(doc("page.html", "text/plain")), "link", "a clear other type wins over the name");
+  assert.equal(fileView(doc("page.txt", "")), "link");
+});
+
 test("CLI-16 a voice length reads as minutes and seconds", () => {
   assert.equal(clock(65), "1:05");
   assert.equal(clock(7), "0:07");
@@ -291,4 +317,23 @@ test("CLI-17 an edited message has the edited mark", () => {
   const words = { edited: "edited", notDelivered: "not delivered" };
   assert.equal(stamp(m(1), "12:00", words), "12:00");
   assert.equal(stamp({ ...m(1), edited: "2026-11-16T12:05:00Z" }, "12:00", words), "12:00 · edited");
+});
+
+test("CLI-74 suggestions: all on a slash, the start without case, the bot's order", () => {
+  const commands = [{ command: "start" }, { command: "ticket" }, { command: "help" }];
+
+  assert.deepEqual(suggest(commands, "/").map(c => c.command), ["start", "ticket", "help"]);
+  assert.deepEqual(suggest(commands, "/TiC").map(c => c.command), ["ticket"]);
+  assert.deepEqual(suggest(commands, "/t").map(c => c.command), ["ticket"]);
+});
+
+test("CLI-74 suggestions: none after a space, for no match, for other text or for no commands", () => {
+  const commands = [{ command: "ticket" }];
+
+  assert.deepEqual(suggest(commands, "/ticket 12"), []);
+  assert.deepEqual(suggest(commands, "/xyz"), []);
+  assert.deepEqual(suggest(commands, "ticket"), []);
+  assert.deepEqual(suggest(commands, ""), []);
+  assert.deepEqual(suggest([], "/"), []);
+  assert.deepEqual(suggest(commands, "/icket"), []);
 });

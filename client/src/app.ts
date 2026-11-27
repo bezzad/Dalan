@@ -12,6 +12,8 @@ export interface App {
   chats: Chats;
   maxTextLength: number;
   maxFileSizeMb: number;
+  /** CLI-90: HTML files open in the app; false shows only Download. */
+  fileView: boolean;
   /** CLI-19: how often an open chat asks for the bot's status. */
   statusRefreshSeconds: number;
   /** REL-51: the size limit of a bot icon. */
@@ -20,6 +22,8 @@ export interface App {
   pressWaitSeconds: number;
   /** CLI-51: goes to the screen of an address ("/chats", "/bots/new", "/@name") without a page load. */
   go(path: string): void;
+  /** CLI-77: draws the open screen again (the language or the theme changed). */
+  refresh(): void;
   logout(): void;
 }
 
