@@ -371,6 +371,20 @@ public class RichTests(PostgresServer postgres)
         (await bot.PostJsonAsync("getFile", new { file_id = "nope" })).IsError(400, "Bad Request: invalid file_id");
     }
 
+    [Theory]
+    [Trait("Rule", "TG-21")]
+    [InlineData("AAAAAAAAAAAAbotAAAAAAAAAAAAAAAAAAAA")]
+    [InlineData("AAAAAAAAAAAABOTAAAAAAAAAAAAAAAAAAAA")]
+    public async Task TG21_a_token_that_holds_bot_reaches_the_download(string secret)
+    {
+        var (app, _, botId, _) = await StartedAsync();
+        await using var _1 = app;
+
+        var download = await app.CreateClient().GetAsync($"/file/bot{botId}:{secret}/x.png", Cancel);
+
+        (await TelegramBot.ReadAsync(download)).IsError(401, "Unauthorized");
+    }
+
     /// <summary>The token is in the bot's method address: "/bot&lt;token&gt;/x?".</summary>
     private static string BotToken(TelegramBot bot) => bot.Url("x")["/bot".Length..^"/x?".Length];
 }

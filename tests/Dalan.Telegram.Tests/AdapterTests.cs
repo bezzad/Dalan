@@ -49,6 +49,10 @@ public class AdapterTests(PostgresServer postgres)
     [InlineData("{0}:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]
     [InlineData("999999:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]
     [InlineData("no-token-at-all")]
+    // A secret is random base64url, so about one in a thousand holds "bot" in some letter case. Such a token must still reach
+    // the adapter: a route like "/bot{token}" finds its literal from the right and misses it (an empty 404 instead).
+    [InlineData("{0}:AAAAAAAAAAAAbotAAAAAAAAAAAAAAAAAAAA")]
+    [InlineData("{0}:AAAAAAAAAAAABoTAAAAAAAAAAAAAAAAAAAA")]
     public async Task TG01_wrong_token_is_401_unauthorized(string tokenPattern)
     {
         var (app, _, botId, _) = await TelegramBot.StartAsync(postgres);
