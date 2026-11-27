@@ -16,6 +16,9 @@ public sealed record UserAccess(bool IsAdmin, bool IsBuilder, bool IsSuspended)
 {
     /// <summary>AUTH-37: the user has the second factor on. Read only for an admin (SEC-15); false for others.</summary>
     public bool HasSecondFactor { get; init; }
+
+    /// <summary>SEC-15: admin powers anywhere (not only /api/admin) need the second factor on, else the user acts as a common user.</summary>
+    public bool ActsAsAdmin => IsAdmin && HasSecondFactor;
 }
 
 /// <summary>A user as the admin sees it: with the phone number and email, for legal complaints (ADM-11).</summary>

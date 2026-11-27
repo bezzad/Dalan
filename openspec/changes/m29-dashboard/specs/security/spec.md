@@ -32,3 +32,13 @@ An admin (SEC-14: a phone in `Identity:AdminPhones`) SHALL have the second facto
 #### Scenario: Cannot turn it off
 - **WHEN** an admin asks to turn the second factor off
 - **THEN** the answer is 403 and it stays on
+
+#### Scenario: Admin powers outside /api/admin
+- **GIVEN** an admin without the second factor
+- **WHEN** the admin changes another user's bot or deletes another user's site
+- **THEN** it is refused as for a common user; with the second factor on, it works
+
+#### Scenario: Turning it on ends the other sessions
+- **GIVEN** an admin session made on another device before the second factor
+- **WHEN** the admin turns the second factor on
+- **THEN** that other session ends; only this one stays

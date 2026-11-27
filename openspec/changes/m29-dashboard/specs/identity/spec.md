@@ -27,3 +27,11 @@ A user with a password, or an admin, SHALL be able to turn on TOTP: `POST /api/a
 #### Scenario: Turn off
 - **WHEN** a common user sends a right code to `POST /api/account/totp/off`
 - **THEN** TOTP is off and the recovery codes are gone
+
+#### Scenario: Guessing the code to turn it off
+- **WHEN** wrong codes come to `POST /api/account/totp/off` `Identity:PasswordTries` times in its window
+- **THEN** the next try, even with a right code, gets 429 `rate_limited`
+
+#### Scenario: Code step stays
+- **WHEN** an admin tries to change `Identity:TotpStepSeconds` in the panel
+- **THEN** the answer is 400 `out_of_range`: the phones keep the step of their set-up

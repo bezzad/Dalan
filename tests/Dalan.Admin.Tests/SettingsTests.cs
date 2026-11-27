@@ -266,4 +266,19 @@ public class SettingsTests(PostgresServer postgres)
         Assert.Equal("180", (await admin.SettingAsync("Admin:AccessLogRetentionDays")).GetProperty("value").GetString());
         Assert.Equal(0, await PostgresServer.ScalarAsync<long>(app.ConnectionString, "SELECT count(*) FROM admin.settings"));
     }
+
+    [Fact]
+    [Trait("Rule", "ADM-19")]
+    [Trait("Rule", "AUTH-37")]
+    public async Task ADM19_the_code_step_cannot_change_in_the_panel()
+    {
+        // Phones keep the step of their set-up: another value would lock out every user with the second factor.
+        await using var app = await AdminApp.StartAsync(postgres);
+        var (admin, _) = await app.AdminAsync();
+
+        var response = await admin.SetAsync("Identity:TotpStepSeconds", "60");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("out_of_range", await response.ErrorCodeAsync());
+    }
 }

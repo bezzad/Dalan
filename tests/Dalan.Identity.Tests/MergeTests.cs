@@ -206,6 +206,26 @@ public class MergeTests(PostgresServer postgres)
     }
 
     [Fact]
+    [Trait("Rule", "AUTH-37")]
+    public async Task AUTH37_a_merge_moves_the_second_factor_past_a_set_up_never_confirmed()
+    {
+        var (app, browser, me, other) = await TwoAccountsAsync();
+        await using var _app = app;
+        // The kept account (this one) started a set-up and never confirmed it; the other one has the second factor on.
+        await PostgresServer.ExecuteAsync(app.ConnectionString, $"""
+            INSERT INTO identity.totp (user_id, secret) VALUES ({me}, '\x00'::bytea);
+            INSERT INTO identity.totp (user_id, secret, on_at) VALUES ({other}, '\x01'::bytea, now());
+            INSERT INTO identity.recovery_codes (user_id, code_hash) VALUES ({other}, '\x02'::bytea);
+            """);
+        await ProvePhoneAsync(app, browser);
+
+        (await browser.PostAsync("/api/account/merge", null, Cancel)).EnsureSuccessStatusCode();
+
+        Assert.Equal(1, await CountAsync(app, $"SELECT count(*) FROM identity.totp WHERE user_id = {me} AND on_at IS NOT NULL"));
+        Assert.Equal(1, await CountAsync(app, $"SELECT count(*) FROM identity.recovery_codes WHERE user_id = {me}"));
+    }
+
+    [Fact]
     [Trait("Rule", "AUTH-32")]
     public async Task AUTH32_with_no_products_the_current_account_is_kept()
     {

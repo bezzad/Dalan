@@ -1,6 +1,7 @@
 using System.Globalization;
 using Dalan.Admin.Contracts;
 using Dalan.Identity.Data;
+using Dalan.Identity.Passwords;
 using Dalan.Identity.Sessions;
 using Dalan.Identity.Users;
 using Microsoft.AspNetCore.Builder;
@@ -68,7 +69,7 @@ internal static class SecondFactorEndpoints
     }
 
     private static async Task<IResult> ConfirmAsync(
-        HttpContext http, SecondFactors factors, SecurityLog log, IAuditLog audit, IAccessLog accessLog)
+        HttpContext http, SecondFactors factors, SessionTokens sessions, SecurityLog log, IAuditLog audit, IAccessLog accessLog)
     {
         var userId = SessionTokens.UserId(http.User);
         await accessLog.RecordAsync(AccessActor.User, userId, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
@@ -76,13 +77,15 @@ internal static class SecondFactorEndpoints
         if (code.Length != Totp.Digits || await factors.ConfirmAsync(userId, code, http.RequestAborted) is not { } recoveryCodes)
             return WrongCode();
 
+        // A session made before the second factor (a stolen SMS session, say) must not keep going: only this one stays (SEC-15).
+        await sessions.SignOutOtherDevicesAsync(http, userId);
         log.SecondFactor(userId, on: true);
         await audit.RecordAsync(userId, "totp.on", $"user {userId}", null, http.RequestAborted);
         return AuthJson.Ok(new { RecoveryCodes = recoveryCodes });
     }
 
     private static async Task<IResult> OffAsync(
-        HttpContext http, SecondFactors factors, UserAdmin users, SecurityLog log, IAuditLog audit, IAccessLog accessLog)
+        HttpContext http, SecondFactors factors, UserAdmin users, PasswordTries tries, SecurityLog log, IAuditLog audit, IAccessLog accessLog)
     {
         var userId = SessionTokens.UserId(http.User);
         await accessLog.RecordAsync(AccessActor.User, userId, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
@@ -90,8 +93,16 @@ internal static class SecondFactorEndpoints
         if ((await users.GetAccessAsync(userId, http.RequestAborted)).IsAdmin)
             return AdminNeeds2fa("An admin of Dalan must keep the second factor on.");
 
+        // SEC-09, AUTH-37: guessing the code to turn it off is limited like a password, per user and per address.
+        var address = http.Connection.RemoteIpAddress?.ToString() ?? "";
+        if (tries.Check($"totp-off:{userId}", address) is { } wait)
+            return AuthJson.TooManyRequests(http, "rate_limited", wait, $"Too many wrong codes. Wait {AuthJson.Seconds(wait)} second(s).");
         var code = (await AuthJson.ReadAsync<CodeRequest>(http))?.Code;
-        if (!await factors.CheckAsync(userId, code, http.RequestAborted)) return WrongCode();
+        if (!await factors.CheckAsync(userId, code, http.RequestAborted))
+        {
+            log.LoginFailed("totp_off", $"wrong code for user {userId}");
+            return WrongCode();
+        }
 
         await factors.OffAsync(userId, http.RequestAborted);
         log.SecondFactor(userId, on: false);

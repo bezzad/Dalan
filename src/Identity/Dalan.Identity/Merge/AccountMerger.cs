@@ -95,8 +95,10 @@ internal sealed class AccountMerger(
             if (plan.Refusal is not null) return plan;
 
             var (kept, gone) = plan.Keep == "this" ? (me, other) : (other, me);
-            // AUTH-33, AUTH-37: like the password, the second factor moves when the kept account has none.
+            // AUTH-33, AUTH-37: like the password, the second factor moves when the kept account has none. A set-up the kept
+            // account started but never confirmed is no second factor: it goes, so it cannot block the move.
             await db.Database.ExecuteSqlAsync($"""
+                DELETE FROM identity.totp WHERE user_id = {kept.Id} AND on_at IS NULL;
                 UPDATE identity.recovery_codes SET user_id = {kept.Id}
                 WHERE user_id = {gone.Id} AND NOT EXISTS (SELECT 1 FROM identity.totp WHERE user_id = {kept.Id});
                 UPDATE identity.totp SET user_id = {kept.Id}

@@ -816,12 +816,12 @@
       "en": "Authenticator code step"
     },
     "help": {
-      "fa": "چند ثانیه هر کد برنامه تأیید هویت معتبر است. برنامه‌ها ۳۰ را به کار می‌برند؛ عدد دیگر بیشتر برنامه‌ها را از کار می‌اندازد.",
-      "en": "Seconds each authenticator code lasts. Apps use 30; another value breaks most apps."
+      "fa": "چند ثانیه هر کد برنامه تأیید هویت معتبر است. برنامه‌ها ۳۰ را به کار می‌برند و کدهای ساخته‌شده با آن عوض نمی‌شوند؛ برای همین از پنل تغییر نمی‌کند.",
+      "en": "Seconds each authenticator code lasts. Apps use 30, and the codes already set up keep it; so the panel cannot change it."
     },
     "unit": "seconds",
     "min": 30,
-    "max": 60,
+    "max": 30,
     "risky": true,
     "restart": false
   },

@@ -241,6 +241,23 @@ public class SecondFactorTests(PostgresServer postgres)
 
     [Fact]
     [Trait("Rule", "AUTH-37")]
+    public async Task AUTH37_guessing_the_code_to_turn_it_off_is_limited_like_a_password()
+    {
+        await using var app = await StartAsync();
+        var (browser, secret, _) = await UserWithTotpAsync(app);
+
+        // Identity:PasswordTries (5) wrong codes, then even the right code waits.
+        for (var i = 0; i < 5; i++)
+            Assert.Equal(HttpStatusCode.BadRequest, (await browser.PostAsJsonAsync("/api/account/totp/off", new { code = "000000" }, Cancel)).StatusCode);
+        var limited = await browser.PostAsJsonAsync("/api/account/totp/off", new { code = app.TotpCode(secret) }, Cancel);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+        Assert.Equal("rate_limited", await ErrorCodeAsync(limited));
+        Assert.True(await TotpOnAsync(browser));
+    }
+
+    [Fact]
+    [Trait("Rule", "AUTH-37")]
     public async Task AUTH37_sms_and_email_logins_of_a_common_user_do_not_ask()
     {
         await using var app = await StartAsync();
@@ -329,6 +346,20 @@ public class SecondFactorTests(PostgresServer postgres)
         await TicketAsync(await NoJar(app).PostAsJsonAsync(
             "/api/auth/email/verify", new { email = "owner@example.com", code = app.Email.Sent[^1].Code }, Cancel));
         await TicketAsync(await NoJar(app).PostAsJsonAsync("/api/auth/password", new { login = AdminPhone, password = Password }, Cancel));
+    }
+
+    [Fact]
+    [Trait("Rule", "SEC-15")]
+    public async Task SEC15_turning_it_on_ends_every_other_session()
+    {
+        await using var app = await StartAsync();
+        // A session made before the second factor, on another device (a stolen SMS session, say).
+        var (_, stolenRefresh) = await LoginRawAsync(app, AdminPhone);
+        var (browser, _) = await app.LoginAsync(phone: AdminPhone);
+
+        Assert.True(await TotpOnAsync(browser));
+        Assert.Equal(HttpStatusCode.Unauthorized, (await RefreshAsync(app, stolenRefresh)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await browser.GetAsync("/api/admin/settings", Cancel)).StatusCode);
     }
 
     [Fact]
