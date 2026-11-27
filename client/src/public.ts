@@ -67,6 +67,10 @@ const icons = {
   close: ["M6 6l12 12", "M18 6L6 18"],
   mic: ["M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z", "M19 10v2a7 7 0 0 1-14 0v-2", "M12 19v3"],
   search: ["M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14z", "M16 16l5 5"],
+  // CLI-87: two diagonal arrows. CLI-89 and CLI-90: download, open in a new tab.
+  expand: ["M14 4h6v6", "M20 4l-7 7", "M10 20H4v-6", "M4 20l7-7"],
+  download: ["M12 3v12", "M7 10l5 5 5-5", "M4 20h16"],
+  external: ["M14 4h6v6", "M20 4l-9 9", "M18 14v6H4V6h6"],
 };
 
 /** CLI-45: the Dalan mark alone, a link to the home page, at the end of the chat header. */

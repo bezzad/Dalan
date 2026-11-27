@@ -63,6 +63,8 @@
   --text-small: 13px;
   /* CLI-07: a reply keyboard that does not resize is about as tall as a phone keyboard. */
   --keyboard-height: min(260px, 40dvh);
+  /* CLI-86: the message box grows with its text up to this, then scrolls. A look, not a limit. */
+  --compose-max-height: 40vh;
 }
 :lang(fa) { --mono: Vazirmatn, system-ui, sans-serif; --tracking: 0; --text-label: 15px; --text-small: 14px; }
 
@@ -378,6 +380,37 @@ button.pinned[hidden] { display: none; }
 form.compose > button { flex: none; }
 form.compose > button.mic { display: inline-flex; align-items: center; justify-content: center; }
 form.compose > button.mic .icon { width: 20px; height: 20px; }
+/* CLI-86 and CLI-87: the box grows to --compose-max-height, then scrolls; the expand button sits in its corner. */
+form.compose .box { position: relative; flex: 1; min-width: 0; display: flex; }
+form.compose textarea { max-height: var(--compose-max-height); overflow-y: auto; }
+form.compose .box button.expand { position: absolute; inset-block-start: 4px; inset-inline-end: 4px; min-height: 28px; width: 28px; padding: 0; border: 0; background: var(--surface); color: var(--muted); }
+form.compose .box button.expand[hidden] { display: none; }
+form.compose .box button.expand .icon { width: 16px; height: 16px; }
+form.compose .box textarea:has(+ button.expand:not([hidden])) { padding-inline-end: 36px; }
+/* CLI-87: the big editor, large in the middle; full screen on a phone or a narrow screen. */
+dialog.modal.editor { display: flex; flex-direction: column; gap: 12px; width: min(900px, 80vw); height: 80dvh; }
+dialog.modal.editor:not([open]) { display: none; }
+dialog.modal.editor textarea { flex: 1; max-height: none; height: auto; }
+dialog.modal.editor.full { width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0; border: 0; border-radius: 0;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+.row.end { justify-content: flex-end; }
+/* CLI-89: a picture in a message opens the viewer. */
+.messages img.picture { cursor: zoom-in; }
+/* CLI-90: an HTML file is a card with Open and Download. */
+.file-card { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.file-card .file-name { overflow-wrap: anywhere; font-weight: 600; }
+/* CLI-89 and CLI-90: a viewer covers the screen, inside the safe areas; the page under it does not scroll. */
+body.viewing { overflow: hidden; }
+.viewer { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; background: #000; color: #fff;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.viewer .tools { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 8px; }
+.viewer .tools .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.viewer .tool { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; width: 40px; padding: 0; border: 0; border-radius: 50%; background: rgb(255 255 255 / .12); color: #fff; }
+.viewer .tool .icon { width: 20px; height: 20px; }
+.viewer.picture .tools { position: absolute; inset-block-start: env(safe-area-inset-top); inset-inline: 0; z-index: 1; }
+.viewer.picture .stage { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; }
+.viewer.picture .stage img { max-width: 100%; max-height: 100%; transform-origin: 0 0; user-select: none; -webkit-user-select: none; }
+.viewer.html iframe { flex: 1; width: 100%; border: 0; background: #fff; }
 a.button { text-decoration: none; }
 form.row > button:not(.primary) { padding: 8px 10px; }
 

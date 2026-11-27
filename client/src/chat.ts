@@ -1,11 +1,15 @@
 // The chat with one bot: history, live messages, reply buttons (CLI-07), inline buttons (CLI-13),
 // the pinned bar (CLI-14), the command menu (CLI-15), files (CLI-16), the read position (CLI-18),
 // the bot's status (CLI-19), the "not delivered" mark (CLI-20), voice (CLI-46), paste and drop (CLI-47), replies (CLI-52),
-// presses in progress (CLI-53), formatted text (CLI-54), command suggestions (CLI-74), the offline bar (CLI-91) and the input.
+// presses in progress (CLI-53), formatted text (CLI-54), command suggestions (CLI-74), the offline bar (CLI-91) and the input:
+// Enter like Telegram (CLI-85), the growing box (CLI-86), the big editor (CLI-87), a draft per chat (CLI-88),
+// the picture viewer (CLI-89) and HTML files in the app (CLI-90).
 import { api, type Bot, type Command } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
 import { chatHeader, matchingMessages, micButton, offlineBar } from "./chatHeader.ts";
+import { Drafts, enterAction, expandShown, grow, insertText, pressOf } from "./compose.ts";
 import { h } from "./dom.ts";
+import { openEditor } from "./editor.ts";
 import { formatNodes, formatTree } from "./format.ts";
 import { botIconUrl } from "./icon.ts";
 import { toast } from "./toast.ts";
@@ -15,6 +19,8 @@ import {
   type ButtonStyle, type FileInfo, type InlineButton, type Message, type ReplyInfo,
 } from "./messages.ts";
 import { recorderType, voiceFile } from "./ogg.ts";
+import { icon } from "./public.ts";
+import { openHtml, openPicture } from "./viewer.ts";
 
 /** CLI-46: recording needs a secure page and a browser that records. */
 const canRecord = () => window.isSecureContext && "MediaRecorder" in window && !!navigator.mediaDevices?.getUserMedia;
@@ -49,7 +55,13 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
   const sendButton = h("button", { type: "submit", class: "primary" }, t("send"));
   const mic = micButton(t("record"));
   const start = h("button", { type: "button", class: "primary start", hidden: true }, t("start"));
-  const form = h("form", { class: "row compose", hidden: true }, menuButton, attach, picker, input, keyToggle, sendButton, mic);
+  // CLI-87: over 3 lines, the expand button in the corner of the box opens the big editor.
+  const expand = h("button", { type: "button", class: "expand", hidden: true, "aria-label": t("expand"), title: t("expand") }, icon("expand"));
+  const box = h("div", { class: "box" }, input, expand);
+  const form = h("form", { class: "row compose", hidden: true }, menuButton, attach, picker, box, keyToggle, sendButton, mic);
+  // CLI-88: the unsent text of each chat, in this browser only.
+  const drafts = new Drafts(localStorage, app.user.id);
+  let draftTimer = 0;
   // CLI-47: a file waits here, with the input as its caption, until Send or Cancel.
   const pending = h("div", { class: "pending", hidden: true });
   // CLI-46: the bar while recording.
@@ -97,11 +109,35 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
   function fileElement(file: FileInfo): HTMLElement {
     const src = api.fileUrl(bot!.id, file.id);
     switch (fileView(file)) {
-      case "image": return h("img", { src, alt: file.name, onload: () => { if (following) toEnd(); } });
+      // CLI-89: a tap opens the picture full screen.
+      case "image": return h("img", { src, alt: file.name, tabindex: "0", role: "button", class: "picture",
+        onload: () => { if (following) toEnd(); }, onclick: () => openPicture(t, src, file.name),
+        onkeydown: (event: Event) => { if ((event as KeyboardEvent).key === "Enter") openPicture(t, src, file.name); } });
+      case "html": return htmlCard(file, src);
       case "player": return player(src, file);
       case "video": return h("video", { src, controls: true, preload: "metadata", onloadedmetadata: () => { if (following) toEnd(); } });
       default: return h("a", { href: src, download: file.name, dir: "auto" }, `📄 ${file.name} (${size(file.size)})`);
     }
+  }
+
+  /** CLI-90: an HTML file is a card with its name, size, Open (when the viewer is on) and Download. */
+  function htmlCard(file: FileInfo, src: string): HTMLElement {
+    const open = h("button", { type: "button", class: "primary" }, t("open"));
+    open.addEventListener("click", async () => {
+      open.disabled = true;
+      try {
+        const link = await api.fileViewLink(bot!.id, file.id);
+        openHtml(t, link.url, src, file.name);
+      } catch (failure) {
+        toast(t(errorText(failure)), "error");
+      } finally {
+        open.disabled = false;
+      }
+    });
+    return h("div", { class: "file-card" },
+      h("span", { class: "file-name", dir: "auto" }, `📄 ${file.name}`),
+      h("span", { class: "note", dir: "ltr" }, size(file.size)),
+      h("div", { class: "row" }, ...(app.fileView ? [open] : []), h("a", { class: "button", href: src, download: file.name }, t("download"))));
   }
 
   /** CLI-13: a button's colour class; none for no style. */
@@ -317,7 +353,7 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
       const message = await work();
       if (message) {
         app.chats.receive(bot.id, message);
-        input.value = "";
+        clearBox();
         // Only the reply that was sent ends; one the user picked while it was on its way stays.
         if (message.reply_to && message.reply_to.id === replyTarget?.id) cancelReply();
         following = true;
@@ -334,6 +370,17 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
 
   /** CLI-52: the id the next send replies to, if any. */
   const replyId = () => replyTarget?.id;
+  /** CLI-86 and CLI-87: fits the box to its text and shows the expand button over 3 lines. */
+  function resize(): void {
+    expand.hidden = !expandShown(grow(input));
+  }
+  /** CLI-86 and CLI-88: after a send the box is empty, one row high, and the chat has no draft. */
+  function clearBox(): void {
+    input.value = "";
+    window.clearTimeout(draftTimer);
+    if (bot) drafts.remove(bot.id);
+    resize();
+  }
   /** CLI-74: draws the list for the input now; it closes when nothing matches. */
   function drawSuggest(keepMark = false): void {
     shown = suggest(allCommands, input.value);
@@ -342,7 +389,7 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
     suggestions.replaceChildren(...shown.map((c, i) => h("button", {
       type: "button", role: "option", class: i === mark ? "marked" : "", "aria-selected": String(i === mark),
       onmousedown: (event: Event) => event.preventDefault(),
-      onclick: () => { input.value = ""; drawSuggest(); void send(commandMessage(c.command)); },
+      onclick: () => { clearBox(); drawSuggest(); void send(commandMessage(c.command)); },
     }, h("b", {}, `/${c.command}`), h("span", { dir: "auto" }, c.description))));
     suggestions.children[mark]?.scrollIntoView?.({ block: "nearest" });
   }
@@ -456,15 +503,20 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
         const chosen = shown[mark];
-        input.value = "";
+        clearBox();
         drawSuggest();
         void send(commandMessage(chosen!.command));
         return;
       }
     }
-    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    // CLI-85: a fine pointer sends on Enter; a coarse one adds a line. Shift+Enter keeps the browser's own new line.
+    const action = enterAction(pressOf(event));
+    if (action === "send") {
       event.preventDefault();
       submit();
+    } else if (action === "newline" && !event.shiftKey) {
+      event.preventDefault();
+      insertText(input, "\n");
     }
     // CLI-52: Esc drops the reply.
     if (event.key === "Escape" && replyTarget) {
@@ -472,7 +524,17 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
       cancelReply();
     }
   });
-  input.addEventListener("input", () => { drawSendButton(); drawSuggest(); });
+  input.addEventListener("input", () => {
+    drawSendButton();
+    drawSuggest();
+    resize();
+    // CLI-88: kept after a short quiet, not at every key.
+    window.clearTimeout(draftTimer);
+    const botId = bot?.id;
+    // Not after the chat is gone: a logout in those 300 ms has already removed every draft.
+    if (botId !== undefined) draftTimer = window.setTimeout(() => { if (element.isConnected) drafts.save(botId, input.value); }, 300);
+  });
+  expand.addEventListener("click", () => openEditor(t, input, submit));
   // CLI-47: a pasted file goes to the card; pasted text stays text.
   input.addEventListener("paste", event => {
     const file = firstFile(event.clipboardData?.files ?? [], (f, name) => new File([f], name, { type: f.type }));
@@ -615,8 +677,13 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
       suspended = found.suspended;
       if (suspended) error.textContent = t("botSuspended");
       void refreshStatus();
+      // CLI-88: the text this chat had when the user left it.
+      // What the user typed while the chat was loading wins.
+      if (input.value === "") input.value = drafts.load(bot.id);
       await app.chats.open(bot.id);
       draw();
+      resize();
+      drawSendButton();
       // CLI-15: the menu shows only when the bot has commands.
       const commands = await api.commands(bot.id);
       menu.replaceChildren(...commands.map(c => h("button", { type: "button", dir: "auto", onclick: () => {

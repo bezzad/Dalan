@@ -8,6 +8,8 @@ import { botsScreen } from "./bots.ts";
 import { botPageScreen, myBotsScreen, newBotScreen } from "./builder.ts";
 import { chatScreen } from "./chat.ts";
 import { Connection } from "./connection.ts";
+import { Drafts } from "./compose.ts";
+import { closeOverlays } from "./overlays.ts";
 import { Language, type TextKey } from "./i18n.ts";
 import { Live } from "./live.ts";
 import { loginScreen, markReturning } from "./login.ts";
@@ -40,6 +42,8 @@ async function authSettings(): Promise<AuthSettings> {
 }
 
 function show(element: HTMLElement): void {
+  // CLI-87, CLI-89, CLI-90: no viewer or editor stays over the next screen.
+  closeOverlays();
   document.title = language.t("appName");
   // CLI-55: a bot's chat links that bot's manifest and icons; every other screen links Dalan's again.
   const links = appLinksFor(location.pathname);
@@ -55,6 +59,8 @@ function show(element: HTMLElement): void {
 }
 
 function showLogin(error: TextKey | null = null): void {
+  // CLI-88: a logout, or a session that ended (401), leaves no draft in this browser.
+  Drafts.clearAll(localStorage);
   live?.stop();
   app = live = screen = null;
   connection.reset();
@@ -189,6 +195,7 @@ async function enter(user: User): Promise<void> {
     chats: new Chats(api.messages, settings.sync_page_size),
     maxTextLength: settings.max_text_length,
     maxFileSizeMb: settings.max_file_size_mb,
+    fileView: settings.file_view ?? false,
     statusRefreshSeconds: settings.status_refresh_seconds,
     maxBotIconKb: settings.max_bot_icon_kb,
     pressWaitSeconds: settings.press_wait_seconds,

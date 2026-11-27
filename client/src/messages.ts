@@ -258,15 +258,28 @@ export function appLinksFor(path: string): { manifest: string; icon: string; ico
     : { manifest: "/manifest.webmanifest", icon: "/icons/icon.svg", iconType: "image/svg+xml", appleIcon: "/icons/icon-192.png" };
 }
 
-/** CLI-16: how a file is shown. A voice and an audio get Dalan's own player. */
-export function fileView(file: FileInfo): "image" | "player" | "video" | "link" {
+/** CLI-89: the picture types shown in the page (SEC-12 sends these inline). Not SVG: it can hold script. */
+const pictureTypes = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+
+/** The content type without its parameters, in lower case. */
+const baseType = (type: string) => type.split(";")[0]!.trim().toLowerCase();
+
+/**
+ * CLI-16: how a file shows. A photo or a picture document is an image (CLI-89); an HTML document, or one with no clear type
+ * and a name ending .html or .htm, is a card that opens in the app (CLI-90); everything else (PDF, SVG, ...) is a download link.
+ */
+export function fileView(file: FileInfo): "image" | "player" | "video" | "html" | "link" {
   switch (file.kind) {
     case "photo": return "image";
     case "audio":
     case "voice": return "player";
     case "video": return "video";
-    default: return "link";
   }
+  const type = baseType(file.type);
+  if (pictureTypes.has(type)) return "image";
+  if (type === "text/html") return "html";
+  if ((type === "" || type === "application/octet-stream") && /\.html?$/i.test(file.name)) return "html";
+  return "link";
 }
 
 /** CLI-16: a file the server would refuse is refused before it is sent. */
