@@ -13,8 +13,8 @@ Each task: write the failing tests tagged with the rule IDs, then the code, then
 
 - [x] 2.1 `fileView` and the message views; CLI-16 test for the new kinds (CLI-16, CLI-89, CLI-90)
 - [x] 2.2 Picture viewer: pinch, double tap, pan, Download, Close, Esc (CLI-89)
-- [ ] 2.3 Relay: `POST /api/bots/{bot id}/files/{file id}/view`, token, settings, access log (REL-57)
-- [ ] 2.4 Relay and Host: `GET /v/{token}` on the view host with the SEC-16 headers; host routing before sites; app CSP `frame-src`; SITE-17 yes; `view` reserved (SEC-16)
+- [x] 2.3 Relay: `POST /api/bots/{bot id}/files/{file id}/view`, token, settings, access log (REL-57)
+- [x] 2.4 Relay and Host: `GET /v/{token}` on the view host with the SEC-16 headers; host routing before sites; app CSP `frame-src`; SITE-17 yes; `view` reserved (SEC-16)
 - [x] 2.5 HTML card and viewer: Fullscreen API or fixed layer with safe areas; Close, Download, Open in a new tab; frame focus (CLI-90)
 
 ## 3. Browser test

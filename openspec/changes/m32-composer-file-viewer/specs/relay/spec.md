@@ -3,7 +3,7 @@
 ## ADDED Requirements
 
 ### Requirement: REL-57 View link for an HTML file
-`POST /api/bots/{bot id}/files/{file id}/view` SHALL answer `{"url", "expires_at"}` when the user may get the file (REL-29) and it is HTML (type `text/html`, or no clear type and a name ending `.html` or `.htm`). The url SHALL be `https://<view host>/v/<token>`; the view host is `Relay:FileViewHost`, or `view.<Sites:Domain>` when that is empty. The token SHALL be valid for `Relay:FileViewMinutes` (start 10) and name only this user, bot and file. A file the user may not get SHALL answer 404 as REL-29; a file that is not HTML SHALL answer 400 `not_html`; with no view host the answer SHALL be 503 `viewer_off`. Each call SHALL be in the access log (ADM-01).
+`POST /api/bots/{bot id}/files/{file id}/view` SHALL answer `{"url", "expires_at"}` when the user may get the file (REL-29) and it is HTML. The url SHALL be `https://<view host>/v/<token>`; the view host is `Relay:FileViewHost`, else `view.<Sites:Domain>`. The token SHALL name only this user, bot and file and work for `Relay:FileViewMinutes` (start 10). Errors: 404 as REL-29, 400 `not_html`, 503 `viewer_off`. The settings (REL-18) SHALL say `file_view`. Each call SHALL be in the access log.
 
 #### Scenario: Link for a report
 - **GIVEN** a bot sent `report.html` to Sara and `Sites:Domain` is `dalans.ir`
@@ -22,3 +22,11 @@
 - **GIVEN** `Relay:FileViewHost` and `Sites:Domain` are empty
 - **WHEN** Sara asks for a view link
 - **THEN** the answer is 503 `viewer_off`
+
+#### Scenario: The client knows
+- **WHEN** the client loads its settings (REL-18)
+- **THEN** `file_view` is true when a view host is set (`Relay:FileViewHost` or `Sites:Domain`), and false when both are empty, so the card shows only Download
+
+#### Scenario: What is HTML
+- **WHEN** a file has type `text/html`, or no clear type (`application/octet-stream`, empty) and a name ending `.html` or `.htm`
+- **THEN** it gets a view link; any other file answers 400 `not_html`
