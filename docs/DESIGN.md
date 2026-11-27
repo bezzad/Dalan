@@ -513,6 +513,8 @@ None of these is planned work. They are recorded so the design does not block th
 | One streamed site answer (Layer 2) | 500 MB | Assumed (milestone 15) |
 | Part of a streamed answer, and parts on the way (Layer 2) | 64 KB, 8 | Assumed (milestone 15) |
 | Site request timeout, for the first part of the answer (Layer 2) | 30 seconds | Assumed |
+| HTML file viewer host (`Relay:FileViewHost`) | Empty: `view.<Sites:Domain>`; both empty: viewer off | Assumed (milestone 32) |
+| HTML file view link (`Relay:FileViewMinutes`) | 10 minutes | Assumed (milestone 32) |
 
 **Confirmed by the owner on 2026-11-16:**
 

@@ -14,6 +14,7 @@ using Dalan.Relay.Mcp;
 using Dalan.Relay.Outbox;
 using Dalan.Relay.Queue;
 using Dalan.Relay.Showcase;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -27,7 +28,10 @@ public static class RelayService
 {
     public static IServiceCollection AddRelayService(this IServiceCollection services)
     {
-        services.AddOptions<RelayOptions>().BindConfiguration("Relay");
+        services.AddOptions<RelayOptions>().BindConfiguration("Relay")
+            .Validate<IConfiguration>((options, configuration) => !FileView.IsUnder(options.FileViewHost, configuration["Admin:SiteUrl"]),
+                "Relay:FileViewHost must be another registered domain than the host of Admin:SiteUrl (SEC-16): an HTML file could set cookies for Dalan.")
+            .ValidateOnStart();
         services.TryAddSingleton(TimeProvider.System);
         services.AddPooledDbContextFactory<RelayDb>((provider, options) => options
             .UseNpgsql(
@@ -47,6 +51,10 @@ public static class RelayService
         services.AddSingleton<BotPresence>();
         services.AddSingleton<ButtonPresses>();
         services.AddSingleton<FileStore>();
+        services.AddSingleton<UserFiles>();
+        services.AddDataProtection();
+        services.AddSingleton<FileView>();
+        services.AddSingleton<IFileViewHost>(provider => provider.GetRequiredService<FileView>());
         services.AddSingleton<FileSweeper>();
         services.AddHostedService(provider => provider.GetRequiredService<FileSweeper>());
         services.AddSingleton<QueueLoader>();
@@ -63,6 +71,21 @@ public static class RelayService
         services.AddSingleton<ExpirySweeper>();
         services.AddHostedService(provider => provider.GetRequiredService<ExpirySweeper>());
         return services;
+    }
+
+    /// <summary>
+    /// SEC-16: a request to the view host goes to the file viewer and nowhere else in Dalan. Put it before the sites
+    /// (the view host is under the sites domain) and before the host's own pages, headers and session;
+    /// <paramref name="branch"/> adds what every request still needs (the per-address limit).
+    /// </summary>
+    public static IApplicationBuilder UseFileView(this IApplicationBuilder app, Action<IApplicationBuilder> branch)
+    {
+        var view = app.ApplicationServices.GetRequiredService<FileView>();
+        return app.MapWhen(http => view.IsViewHost(http.Request.Host), viewer =>
+        {
+            branch(viewer);
+            viewer.Run(FileView.ServeAsync);
+        });
     }
 
     public static IEndpointRouteBuilder MapRelayService(this IEndpointRouteBuilder endpoints)

@@ -44,6 +44,8 @@ public sealed class SettingsCatalog(IConfiguration configuration)
         "Sites:Domain",
         // SITE-18: the demo host takes every request of its host; a stolen admin session must not point it at Dalan's own host.
         "Sites:DemoHost",
+        // SEC-16: HTML files run script on the view host; a stolen admin session must not point it at Dalan's own host.
+        "Relay:FileViewHost",
     };
 
     /// <summary>Read only once at start: a change works after a restart.</summary>

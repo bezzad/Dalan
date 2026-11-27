@@ -41,6 +41,8 @@ var app = builder.Build();
 
 app.UseClientAddress();
 app.UseReadyGate();
+// SEC-16: the file view host leaves first: it is under the sites domain, and it must never see Dalan's pages or session.
+app.UseFileView(view => view.UseRateLimiter());
 // SITE-08: a site host leaves here, before Dalan's own pages and security headers; the per-address limit still holds (SEC-02).
 app.UseSites(site => site.UseRateLimiter());
 app.UseSecurityHeaders();
