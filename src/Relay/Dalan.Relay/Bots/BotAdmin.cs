@@ -9,7 +9,8 @@ namespace Dalan.Relay.Bots;
 
 /// <summary>ADM-12 and REL-38: what the admin door asks of Relay.</summary>
 internal sealed class BotAdmin(
-    IDbContextFactory<RelayDb> dbFactory, SuspendedBots suspendedBots, IMessageNotifier notifier, TimeProvider time) : IBotAdmin
+    IDbContextFactory<RelayDb> dbFactory, SuspendedBots suspendedBots, IMessageNotifier notifier, BotPresence presence, TimeProvider time)
+    : IBotAdmin
 {
     public async Task<IReadOnlyList<AdminBot>> SearchAsync(string query, int limit, CancellationToken cancellationToken)
     {
@@ -61,6 +62,18 @@ internal sealed class BotAdmin(
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         return await db.Showcase.Where(e => e.BotId == botId)
             .ExecuteUpdateAsync(set => set.SetProperty(e => e.State, state).SetProperty(e => e.ReviewedAt, at), cancellationToken) > 0;
+    }
+
+    public async Task<BotCounts> CountAsync(CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var since = time.GetUtcNow() - presence.OnlineTime;
+        var recent = await db.Bots.AsNoTracking().Where(b => b.LastSeenAt >= since)
+            .Select(b => new { b.Id, b.LastSeenAt }).ToDictionaryAsync(b => b.Id, b => b.LastSeenAt, cancellationToken);
+        return new BotCounts(
+            await db.Bots.CountAsync(cancellationToken),
+            presence.CountOnline(recent),
+            await db.Showcase.CountAsync(e => e.State == ShowcaseState.Pending, cancellationToken));
     }
 
     public void EndUserStreams(long userId) => notifier.EndStreams(userId);

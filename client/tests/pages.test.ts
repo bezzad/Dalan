@@ -65,7 +65,8 @@ test("CLI-37 says what Dalan does not offer and never says tunnel", () => {
 test("CLI-26 the address and the login decide the screen", () => {
   const paths = ["/", "/bots", "/apps", "/privacy", "/faq", "/showcase", "/@bot"];
   assert.deepEqual(paths.map(path => pageFor(path, false)), ["landing", "login", "login", "privacy", "faq", "showcase", "login"]);
-  assert.deepEqual(paths.map(path => pageFor(path, true)), ["landing", "bots", "apps", "privacy", "faq", "showcase", "chat"]);
+  // CLI-81: My bots and My apps are in the dashboard.
+  assert.deepEqual(paths.map(path => pageFor(path, true)), ["landing", "dashboard", "dashboard", "privacy", "faq", "showcase", "chat"]);
 });
 
 test("CLI-56 about and contact open for a visitor and for a logged-in user", () => {
@@ -80,11 +81,11 @@ test("CLI-56 the about texts say the same parts in each language and name no own
 });
 
 test("CLI-51 each screen has its own address", () => {
+  // CLI-81: the old addresses of the screens move into the dashboard (each still has its own address there).
   const paths = ["/chats", "/bots", "/bots/new", "/bots/mofidbot", "/account", "/admin", "/apps"];
-  assert.deepEqual(paths.map(path => pageFor(path, true)), ["chats", "bots", "botNew", "botPage", "account", "admin", "apps"]);
+  assert.deepEqual(paths.map(path => pageFor(path, true)), paths.map(() => "dashboard"));
   assert.deepEqual(paths.map(path => pageFor(path, false)), paths.map(() => "login"));
-  // CLI-77: each section of the settings area has its own address.
-  assert.equal(pageFor("/account/security", true), "account");
+  assert.equal(pageFor("/account/security", true), "dashboard");
   assert.equal(botPageUsername("/bots/mofidbot"), "mofidbot");
   assert.equal(botPageUsername("/bots/new"), null);
   assert.equal(botPageUsername("/bots"), null);

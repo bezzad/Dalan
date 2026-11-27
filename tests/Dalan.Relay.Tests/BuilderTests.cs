@@ -215,6 +215,26 @@ public class BuilderTests(PostgresServer postgres)
     }
 
     [Fact]
+    [Trait("Rule", "SEC-15")]
+    public async Task SEC15_an_admin_changes_another_owners_bot_only_with_the_second_factor_on()
+    {
+        await using var app = await StartAsync();
+        // Alice (user 1) owns a bot; the admin has not logged in before.
+        await app.LoginAsync("Alice");
+        var (id, _) = await app.AddBotAsync("alice_bot");
+        // The admin logs in, but has no second factor yet.
+        var admin = app.Browser();
+        (await admin.PostAsJsonAsync("/api/dev/login", new { phone = AdminPhone, name = "Owner" }, Cancel)).EnsureSuccessStatusCode();
+
+        var without = await admin.PatchAsJsonAsync($"/api/builder/bots/{id}", new { name = "Taken" }, Cancel);
+        await app.TurnOnTotpAsync(admin);
+        var with = await admin.PatchAsJsonAsync($"/api/builder/bots/{id}", new { name = "Renamed" }, Cancel);
+
+        Assert.Equal("bot_not_found", await without.ErrorCodeAsync());
+        Assert.Equal(HttpStatusCode.OK, with.StatusCode);
+    }
+
+    [Fact]
     [Trait("Rule", "REL-48")]
     [Trait("Rule", "REL-49")]
     public async Task REL48_REL49_another_owners_bot_gets_404()

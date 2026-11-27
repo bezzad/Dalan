@@ -1,7 +1,7 @@
 // The login screen: the Dalan gate, then one card: the password form first (CLI-62), under it one button per other way
 // (CLI-36). GitHub (AUTH-27), email code (AUTH-24, AUTH-25), SMS code (AUTH-11, AUTH-12), password (AUTH-14) and the
 // development login (AUTH-06). Send again with a countdown (CLI-61).
-import { ApiError, api, type AuthSettings, type User } from "./api.ts";
+import { ApiError, api, type AuthSettings, type LoginAnswer, type User } from "./api.ts";
 import { errorText } from "./app.ts";
 import { latinDigits, phoneNumber } from "./digits.ts";
 import { h } from "./dom.ts";
@@ -9,6 +9,7 @@ import type { Language, LangStorage, TextKey } from "./i18n.ts";
 import { gate } from "./logo.ts";
 import { rememberNext } from "./next.ts";
 import { solve } from "./pow.ts";
+import { isTotpStep, totpTicketIn } from "./totp.ts";
 import { readSmsCode } from "./webOtp.ts";
 
 type Channel = "sms" | "email";
@@ -117,6 +118,23 @@ export function loginScreen(
   }
 
   const backButton = () => h("button", { type: "button", class: "link", onclick: () => choices() }, t("back"));
+
+  /** CLI-92: a login that needs the second factor asks for the code here; any other answer is the user. */
+  function loggedIn(answer: LoginAnswer): void {
+    if (isTotpStep(answer)) show(totpStep(answer.ticket));
+    else onLogin(answer);
+  }
+
+  /** CLI-92: the code from the authenticator app, or a recovery code (AUTH-37). */
+  function totpStep(ticket: string): HTMLElement {
+    const code = h("input", {
+      id: "totp", type: "text", inputmode: "numeric", dir: "ltr", autocomplete: "one-time-code", autocapitalize: "none",
+      maxlength: "32", required: true });
+    return form("totpTitle", "totpNote", "login", [
+      h("label", { for: "totp" }, t("totpCode")), code,
+      backButton(),
+    ], async () => onLogin(await api.totpLogin(ticket, latinDigits(code.value.trim()))));
+  }
 
   const phoneInput = () => h("input", {
     id: "phone", type: "tel", inputmode: "tel", dir: "ltr", autocomplete: "tel", placeholder: "09121234567", required: true });
@@ -229,7 +247,7 @@ export function loginScreen(
     ], async () => {
       reading.abort();
       try {
-        onLogin(await way.verify(to, latinDigits(code.value), name.disabled ? undefined : name.value));
+        loggedIn(await way.verify(to, latinDigits(code.value), name.disabled ? undefined : name.value));
       } catch (failure) {
         if (!(failure instanceof ApiError && failure.code === "name_required")) throw failure;
         nameLabel.hidden = name.hidden = name.disabled = false;
@@ -257,7 +275,7 @@ export function loginScreen(
     return form(null, null, "login", [
       h("label", { for: "login" }, t("loginName")), login,
       h("label", { for: "password" }, t("password")), secret,
-    ], async () => onLogin(await api.passwordLogin(phoneNumber(login.value), secret.value)));
+    ], async () => loggedIn(await api.passwordLogin(phoneNumber(login.value), secret.value)));
   }
 
   function dev(): HTMLElement {
@@ -267,7 +285,7 @@ export function loginScreen(
       h("label", { for: "phone" }, t("phone")), phone,
       h("label", { for: "name" }, t("name")), name,
       backButton(),
-    ], async () => onLogin(await api.devLogin(phoneNumber(phone.value), name.value)));
+    ], async () => loggedIn(await api.devLogin(phoneNumber(phone.value), name.value)));
   }
 
   /** CLI-59, CLI-61: what a screen still runs (the SMS code request, the countdown), ended when another screen comes. */
@@ -292,7 +310,12 @@ export function loginScreen(
     bottomLinks(mode);
   }
 
-  choices(firstError);
+  // CLI-92: back from a GitHub login that needs the code (`/?totp=<ticket>`).
+  const ticket = totpTicketIn(location.search);
+  if (ticket) {
+    history.replaceState(null, "", location.pathname);
+    show(totpStep(ticket));
+  } else choices(firstError);
   return h("main", { class: "login" },
     // CLI-62: the Dalan gate above the card.
     h("div", { class: "login-logo" }, gate()),

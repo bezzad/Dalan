@@ -6,7 +6,10 @@ using Microsoft.AspNetCore.Http;
 
 namespace Dalan.Admin.AdminApi;
 
-/// <summary>ADM-05: runs before every admin call, after ASP.NET Core checked the session: the access log, then "is this an admin?".</summary>
+/// <summary>
+/// ADM-05: runs before every admin call, after ASP.NET Core checked the session: the access log, then "is this an admin?",
+/// then "has the admin the second factor on?" (SEC-15).
+/// </summary>
 internal sealed class AdminFilter(IUserDirectory users, IAccessLog accessLog) : IEndpointFilter
 {
     /// <summary>"sub" is the standard JWT claim for the subject; Identity puts the user id there.</summary>
@@ -20,8 +23,13 @@ internal sealed class AdminFilter(IUserDirectory users, IAccessLog accessLog) : 
         await accessLog.RecordAsync(
             AccessActor.User, userId, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
 
-        return (await users.GetAccessAsync(userId, http.RequestAborted)).IsAdmin
+        var access = await users.GetAccessAsync(userId, http.RequestAborted);
+        if (!access.IsAdmin) return AdminJson.Error(StatusCodes.Status403Forbidden, "not_admin", "Only an admin of Dalan may do this.");
+
+        // SEC-15: an admin without the second factor may only set it up (POST /api/account/totp).
+        return access.HasSecondFactor
             ? await next(context)
-            : AdminJson.Error(StatusCodes.Status403Forbidden, "not_admin", "Only an admin of Dalan may do this.");
+            : AdminJson.Error(StatusCodes.Status403Forbidden, "admin_needs_2fa",
+                "An admin of Dalan needs the second factor. Turn it on in \"Login and security\" first.");
     }
 }

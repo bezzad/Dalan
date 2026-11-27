@@ -16,7 +16,7 @@ internal sealed record MergeSideJson(long Id, string Name, int Bots, int Sites, 
 
 /// <summary>
 /// AUTH-31: the merge question. <see cref="Keep"/> is "this" or "other" (AUTH-32). <see cref="Refusal"/> is null,
-/// "both_have_products", "merge_conflict" (with <see cref="Field"/>) or "suspended".
+/// "both_have_products", "merge_conflict" (with <see cref="Field"/>), "suspended" or "admin" (SEC-15).
 /// </summary>
 internal sealed record MergePlanJson(string Way, string Keep, MergeSideJson This, MergeSideJson Other, string? Refusal, string? Field)
 {
@@ -31,6 +31,7 @@ internal sealed class AccountMerger(
     IEnumerable<IUserHoldings> holdings,
     IEnumerable<IUserMergeListener> listeners,
     IAuditLog audit,
+    UserAdmin users,
     SecurityLog log,
     IOptionsMonitor<IdentityOptions> options,
     TimeProvider time)
@@ -94,6 +95,15 @@ internal sealed class AccountMerger(
             if (plan.Refusal is not null) return plan;
 
             var (kept, gone) = plan.Keep == "this" ? (me, other) : (other, me);
+            // AUTH-33, AUTH-37: like the password, the second factor moves when the kept account has none. A set-up the kept
+            // account started but never confirmed is no second factor: it goes, so it cannot block the move.
+            await db.Database.ExecuteSqlAsync($"""
+                DELETE FROM identity.totp WHERE user_id = {kept.Id} AND on_at IS NULL;
+                UPDATE identity.recovery_codes SET user_id = {kept.Id}
+                WHERE user_id = {gone.Id} AND NOT EXISTS (SELECT 1 FROM identity.totp WHERE user_id = {kept.Id});
+                UPDATE identity.totp SET user_id = {kept.Id}
+                WHERE user_id = {gone.Id} AND NOT EXISTS (SELECT 1 FROM identity.totp WHERE user_id = {kept.Id});
+                """, cancellationToken);
             // The other account goes first: its phone, email, GitHub id and username are unique.
             db.Users.Remove(gone);
             await db.SaveChangesAsync(cancellationToken);
@@ -169,6 +179,8 @@ internal sealed class AccountMerger(
         var theirs = await SideAsync(db, other, cancellationToken);
         var field = Conflict(me, other);
         var refusal = me.SuspendedAt is not null || other.SuspendedAt is not null ? "suspended"
+            // SEC-15: a merge must not be a way into an admin account without the second factor.
+            : users.IsAdminPhone(me.Phone) || users.IsAdminPhone(other.Phone) ? "admin"
             : mine.HasProducts && theirs.HasProducts ? "both_have_products"
             : field is not null ? "merge_conflict"
             : null;

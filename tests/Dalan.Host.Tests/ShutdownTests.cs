@@ -97,6 +97,7 @@ public sealed class ShutdownTests(PostgresServer postgres) : IAsyncLifetime
     {
         var cancel = TestContext.Current.CancellationToken;
         var admin = await PersonAsync("Owner", AdminPhone);
+        await _factory.TurnOnTotpAsync(admin);
         var builder = await PersonAsync("Builder", "09121110001");
         var builderId = (await builder.GetFromJsonAsync<JsonElement>("/api/me", cancel)).GetProperty("id").GetInt64();
         (await admin.PostAsJsonAsync($"/api/admin/users/{builderId}/builder", new { approve = true }, cancel)).EnsureSuccessStatusCode();

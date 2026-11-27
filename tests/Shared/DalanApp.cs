@@ -5,6 +5,9 @@ using Dalan.Host;
 using Dalan.Identity.Data;
 using Dalan.Identity.Codes;
 using Dalan.Identity.Users;
+using Dalan.Identity;
+using Dalan.Identity.SecondFactor;
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Builder;
 using Dalan.Notification.Contracts;
 using Microsoft.AspNetCore.Hosting;
@@ -95,7 +98,29 @@ public sealed class DalanApp(
         var response = await browser.PostAsJsonAsync("/api/dev/login", new { phone, name }, TestContext.Current.CancellationToken);
         response.EnsureSuccessStatusCode();
         var user = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        // SEC-15: an admin without the second factor may not use the admin door, so the admin of a test gets it.
+        if (user.GetProperty("admin").GetBoolean() && !user.GetProperty("totp").GetBoolean()) await TurnOnTotpAsync(browser);
         return (browser, user.GetProperty("id").GetInt64());
+    }
+
+    /// <summary>AUTH-37: turns the second factor on for this logged-in browser. Returns the secret and the recovery codes.</summary>
+    public async Task<(byte[] Secret, string[] RecoveryCodes)> TurnOnTotpAsync(HttpClient browser)
+    {
+        var cancel = TestContext.Current.CancellationToken;
+        var start = await browser.PostAsync("/api/account/totp", content: null, cancel);
+        start.EnsureSuccessStatusCode();
+        var secret = Totp.FromBase32((await start.Content.ReadFromJsonAsync<JsonElement>(cancel)).GetProperty("secret").GetString()!);
+        var confirm = await browser.PostAsJsonAsync("/api/account/totp/confirm", new { code = TotpCode(secret) }, cancel);
+        confirm.EnsureSuccessStatusCode();
+        var codes = (await confirm.Content.ReadFromJsonAsync<JsonElement>(cancel)).GetProperty("recovery_codes");
+        return (secret, [.. codes.EnumerateArray().Select(code => code.GetString()!)]);
+    }
+
+    /// <summary>The TOTP code of now on the test clock, or of a step before (negative) or after it.</summary>
+    public string TotpCode(byte[] secret, int steps = 0)
+    {
+        var stepSeconds = Services.GetRequiredService<IOptionsMonitor<IdentityOptions>>().CurrentValue.TotpStepSeconds;
+        return Totp.Code(secret, Totp.Step(Time.GetUtcNow(), stepSeconds) + steps);
     }
 
     /// <summary>

@@ -182,7 +182,8 @@ internal sealed partial class BuilderBots(
     public async Task<bool> MayChangeAsync(RelayDb db, long userId, long botId, CancellationToken cancellationToken)
     {
         var ownerId = await db.Bots.Where(b => b.Id == botId && b.DeletedAt == null).Select(b => (long?)b.OwnerUserId).FirstOrDefaultAsync(cancellationToken);
-        return ownerId is not null && (ownerId == userId || (await users.GetAccessAsync(userId, cancellationToken)).IsAdmin);
+        // SEC-15: an admin changes other users' bots only with the second factor on.
+        return ownerId is not null && (ownerId == userId || (await users.GetAccessAsync(userId, cancellationToken)).ActsAsAdmin);
     }
 
     private async Task<List<BuilderBotJson>> ReadAsync(RelayDb db, IQueryable<Bot> query, CancellationToken cancellationToken)

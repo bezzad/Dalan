@@ -1,18 +1,22 @@
-// CLI-77, CLI-78: the sections of the settings area, which address opens what, the login methods and the user menu.
-// Pure, so tests run without a browser.
+// CLI-81 (and CLI-77, CLI-78): the dashboard: its sections in groups, which address opens what, the old addresses that move
+// into it, the login methods and the user menu. Pure, so tests run without a browser.
 import type { GlyphName } from "../icon.ts";
 import type { TextKey } from "../i18n.ts";
-import { keysShown, type BuilderState } from "../panels.ts";
+import { builderView, keysShown, type BuilderState } from "../panels.ts";
 
-export type SectionId = "profile" | "security" | "notifications" | "preferences" | "builder" | "keys";
-export type GroupId = "account" | "building";
+export type SectionId =
+  | "chats" | "bots" | "apps"
+  | "profile" | "security" | "notifications" | "preferences" | "builder" | "keys"
+  | "overview" | "requests" | "users" | "adminBots" | "showcase" | "messages" | "adminSettings" | "access" | "audit";
+export type GroupId = "workspace" | "account" | "building" | "admin";
 
 export interface Section {
   id: SectionId;
   group: GroupId;
   glyph: GlyphName;
   title: TextKey;
-  help: TextKey;
+  /** The line under the title; the workspace pages have their own title row instead. */
+  help: TextKey | null;
 }
 
 export interface SettingsUser {
@@ -26,50 +30,100 @@ export interface SettingsUser {
 
 /** Every section, in menu order. */
 export const sections: readonly Section[] = [
+  { id: "chats", group: "workspace", glyph: "chats", title: "chats", help: null },
+  { id: "bots", group: "workspace", glyph: "bots", title: "myBots", help: null },
+  { id: "apps", group: "workspace", glyph: "apps", title: "myApps", help: null },
   { id: "profile", group: "account", glyph: "profile", title: "sectionProfile", help: "sectionProfileHelp" },
   { id: "security", group: "account", glyph: "shield", title: "sectionSecurity", help: "sectionSecurityHelp" },
   { id: "notifications", group: "account", glyph: "bell", title: "notifications", help: "sectionNotificationsHelp" },
   { id: "preferences", group: "account", glyph: "sliders", title: "sectionPreferences", help: "sectionPreferencesHelp" },
   { id: "builder", group: "building", glyph: "wrench", title: "sectionBuilder", help: "sectionBuilderHelp" },
   { id: "keys", group: "building", glyph: "key", title: "sectionKeys", help: "aiAgentsNote" },
+  { id: "overview", group: "admin", glyph: "grid", title: "adminOverview", help: "adminOverviewHelp" },
+  { id: "requests", group: "admin", glyph: "inbox", title: "tabRequests", help: "adminRequestsHelp" },
+  { id: "users", group: "admin", glyph: "users", title: "tabUsers", help: "adminUsersHelp" },
+  { id: "adminBots", group: "admin", glyph: "bots", title: "tabBots", help: "adminBotsHelp" },
+  { id: "showcase", group: "admin", glyph: "star", title: "showcase", help: "adminShowcaseHelp" },
+  { id: "messages", group: "admin", glyph: "mail", title: "tabMessages", help: "adminMessagesHelp" },
+  { id: "adminSettings", group: "admin", glyph: "settings", title: "tabSettings", help: "adminSettingsHelp" },
+  { id: "access", group: "admin", glyph: "list", title: "tabAccess", help: "adminAccessHelp" },
+  { id: "audit", group: "admin", glyph: "list", title: "tabAudit", help: "adminAuditHelp" },
 ];
 
-const groupTitles: Record<GroupId, TextKey> = { account: "groupAccount", building: "groupBuilding" };
+const groupTitles: Record<GroupId, TextKey> = { workspace: "groupWorkspace", account: "groupAccount", building: "groupBuilding", admin: "groupAdmin" };
 
-export const settingsPath = "/account";
+export const dashboardPath = "/dashboard";
 
-/** The address of a section: `/account/profile`. */
+/** The last part of each admin address; the overview is `/dashboard/admin` itself. */
+const adminSlugs: Partial<Record<SectionId, string>> = {
+  requests: "requests", users: "users", adminBots: "bots", showcase: "showcase", messages: "messages", adminSettings: "settings", access: "access", audit: "audit",
+};
+
+/** The address of a section: `/dashboard/profile`, `/dashboard/chats`, `/dashboard/admin/settings`. */
 export function sectionPath(id: SectionId): string {
-  return `${settingsPath}/${id}`;
+  if (id === "overview") return `${dashboardPath}/admin`;
+  const slug = adminSlugs[id];
+  return slug ? `${dashboardPath}/admin/${slug}` : `${dashboardPath}/${id}`;
 }
 
-/** Every address of the settings area (the server serves exactly these, CLI-01). */
-export const settingsPaths: readonly string[] = [settingsPath, ...sections.map(section => sectionPath(section.id))];
+const isAdminSection = (section: Section) => section.group === "admin";
 
-/** CLI-77: the Building group is for an approved builder or an admin only. */
+/** CLI-81: what a user may see. The menu only hides; the server still refuses (SEC-14). */
 function visible(section: Section, user: SettingsUser): boolean {
-  // CLI-23: every user sees the Builder section (ask, wait or open); the keys only a builder or an admin (CLI-30).
+  if (isAdminSection(section)) return user.admin;
+  // CLI-81: My bots and My apps for a builder or an admin. CLI-23: every user sees the Builder section; the keys only a builder (CLI-30).
+  if (section.id === "bots" || section.id === "apps") return builderView(user) === "bots";
   return section.id !== "keys" || keysShown(user);
 }
 
 /** The side menu: groups with their sections. A group with no section is left out. */
-export function settingsMenu(user: SettingsUser): { group: GroupId; title: TextKey; sections: Section[] }[] {
-  return (["account", "building"] as const)
+export function dashboardMenu(user: SettingsUser): { group: GroupId; title: TextKey; sections: Section[] }[] {
+  return (["workspace", "account", "building", "admin"] as const)
     .map(group => ({ group, title: groupTitles[group], sections: sections.filter(section => section.group === group && visible(section, user)) }))
     .filter(entry => entry.sections.length > 0);
 }
 
+export interface Target {
+  /** The open section; null shows the menu as a list (a phone at `/dashboard`). */
+  section: SectionId | null;
+  /** The address to show. */
+  path: string;
+  /** CLI-81: an admin address for a user who is not an admin, or an address that does not exist. */
+  notFound?: boolean;
+  /** Inside My bots: "new" or a bot's username (CLI-49). */
+  sub?: string;
+}
+
 /**
- * CLI-77: what an address opens. `/account` is Profile on a wide screen and the menu on a phone; a section the user may not
- * see (Building for a non-builder) opens Profile. `?merge` and `?link_error` (the way back from GitHub, which still names
- * `/account`) open Login and security. `path` is the address to show, `section` null means the menu list.
+ * CLI-81: what an address opens. `/dashboard` is Chats on a wide screen and the menu on a phone. My bots or My apps for
+ * someone who is not a builder opens Builder (CLI-23); the keys open Profile; an admin section is "Not found". `?merge` and `?link_error` (the way back from GitHub)
+ * open Login and security.
  */
-export function settingsTarget(path: string, search: string, user: SettingsUser, wide: boolean): { section: SectionId | null; path: string } {
+export function dashboardTarget(path: string, search: string, user: SettingsUser, wide: boolean): Target {
+  // CLI-23: someone who is not a builder yet is sent where they can ask to become one.
+  const toBuilder: Target = { section: "builder", path: sectionPath("builder") };
   const found = sections.find(section => sectionPath(section.id) === path);
-  if (found) return visible(found, user) ? { section: found.id, path } : { section: "profile", path: sectionPath("profile") };
+  if (found) {
+    if (visible(found, user)) return { section: found.id, path };
+    if (isAdminSection(found)) return { section: null, path, notFound: true };
+    return found.group === "workspace" ? toBuilder : { section: "profile", path: sectionPath("profile") };
+  }
+  const bot = /^\/dashboard\/bots\/(new|[A-Za-z][A-Za-z0-9_]*)$/.exec(path)?.[1];
+  if (bot) return builderView(user) === "bots" ? { section: "bots", path, sub: bot } : toBuilder;
   const query = new URLSearchParams(search);
   if (query.has("merge") || query.has("link_error")) return { section: "security", path: sectionPath("security") };
-  return wide ? { section: "profile", path: sectionPath("profile") } : { section: null, path: settingsPath };
+  if (path === dashboardPath) return wide ? { section: "chats", path: sectionPath("chats") } : { section: null, path };
+  return { section: null, path, notFound: true };
+}
+
+/** CLI-81: the old address of a page and its place in the dashboard; null for any other address. The query stays. */
+export function dashboardAddress(path: string): string | null {
+  if (path === "/chats" || path === "/apps") return `${dashboardPath}${path}`;
+  if (path === "/bots" || /^\/bots\/(new|[A-Za-z][A-Za-z0-9_]*)$/.test(path)) return `${dashboardPath}${path}`;
+  if (path === "/account") return dashboardPath;
+  if (/^\/account\/[a-z]+$/.test(path)) return `${dashboardPath}${path.slice("/account".length)}`;
+  if (path === "/admin") return sectionPath("overview");
+  return null;
 }
 
 /** CLI-77: a row's button is primary only while its value differs from the saved one. */
@@ -109,17 +163,17 @@ export interface MenuItem {
   path: string | null;
 }
 
-/** CLI-78: the user menu groups: (My bots, Chats, My apps), (Settings, and Admin for an admin), (Log out). */
+/** CLI-78: the user menu groups: (My bots, Chats, My apps), (Settings, and Admin for an admin), (Log out). CLI-81: each opens the dashboard. */
 export function userMenuGroups(user: { admin: boolean }): MenuItem[][] {
   return [
     [
-      { id: "myBots", glyph: "bots", text: "myBots", path: "/bots" },
-      { id: "chats", glyph: "chats", text: "chats", path: "/chats" },
-      { id: "myApps", glyph: "apps", text: "myApps", path: "/apps" },
+      { id: "myBots", glyph: "bots", text: "myBots", path: sectionPath("bots") },
+      { id: "chats", glyph: "chats", text: "chats", path: sectionPath("chats") },
+      { id: "myApps", glyph: "apps", text: "myApps", path: sectionPath("apps") },
     ],
     [
-      { id: "settings", glyph: "settings", text: "settings", path: settingsPath },
-      ...(user.admin ? [{ id: "admin", glyph: "shield", text: "adminScreen", path: "/admin" } satisfies MenuItem] : []),
+      { id: "settings", glyph: "settings", text: "settings", path: sectionPath("profile") },
+      ...(user.admin ? [{ id: "admin", glyph: "shield", text: "adminScreen", path: sectionPath("overview") } satisfies MenuItem] : []),
     ],
     [{ id: "logout", glyph: "logout", text: "logout", path: null }],
   ];

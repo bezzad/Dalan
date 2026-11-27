@@ -1,6 +1,7 @@
 using System.Globalization;
 using Dalan.Identity.Contracts;
 using Dalan.Identity.Data;
+using Dalan.Identity.SecondFactor;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -29,7 +30,11 @@ internal sealed class UserAdmin(
         if (user is null || user.SuspendedAt is not null) return new UserAccess(false, false, user is not null);
 
         var isAdmin = IsAdminPhone(user.Phone);
-        return new UserAccess(isAdmin, isAdmin || user.Builder == BuilderState.Approved, false);
+        return new UserAccess(isAdmin, isAdmin || user.Builder == BuilderState.Approved, false)
+        {
+            // SEC-15: the admin door asks it on every call.
+            HasSecondFactor = isAdmin && await SecondFactors.IsOnAsync(db, userId, cancellationToken),
+        };
     }
 
     public async Task<IReadOnlyList<AdminUser>> SearchAsync(string query, int limit, CancellationToken cancellationToken)
@@ -96,7 +101,8 @@ internal sealed class UserAdmin(
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
         return user is null ? null : new ProfileJson(
             user.Id, user.DisplayName, user.Username, user.Email, user.PasswordHash != null, user.Phone != null,
-            IsAdminPhone(user.Phone), BuilderName(user.Builder), user.GithubId != null);
+            IsAdminPhone(user.Phone), BuilderName(user.Builder), user.GithubId != null,
+            await SecondFactors.IsOnAsync(db, userId, cancellationToken));
     }
 
     /// <summary>
@@ -118,6 +124,15 @@ internal sealed class UserAdmin(
         BuilderState.Refused => "refused",
         _ => "none",
     };
+
+    public async Task<UserCounts> CountAsync(DateTimeOffset newSince, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return new UserCounts(
+            await db.Users.CountAsync(cancellationToken),
+            await db.Users.CountAsync(u => u.CreatedAt >= newSince, cancellationToken),
+            await db.Users.CountAsync(u => u.Builder == BuilderState.Requested, cancellationToken));
+    }
 
     public string? NormalizePhone(string? input) => PhoneNumber.Normalize(input?.Replace(" ", "", StringComparison.Ordinal));
 

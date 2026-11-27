@@ -49,7 +49,7 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - Reply: a message's menu (right-click, long press), a double-click or a swipe left. The bar above the input shows the quote with ✕; a bubble that replies shows the quote on top, and a click on it goes to the message (CLI-52).
 - Typing `/` opens a list above the input with the bot's commands that start with the typed text, each `/command` and its description, left to right. Click, tap or Enter sends; Tab completes; ↑ ↓ move the mark; Esc closes (CLI-74).
 - Enter (CLI-85): with a mouse and keyboard Enter sends and Shift+Enter or Ctrl+Enter adds a line; on a phone or tablet (coarse pointer, read at each key) Enter adds a line and only Send sends; never while an IME composes.
-- The box grows with its text to `--compose-max-height` (40vh), then scrolls; one row again after a send (CLI-86). Over 3 lines a small expand button (two diagonal arrows) sits in its corner and opens the big editor: the same box moved into a `dialog.modal`, full screen on a phone or under 600px, 80% in the middle otherwise; Send and Close; Esc keeps the text; Ctrl+B and Ctrl+I put `**` and `_` around the selection (CLI-87).
+- The box grows with its text to `--compose-max-height` (about six lines, at most 30dvh, like Telegram), then scrolls; its buttons stay their size at the bottom; one row again after a send (CLI-86). Over 3 lines a small expand button (two diagonal arrows) sits in its corner and opens the big editor: the same box moved into a `dialog.modal`, full screen on a phone or under 600px, 80% in the middle otherwise; Send and Close; Esc keeps the text; Ctrl+B and Ctrl+I put `**` and `_` around the selection (CLI-87).
 - Each chat keeps its unsent text in this browser (`dalan.draft.<user>.<bot>`); a send removes it, logout removes all (CLI-88).
 - A photo, or a JPEG, PNG, GIF or WebP document, shows as a picture; a tap opens a black full-screen viewer with pinch, double tap and pan, Download and Close; Esc closes (CLI-89). SVG stays a download.
 - An HTML file is a card (name, size, Open, Download). Open shows it full screen in a frame from the view host (`sandbox="allow-scripts allow-popups"`, SEC-16), with Close, Download and Open in a new tab; on an iPhone a fixed layer inside the safe areas (CLI-90).
@@ -92,8 +92,15 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - A way to log in that is not set shows its "Set up" or "Link" action on its method card; the merge card (below) shows on Login and security.
 - After the proof finds another account, the merge card comes first: the question, one line per account (what it has, whether it stays), a note, then "Merge" (primary) and "Cancel" (link). A refusal shows its reason and no "Merge" button.
 
+## Dashboard (CLI-81 to CLI-83, CLI-92)
+- **One frame** for every signed-in page but a bot's chat, at `/dashboard/...`: the settings frame below with four groups: Workspace (Chats; My bots and My apps for a builder or an admin), Account, Building, and Admin (only for an admin: Overview, Requests, Users, Bots, Showcase, Messages, Settings, Access log, Audit log). The old addresses (`/chats`, `/bots`, `/apps`, `/account/...`, `/admin`) move there in the page. An admin address for anyone else shows "Not found".
+- **Workspace pages** keep their own screen and title row inside the frame.
+- **Overview** (`.stats`): a grid of cards, each one big number, its name and a grey line, a link to its page.
+- **Admin settings**: grouped by service; each a setting row with the name and help in the page language, the key small and grey, the control with its unit and range, "Changed" (with the start value) and Reset, "Needs restart"; a search box on top; a risky setting asks with the old and new value.
+- **Second factor** (`.card.totp`): Set up shows the QR on a white square, the key to copy and a code box; then the recovery codes once in two columns, with Copy and Download. An admin has no Turn off; until it is on, the admin pages show only this card.
+
 ## Settings (CLI-77, CLI-78)
-- **Settings frame**: the site header on top; under it a side menu (240px, at the start side) and the section (up to 720px). Below 760px there is no side menu: `/account` is the menu list, and each section page starts with "‹ Settings".
+- **Settings frame**: the site header on top; under it a side menu (240px, at the start side) and the section (up to 720px). Below 760px there is no side menu: `/dashboard` is the menu list, and each page starts with "‹ Dashboard".
 - **Sections**, one address each: Profile, Login and security, Notifications, Preferences (group Account); Builder and Access keys (group Building, only for an approved builder or an admin). A new section is one entry in `settings/model.ts` and one in `settings/index.ts`.
 - **Side menu**: group titles as `.label` (CLI-76), items as 36px rows with an 18px icon and the name; the current item has `--brand-soft` background; hover has a light `--line` background. On a phone: 48px rows with a › at the end.
 - **Breadcrumb**: small grey text, `Settings › <section>`, the first part is a link. Not shown on a phone.

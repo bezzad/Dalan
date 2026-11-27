@@ -48,11 +48,16 @@ test("CLI-86 and CLI-87 lines are counted from the height, so wrapped lines coun
   assert.equal(expandShown(4), true);
 });
 
-test("CLI-86 the box grows to --compose-max-height (40% of the screen), then scrolls", async () => {
+test("CLI-86 the box grows to about six lines (--compose-max-height), then scrolls; the buttons stay at the bottom", async () => {
   const { readFileSync } = await import("node:fs");
   const css = readFileSync(new URL("../public/app.css", import.meta.url), "utf8");
-  assert.match(css, /--compose-max-height: 40vh;/);
+  assert.match(css, /--compose-max-height: min\(30dvh, 10\.5em\);/);
   assert.match(css, /form\.compose textarea \{[^}]*max-height: var\(--compose-max-height\);[^}]*overflow-y: auto;/);
+  assert.match(css, /form\.compose \{ align-items: flex-end; \}/);
+  // The box's own class: ".box" is the landing page's diagram box, with a mono font and a border (owner, 2026-11-27).
+  const chat = readFileSync(new URL("../src/chat.ts", import.meta.url), "utf8");
+  assert.match(chat, /h\("div", \{ class: "compose-box" \}, input, expand\)/);
+  assert.doesNotMatch(chat, /class: "box"/);
 });
 
 test("CLI-87 Ctrl+B and Ctrl+I put ** and _ around the selection", () => {

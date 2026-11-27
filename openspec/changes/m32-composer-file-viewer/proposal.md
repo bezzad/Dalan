@@ -12,7 +12,7 @@ The owner (2026-11-25) wants the message box and the files a bot sends to work l
 ## What Changes
 
 1. **Enter like Telegram (CLI-85).** Fine pointer (mouse, real keyboard): Enter sends, Shift+Enter or Ctrl+Enter adds a line. Coarse pointer (phone, tablet): Enter adds a line, only the Send button sends. Never send while an IME is composing. Found with `matchMedia("(pointer: coarse)")`, never the user agent.
-2. **The box grows (CLI-86)** up to 40% of the screen height, then scrolls. After a send it is one row again.
+2. **The box grows (CLI-86)** to about six lines, like Telegram, then scrolls. After a send it is one row again.
 3. **Big editor (CLI-87).** Over 3 lines, a small "expand" button (two diagonal arrows) shows in the corner of the box. It opens a modal (phone: full screen; computer: large, in the middle) with the same text, Send and Close. Esc and Close keep the text. The CLI-85 keys work there too. Ctrl+B and Ctrl+I put `**…**` and `_…_` around the selected text.
 4. **A draft per chat (CLI-88).** Each chat keeps its unsent text when the user opens another chat or reloads the page. `dir="auto"`, font, theme and the browser's undo stay as they are.
 5. **Photos in the chat (CLI-89).** A photo, and a document of type JPEG, PNG, GIF or WebP, shows as a picture in the message. A tap opens a full-screen viewer with pinch and double-tap zoom, Download and Close.

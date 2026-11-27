@@ -1,6 +1,7 @@
 using Dalan.Admin.Contracts;
 using Dalan.Identity.Codes;
 using Dalan.Identity.Data;
+using Dalan.Identity.SecondFactor;
 using Dalan.Identity.Sessions;
 using Dalan.Identity.SmsLogin;
 using Dalan.Identity.Users;
@@ -78,7 +79,8 @@ internal static class EmailLoginEndpoints
         IDbContextFactory<IdentityDb> dbFactory,
         IOptionsMonitor<IdentityOptions> options,
         UserAdmin users,
-        TimeProvider time)
+        TimeProvider time,
+        SecondFactors factors)
     {
         var request = await AuthJson.ReadAsync<VerifyRequest>(http);
         if (EmailAddress.Normalize(request?.Email) is not { } email) return BadEmail();
@@ -112,6 +114,10 @@ internal static class EmailLoginEndpoints
             """).ToListAsync(http.RequestAborted);
 
         if ((await users.GetAccessAsync(ids[0], http.RequestAborted)).IsSuspended) return AuthJson.Suspended();
+
+        // SEC-15: an admin with the second factor on also gives its code.
+        if (await factors.TicketIfNeededAsync(ids[0], SessionTokens.ByEmail, http.RequestAborted) is { } ticket)
+            return SecondFactorEndpoints.Ask(ticket);
 
         await sessions.SignInAsync(http, ids[0], SessionTokens.ByEmail);
         return AuthJson.Ok(await users.ProfileAsync(ids[0], http.RequestAborted));
