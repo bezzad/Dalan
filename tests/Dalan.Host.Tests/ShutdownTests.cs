@@ -128,11 +128,12 @@ public sealed class ShutdownTests(PostgresServer postgres) : IAsyncLifetime
         var closing = socket.ReceiveAsync(new byte[1024], cancel);
 
         await Task.Delay(300, cancel);
+        // Read before the stop: the stop disposes the services.
+        var grace = TimeSpan.FromSeconds(_factory.Services.GetRequiredService<IConfiguration>().GetValue<int>("Dalan:StopGraceSeconds"));
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         _holdStop.Release();
         await Host.StopAsync(cancel).WaitAsync(TimeSpan.FromSeconds(10), cancel);
 
-        var grace = TimeSpan.FromSeconds(_factory.Services.GetRequiredService<IConfiguration>().GetValue<int>("Dalan:StopGraceSeconds"));
         Assert.True(stopwatch.Elapsed < grace, $"the stop took {stopwatch.Elapsed}");
         Assert.Equal(WebSocketCloseStatus.EndpointUnavailable, (await closing.WaitAsync(TimeSpan.FromSeconds(5), cancel)).CloseStatus);
         _ = await poll.WaitAsync(TimeSpan.FromSeconds(5), cancel);
