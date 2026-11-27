@@ -24,6 +24,14 @@ export function deleteProof(user: { has_password: boolean }): "password" | "code
   return user.has_password ? "password" : "code";
 }
 
+/** AUTH-36: the confirm word to show: the first in the user's script, else the first; the defaults before the server says. */
+export function deleteWord(words: readonly string[] | undefined, lang: "fa" | "en"): string {
+  const list = (words ?? []).filter(word => word.trim() !== "");
+  if (list.length === 0) return lang === "fa" ? "حذف" : "DELETE";
+  const persian = (word: string) => /[\u0600-\u06FF]/.test(word);
+  return list.find(word => persian(word) === (lang === "fa")) ?? list[0]!;
+}
+
 /** AUTH-38: the addresses typed in one box: spaces, commas (also the Persian one) or lines between them; repeats go. */
 export function parseAddresses(text: string): string[] {
   return [...new Set(latinDigits(text).split(/[\s,،]+/).filter(part => part !== ""))];
@@ -65,9 +73,10 @@ export function deleteCard(app: App): HTMLElement {
   const t = app.language.t.bind(app.language);
   const element = h("section", { class: "card danger column" });
   const failed = (failure: unknown) => toast(t(errorText(failure)), "error");
+  const note = () => t("deleteAccountNote").replace("{w}", deleteWord(app.auth.delete_words, app.language.current));
 
   function closed(): void {
-    element.replaceChildren(h("h3", {}, t("deleteAccount")), h("p", { class: "note" }, t("deleteAccountNote")),
+    element.replaceChildren(h("h3", {}, t("deleteAccount")), h("p", { class: "note" }, note()),
       h("button", { type: "button", onclick: open }, t("deleteAccount")));
   }
 
@@ -98,7 +107,7 @@ export function deleteCard(app: App): HTMLElement {
       },
     },
     h("h3", {}, t("deleteAccount")),
-    h("p", { class: "note" }, t("deleteAccountNote")),
+    h("p", { class: "note" }, note()),
     h("label", { for: "delete-word" }, t("deleteWordLabel")), word,
     h("label", { for: "delete-proof" }, t(proof === "password" ? "password" : "code")),
     ...(proof === "code" ? [h("div", { class: "row" }, secret, send)] : [secret]),

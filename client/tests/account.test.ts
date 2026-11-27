@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { errorText } from "../src/app.ts";
 import { ApiError } from "../src/caller.ts";
-import { deleteProof, parseAddresses, sessionName, sortedSessions } from "../src/settings/account.ts";
+import { deleteProof, deleteWord, parseAddresses, sessionName, sortedSessions } from "../src/settings/account.ts";
 import { texts } from "../src/i18n.ts";
 
 const source = (file: string) => readFileSync(new URL(`../src/${file}`, import.meta.url), "utf8");
@@ -61,4 +61,13 @@ test("AUTH-38 addresses are typed with spaces, commas or lines, Persian digits t
   const api = source("api.ts");
   assert.match(api, /"PUT", `\/api\/account\/keys\/\$\{keyId\}\/addresses`, \{ addresses \}/);
   assert.match(source("agents.ts"), /api\.setKeyAddresses\(/);
+});
+
+test("AUTH-36 the card names the server's confirm word, in the user's script", () => {
+  assert.equal(deleteWord(["DELETE", "حذف"], "fa"), "حذف");
+  assert.equal(deleteWord(["DELETE", "حذف"], "en"), "DELETE");
+  assert.equal(deleteWord(["REMOVE"], "fa"), "REMOVE", "only a Latin word: it is shown in Persian too");
+  assert.equal(deleteWord(undefined, "en"), "DELETE");
+  assert.match(texts.fa.deleteAccountNote, /\{w\}/);
+  assert.match(texts.en.deleteAccountNote, /\{w\}/);
 });

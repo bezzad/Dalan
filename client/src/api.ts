@@ -147,6 +147,8 @@ export interface AuthSettings {
   github_login: boolean;
   password_min_length: number;
   name_max_length: number;
+  /** AUTH-36: the words that confirm "Delete my account" (`Identity:DeleteConfirmWords`). */
+  delete_words?: string[];
 }
 
 export interface Bot {
