@@ -18,7 +18,8 @@ test("CLI-84 a refused user sees why and may ask again", () => {
 
 test("CLI-84 the admin screen says refused and can approve", () => {
   const admin = source("../src/admin.ts");
-  assert.match(admin, /user\.builder === "refused" \? "refused"/);
+  // CLI-93: the builder state is a cell of the users table and a line of the user's page.
+  assert.match(source("../src/adminTables.ts"), /user\.builder === "refused" \? "refused"/);
   assert.match(admin, /user\.builder === "refused" \? \[action\("approve"/);
   for (const key of ["refused", "builderRefused"] as const) assert.notEqual(texts.fa[key], texts.en[key], key);
 });

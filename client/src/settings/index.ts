@@ -67,7 +67,7 @@ export function dashboardScreen(app: App): Screen {
 
   function pageBody(section: SectionId): HTMLElement {
     // SEC-15: an admin without the second factor sees only its set-up; the server refuses every admin call meanwhile.
-    if (admin.has(section)) return app.user.totp ? adminPage(app, section as AdminSection) : h("div", { class: "column" },
+    if (admin.has(section)) return app.user.totp ? adminPage(app, section as AdminSection, target.sub) : h("div", { class: "column" },
       h("p", { class: "note" }, t("adminNeeds2fa")), totpCard(app));
     return content[section as AccountSection](app);
   }

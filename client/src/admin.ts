@@ -7,12 +7,14 @@ import { toast } from "./toast.ts";
 import type { TextKey } from "./i18n.ts";
 import { categoryName, initial } from "./pages.ts";
 import { cleanValue, settingGroups, settingMatches, settingName, utc, type Setting } from "./panels.ts";
-import { sectionPath, type SectionId } from "./settings/model.ts";
+import { adminDetailPath, sectionPath, type SectionId } from "./settings/model.ts";
+import { botCells, userCells } from "./adminTables.ts";
 
 /** The admin sections of the dashboard (settings/model.ts). */
 export type AdminSection = Extract<SectionId, "overview" | "requests" | "users" | "adminBots" | "showcase" | "messages" | "adminSettings" | "access" | "audit">;
 
-export function adminPage(app: App, section: AdminSection): HTMLElement {
+/** `sub` is the id of one user or bot (CLI-93). */
+export function adminPage(app: App, section: AdminSection, sub?: string): HTMLElement {
   const t = app.language.t.bind(app.language);
   const lang = app.language.current;
   const body = h("div", { class: "column admin" });
@@ -117,59 +119,126 @@ export function adminPage(app: App, section: AdminSection): HTMLElement {
     body.replaceChildren(find, groups);
   }
 
-  // ---- users ----
+  // ---- users and bots: tables of everyone, a page at a time, and a page for each (CLI-93, ADM-11, ADM-12, ADM-20) ----
+  const day = (iso: string) => app.language.day(iso);
+  const go = (path: string) => (event: Event) => { event.preventDefault(); app.go(path); };
+
+  /** A table whose rows open `path(row)`. */
+  function table<T>(heads: TextKey[], rows: T[], cells: (row: T) => string[], path: (row: T) => string, suspended: (row: T) => boolean): HTMLElement {
+    const body = h("tbody", {}, ...rows.map(row => {
+      const [first, ...rest] = cells(row);
+      return h("tr", { class: suspended(row) ? "suspended" : "", onclick: go(path(row)) },
+        h("td", {}, h("a", { href: path(row), dir: "auto", onclick: go(path(row)) }, first ?? ""),
+          ...(suspended(row) ? [" ", h("span", { class: "badge off" }, t("suspended"))] : [])),
+        ...rest.map(cell => h("td", { dir: "auto" }, cell)));
+    }));
+    return h("div", { class: "table-wrap" }, h("table", { class: "admin-table" },
+      h("thead", {}, h("tr", {}, ...heads.map(head => h("th", {}, t(head))))), body));
+  }
+
+  /** A list page: the search, the table and More. With no search it is everyone, newest first. */
+  function listPage<T extends { id: number }>(placeholder: string, load: (query: string, before?: number) => Promise<T[]>,
+    draw: (rows: T[]) => HTMLElement): void {
+    const input = h("input", { type: "search", dir: "auto", placeholder, "aria-label": placeholder });
+    const rows: T[] = [];
+    const place = h("div", { class: "column" });
+    const more = h("button", { type: "button", hidden: true }, t("moreRows"));
+    let query = "";
+    async function page(fresh: boolean): Promise<void> {
+      const next = await load(query, fresh ? undefined : rows.at(-1)?.id);
+      if (fresh) rows.length = 0;
+      rows.push(...next);
+      place.replaceChildren(rows.length === 0 ? h("p", { class: "note" }, t("noResults")) : draw(rows));
+      more.hidden = next.length === 0;
+    }
+    more.addEventListener("click", () => void page(false).catch(failed));
+    const form = h("form", { class: "row", onsubmit: event => {
+      event.preventDefault();
+      query = input.value.trim();
+      page(true).catch(failed);
+    } }, input, h("button", { type: "submit" }, t("search")));
+    body.replaceChildren(form, place, more);
+    page(true).catch(failed);
+  }
+
+  const userTable = (users: AdminUser[]) => table(["colName", "colContact", "builderState", "tabBots", "colJoined", "colLastActive"], users,
+    user => userCells(user, t, day), user => adminDetailPath("users", user.id), user => user.suspended);
+  const botTable = (bots: AdminBot[]) => table(["colName", "owner", "colUsers", "colLastSeen"], bots,
+    bot => botCells(bot, day), bot => adminDetailPath("adminBots", bot.id), bot => bot.suspended);
+
+  /** A page's details as a list of names and values. */
+  const facts = (...pairs: [TextKey, Node | string][]) => h("dl", { class: "facts" },
+    ...pairs.flatMap(([name, value]) => [h("dt", {}, t(name)), h("dd", { dir: "auto" }, value)]));
+  const back = (section: "users" | "adminBots") => h("a", { class: "back", href: sectionPath(section), onclick: go(sectionPath(section)) },
+    "‹ ", t(section === "users" ? "tabUsers" : "tabBots"));
+
+  function userActions(user: AdminUser, redraw: (next: AdminUser) => void): HTMLElement {
+    return h("div", { class: "row wrap" },
+      ...(user.builder === "requested" ? [
+        action("approve", async () => redraw(await api.setBuilder(user.id, true))),
+        action("refuse", async () => redraw(await api.setBuilder(user.id, false))),
+      ] : []),
+      // CLI-84: the admin may change a "no" into a "yes".
+      ...(user.builder === "refused" ? [action("approve", async () => redraw(await api.setBuilder(user.id, true)))] : []),
+      action(user.suspended ? "unsuspend" : "suspend", async () => {
+        if (user.suspended || confirm(t("suspendConfirm"))) redraw(await api.suspendUser(user.id, !user.suspended));
+      }),
+      action("tabAccess", async () => showAccess("user", String(user.id))));
+  }
+
+  /** The builder requests stay cards, with their two buttons (AUTH-19). */
   function userCard(user: AdminUser): HTMLElement {
     const card = h("div", { class: "card" });
-    const redraw = (next: AdminUser) => card.replaceWith(userCard(next));
     card.append(
-      h("strong", { dir: "auto" }, `${user.name} (#${user.id})`),
+      h("strong", {}, h("a", { href: adminDetailPath("users", user.id), dir: "auto", onclick: go(adminDetailPath("users", user.id)) }, `${user.name} (#${user.id})`)),
       h("span", { dir: "ltr" }, [user.phone, user.email, user.username ? `@${user.username}` : ""].filter(Boolean).join(" · ")),
-      h("span", { class: "note" }, `${t("builderState")}: ${t(user.builder === "approved" ? "approved" : user.builder === "requested" ? "requested" : user.builder === "refused" ? "refused" : "none")}`
-        + (user.suspended ? ` · ${t("suspended")}` : "")),
-      h("div", { class: "row wrap" },
-        ...(user.builder === "requested" ? [
-          action("approve", async () => redraw(await api.setBuilder(user.id, true))),
-          action("refuse", async () => redraw(await api.setBuilder(user.id, false))),
-        ] : []),
-        // CLI-84: the admin may change a "no" into a "yes".
-        ...(user.builder === "refused" ? [action("approve", async () => redraw(await api.setBuilder(user.id, true)))] : []),
-        action(user.suspended ? "unsuspend" : "suspend", async () => {
-          if (user.suspended || confirm(t("suspendConfirm"))) redraw(await api.suspendUser(user.id, !user.suspended));
-        }),
-        action("tabAccess", async () => showAccess("user", String(user.id)))));
+      userActions(user, next => card.replaceWith(userCard(next))));
     return card;
   }
 
   function showUsers(): void {
-    body.replaceChildren(...search(t("userSearch"), async (text, results) => {
-      results.replaceChildren(...(await api.adminUsers(text)).map(userCard));
-    }));
+    listPage(t("userSearch"), (query, before) => api.adminUsers(query, before), userTable);
+  }
+
+  async function showUser(userId: number): Promise<void> {
+    const { user, bots } = await api.adminUser(userId);
+    const draw = (shown: AdminUser) => body.replaceChildren(back("users"),
+      h("section", { class: "card column" },
+        h("h2", { dir: "auto" }, shown.name, ...(shown.suspended ? [" ", h("span", { class: "badge off" }, t("suspended"))] : [])),
+        facts(["colId", `#${shown.id}`], ["username", shown.username ? `@${shown.username}` : "—"], ["phone", shown.phone ?? "—"],
+          ["email", shown.email ?? "—"], ["builderState", userCells(shown, t, day)[2]!], ["colJoined", local(shown.created_at)],
+          ["colLastActive", shown.last_active_at ? local(shown.last_active_at) : "—"]),
+        userActions(shown, draw)),
+      h("section", { class: "column" }, h("h3", {}, `${t("tabBots")} (${bots.length})`),
+        bots.length === 0 ? h("p", { class: "note" }, t("noResults")) : botTable(bots)));
+    draw(user);
   }
 
   async function showRequests(): Promise<void> {
-    const users = await api.adminUsers("");
+    const users = await api.builderRequests();
     body.replaceChildren(...(users.length === 0 ? [h("p", { class: "note" }, t("noRequests"))] : users.map(userCard)));
   }
 
-  // ---- bots ----
-  function botCard(bot: AdminBot): HTMLElement {
-    const card = h("div", { class: "card" });
-    card.append(
-      h("strong", { dir: "auto" }, `${bot.name} (#${bot.id})`),
-      h("span", { dir: "ltr" }, `@${bot.username} · ${t("owner")} #${bot.owner_user_id}`),
-      h("span", { class: "note" }, bot.suspended ? t("suspended") : local(bot.last_seen_at)),
-      h("div", { class: "row wrap" },
-        action(bot.suspended ? "unsuspend" : "suspend", async () => {
-          if (bot.suspended || confirm(t("suspendConfirm"))) card.replaceWith(botCard(await api.suspendBot(bot.id, !bot.suspended)));
-        }),
-        action("tabAccess", async () => showAccess("bot", String(bot.id)))));
-    return card;
+  function showBots(): void {
+    listPage(t("botSearch"), (query, before) => api.adminBots(query, before), botTable);
   }
 
-  function showBots(): void {
-    body.replaceChildren(...search(t("botSearch"), async (text, results) => {
-      results.replaceChildren(...(await api.adminBots(text)).map(botCard));
-    }));
+  async function showBot(botId: number): Promise<void> {
+    const { bot, owner } = await api.adminBot(botId);
+    const draw = (shown: AdminBot) => body.replaceChildren(back("adminBots"),
+      h("section", { class: "card column" },
+        h("h2", { dir: "auto" }, shown.name, ...(shown.suspended ? [" ", h("span", { class: "badge off" }, t("suspended"))] : [])),
+        facts(["colId", `#${shown.id}`], ["username", h("a", { href: `/@${shown.username}`, dir: "ltr" }, `@${shown.username}`)],
+          ["owner", h("a", { href: adminDetailPath("users", owner.id), dir: "auto", onclick: go(adminDetailPath("users", owner.id)) },
+            `${owner.name} (#${owner.id})`)],
+          ["colUsers", String(shown.users ?? 0)], ["colJoined", local(shown.created_at)],
+          ["colLastSeen", shown.last_seen_at ? local(shown.last_seen_at) : "—"]),
+        h("div", { class: "row wrap" },
+          action(shown.suspended ? "unsuspend" : "suspend", async () => {
+            if (shown.suspended || confirm(t("suspendConfirm"))) draw(await api.suspendBot(shown.id, !shown.suspended));
+          }),
+          action("tabAccess", async () => showAccess("bot", String(shown.id))))));
+    draw(bot);
   }
 
   // ---- showcase review (ADM-13, CLI-29) ----
@@ -284,6 +353,8 @@ export function adminPage(app: App, section: AdminSection): HTMLElement {
     overview: showOverview, requests: showRequests, users: showUsers, adminBots: showBots, showcase: showShowcase,
     messages: showMessages, adminSettings: showSettings, access: () => showAccess(), audit: showAudit,
   };
-  Promise.resolve(shows[section]()).catch(failed);
+  const id = sub ? Number(sub) : null;
+  const show = id && section === "users" ? () => showUser(id) : id && section === "adminBots" ? () => showBot(id) : shows[section];
+  Promise.resolve(show()).catch(failed);
   return h("div", { class: "column" }, error, body);
 }
