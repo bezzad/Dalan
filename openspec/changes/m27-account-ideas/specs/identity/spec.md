@@ -25,18 +25,6 @@ With a session, `POST /api/account/delete` with the password (or, for a user wit
 - **WHEN** the user sends the right password and word
 - **THEN** the account is gone, its sessions fail, its access log rows stay, and the same phone can sign up again
 
-### Requirement: AUTH-37 Second factor
-A user with a password SHALL be able to turn on TOTP: `POST /api/account/totp` gives a secret and an `otpauth://` address; the first right code turns it on and gives `Identity:RecoveryCodes` one-time recovery codes, shown once and kept hashed. Then a password login SHALL also need a TOTP code (`Identity:TotpStepSeconds`, `Identity:TotpWindowSteps`) or an unused recovery code. Turning it off SHALL need a code. SMS, email and GitHub logins SHALL NOT ask for it.
-
-#### Scenario: Turn on
-- **WHEN** the user sends the first right code
-- **THEN** TOTP is on and ten recovery codes come back once
-
-#### Scenario: Password login
-- **GIVEN** TOTP is on
-- **WHEN** the user logs in with the right password and no code
-- **THEN** the answer asks for the code, and no session is made until a right code or recovery code comes
-
 ### Requirement: AUTH-38 Address limits on access keys
 An access key MAY have up to `Identity:MaxKeyAddresses` addresses or ranges (IPv4 or IPv6, CIDR). A call with that key from another address SHALL get 403 `key_address_refused`, recorded in the access log. A key with no list SHALL work from any address, as today.
 
