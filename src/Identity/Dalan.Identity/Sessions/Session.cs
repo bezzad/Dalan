@@ -1,3 +1,5 @@
+using System.Net;
+
 namespace Dalan.Identity.Sessions;
 
 /// <summary>One logged-in device (AUTH-08). Holds only hashes of its refresh token.</summary>
@@ -16,6 +18,16 @@ public sealed class Session
     public required string Method { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>The last refresh, or the login. The session list shows it as "last used" (AUTH-35).</summary>
     public DateTimeOffset RotatedAt { get; set; }
     public DateTimeOffset ExpiresAt { get; set; }
+
+    /// <summary>AUTH-35: the browser and the system, read from the user agent at login. Empty when unknown.</summary>
+    public string Browser { get; set; } = "";
+
+    public string Os { get; set; } = "";
+
+    /// <summary>AUTH-35: the client address at the login or the last refresh.</summary>
+    public IPAddress? Address { get; set; }
 }
