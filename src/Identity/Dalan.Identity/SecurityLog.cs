@@ -40,6 +40,12 @@ internal sealed partial class SecurityLog(ILogger<SecurityLog> logger)
     /// <summary>AUTH-37: the second factor was turned on or off.</summary>
     public void SecondFactor(long userId, bool on) => LogSecondFactor(logger, on ? "totp_on" : "totp_off", userId);
 
+    /// <summary>AUTH-35: the user ended sessions from the session list.</summary>
+    public void SessionsEnded(long userId, int count) => LogSessionsEnded(logger, userId, count);
+
+    /// <summary>AUTH-36.</summary>
+    public void AccountDeleted(long userId) => LogAccountDeleted(logger, userId);
+
     /// <summary>+989121234567 becomes +98912***4567; sara@example.com becomes sa***@example.com.</summary>
     private static string Mask(string target) => target.IndexOf('@', StringComparison.Ordinal) switch
     {
@@ -87,4 +93,10 @@ internal sealed partial class SecurityLog(ILogger<SecurityLog> logger)
 
     [LoggerMessage(LogLevel.Information, "Security event {Event}: user {UserId}")]
     private static partial void LogSecondFactor(ILogger logger, string @event, long userId);
+
+    [LoggerMessage(LogLevel.Information, "Security event sessions_ended: user {UserId} ended {Count} session(s)")]
+    private static partial void LogSessionsEnded(ILogger logger, long userId, int count);
+
+    [LoggerMessage(LogLevel.Information, "Security event account_deleted: user {UserId}")]
+    private static partial void LogAccountDeleted(ILogger logger, long userId);
 }

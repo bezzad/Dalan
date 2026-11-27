@@ -226,6 +226,17 @@ public class DeleteAccountTests(PostgresServer postgres)
 
     [Fact]
     [Trait("Rule", "AUTH-36")]
+    public async Task AUTH36_auth_settings_give_the_confirm_words()
+    {
+        await using var app = await StartAsync(("Identity:DeleteConfirmWords", " REMOVE , ,حذف"));
+
+        var settings = await JsonAsync(await app.CreateClient().GetAsync("/api/auth/settings", Cancel));
+
+        Assert.Equal(["REMOVE", "حذف"], settings.GetProperty("delete_words").EnumerateArray().Select(w => w.GetString()!).ToArray());
+    }
+
+    [Fact]
+    [Trait("Rule", "AUTH-36")]
     public async Task AUTH36_password_tries_are_limited()
     {
         await using var app = await StartAsync(("Identity:PasswordTries", "2"));

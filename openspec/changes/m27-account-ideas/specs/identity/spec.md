@@ -13,7 +13,7 @@ With a session, `GET /api/account/sessions` SHALL list the user's live sessions:
 - **THEN** the phone's next refresh fails with 401, and the laptop stays logged in
 
 ### Requirement: AUTH-36 Delete my account
-With a session, `POST /api/account/delete` with the password (or, for a user with no password, a fresh SMS or email code) and the confirm word (`Identity:DeleteConfirmWord`) SHALL delete the account: profile, ways to log in, keys and sessions. It SHALL be refused with 409 `owns_things` while the user owns a bot or a site, and with 400 for a wrong proof or word. The access log and the sent-code records SHALL stay for their retention time. The delete SHALL be in the audit log.
+With a session, `POST /api/account/delete` with the password (or, for a user with no password, a fresh SMS or email code) and the confirm word (one of `Identity:DeleteConfirmWords`) SHALL delete the account: profile, ways to log in, keys and sessions. It SHALL be refused with 409 `owns_things` while the user owns a bot or a site, and with 400 for a wrong proof or word. The access log and the sent-code records SHALL stay for their retention time. The delete SHALL be in the audit log.
 
 #### Scenario: Owns a bot
 - **GIVEN** the user owns one bot

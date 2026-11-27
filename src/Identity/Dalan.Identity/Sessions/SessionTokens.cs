@@ -48,6 +48,7 @@ internal sealed class SessionTokens(
         var now = time.GetUtcNow();
         var refreshToken = NewRefreshToken();
         var replaced = RefreshHash(http);
+        var (browser, os) = UserAgent.Parse(http.Request.Headers.UserAgent);
 
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
         // Rows of no more use: the user's ended sessions, and the session this browser had until now.
@@ -62,6 +63,9 @@ internal sealed class SessionTokens(
             CreatedAt = now,
             RotatedAt = now,
             ExpiresAt = now + RefreshLifetime,
+            Browser = browser,
+            Os = os,
+            Address = Address(http),
         });
         await db.SaveChangesAsync(http.RequestAborted);
 
@@ -78,6 +82,7 @@ internal sealed class SessionTokens(
         var expires = now + RefreshLifetime;
         var refreshToken = NewRefreshToken();
         var next = Hash(refreshToken);
+        var address = Address(http);
 
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
         // One statement, so of two calls with the same token only one can win.
@@ -87,7 +92,8 @@ internal sealed class SessionTokens(
                 .SetProperty(s => s.PreviousHash, s => s.TokenHash)
                 .SetProperty(s => s.TokenHash, next)
                 .SetProperty(s => s.RotatedAt, now)
-                .SetProperty(s => s.ExpiresAt, expires), http.RequestAborted);
+                .SetProperty(s => s.ExpiresAt, expires)
+                .SetProperty(s => s.Address, address), http.RequestAborted);
 
         if (swapped == 0)
         {
@@ -117,17 +123,27 @@ internal sealed class SessionTokens(
             await db.Sessions.Where(s => s.TokenHash == current).ExecuteDeleteAsync(http.RequestAborted);
         }
 
+        DeleteCookies(http);
+    }
+
+    /// <summary>AUTH-13, AUTH-35: ends every session of the user except the one of this browser. Returns how many ended.</summary>
+    public async Task<int> SignOutOtherDevicesAsync(HttpContext http, long userId)
+    {
+        var current = RefreshHash(http) ?? [];
+        await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
+        return await db.Sessions.Where(s => s.UserId == userId && s.TokenHash != current).ExecuteDeleteAsync(http.RequestAborted);
+    }
+
+    /// <summary>AUTH-36: removes both cookies of this browser, for a session that is already gone.</summary>
+    public static void DeleteCookies(HttpContext http)
+    {
         http.Response.Cookies.Delete(CookieName, Cookie(lifetime: null));
         http.Response.Cookies.Delete(RefreshCookieName, Cookie(lifetime: null));
     }
 
-    /// <summary>AUTH-13: ends every session of the user except the one of this browser.</summary>
-    public async Task SignOutOtherDevicesAsync(HttpContext http, long userId)
-    {
-        var current = RefreshHash(http) ?? [];
-        await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
-        await db.Sessions.Where(s => s.UserId == userId && s.TokenHash != current).ExecuteDeleteAsync(http.RequestAborted);
-    }
+    /// <summary>The client address, an IPv4 address mapped into IPv6 as plain IPv4. Never X-Forwarded-For (rule 13).</summary>
+    public static System.Net.IPAddress? Address(HttpContext http) =>
+        http.Connection.RemoteIpAddress is { IsIPv4MappedToIPv6: true } mapped ? mapped.MapToIPv4() : http.Connection.RemoteIpAddress;
 
     /// <summary>AUTH-31: the session row of this browser's user, or null when it sent no refresh token or the session ended.</summary>
     public async Task<long?> SessionIdAsync(HttpContext http, long userId)
@@ -178,6 +194,14 @@ internal sealed class SessionTokens(
             OnChallenge = context =>
             {
                 context.HandleResponse();
+                // AUTH-38: a right key from an address its list does not have.
+                if (context.HttpContext.Items.ContainsKey(Keys.AccessKeyHandler.AddressRefused))
+                {
+                    return AuthJson.Error(StatusCodes.Status403Forbidden, "key_address_refused",
+                        "This access key does not work from your address. Its owner can change its address list in the account screen.")
+                        .ExecuteAsync(context.HttpContext);
+                }
+
                 return AuthJson.Unauthorized().ExecuteAsync(context.HttpContext);
             },
         };
