@@ -776,7 +776,7 @@ nav.side a > .glyph:last-child { display: none; }
 .setting-row .control { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
 .setting-row .control input { max-width: 360px; }
 .setting-row .control label { font-size: 14px; }
-.badge.ok, .badge.off { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.badge.ok, .badge.off { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; padding: 0 10px; border-radius: 999px; font-size: var(--text-small); font-weight: 600; }
 .badge.ok { background: var(--brand-soft); color: var(--brand); }
 .badge.ok::before { content: "\2713"; }
 .badge.off { background: var(--line); color: var(--muted); }
