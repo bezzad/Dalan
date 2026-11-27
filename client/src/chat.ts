@@ -1,10 +1,10 @@
 // The chat with one bot: history, live messages, reply buttons (CLI-07), inline buttons (CLI-13),
 // the pinned bar (CLI-14), the command menu (CLI-15), files (CLI-16), the read position (CLI-18),
 // the bot's status (CLI-19), the "not delivered" mark (CLI-20), voice (CLI-46), paste and drop (CLI-47), replies (CLI-52),
-// presses in progress (CLI-53), formatted text (CLI-54) and the input.
+// presses in progress (CLI-53), formatted text (CLI-54), the offline bar (CLI-91) and the input.
 import { api, type Bot } from "./api.ts";
 import { errorText, type App, type Screen } from "./app.ts";
-import { chatHeader, matchingMessages, micButton } from "./chatHeader.ts";
+import { chatHeader, matchingMessages, micButton, offlineBar } from "./chatHeader.ts";
 import { h } from "./dom.ts";
 import { formatNodes, formatTree } from "./format.ts";
 import { botIconUrl } from "./icon.ts";
@@ -34,6 +34,7 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
   const keyboard = h("div", { class: "keyboard" });
   const error = h("p", { class: "error", role: "alert" });
   const note = h("p", { class: "note", role: "status" });
+  const offline = offlineBar(username, t("botOffline"));
   const menu = h("div", { class: "keyboard commands", hidden: true });
   const menuButton = h("button", { type: "button", hidden: true, "aria-label": t("commands"), title: t("commands") }, "☰");
   const picker = h("input", { type: "file", hidden: true });
@@ -58,6 +59,8 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
   const presses = new PressState();
   let replyTarget: Message | null = null;
   let bot: Bot | null = null;
+  /** CLI-25: a suspended bot shows its own error, not the offline bar (CLI-91). */
+  let suspended = false;
   let waitingFile: File | null = null;
   /** True while the newest message is in view; then new messages and loaded pictures keep it in view. */
   let following = true;
@@ -276,12 +279,14 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
     if (id !== null) void api.read(bot!.id, id).catch(() => {});
   }
 
-  /** CLI-19: "online" or "last seen ...". A failed call leaves the line as it was. */
+  /** CLI-19: "online" or "last seen ..."; CLI-91: the offline bar. A failed call leaves both as they were. */
   async function refreshStatus(): Promise<void> {
     if (!bot) return;
     try {
-      const seen = app.language.seen(await api.status(bot.id), new Date());
+      const status = await api.status(bot.id);
+      const seen = app.language.seen(status, new Date());
       header.status.textContent = seen ? ` · ${seen}` : "";
+      offline.update(status, suspended);
     } catch {
       // The next round tries again.
     }
@@ -565,7 +570,8 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
       bot = found;
       header.showBot(bot.name, botIconUrl(bot.id, bot.icon_version));
       // CLI-25: say it at once, before the user writes.
-      if (found.suspended) error.textContent = t("botSuspended");
+      suspended = found.suspended;
+      if (suspended) error.textContent = t("botSuspended");
       void refreshStatus();
       await app.chats.open(bot.id);
       draw();
@@ -588,6 +594,7 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
     scroller,
     error,
     note,
+    offline.element,
     menu,
     pending,
     replyBar,

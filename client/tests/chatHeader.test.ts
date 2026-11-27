@@ -1,4 +1,4 @@
-// Rules: CLI-45, CLI-80
+// Rules: CLI-45, CLI-80, CLI-91
 // The chat page is the bot's own page: its icon, name and status, then search, theme, the user menu and the Dalan mark.
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -33,7 +33,7 @@ Object.assign(globalThis, {
   },
 });
 
-const { chatHeader, matchingMessages, micButton } = await import("../src/chatHeader.ts");
+const { chatHeader, matchingMessages, micButton, offlineBar } = await import("../src/chatHeader.ts");
 
 const t = (key: "search" | "close") => ({ search: "Search", close: "Close" })[key];
 const tool = (name: string) => { const element = new FakeElement("button"); element.setAttribute("class", name); return element as unknown as HTMLElement; };
@@ -87,4 +87,33 @@ test("CLI-80 the voice button shows the line mic svg, no emoji, and keeps the na
   const paths = svg.children.map(path => (path as FakeElement).getAttribute("d"));
   assert.deepEqual(paths, ["M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z", "M19 10v2a7 7 0 0 1-14 0v-2", "M12 19v3"]);
   assert.equal(button.textContent, "");
+});
+
+const offlineText = "{name} is offline and won't answer now. Your messages wait for it; if it doesn't come back in time, they show \"not delivered\".";
+
+test("CLI-91 the offline bar shows for an offline or never-seen bot and names it", () => {
+  const bar = offlineBar("mofid", offlineText);
+  const element = bar.element as unknown as FakeElement;
+  assert.ok(element.hidden, "hidden before the first status");
+
+  bar.update({ online: false, last_seen: "2026-11-26T10:00:00Z" }, false);
+  assert.ok(!element.hidden);
+  assert.match(element.textContent, /^@mofid is offline and won't answer now\./);
+  assert.match(element.textContent, /not delivered/);
+  assert.equal(element.getAttribute("role"), "status");
+
+  bar.update({ online: false, last_seen: null }, false);
+  assert.ok(!element.hidden, "a bot never seen is offline too");
+});
+
+test("CLI-91 the offline bar hides when the bot comes back or is suspended", () => {
+  const bar = offlineBar("mofid", offlineText);
+  const element = bar.element as unknown as FakeElement;
+  bar.update({ online: false, last_seen: null }, false);
+
+  bar.update({ online: true, last_seen: "2026-11-26T10:00:00Z" }, false);
+  assert.ok(element.hidden);
+
+  bar.update({ online: false, last_seen: null }, true);
+  assert.ok(element.hidden, "a suspended bot shows its own error instead");
 });
