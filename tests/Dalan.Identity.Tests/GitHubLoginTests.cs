@@ -62,7 +62,7 @@ public class GitHubLoginTests(PostgresServer postgres)
         }
     }
 
-    private async Task<(DalanApp App, FakeGitHub GitHub)> StartAsync(bool on = true)
+    private async Task<(DalanApp App, FakeGitHub GitHub)> StartAsync(bool on = true, string adminPhones = "")
     {
         var github = new FakeGitHub();
         var app = new DalanApp(
@@ -74,6 +74,7 @@ public class GitHubLoginTests(PostgresServer postgres)
                 ["Identity:GitHub:CallbackUrl"] = Callback,
                 ["Identity:GitHub:WebUrl"] = "https://github.test",
                 ["Identity:GitHub:ApiUrl"] = "https://api.github.test",
+                ["Identity:AdminPhones"] = adminPhones,
             },
             web => web.ConfigureServices(services =>
                 services.ConfigureHttpClientDefaults(client => client.ConfigurePrimaryHttpMessageHandler(() => github))));
@@ -486,5 +487,30 @@ public class GitHubLoginTests(PostgresServer postgres)
         var plan = await JsonAsync(await browser.GetAsync("/api/account/merge", Cancel));
         Assert.Equal("github", plan.GetProperty("way").GetString());
         Assert.Equal(2L, await CountUsersAsync(app));
+    }
+
+    // ---- SEC-15 ----
+
+    [Fact]
+    [Trait("Rule", "SEC-15")]
+    public async Task SEC15_admin_github_login_goes_to_the_code_step_without_a_session()
+    {
+        var (app, _) = await StartAsync(adminPhones: "09129990001");
+        await using var _app = app;
+        var admin = app.Browser();
+        (await admin.PostAsJsonAsync("/api/dev/login", new { phone = "09129990001", name = "Owner" }, Cancel)).EnsureSuccessStatusCode();
+        var (secret, _) = await app.TurnOnTotpAsync(admin);
+        app.Time.Advance(TimeSpan.FromSeconds(30));
+        await PostgresServer.ExecuteAsync(app.ConnectionString, "UPDATE identity.users SET github_id = 42, email = 'sara@example.com'");
+        var browser = Browser(app);
+
+        var response = await LoginAsync(browser);
+
+        Assert.StartsWith("/?totp=", Location(response), StringComparison.Ordinal);
+        Assert.Null(SetCookie(response, SessionCookie));
+        var ticket = Uri.UnescapeDataString(Location(response)!["/?totp=".Length..]);
+        var login = await browser.PostAsJsonAsync("/api/auth/totp", new { ticket, code = app.TotpCode(secret) }, Cancel);
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await browser.GetAsync("/api/admin/settings", Cancel)).StatusCode);
     }
 }
