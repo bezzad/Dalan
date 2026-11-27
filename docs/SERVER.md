@@ -1,6 +1,6 @@
 # Dalan — Iran server runbook
 
-How to set up the production server, deploy, back up and run the shutdown drill. Rules: `OPS-09` to `OPS-16`, `DEL-04` to `DEL-08`. Facts behind it: `docs/DESIGN.md` section 14.
+How to set up the production server, deploy, back up and run the shutdown drill. Rules: `OPS-09` to `OPS-18`, `DEL-04` to `DEL-08`. Facts behind it: `docs/DESIGN.md` section 14.
 
 ## 1. Before the server
 
@@ -130,6 +130,25 @@ Limit: Let's Encrypt gives about 50 new certificates per registered domain per w
 
 The agent files come with each deploy (`/opt/dalan/current/agent`, DEL-08); `/downloads/<file>` serves them.
 
+### One certificate for every site (OPS-18, optional)
+
+Without it each site gets its own certificate on its first visit, so in an internet shutdown a new site has no HTTPS. With it the server keeps one Let's Encrypt certificate for `*.<sites domain>`, made with a DNS challenge at ArvanCloud by lego, and Caddy uses it for every site host, also new ones, with no question to anyone.
+
+1. ArvanCloud panel, the account that holds the sites domain: make an API key with **DNS administrator** rights (only DNS).
+2. Run `install.sh` once with the key, written exactly as ArvanCloud shows it: `Apikey <key>`. `install.sh` downloads lego (`LEGO_VERSION`, default 5.8.0) on your computer, checks its SHA-256 and copies it; the key goes in a file, never on a command line.
+
+   ```bash
+   SITES_DOMAIN=dalans.ir ARVAN_API_KEY='Apikey xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' \
+     bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
+   ```
+
+   Optional `CERT_EMAIL=<you@example.com>`: the Let's Encrypt account email. Later runs need no key: the server keeps it.
+3. Check: `journalctl -u dalan-cert` (setup starts the first run at once), then `ls /etc/caddy/certs` and `/etc/caddy/wildcard.caddy`.
+
+How it works: the key is in `/etc/dalan/arvan.env` (root, 600), read only by `dalan-cert.service`. `dalan-cert.timer` runs `/opt/dalan/tools/wildcard-cert.sh` every day at about 04:17 Tehran time (a missed run runs at boot): `lego run --dns arvancloud -d '*.<sites domain>' --renew-days 30 ...` in `/var/lib/dalan-cert`. Only when lego made or renewed the certificate, its deploy hook copies it to `/etc/caddy/certs` (key `root:dalan-cert 640`; Caddy is in that group), writes the site block `/etc/caddy/wildcard.caddy` (the Caddyfile imports `wildcard*.caddy`) and restarts Caddy. Run it now: `sudo systemctl start dalan-cert`.
+
+In a shutdown: lego cannot reach Let's Encrypt or ArvanCloud's API, so renewal fails (the journal says so) and the certificate stays in use. It renews at 30 days left, so a shutdown can last 30 to 90 days before HTTPS of the sites ends. The bare sites domain (demo links) is not in `*.<sites domain>`: it still gets its own certificate.
+
 ### A new computer for the owner
 
 Only `install.sh`, `scripts/ci.sh` (the tests, docs/TESTING.md) and SSH need your own computer; the server builds main itself. On the new computer (Linux):
@@ -233,6 +252,6 @@ The drill blocks every new outbound connection from the server, as if internatio
 1. Optional allow list `/etc/dalan/drill-allow.txt`, one range per line, for the domestic network (for example the Iranian ranges from ipdeny.com, `ir-aggregated.zone`). Without it even SMS.ir and DNS are blocked, which shows what SMS login needs.
 2. `sudo /opt/dalan/tools/drill.sh start`. It stops by itself after 60 minutes (`DRILL_MINUTES` in `/etc/dalan/drill.env`).
 3. By hand, on a phone on Iranian mobile data with no VPN: open `https://dalanet.ir`, log in by SMS, open ArcaneBot, send a message, press buttons, get replies. ArcaneBot runs on its home machine with only two changes: server address `https://api.dalanet.ir` and the token from "My bots".
-4. `sudo /opt/dalan/tools/drill.sh stop`. It prints each blocked address and port. Expected: push services (Google, Apple, Mozilla, Microsoft) and Let's Encrypt. Anything else is a bug to fix.
+4. `sudo /opt/dalan/tools/drill.sh stop`. It prints each blocked address and port. Expected: push services (Google, Apple, Mozilla, Microsoft) and Let's Encrypt (also from `dalan-cert`, OPS-18, if it ran during the drill). Anything else is a bug to fix.
 
-What the drill does not show: in a real shutdown certificates cannot be renewed (renew early), push stops (sync still works), and in a total blackout nothing works.
+What the drill does not show: in a real shutdown certificates cannot be renewed (renew early; with OPS-18 new sites keep HTTPS until the wildcard certificate ends), push stops (sync still works), and in a total blackout nothing works.

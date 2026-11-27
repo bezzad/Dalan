@@ -1,0 +1,11 @@
+# OPS-18: check the wildcard certificate once a day at a quiet hour; a run missed while the server was off runs at boot.
+[Unit]
+Description=Dalan: check the wildcard certificate of the sites daily
+
+[Timer]
+OnCalendar=*-*-* 04:17:00 Asia/Tehran
+RandomizedDelaySec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

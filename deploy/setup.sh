@@ -12,6 +12,9 @@
 #   PULL_DEPLOY=1: the server builds and deploys main itself (OPS-16): the .NET SDK and Node folders that install.sh
 #   copies (dotnet/, node/) go to /opt/dalan/tools, the deploy user gets a GitHub key, and dalan-pull.timer starts.
 #   ROTATE_SECRETS=1 makes new secrets (database password, signing key, push keys) in an existing dalan.env.
+#   ARVAN_API_KEY (needs SITES_DOMAIN) and CERT_EMAIL (optional): one wildcard certificate for the sites (OPS-18). The key
+#   goes into /etc/dalan/arvan.env (root only), lego (copied by install.sh) to /usr/local/bin, and dalan-cert.timer starts.
+#   Without the key nothing changes; a server that has arvan.env keeps it and its timer.
 # Settings (environment):
 #   SWAP_MB      default 2048. A server with less memory than this and no swap gets a swap file of this size.
 #   DALAN_ROOT   for tests only (default empty, the real /); MEMINFO for tests only (default /proc/meminfo)
@@ -48,6 +51,8 @@ fi
 
 echo "Users"
 id dalan >/dev/null 2>&1 || useradd --system --home-dir /var/lib/dalan --shell /usr/sbin/nologin dalan
+# OPS-18: Caddy reads the wildcard certificate's key by this group; caddy.service names it, so it is made always.
+getent group dalan-cert >/dev/null || groupadd --system dalan-cert
 id deploy >/dev/null 2>&1 || useradd --create-home --shell /bin/bash deploy
 install -d -m 700 -o deploy -g deploy "$root/home/deploy/.ssh"
 install -m 600 -o deploy -g deploy "$key_file" "$root/home/deploy/.ssh/authorized_keys"
@@ -225,8 +230,34 @@ KEYS
   systemctl enable --now dalan-pull.timer
   pull_key=$(cat "$github_key.pub")
 fi
+
+# OPS-18: one wildcard certificate for the sites, by a DNS challenge at ArvanCloud.
+arvan_file="$root/etc/dalan/arvan.env"
+if [ -n "${ARVAN_API_KEY:-}" ] || [ -f "$arvan_file" ]; then
+  echo "Wildcard certificate of the sites (OPS-18)"
+  if [ -n "${ARVAN_API_KEY:-}" ]; then
+    [ -n "${SITES_DOMAIN:-}" ] || { echo "ARVAN_API_KEY needs SITES_DOMAIN" >&2; exit 2; }
+    # Only root reads it; only dalan-cert.service uses it.
+    (umask 077 && printf 'ARVANCLOUD_API_KEY="%s"\nCERT_EMAIL="%s"\n' "$ARVAN_API_KEY" "${CERT_EMAIL:-}" > "$arvan_file")
+  fi
+  chown root:root "$arvan_file"
+  chmod 600 "$arvan_file"
+  if [ -f "$here/lego" ]; then
+    install -m 755 "$here/lego" "$root/usr/local/bin/lego"
+    install -m 644 "$here/lego.version" "$root/opt/dalan/tools/lego.version"
+  fi
+  install -m 755 "$here/wildcard-cert.sh" "$root/opt/dalan/tools/"
+  for unit in dalan-cert.service dalan-cert.timer; do
+    install -m 644 "$here/$unit" "$root/etc/systemd/system/$unit"
+  done
+  systemctl daemon-reload
+  systemctl enable --now dalan-cert.timer
+  cert_now=1
+fi
 systemctl enable caddy.service
 systemctl restart caddy.service
+# The first certificate now, not at the next timer run (lego does nothing when none is due).
+[ -z "${cert_now:-}" ] || systemctl start --no-block dalan-cert.service
 # A running Dalan reads new settings, domains or email lines only after a restart.
 [ "$(settings_hash)" = "$settings_before" ] || systemctl try-restart dalan.service
 

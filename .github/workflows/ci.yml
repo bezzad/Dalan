@@ -137,6 +137,7 @@ jobs:
           bash tests/deploy/backup_test.sh
           bash tests/deploy/drill_test.sh
           bash tests/deploy/pull_deploy_test.sh
+          bash tests/deploy/wildcard_cert_test.sh
 
       - name: Install Caddy
         run: |

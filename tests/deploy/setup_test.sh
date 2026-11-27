@@ -10,6 +10,7 @@ mkdir -p "$bin" "$state" "$root"/{etc/sudoers.d,etc/dkimkeys,etc/systemd/system,
 # The setup folder as install.sh copies it: deploy/ plus a fake caddy binary.
 src="$tmp/dalan-setup"; mkdir "$src"
 cp "$deploy"/{setup.sh,backup.sh,drill.sh,Caddyfile,dalan.service,caddy.service,dalan-backup.service,dalan-backup.timer} "$src/"
+cp "$deploy"/{wildcard-cert.sh,dalan-cert.service,dalan-cert.timer} "$src/"
 printf '#!/bin/sh\n' > "$src/caddy"; echo 'caddy 2.11.9' > "$src/caddy.version"
 echo 'ssh-ed25519 AAAA ci-deploy' > "$src/deploy.pub"
 
@@ -31,6 +32,8 @@ printf 'dalan._domainkey\tIN\tTXT\t( "v=DKIM1; h=sha256; k=rsa; "\n\t  "p=MIIBIj
 SH
 log useradd 'eval "name=\${$#}"; touch '"$state"'/user-$name'
 log id '[ -f '"$state"'/user-$1 ]'
+log groupadd 'eval "name=\${$#}"; touch '"$state"'/group-$name'
+log getent '[ -f '"$state"'/group-$2 ]'
 # Real install, without owners (the test is not root). Like install on Ubuntu 26.04 (uutils), it cannot read /dev/stdin.
 cat > "$bin/install" <<SH
 #!/bin/bash
@@ -84,6 +87,13 @@ cmp -s "$src/deploy.pub" "$root/home/deploy/.ssh/authorized_keys" || fail "deplo
 grep -q 'CREATE DATABASE dalan OWNER dalan' "$state/commands.log" || fail "database not made"
 [ -f "$state/forbidden.log" ] && fail "setup called: $(cat "$state/forbidden.log")"
 echo "PASS OPS-09 fresh server"
+
+# Rule: OPS-18 no key: no timer, no key file; Caddy's group is there, so caddy.service still starts
+grep -qF 'dalan-cert.timer' "$state/commands.log" && fail "certificate timer enabled without the key"
+grep -qF 'groupadd --system dalan-cert' "$state/commands.log" || fail "the group caddy.service names is not made"
+[ -e "$root/etc/dalan/arvan.env" ] && fail "a key file without the key"
+[ -e "$root/etc/systemd/system/dalan-cert.timer" ] && fail "certificate timer installed without the key"
+echo "PASS OPS-18 no key: no timer, no key file"
 
 # Rule: OPS-09 small server gets swap once
 grep -qF 'fallocate -l 2048M' "$state/commands.log" || fail "no swap file on a 1 GB server"
@@ -196,6 +206,37 @@ grep -qF 'dalancloud.ir, *.dalancloud.ir' "$tmp/out-sites" || fail "setup does n
 rm "$src/settings.env"
 echo "PASS OPS-15 sites domain and tunnel host from install.sh"
 
+# Rule: OPS-18 with the ArvanCloud key: lego, the root-only key file, the units, the timer and a first run
+printf '#!/bin/sh\n' > "$src/lego"; echo 'lego 5.8.0' > "$src/lego.version"
+printf 'SITES_DOMAIN=dalans.ir\nARVAN_API_KEY=Apikey\\ 1234-abcd\nCERT_EMAIL=owner@example.ir\n' > "$src/settings.env"
+: > "$state/commands.log"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > "$tmp/out-cert" || { cat "$tmp/out-cert"; fail "run with the ArvanCloud key failed"; }
+arvan="$root/etc/dalan/arvan.env"
+[ "$(stat -c %a "$arvan")" = 600 ] || fail "arvan.env mode is $(stat -c %a "$arvan")"
+grep -qxF "chown root:root $arvan" "$state/commands.log" || fail "arvan.env is not root's"
+grep -qx 'ARVANCLOUD_API_KEY="Apikey 1234-abcd"' "$arvan" || fail "key not written as given: $(cat "$arvan")"
+grep -qx 'CERT_EMAIL="owner@example.ir"' "$arvan" || fail "email not written"
+grep -rq 'Apikey' "$root/etc/dalan/dalan.env" "$root/etc/dalan/domains.env" && fail "the key is in a file dalan reads"
+[ -x "$root/usr/local/bin/lego" ] && [ -x "$root/opt/dalan/tools/wildcard-cert.sh" ] || fail "lego or wildcard-cert.sh not installed"
+[ "$(cat "$root/opt/dalan/tools/lego.version")" = 'lego 5.8.0' ] || fail "lego version not recorded"
+for unit in dalan-cert.service dalan-cert.timer; do [ -f "$root/etc/systemd/system/$unit" ] || fail "$unit not installed"; done
+grep -qx 'systemctl enable --now dalan-cert.timer' "$state/commands.log" || fail "certificate timer not started"
+grep -qx 'systemctl start --no-block dalan-cert.service' "$state/commands.log" || fail "no first certificate run"
+[ "$(grep -n 'restart caddy.service' "$state/commands.log" | cut -d: -f1)" -lt \
+  "$(grep -n 'start --no-block dalan-cert.service' "$state/commands.log" | cut -d: -f1)" ] || fail "the first run starts before Caddy's restart"
+# A later run without the key (and without lego: the server has this version) keeps the key and the timer.
+rm "$src/lego" "$src/lego.version"
+printf 'SITES_DOMAIN=dalans.ir\n' > "$src/settings.env"
+: > "$state/commands.log"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || fail "run after the key without it failed"
+grep -qx 'ARVANCLOUD_API_KEY="Apikey 1234-abcd"' "$arvan" || fail "key lost by a run without it"
+grep -qx 'systemctl enable --now dalan-cert.timer' "$state/commands.log" || fail "timer not kept by a run without the key"
+[ -x "$root/usr/local/bin/lego" ] || fail "lego removed"
+printf 'ARVAN_API_KEY=k\n' > "$src/settings.env"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null 2>&1 && fail "a key without a sites domain accepted"
+rm "$src/settings.env" "$arvan" "$root/etc/systemd/system"/dalan-cert.* "$root/usr/local/bin/lego" "$root/opt/dalan/tools/lego.version"
+echo "PASS OPS-18 the ArvanCloud key: lego, root-only key file, timer and a first run; kept by a run without it"
+
 # Rule: OPS-16 the server builds main itself: tools, the GitHub key on port 443, the timer
 cp "$deploy"/{pull-deploy.sh,dalan-pull.service,dalan-pull.timer} "$src/"
 mkdir -p "$src/dotnet" "$src/node/bin" && touch "$src/dotnet/dotnet" "$src/node/bin/node"
@@ -264,6 +305,8 @@ cat > "$inst/bin/curl" <<SH
 out=""; while [ \$# -gt 0 ]; do case "\$1" in -o) out="\$2"; shift 2;; http*) url="\$1"; shift;; *) shift;; esac; done
 echo "\$url" >> "$inst/urls.log"
 case "\$url" in
+  */v5.8.0/lego_5.8.0_checksums.txt) (cd "$inst" && sha256sum lego_v5.8.0_linux_amd64.tar.gz) > "\$out";;
+  */v5.8.0/lego_v5.8.0_linux_amd64.tar.gz) cp "$inst/lego_v5.8.0_linux_amd64.tar.gz" "\$out";;
   *checksums.txt) (cd "$inst" && sha512sum caddy_${ci_version}_linux_amd64.tar.gz) > "\$out";;
   *dotnet-install.sh) cp "$inst/dotnet-install.sh" "\$out";;
   *SHASUMS256.txt) (cd "$inst" && sha256sum node-v26.0.0-linux-x64.tar.xz) > "\$out";;
@@ -290,7 +333,32 @@ ADMIN_PHONES=09121234567 SMS=log SMSIR_KEY='a b' PATH="$inst/bin:$PATH" \
 ( . "$inst/copied/settings.env" && [ "$ADMIN_PHONES" = 09121234567 ] && [ "$SMS" = log ] && [ "$SMSIR_KEY" = 'a b' ] ) \
   || fail "settings not passed: $(cat "$inst/copied/settings.env")"
 grep -q 'SMSIR\|0912' "$inst/remote.log" && fail "settings on the command line"
+grep -q 'lego' "$inst/urls.log" && fail "lego downloaded without the ArvanCloud key"
+[ -e "$inst/copied/lego" ] && fail "lego sent without the ArvanCloud key"
+for f in wildcard-cert.sh dalan-cert.service dalan-cert.timer; do [ -f "$inst/copied/$f" ] || fail "$f not copied"; done
 echo "PASS OPS-09 install.sh copies Caddy and runs setup"
+
+# Rule: OPS-18 install.sh downloads lego here with its checksum, sends it only when the server lacks it, the key in a file
+mkdir "$inst/lego-pkg" && printf '#!/bin/sh\n' > "$inst/lego-pkg/lego" && tar -czf "$inst/lego_v5.8.0_linux_amd64.tar.gz" -C "$inst/lego-pkg" lego
+rm -rf "$inst/copied" "$inst/remote.log"
+ARVAN_API_KEY='Apikey 1234-abcd' SITES_DOMAIN=dalans.ir PATH="$inst/bin:$PATH" \
+  bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null || fail "install.sh with the ArvanCloud key failed"
+grep -qx 'https://github.com/go-acme/lego/releases/download/v5.8.0/lego_v5.8.0_linux_amd64.tar.gz' "$inst/urls.log" || fail "lego 5.8.0 not downloaded"
+[ -f "$inst/copied/lego" ] && [ "$(cat "$inst/copied/lego.version")" = 'lego 5.8.0' ] || fail "lego not sent"
+( . "$inst/copied/settings.env" && [ "$ARVAN_API_KEY" = 'Apikey 1234-abcd' ] ) || fail "key not sent: $(cat "$inst/copied/settings.env")"
+grep -q '1234-abcd' "$inst/remote.log" && fail "the ArvanCloud key on a command line"
+echo 'lego 5.8.0' > "$inst/server-versions"
+rm -rf "$inst/copied" "$inst/remote.log"
+ARVAN_API_KEY='Apikey 1234-abcd' PATH="$inst/bin:$PATH" bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null \
+  || fail "install.sh against a server with lego failed"
+[ -e "$inst/copied/lego" ] && fail "lego sent again with the same version"
+# A wrong download is refused.
+rm -f "$DALAN_CACHE/lego_v5.8.0_linux_amd64.tar.gz" "$inst/server-versions"; echo bad >> "$inst/lego_v5.8.0_linux_amd64.tar.gz"
+sed -i 's|sha256sum lego_v5.8.0_linux_amd64.tar.gz) > |sha256sum lego_v5.8.0_linux_amd64.tar.gz \| sed "s/^./x/") > |' "$inst/bin/curl"
+ARVAN_API_KEY=k PATH="$inst/bin:$PATH" bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null 2>&1 \
+  && fail "lego with a wrong checksum accepted"
+rm -f "$DALAN_CACHE/lego_v5.8.0_linux_amd64.tar.gz" "$DALAN_CACHE/lego_checksums.txt"
+echo "PASS OPS-18 install.sh downloads lego with its checksum and sends it only when needed"
 
 # Rule: OPS-14 GitHub settings set the GitHub lines and keep the rest
 cp "$env_file" "$tmp/env-before"

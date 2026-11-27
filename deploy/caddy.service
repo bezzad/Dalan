@@ -7,6 +7,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 DynamicUser=yes
+# OPS-18: reads the key of the wildcard certificate (/etc/caddy/certs, root:dalan-cert 640). setup.sh makes the group.
+SupplementaryGroups=dalan-cert
 # Certificates live in /var/lib/caddy.
 StateDirectory=caddy
 Environment=XDG_DATA_HOME=/var/lib XDG_CONFIG_HOME=/var/lib

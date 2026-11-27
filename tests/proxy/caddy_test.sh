@@ -2,6 +2,7 @@
 # Rule: OPS-06
 # Rule: SEC-10
 # Rule: OPS-15
+# Rule: OPS-18
 # Runs deploy/Caddyfile with a stub upstream. Needs the caddy binary on PATH.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -41,12 +42,21 @@ HTTPServer(("127.0.0.1", 18081), Echo).serve_forever()
 PY
 python3 "$tmp/upstream.py" "$tmp/asked.log" & upstream=$!
 
-DALAN_SITE_DOMAIN=http://localhost:18080 DALAN_API_DOMAIN=http://127.0.0.1:18080 DALAN_TUNNEL_DOMAIN=http://tunnel.localhost:18080 \
-  DALAN_UPSTREAM=127.0.0.1:18081 DALAN_HTTP_PORT=18082 DALAN_HTTPS_PORT=18443 \
-  caddy run --config "$root/deploy/Caddyfile" --adapter caddyfile >"$tmp/caddy.log" 2>&1 & proxy=$!
-
-# Wait for a 200: Caddy may answer 502 before the stub upstream listens.
-for _ in $(seq 50); do curl -fs -o /dev/null http://127.0.0.1:18080/ && break; sleep 0.2; done
+# The Caddyfile runs from a fake /etc/caddy, where wildcard-cert.sh writes wildcard.caddy (OPS-18). At first there is none.
+server="$tmp/root"; mkdir -p "$server/etc/caddy" "$server/etc/dalan" "$server/var/lib/dalan-cert/certificates"
+# The domains as setup.sh writes them; the deploy hook reads them to check the config (caddy validate).
+printf 'DALAN_SITE_DOMAIN=http://localhost:18080\nDALAN_API_DOMAIN=http://127.0.0.1:18080\nDALAN_TUNNEL_DOMAIN=http://tunnel.localhost:18080\nDALAN_UPSTREAM=127.0.0.1:18081\nDALAN_HTTP_PORT=18082\nDALAN_HTTPS_PORT=18443\n' \
+  > "$server/etc/dalan/domains.env"
+cp "$root/deploy/Caddyfile" "$server/etc/caddy/Caddyfile"
+start_caddy() {
+  DALAN_SITE_DOMAIN=http://localhost:18080 DALAN_API_DOMAIN=http://127.0.0.1:18080 DALAN_TUNNEL_DOMAIN=http://tunnel.localhost:18080 \
+    DALAN_UPSTREAM=127.0.0.1:18081 DALAN_HTTP_PORT=18082 DALAN_HTTPS_PORT=18443 \
+    caddy run --config "$server/etc/caddy/Caddyfile" --adapter caddyfile >"$tmp/caddy.log" 2>&1 & proxy=$!
+  # Wait for a 200: Caddy may answer 502 before the stub upstream listens.
+  for _ in $(seq 50); do curl -fs -o /dev/null http://127.0.0.1:18080/ && break; sleep 0.2; done
+  kill -0 "$proxy" 2>/dev/null || { cat "$tmp/caddy.log"; fail "Caddy did not start"; }
+}
+start_caddy
 
 [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/)" = 200 ] || fail "proxy does not forward normal paths"
 for probe in /health /ready /api/sites/tls; do
@@ -68,3 +78,25 @@ curl -s -k --noproxy "*" -o /dev/null --max-time 10 --resolve shop.sites.test:18
   && fail "a host Dalan did not allow got a certificate"
 grep -qx '/api/sites/tls?domain=shop.sites.test' "$tmp/asked.log" || fail "Caddy did not ask Dalan about shop.sites.test"
 echo "PASS OPS-15 tunnel host is served and a site host gets a certificate only when Dalan allows it"
+echo "PASS OPS-18 no wildcard certificate yet: the import matches no file and Caddy starts"
+
+# Rule: OPS-18 a new site in a shutdown: the wildcard certificate, and no certificate authority or ask
+# A self-signed certificate for *.sites.test where lego keeps it; the real deploy hook copies it and writes the block.
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 2 -subj '/CN=*.sites.test' \
+  -addext 'subjectAltName=DNS:*.sites.test' -keyout "$server/var/lib/dalan-cert/certificates/_.sites.test.key" \
+  -out "$server/var/lib/dalan-cert/certificates/_.sites.test.crt" 2>/dev/null
+mkdir "$tmp/bin"
+printf '#!/bin/sh\necho "$0 $*" >> %s/hook.log\n' "$tmp" > "$tmp/bin/systemctl"; cp "$tmp/bin/systemctl" "$tmp/bin/chgrp"
+chmod +x "$tmp/bin"/*
+PATH="$tmp/bin:$PATH" DALAN_ROOT="$server" bash "$root/deploy/wildcard-cert.sh" hook sites.test > /dev/null || fail "deploy hook failed"
+grep -q 'systemctl restart caddy.service' "$tmp/hook.log" || fail "the hook does not restart Caddy"
+kill "$proxy"; wait "$proxy" 2>/dev/null || true
+: > "$tmp/asked.log"
+start_caddy
+got=$(curl -s --noproxy "*" --max-time 10 --cacert "$server/var/lib/dalan-cert/certificates/_.sites.test.crt" \
+  --resolve new.sites.test:18443:127.0.0.1 -w ' %{local_port}' https://new.sites.test:18443/) \
+  || { cat "$tmp/caddy.log"; fail "a new site host did not get the wildcard certificate"; }
+[ "${got% *}" = "127.0.0.1:${got#* }" ] || fail "the wildcard block does not pass the real address: '$got'"
+[ -s "$tmp/asked.log" ] && fail "Caddy asked Dalan about a host the wildcard certificate covers: $(cat "$tmp/asked.log")"
+grep -qi 'obtaining certificate' "$tmp/caddy.log" && fail "Caddy went to a certificate authority: $(grep -i 'obtaining' "$tmp/caddy.log")"
+echo "PASS OPS-18 a new site host gets the wildcard certificate; Caddy asks no one"

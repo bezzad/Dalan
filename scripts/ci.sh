@@ -49,7 +49,7 @@ step specs 'npx --yes @fission-ai/openspec@2.1.0 validate --all --strict'
 step rules 'bash scripts/check-rules.sh && bash tests/scripts/check_rules_test.sh && bash tests/delivery/ci_workflow_test.sh &&
   bash tests/delivery/install_script_test.sh'
 step deploy-scripts 'bash tests/deploy/deploy_test.sh && bash tests/deploy/setup_test.sh && bash tests/deploy/backup_test.sh &&
-  bash tests/deploy/drill_test.sh && bash tests/deploy/pull_deploy_test.sh'
+  bash tests/deploy/drill_test.sh && bash tests/deploy/pull_deploy_test.sh && bash tests/deploy/wildcard_cert_test.sh'
 step proxy 'bash tests/proxy/caddy_test.sh'
 step e2e 'bash tests/client-e2e/e2e_test.sh'
 # The image for local runs and container platforms; production does not use it.
