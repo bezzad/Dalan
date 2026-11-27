@@ -31,6 +31,11 @@ export class Theme {
     this.apply();
   }
 
+  /** CLI-77: sets one of the two themes (the radio cards of Preferences); nothing changes when it is the current one. */
+  choose(name: ThemeName): void {
+    if (name !== this.current) this.toggle();
+  }
+
   private apply(): void {
     this.root.dataset["theme"] = this.current;
   }

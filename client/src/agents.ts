@@ -1,4 +1,4 @@
-// CLI-30: the "AI agents" part of the account screen: access keys (AUTH-21) and the ready prompt.
+// CLI-30: the "Access keys" section of the settings area (CLI-77): access keys (AUTH-21) and the ready prompt.
 import { ApiError, api, type AccessKey } from "./api.ts";
 import { errorText, type App } from "./app.ts";
 import { h } from "./dom.ts";
@@ -81,9 +81,8 @@ export function agentsPart(app: App): HTMLElement {
     draw();
   }).catch(failed);
 
-  return h("section", { id: "keys", class: "card" },
-    h("h2", {}, t("aiAgents")),
-    h("p", { class: "note" }, t("aiAgentsNote")),
+  // The section head of the settings page (Access keys) already has the title and the note.
+  return h("section", { class: "card" },
     error, shown, list, form,
     h("label", {}, t("readyPrompt")), prompt, copyButton(() => prompt.value));
 }

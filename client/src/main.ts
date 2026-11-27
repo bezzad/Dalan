@@ -1,5 +1,4 @@
 // PWA entry point: who is logged in, which screen is open, and the live stream.
-import { accountScreen } from "./account.ts";
 import { ApiError, api, type AuthSettings, type User } from "./api.ts";
 import { adminScreen } from "./admin.ts";
 import { appsScreen } from "./apps.ts";
@@ -15,10 +14,13 @@ import { loginScreen, markReturning } from "./login.ts";
 import { askedNext, loginTarget, rememberNext, startsAtTop, takeNext } from "./next.ts";
 import { botPageUsername, initial, pageFor } from "./pages.ts";
 import { h } from "./dom.ts";
+import { glyph } from "./icon.ts";
 import { toastRegion } from "./toast.ts";
 import { headerTools, homeMark, publicPages, publicScreen, siteBrand, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
 import { Chats, manifestFor } from "./messages.ts";
+import { settingsScreen } from "./settings/index.ts";
+import { menuSecondLine, userMenuGroups } from "./settings/model.ts";
 import { Theme, themeButton } from "./theme.ts";
 
 const language = new Language(document.documentElement, localStorage);
@@ -106,18 +108,20 @@ function userArea(face = false): HTMLElement {
   if (!app) return h("button", { type: "button", class: "primary", "aria-label": t("enter"), onclick: () => showLogin() },
     h("span", { class: "long" }, t("enter")), h("span", { class: "short" }, t("login")));
   const current = app;
-  const item = (label: string, onclick: () => void) => h("button", { type: "button", class: "item", onclick }, label);
+  // CLI-78: the name and the phone or email, then groups with an icon per item and a line between groups.
+  const second = menuSecondLine(current.user);
+  const groups = userMenuGroups(current.user).flatMap((group, index) => [
+    ...(index > 0 ? [h("hr", {})] : []),
+    ...group.map(entry => h("button", {
+      type: "button", class: "item", onclick: () => entry.path === null ? current.logout() : navigate(entry.path),
+    }, glyph(entry.glyph), h("span", {}, t(entry.text)))),
+  ]);
   return h("details", { class: face ? "menu user face" : "menu user" },
     h("summary", { "aria-label": current.user.name, title: current.user.name },
       face ? h("span", { class: "avatar" }, initial(current.user.name)) : h("bdi", {}, current.user.name)),
     h("div", { class: "panel" },
-      // "My bots" are the bots this user built; "Chats" the bots they talk to (owner, 2026-11-20). CLI-51: one address each.
-      item(t("myBots"), () => navigate("/bots")),
-      item(t("chats"), () => navigate("/chats")),
-      item(t("myApps"), () => navigate("/apps")),
-      item(t("account"), () => navigate("/account")),
-      ...(current.user.admin ? [item(t("adminScreen"), () => navigate("/admin"))] : []),
-      item(t("logout"), () => current.logout())));
+      h("div", { class: "who" }, h("strong", { dir: "auto" }, current.user.name), ...(second ? [h("span", { class: "note", dir: "ltr" }, second)] : [])),
+      ...groups));
 }
 
 /** Language, theme and the user area: the same end of the header on every page. */
@@ -155,7 +159,7 @@ function route(): void {
     // CLI-45: the chat page has its own header, with no site header above it.
     : username ? chatScreen(app, username, [themeButton(theme, language.t.bind(language)), userArea(true), homeMark(language.t("appName"), navigate)])
     : page === "apps" ? appsScreen(app)
-    : page === "account" ? accountScreen(app)
+    : page === "account" ? settingsScreen(app)
     : page === "admin" ? adminScreen(app)
     : page === "bots" ? myBotsScreen(app)
     : page === "botNew" ? newBotScreen(app)
@@ -184,6 +188,7 @@ async function enter(user: User): Promise<void> {
     maxBotIconKb: settings.max_bot_icon_kb,
     pressWaitSeconds: settings.press_wait_seconds,
     go: navigate,
+    refresh: render,
     logout() {
       // CLI-21: the next person on this browser must not get this user's notifications.
       void turnOff().catch(() => {}).then(() => api.logout()).finally(showLogin);

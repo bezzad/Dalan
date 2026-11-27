@@ -35,8 +35,8 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - A step that cannot be undone (new token, delete) asks first.
 
 ## Addresses
-- Access keys for AI assistants live in the account screen (`/account#keys`, CLI-30); "My bots" and "My apps" have one link to them.
-- One address per screen (CLI-51): `/chats`, `/@<username>` (a chat), `/bots` (My bots), `/bots/new`, `/bots/<username>` (one bot's page), `/account`, `/admin`, `/apps`. No screen hides behind another's address; reload and Back show the same screen.
+- Access keys for AI assistants live in the settings area (`/account/keys`, CLI-30, CLI-77); "My bots" and "My apps" have one link to them.
+- One address per screen (CLI-51): `/chats`, `/@<username>` (a chat), `/bots` (My bots), `/bots/new`, `/bots/<username>` (one bot's page), `/account` and `/account/<section>` (the settings area, CLI-77), `/admin`, `/apps`. No screen hides behind another's address; reload and Back show the same screen.
 - A bot's page shows only that bot's values; a token shows only right after create or New token.
 
 ## Chat (like Telegram)
@@ -84,5 +84,21 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - Examples never name a personal or company project: `mysite` and `shop` (CLI-67).
 
 ## Account: link and merge (CLI-70)
-- Cards to add a phone, add an email and link GitHub show only while that way is empty.
+- A way to log in that is not set shows its "Set up" or "Link" action on its method card; the merge card (below) shows on Login and security.
 - After the proof finds another account, the merge card comes first: the question, one line per account (what it has, whether it stays), a note, then "Merge" (primary) and "Cancel" (link). A refusal shows its reason and no "Merge" button.
+
+## Settings (CLI-77, CLI-78)
+- **Settings frame**: the site header on top; under it a side menu (240px, at the start side) and the section (up to 720px). Below 760px there is no side menu: `/account` is the menu list, and each section page starts with "‹ Settings".
+- **Sections**, one address each: Profile, Login and security, Notifications, Preferences (group Account); Builder and Access keys (group Building, only for an approved builder or an admin). A new section is one entry in `settings/model.ts` and one in `settings/index.ts`.
+- **Side menu**: group titles as `.label` (CLI-76), items as 36px rows with an 18px icon and the name; the current item has `--brand-soft` background; hover has a light `--line` background. On a phone: 48px rows with a › at the end.
+- **Breadcrumb**: small grey text, `Settings › <section>`, the first part is a link. Not shown on a phone.
+- **Section head**: the title (`--text-title`) and one grey line under it that says what the section holds.
+- **Setting row** (`.setting-row`): two columns, 1 : 1.4; start: the row title (16px, 600) and its help (14px grey); end: the control, then its button under it. Rows are split by a 1px `--line`; 32px between rows. Below 760px one column.
+- **Row button**: plain by default; primary only while the value changed (so a page never shows five green buttons at once).
+- **Status badge** (`.badge.ok`, `.badge.off`): small round-cornered tag; ok is `--brand-soft` with `--brand` text and a check; off is `--line` with `--muted` text.
+- **Method card** (`.method.card`): a card per login way: icon, name and badge at the start; the action at the end; under them the details (the email address) as a small row on `--bg`.
+- **Radio card** (`.radio-card`): a card with a radio, a small picture and a name; the chosen one has a `--brand` border and `--brand-soft` background. Used for theme and language; a choice applies at once.
+- **Danger card** (`.card.danger`): a card with a `--danger` border tint, a title, the text, and a plain button with `--danger` text. Every button in it asks first.
+- **Empty state** (`.empty`): centred 32px grey icon, a short bold line, one grey line that says how it fills.
+- **Grouped menu** (the user menu, and later menus): a head with the name and, in grey, the phone or email; items are 40px rows with an 18px icon; a 1px `--line` between groups; Log out last, alone. Groups: (My bots, Chats, My apps), (Settings, Admin for an admin), (Log out).
+- Icons are `glyph(name)` in `client/src/icon.ts`, inline SVG, 24 by 24 grid.
