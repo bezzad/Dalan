@@ -13,4 +13,5 @@ Needs m26 (frame and pieces) and m25. Each task: write the failing tests tagged 
 - [x] 5. Client: admin pages moved into the frame; overview cards (CLI-82)
 - [x] 6. Client: settings page with groups, rows, badges, search, risky question (CLI-83)
 - [x] 7. `docs/UI.md`: dashboard frame, overview cards, settings rows; DESIGN and ARCHITECTURE addresses
-- [ ] 8. CI green on GitHub, final review, merge; check as admin and as a common user, phone and desktop; archive
+- [x] 8. CI green on GitHub, final review (and the security review fixes), merge (#102)
+- [ ] 9. Owner: check as admin and as a common user, phone and desktop; then archive
