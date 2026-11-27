@@ -269,6 +269,10 @@ export const texts = {
     themeDarkName: "تیره",
     languageLabel: "زبان",
     languageHelp: "فارسی یا انگلیسی؛ بلافاصله اعمال می‌شود.",
+    calendarLabel: "تقویم",
+    calendarHelp: "تاریخ‌ها به شمسی یا میلادی؛ روی همین دستگاه می‌ماند.",
+    calendarJalali: "شمسی",
+    calendarGregorian: "میلادی",
     builderStateHelp: "ساخت بات و برنامه با تأیید مدیر.",
     builderApproved: "تأییدشده",
     myBotsHelp: "بات‌هایی که ساخته‌اید.",
@@ -656,6 +660,10 @@ export const texts = {
     themeDarkName: "Dark",
     languageLabel: "Language",
     languageHelp: "Persian or English. It applies at once.",
+    calendarLabel: "Calendar",
+    calendarHelp: "Dates in the Persian (Jalali) or the Gregorian calendar. Kept on this device.",
+    calendarJalali: "Persian (Jalali)",
+    calendarGregorian: "Gregorian",
     builderStateHelp: "Building bots and apps needs the admin's approval.",
     builderApproved: "Approved",
     myBotsHelp: "The bots you built.",
@@ -781,6 +789,10 @@ export type Lang = keyof typeof texts;
 export type TextKey = keyof (typeof texts)["fa"];
 
 const StorageKey = "dalan.lang";
+const CalendarKey = "dalan.calendar";
+
+/** CLI-79: the calendar of every date the client shows. */
+export type Calendar = "jalali" | "gregorian";
 
 /** The two things of the page that follow the language. `document.documentElement` fits. */
 export interface PageRoot {
@@ -798,12 +810,37 @@ export class Language {
   private readonly root: PageRoot;
   private readonly storage: LangStorage;
   current: Lang;
+  private chosenCalendar: Calendar | null;
 
   constructor(root: PageRoot, storage: LangStorage) {
     this.root = root;
     this.storage = storage;
     this.current = storage.getItem(StorageKey) === "en" ? "en" : "fa";
+    const calendar = storage.getItem(CalendarKey);
+    this.chosenCalendar = calendar === "jalali" || calendar === "gregorian" ? calendar : null;
     this.apply();
+  }
+
+  /** CLI-79: the chosen calendar; with no choice, Jalali in Persian and Gregorian in English. */
+  get calendar(): Calendar {
+    return this.chosenCalendar ?? (this.current === "fa" ? "jalali" : "gregorian");
+  }
+
+  /** CLI-79: kept on this device; every date shown after it uses it. */
+  chooseCalendar(calendar: Calendar): void {
+    this.chosenCalendar = calendar;
+    this.storage.setItem(CalendarKey, calendar);
+  }
+
+  /** CLI-79: the locale of dates: the language's digits and month names, in the chosen calendar. */
+  private dateLocale(calendar: Calendar = this.calendar): string {
+    if (this.current === "fa") return calendar === "jalali" ? "fa-IR-u-ca-persian" : "fa-IR-u-ca-gregory";
+    return calendar === "jalali" ? "en-GB-u-ca-persian" : "en-GB";
+  }
+
+  /** A date and time in the user's language and calendar (CLI-79). */
+  dateTime(date: string): string {
+    return new Intl.DateTimeFormat(this.dateLocale(), { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
   }
 
   /** Switches to the other language and remembers the choice on this device. */
@@ -829,9 +866,9 @@ export class Language {
   }
 
   /** CLI-19: "online", "last seen ...", or nothing for a bot never seen. */
-  /** CLI-30: a day, like "17 Nov 2026". */
-  day(date: string): string {
-    return new Intl.DateTimeFormat(this.current === "fa" ? "fa-IR" : "en-GB", { dateStyle: "medium" }).format(new Date(date));
+  /** CLI-30: a day, like "17 Nov 2026", in the chosen calendar or the one given (CLI-79). */
+  day(date: string, calendar: Calendar = this.calendar): string {
+    return new Intl.DateTimeFormat(this.dateLocale(calendar), { dateStyle: "medium" }).format(new Date(date));
   }
 
   seen(status: { online: boolean; last_seen: string | null }, now: Date): string {
@@ -843,8 +880,7 @@ export class Language {
     if (minutes < 1) return this.t("seenNow");
     if (minutes < 60) return this.t("seenMinutes").replace("{n}", this.number(minutes));
     if (minutes < 24 * 60) return this.t("seenHours").replace("{n}", this.number(Math.floor(minutes / 60)));
-    const date = new Intl.DateTimeFormat(this.current === "fa" ? "fa-IR" : "en-GB", { dateStyle: "medium" }).format(at);
-    return this.t("seenDate").replace("{n}", date);
+    return this.t("seenDate").replace("{n}", this.day(status.last_seen));
   }
 
   private apply(): void {

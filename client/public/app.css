@@ -834,6 +834,7 @@ nav.side a > .glyph:last-child { display: none; }
 .swatch.dark { background: #141716; }
 .swatch.dark i { background: #2f3533; }
 .swatch.word { align-items: center; justify-content: center; background: var(--bg); font-size: 24px; font-weight: 700; }
+.swatch.date { align-items: center; justify-content: center; background: var(--bg); font-size: 14px; font-weight: 600; text-align: center; }
 .card.danger { border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
 .card.danger button { align-self: flex-start; color: var(--danger); }
 .settings .empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: var(--space-l); color: var(--muted); text-align: center; }
