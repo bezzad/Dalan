@@ -23,6 +23,7 @@ export PATH="$tmp/bin:$PATH"
 # and a deploy that records its call (and fails, as after a rollback, when NOTREADY is in the file).
 work="$tmp/work"; git init -q -b main "$work"
 mkdir -p "$work/scripts" "$work/deploy"
+cp "$root/deploy/version.sh" "$work/deploy/version.sh"
 cat > "$work/scripts/build-release.sh" <<'SH'
 #!/bin/bash
 grep -qx FAIL "$(dirname "$0")/../state" && exit 1
@@ -109,7 +110,9 @@ echo "PASS OPS-17 the version is v<VERSION>.<updates since>; each update counts 
 # Rule: OPS-16 the copy setup installed only fetches; the steps come from the commit it builds, so a change to this
 # script reaches the server with the next build (the installed copy made the old version text, and the footer showed none).
 installed="$tmp/installed-pull-deploy.sh"
-sed 's/^  shown="v\$base\.\$(git.*$/  shown="old-text"/' "$script" > "$installed"
+# An installed copy with older steps (it makes an old version text); deploy_test.sh covers a copy from before the handover.
+sed 's/^shown=\$(bash .*version\.sh.*$/shown="old-text"/' "$script" > "$installed"
+grep -q 'shown="old-text"' "$installed" || fail "the test could not make an old installed copy"
 grep -q 'shown="old-text"' "$installed" || fail "the test could not make an old installed copy"
 cp "$script" "$work/deploy/pull-deploy.sh"
 commit "pull-deploy in the repository"
