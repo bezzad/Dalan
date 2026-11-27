@@ -7,6 +7,7 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - Colours only from the tokens in `client/public/app.css` (`--bg`, `--surface`, `--line`, `--text`, `--muted`, `--brand`, `--danger`). The dark tokens are set twice (media query and `[data-theme="dark"]`); keep both in sync.
 - Nothing from another host: fonts and icons are in the page (rule 7).
 - Font: Inter for Latin letters, Vazirmatn for Persian (both OFL, copied from npm by `client/build.mjs`).
+- Small text on public pages (CLI-76): section labels (`.label`) use `--text-label`, 14px (15px in Persian); diagram and tag text (`.frame-label`, `ul.guards`, `.branch .box`, `.tag`, `.soon`) uses `--text-small`, 13px (14px in Persian). Nothing on a public page is smaller; code blocks keep their own size.
 - Logo: the Dalan gate (`client/src/logo.ts`), an outer arch around a door. The favicon is the round version (`public/icons/icon.svg`); the app icons are square. The not-found page (CLI-40) shows the gate closed.
 
 ## Page frame
@@ -46,6 +47,7 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - 📎, paste and drop open one card above the input; the input is the caption (CLI-47).
 - Bot icons are round, cut to fill; no icon shows the first letter (CLI-50).
 - Reply: a message's menu (right-click, long press), a double-click or a swipe left. The bar above the input shows the quote with ✕; a bubble that replies shows the quote on top, and a click on it goes to the message (CLI-52).
+- Typing `/` opens a list above the input with the bot's commands that start with the typed text, each `/command` and its description, left to right. Click, tap or Enter sends; Tab completes; ↑ ↓ move the mark; Esc closes (CLI-74).
 - While the bot is offline, a plain bar above the input (red start edge, `--muted` text) says it won't answer now and that messages wait, then show "not delivered". It hides when the bot is online; a suspended bot shows its error instead (CLI-91).
 - A pressed inline button shows a moving skeleton; the buttons of its message are locked until the bot answers (CLI-53).
 - Bot formatting is drawn from entities, never as HTML: bold, italic, code, spoiler (tap to show), quotes (CLI-54).
