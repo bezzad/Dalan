@@ -10,6 +10,9 @@ import { pageFor } from "../src/pages.ts";
 import { settingGroups, settingMatches, settingName, type Setting } from "../src/panels.ts";
 import { dashboardAddress, dashboardMenu, dashboardTarget, sectionPath, sections, type SettingsUser } from "../src/settings/model.ts";
 import { isTotpStep, recoveryFile, totpTicketIn } from "../src/totp.ts";
+import { ApiError } from "../src/caller.ts";
+import { errorText } from "../src/app.ts";
+import { mergeRefusal } from "../src/merge.ts";
 
 const source = (file: string) => readFileSync(new URL(file, import.meta.url), "utf8");
 const user: SettingsUser = { builder: "none", admin: false, has_phone: true, has_password: true, has_github: false, email: null };
@@ -154,4 +157,17 @@ test("CLI-81 CLI-82 CLI-83 CLI-92 every new text in both languages, every menu i
     assert.notEqual(texts.fa[key], texts.en[key], key);
   }
   for (const section of sections) assert.ok(section.glyph in glyphs, section.glyph);
+});
+
+test("CLI-92 the new refusals have their own words: admin merge, admin without the code, TOTP on, out of range", () => {
+  const codes: [string, TextKey][] = [["admin_merge", "adminMerge"], ["admin_needs_2fa", "adminNeeds2fa"], ["totp_on", "totpOn"],
+    ["totp_not_allowed", "totpNotAllowed"], ["out_of_range", "outOfRange"], ["wrong_code", "wrongCode"]];
+  for (const [code, key] of codes) {
+    assert.equal(errorText(new ApiError(403, code)), key, code);
+    assert.ok(texts.fa[key] && texts.en[key] && texts.fa[key] !== texts.en[key], key);
+  }
+  // SEC-15: a merge refused because one side is an admin says so, not "suspended".
+  const t = (key: TextKey) => texts.en[key];
+  const side = { name: "x", bots: 0, sites: 0, keys: 0, chats: 0 };
+  assert.equal(mergeRefusal({ way: "phone", keep: "this", this: side, other: side, refusal: "admin" } as never, t), texts.en.adminMerge);
 });

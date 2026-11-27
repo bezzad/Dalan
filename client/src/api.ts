@@ -41,7 +41,8 @@ export interface MergePlan {
   keep: "this" | "other";
   this: MergeSide;
   other: MergeSide;
-  refusal: "both_have_products" | "merge_conflict" | "suspended" | null;
+  /** SEC-15: "admin" when one side is an admin. */
+  refusal: "both_have_products" | "merge_conflict" | "suspended" | "admin" | null;
   field: "phone" | "email" | "github" | null;
 }
 

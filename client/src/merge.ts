@@ -23,6 +23,8 @@ export function mergeRefusal(plan: MergePlan, t: Translate): string | null {
     case null: return null;
     case "both_have_products": return t("bothHaveProducts");
     case "merge_conflict": return t("mergeConflict").replace("{field}", t(wayKeys[plan.field ?? "phone"]));
+    // SEC-15: a merge must not give an admin's session without the second factor.
+    case "admin": return t("adminMerge");
     default: return t("accountSuspended");
   }
 }

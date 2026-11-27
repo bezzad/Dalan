@@ -863,6 +863,8 @@ nav.side a > .glyph:last-child { display: none; }
 /* CLI-83: a setting row shows its key small and grey under its name. */
 .admin-setting .key { font-size: var(--text-small); color: var(--muted); overflow-wrap: anywhere; }
 .admin-setting .badges:empty { display: none; }
+/* The unit stays beside its input. */
+main.wide .card .admin-setting .control .row:first-child { flex-wrap: nowrap; align-items: center; }
 /* CLI-92: the QR on a white square (readable in the dark theme too), the secret and the recovery codes. */
 .totp .qr { width: 200px; padding: 8px; border-radius: var(--radius-s); background: #fff; }
 .totp .qr svg { display: block; width: 100%; height: auto; }
