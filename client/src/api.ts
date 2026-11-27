@@ -341,7 +341,7 @@ export const api = {
   builderRequests: async () => (await call<{ users: AdminUser[] }>("GET", "/api/admin/users?builder=requested")).users,
   /** ADM-20 */
   adminUser: (userId: number) => call<{ user: AdminUser; bots: AdminBot[] }>("GET", `/api/admin/users/${userId}`),
-  adminBot: (botId: number) => call<{ bot: AdminBot; owner: AdminUser }>("GET", `/api/admin/bots/${botId}`),
+  adminBot: (botId: number) => call<{ bot: AdminBot; owner: AdminUser | null }>("GET", `/api/admin/bots/${botId}`),
   setBuilder: (userId: number, approve: boolean) => call<AdminUser>("POST", `/api/admin/users/${userId}/builder`, { approve }),
   suspendUser: (userId: number, suspended: boolean) => call<AdminUser>("POST", `/api/admin/users/${userId}/suspend`, { suspended }),
   adminBots: async (query: string, before?: number) =>
