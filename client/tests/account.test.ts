@@ -12,11 +12,11 @@ const source = (file: string) => readFileSync(new URL(`../src/${file}`, import.m
 
 test("AUTH-35 the list puts this device first, then the newest use; each has a name", () => {
   const sessions = [
-    { id: "a", browser: "Firefox", system: "Windows", address: "1.2.3.4", created_at: "2026-11-01T00:00:00Z", last_used_at: "2026-11-02T00:00:00Z", current: false },
-    { id: "b", browser: "Safari", system: "iOS", address: "5.6.7.8", created_at: "2026-11-01T00:00:00Z", last_used_at: "2026-11-20T00:00:00Z", current: false },
-    { id: "c", browser: "", system: "", address: "9.9.9.9", created_at: "2026-11-01T00:00:00Z", last_used_at: "2026-11-01T00:00:00Z", current: true },
+    { id: 1, browser: "Firefox", system: "Windows", address: "1.2.3.4", created_at: "2026-11-01T00:00:00Z", last_used_at: "2026-11-02T00:00:00Z", current: false },
+    { id: 2, browser: "Safari", system: "iOS", address: "5.6.7.8", created_at: "2026-11-01T00:00:00Z", last_used_at: "2026-11-20T00:00:00Z", current: false },
+    { id: 3, browser: "", system: "", address: null, created_at: "2026-11-01T00:00:00Z", last_used_at: "2026-11-01T00:00:00Z", current: true },
   ];
-  assert.deepEqual(sortedSessions(sessions).map(s => s.id), ["c", "b", "a"]);
+  assert.deepEqual(sortedSessions(sessions).map(s => s.id), [3, 2, 1]);
   assert.equal(sessionName(sessions[0]!, "?"), "Firefox · Windows");
   assert.equal(sessionName(sessions[2]!, "Unknown device"), "Unknown device");
 });

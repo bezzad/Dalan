@@ -194,11 +194,20 @@ public class DeleteAccountTests(PostgresServer postgres)
     {
         await using var app = await StartAsync();
         var (browser, userId) = await UserWithPasswordAsync(app);
-        (await AskCodeAsync(browser)).Response.EnsureSuccessStatusCode();
+        var sent = app.Sms.Sent.Count;
 
+        // A user with a password proves with it: no code is ever sent for the delete (no SMS spent for nothing).
+        var challenge = await browser.PostAsync("/api/account/delete/challenge", null, Cancel);
+        var code = await browser.PostAsJsonAsync("/api/account/delete/code", new { challenge = "x", nonce = "y" }, Cancel);
         var wrongPassword = await DeleteAsync(browser, new { password = "not the password", word = "DELETE" });
         var wrongWord = await DeleteAsync(browser, new { password = Password, word = "DELET" });
-        var codeInstead = await DeleteAsync(browser, new { code = app.Sms.Sent[^1].Code, word = "DELETE" });
+        var codeInstead = await DeleteAsync(browser, new { code = "123456", word = "DELETE" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, challenge.StatusCode);
+        Assert.Equal("password_required", await ErrorCodeAsync(challenge));
+        Assert.Equal(HttpStatusCode.BadRequest, code.StatusCode);
+        Assert.Equal("password_required", await ErrorCodeAsync(code));
+        Assert.Equal(sent, app.Sms.Sent.Count);
 
         Assert.Equal(HttpStatusCode.BadRequest, wrongPassword.StatusCode);
         Assert.Equal("bad_proof", await ErrorCodeAsync(wrongPassword));

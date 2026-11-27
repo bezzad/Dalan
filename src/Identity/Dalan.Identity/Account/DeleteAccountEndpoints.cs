@@ -56,6 +56,7 @@ internal static class DeleteAccountEndpoints
     {
         var (account, refusal) = await AccountAsync(http, dbFactory, users);
         if (account is null) return refusal!;
+        if (account.PasswordHash is not null) return PasswordRequired();
 
         var (channel, target) = account.CodeTarget;
         return AuthJson.Ok(new { Challenge = proofOfWork.NewChallenge(target), proofOfWork.Difficulty, Channel = channel });
@@ -67,6 +68,7 @@ internal static class DeleteAccountEndpoints
     {
         var (account, refusal) = await AccountAsync(http, dbFactory, users);
         if (account is null) return refusal!;
+        if (account.PasswordHash is not null) return PasswordRequired();
 
         var request = await AuthJson.ReadAsync<CodeRequest>(http);
         var (channel, target) = account.CodeTarget;
@@ -170,6 +172,10 @@ internal static class DeleteAccountEndpoints
             http.RequestAborted);
         return Results.NoContent();
     }
+
+    /// <summary>A user with a password proves with it; no code is sent for nothing (each SMS costs).</summary>
+    private static IResult PasswordRequired() =>
+        AuthJson.BadRequest("password_required", """This account has a password: send it as "password" to POST /api/account/delete.""");
 
     private static IResult WrongProof(string message) => AuthJson.BadRequest("bad_proof", message);
 

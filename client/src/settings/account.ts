@@ -53,7 +53,7 @@ export function sessionsCard(app: App): HTMLElement {
       h("div", { class: "line" },
         h("strong", { dir: "auto" }, sessionName(session, t("unknownDevice"))),
         ...(session.current ? [h("span", { class: "badge ok" }, t("thisDevice"))] : [])),
-      h("span", { class: "note" }, h("bdi", { dir: "ltr" }, session.address), " · ",
+      h("span", { class: "note" }, ...(session.address ? [h("bdi", { dir: "ltr" }, session.address), " · "] : []),
         t("lastUsed").replace("{n}", app.language.dateTime(session.last_used_at))),
       ...(session.current ? [] : [h("button", { type: "button", class: "link", onclick: () => {
         api.endSession(session.id).then(load, failed);

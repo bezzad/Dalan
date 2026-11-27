@@ -213,10 +213,11 @@ export interface AccessKey {
 
 /** AUTH-35: a live session of the user. */
 export interface AccountSession {
-  id: string | number;
+  id: number;
   browser: string;
   system: string;
-  address: string;
+  /** Null when the server does not know it. */
+  address: string | null;
   created_at: string;
   last_used_at: string;
   current: boolean;
