@@ -845,7 +845,7 @@ nav.side a > .glyph:last-child { display: none; }
 .menu.user .panel .item .glyph { width: 18px; height: 18px; }
 @media (max-width: 759px) {
   .settings .settings-body { grid-template-columns: 1fr; gap: var(--space-m); }
-  .settings:not(.menu-only) nav.side, .settings:not(.menu-only) header h1, .settings .crumbs { display: none; }
+  .settings:not(.menu-only) nav.side, .settings:not(.menu-only) > header:not(.site) > h1, .settings .crumbs { display: none; }
   nav.side a { min-height: 48px; }
   nav.side a > .glyph:last-child { display: block; }
   .setting-row { grid-template-columns: 1fr; }
