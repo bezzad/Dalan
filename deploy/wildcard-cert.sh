@@ -28,6 +28,8 @@ if [ "${1:-}" = hook ]; then
     "$domain" "$certs/wildcard.crt" "$certs/wildcard.key" > "$root/etc/caddy/wildcard.caddy"
   # A config Caddy cannot load would keep it down after the restart, dalanet.ir too: then the block goes and Caddy keeps
   # running as it was (each site with its own certificate).
+  # The Caddyfile names the domains from domains.env (setup.sh); validate needs them like Caddy does (caddy.service).
+  if [ -f "$root/etc/dalan/domains.env" ]; then set -a; . "$root/etc/dalan/domains.env"; set +a; fi
   if ! checked=$(XDG_DATA_HOME="$state" XDG_CONFIG_HOME="$state" caddy validate --config "$root/etc/caddy/Caddyfile" --adapter caddyfile 2>&1); then
     rm -f "$root/etc/caddy/wildcard.caddy"
     printf '%s\n' "$checked" | tail -n 5 >&2

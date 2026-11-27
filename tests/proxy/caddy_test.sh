@@ -43,7 +43,10 @@ PY
 python3 "$tmp/upstream.py" "$tmp/asked.log" & upstream=$!
 
 # The Caddyfile runs from a fake /etc/caddy, where wildcard-cert.sh writes wildcard.caddy (OPS-18). At first there is none.
-server="$tmp/root"; mkdir -p "$server/etc/caddy" "$server/var/lib/dalan-cert/certificates"
+server="$tmp/root"; mkdir -p "$server/etc/caddy" "$server/etc/dalan" "$server/var/lib/dalan-cert/certificates"
+# The domains as setup.sh writes them; the deploy hook reads them to check the config (caddy validate).
+printf 'DALAN_SITE_DOMAIN=http://localhost:18080\nDALAN_API_DOMAIN=http://127.0.0.1:18080\nDALAN_TUNNEL_DOMAIN=http://tunnel.localhost:18080\nDALAN_UPSTREAM=127.0.0.1:18081\nDALAN_HTTP_PORT=18082\nDALAN_HTTPS_PORT=18443\n' \
+  > "$server/etc/dalan/domains.env"
 cp "$root/deploy/Caddyfile" "$server/etc/caddy/Caddyfile"
 start_caddy() {
   DALAN_SITE_DOMAIN=http://localhost:18080 DALAN_API_DOMAIN=http://127.0.0.1:18080 DALAN_TUNNEL_DOMAIN=http://tunnel.localhost:18080 \
