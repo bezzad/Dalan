@@ -119,16 +119,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-body.offline::before {
-  content: attr(data-connecting);
-  display: block;
-  padding: 2px 12px;
-  background: var(--muted);
-  color: var(--bg);
-  font-size: 13px;
-  text-align: center;
-}
-
 [hidden] { display: none !important; }
 
 /* Scrollbars stay on the right edge of the window, also in Persian (owner, 2026-11-18): the root is left to right for
@@ -146,8 +136,6 @@ main {
   height: 100dvh;
   padding: 12px var(--gutter) calc(12px + env(safe-area-inset-bottom));
 }
-
-body.offline main { height: calc(100dvh - 28px); }
 
 header {
   display: flex;
@@ -337,6 +325,9 @@ button.pinned[hidden] { display: none; }
 .quote span, .quote strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .reply-bar { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .reply-bar[hidden] { display: none; }
+/* CLI-91: the bot is offline; a plain line above the input, like the reply bar. */
+.offline-bar { flex: none; margin: 0; padding: 6px 10px; border: 1px solid var(--line); border-inline-start: 3px solid var(--danger); border-radius: 10px; background: var(--surface); color: var(--muted); font-size: 14px; }
+.offline-bar[hidden] { display: none; }
 .reply-bar .reply-mark { flex: none; color: var(--brand); font-size: 18px; }
 .reply-bar .quote { flex: 1; }
 .reply-bar button.close { flex: none; min-height: 32px; width: 32px; padding: 0; }
@@ -375,6 +366,8 @@ button.pinned[hidden] { display: none; }
 .pending .file-name { overflow-wrap: anywhere; }
 .pending .note { flex: 1; }
 form.compose > button { flex: none; }
+form.compose > button.mic { display: inline-flex; align-items: center; justify-content: center; }
+form.compose > button.mic .icon { width: 20px; height: 20px; }
 a.button { text-decoration: none; }
 form.row > button:not(.primary) { padding: 8px 10px; }
 
@@ -428,7 +421,6 @@ select { font: inherit; color: inherit; padding: 8px; border: 1px solid var(--li
 /* Public pages (CLI-26 to CLI-28) and the showcase parts (CLI-29) follow the theme (CLI-35).
    The document itself scrolls; the header stays on top. */
 main.public { --gutter: max(16px, calc((100vw - var(--page-width)) / 2)); height: auto; min-height: 100dvh; padding-block-end: 0; overflow-x: clip; }
-body.offline main.public { height: auto; }
 /* Grow to fill the screen so the footer stays at the bottom of short pages. */
 main.public > .scroller { flex: 1 0 auto; overflow: visible; }
 main.public > header.site { position: sticky; top: 0; margin-block-start: -12px; padding-block: 12px; background: var(--bg); }
@@ -666,6 +658,7 @@ footer.site { position: relative; margin-block-start: auto; display: flex; flex-
 footer.site .columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-l); }
 footer.site .column { gap: 6px; font: 14px/1.8 var(--mono); color: var(--muted); }
 footer.site .column .label { color: var(--text); margin-block-end: 4px; }
+footer.site .copyright { margin: 0; font: 12px/1.6 var(--mono); color: var(--muted); }
 footer.site a { color: var(--muted); text-decoration: none; }
 footer.site a:hover { color: var(--text); }
 .wordmark { margin-block-end: -.32em; font-size: clamp(90px, 22vw, 240px); font-weight: 900; line-height: 1; color: color-mix(in srgb, var(--text) 6%, var(--bg)); text-align: end; user-select: none; }
@@ -762,12 +755,12 @@ nav.side a .name { flex: 1; }
 nav.side a > .glyph:last-child { display: none; }
 :lang(fa) nav.side a > .glyph:last-child { transform: scaleX(-1); }
 .to-menu { color: var(--brand); text-decoration: none; font-weight: 600; }
-.page { display: flex; flex-direction: column; gap: var(--space-s); max-width: 720px; min-width: 0; }
-.crumbs { color: var(--muted); font-size: 14px; }
-.crumbs a { color: var(--muted); text-decoration: none; }
-.crumbs a:hover { color: var(--text); }
-.head { margin: 0; font-size: var(--text-title); }
-.rows { display: flex; flex-direction: column; margin-block-start: var(--space-m); }
+.settings .page { display: flex; flex-direction: column; gap: var(--space-s); max-width: 720px; min-width: 0; }
+.settings .crumbs { color: var(--muted); font-size: 14px; }
+.settings .crumbs a { color: var(--muted); text-decoration: none; }
+.settings .crumbs a:hover { color: var(--text); }
+.settings .head { margin: 0; font-size: var(--text-title); }
+.settings .rows { display: flex; flex-direction: column; margin-block-start: var(--space-m); }
 .setting-row { display: grid; grid-template-columns: 1fr 1.4fr; gap: var(--space-m) var(--space-l); padding-block: 16px; border-block-start: 1px solid var(--line); }
 .setting-row .what h3 { margin: 0; font-size: 16px; font-weight: 600; }
 .setting-row .control { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
@@ -797,9 +790,9 @@ nav.side a > .glyph:last-child { display: none; }
 .swatch.word { align-items: center; justify-content: center; background: var(--bg); font-size: 24px; font-weight: 700; }
 .card.danger { border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
 .card.danger button { align-self: flex-start; color: var(--danger); }
-.empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: var(--space-l); color: var(--muted); text-align: center; }
-.empty .glyph { width: 32px; height: 32px; }
-.empty strong { color: var(--text); }
+.settings .empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: var(--space-l); color: var(--muted); text-align: center; }
+.settings .empty .glyph { width: 32px; height: 32px; }
+.settings .empty strong { color: var(--text); }
 /* The grouped menu: the name and a grey line, then groups with an icon per item and a line between groups. */
 .menu.user .panel { min-width: 240px; }
 .menu.user .panel .who { display: flex; flex-direction: column; padding: 10px; }
@@ -809,10 +802,28 @@ nav.side a > .glyph:last-child { display: none; }
 .menu.user .panel .item .glyph { width: 18px; height: 18px; }
 @media (max-width: 759px) {
   .settings .settings-body { grid-template-columns: 1fr; gap: var(--space-m); }
-  .settings:not(.menu-only) nav.side, .settings:not(.menu-only) header h1, .crumbs { display: none; }
+  .settings:not(.menu-only) nav.side, .settings:not(.menu-only) header h1, .settings .crumbs { display: none; }
   nav.side a { min-height: 48px; }
   nav.side a > .glyph:last-child { display: block; }
   .setting-row { grid-template-columns: 1fr; }
   .setting-row .control input { max-width: none; }
 }
 @media (min-width: 760px) { .to-menu { display: none; } }
+/* CLI-75: while the live stream is down, a thin ring turns around the header icon. Nothing moves; there is no bar. */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ring { position: relative; }
+.ring::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 2px solid transparent;
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: ring-turn 1s linear infinite;
+  pointer-events: none;
+}
+.mark.ring::after { border-radius: calc(var(--radius-s) + 4px); border-color: var(--brand) transparent transparent; }
+@keyframes ring-turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .ring::after, .mark.ring::after { animation: none; border: 2px dashed var(--brand); }
+}

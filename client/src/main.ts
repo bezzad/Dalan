@@ -7,6 +7,7 @@ import { Backoff } from "./backoff.ts";
 import { botsScreen } from "./bots.ts";
 import { botPageScreen, myBotsScreen, newBotScreen } from "./builder.ts";
 import { chatScreen } from "./chat.ts";
+import { Connection } from "./connection.ts";
 import { Language, type TextKey } from "./i18n.ts";
 import { Live } from "./live.ts";
 import { loginScreen, markReturning } from "./login.ts";
@@ -28,6 +29,10 @@ let app: App | null = null;
 let live: Live | null = null;
 let screen: Screen | null = null;
 let auth: AuthSettings | null = null;
+// CLI-75: the ring on the bot's icon in a chat, on the Dalan mark elsewhere.
+const connection = new Connection(
+  () => document.querySelector<HTMLElement>("header .who .face") ?? document.querySelector<HTMLElement>("header .mark"),
+  () => ({ connected: language.t("connected"), connecting: language.t("connecting") }));
 
 /** AUTH-16: read once; the login and account screens need it. */
 async function authSettings(): Promise<AuthSettings> {
@@ -38,9 +43,8 @@ function show(element: HTMLElement): void {
   document.title = language.t("appName");
   // CLI-55: Install on a bot's chat installs that bot; every other screen links the main manifest again.
   document.querySelector("link[rel=manifest]")?.setAttribute("href", manifestFor(location.pathname));
-  // Shown by the style sheet while the server cannot be reached.
-  document.body.dataset["connecting"] = language.t("connecting");
-  document.body.replaceChildren(element, toastRegion());
+  document.body.replaceChildren(element, toastRegion(), connection.status);
+  connection.apply();
   // An address like "/#plans": the part is drawn now, so go to it.
   if (location.hash.length > 1) document.getElementById(location.hash.slice(1))?.scrollIntoView();
 }
@@ -48,6 +52,7 @@ function show(element: HTMLElement): void {
 function showLogin(error: TextKey | null = null): void {
   live?.stop();
   app = live = screen = null;
+  connection.reset();
   authSettings().then(settings => show(loginScreen(language, settings, user => {
     // CLI-63: after login, the address the person came from; from the landing page, "My bots".
     history.replaceState(null, "", loginTarget(location.pathname, location.search, takeNext()));
@@ -55,7 +60,7 @@ function showLogin(error: TextKey | null = null): void {
   }, () => {
     language.toggle();
     showLogin();
-  }, () => navigate("/"), error)), () => document.body.classList.add("offline"));
+  }, () => navigate("/"), error)), () => connection.setDown());
 }
 
 /** Goes to an address of the site without a page load. */
@@ -192,7 +197,7 @@ async function enter(user: User): Promise<void> {
 
   live = new Live(new Backoff(settings.reconnect_min_seconds, settings.reconnect_max_seconds), {
     onOpen() {
-      document.body.classList.remove("offline");
+      connection.setUp();
       // CLI-06: every time the stream opens, ask for what was missed.
       void app?.chats.sync().then(() => app?.chats.openedIds().forEach(botId => screen?.onMessage?.(botId)), fail);
     },
@@ -202,7 +207,7 @@ async function enter(user: User): Promise<void> {
     },
     onAnswer: (botId, answer) => screen?.onAnswer?.(botId, answer),
     onRead: botId => screen?.onRead?.(botId),
-    onDown: () => document.body.classList.add("offline"),
+    onDown: () => connection.setDown(),
     onLoggedOut: showLogin,
   });
   live.start();
@@ -215,7 +220,7 @@ function fail(error: unknown): void {
     if (app) showLogin();
     else guest();
   }
-  else document.body.classList.add("offline");
+  else connection.setDown();
 }
 
 window.addEventListener("popstate", render);
@@ -231,7 +236,6 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-document.body.dataset["connecting"] = language.t("connecting");
 // CLI-63: back from GitHub on "/": go to the address kept before the round trip (or `?next=`).
 api.me().then(user => {
   const asked = askedNext(location.search, takeNext());

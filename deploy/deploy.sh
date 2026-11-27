@@ -3,7 +3,7 @@
 # Run on the server by pull-deploy.sh (DEPLOY_HOST=local, OPS-16), or over SSH from the owner's computer or a CI run by hand.
 # It never reaches GitHub itself. rsync sends only the parts that changed since the current release.
 #
-# Usage: deploy/deploy.sh <release folder> <version>
+# Usage: deploy/deploy.sh <release folder> <version> [<shown version>]
 #
 # Settings (environment):
 #   DEPLOY_HOST          user@host, or "local" to run on this machine (used by tests)
@@ -19,6 +19,8 @@ set -euo pipefail
 
 source="${1%/}"
 version="$2"
+# OPS-17: $version names the release folder and is the Dalan__Commit; the optional $3 is the shown version (default: $version).
+shown="${3:-$version}"
 host="${DEPLOY_HOST:?DEPLOY_HOST is required}"
 dir="${DEPLOY_DIR:-/opt/dalan}"
 keep="${KEEP_RELEASES:-5}"
@@ -69,7 +71,7 @@ previous=$(remote "readlink '$dir/current' || true")
 echo "Uploading $version"
 remote "mkdir -p '$release'"
 upload "$source" "$release" "$previous"
-remote "echo 'Dalan__Version=$version' > '$release/version.env'"
+remote "printf 'Dalan__Version=%s\nDalan__Commit=%s\n' '$shown' '$version' > '$release/version.env'"
 
 echo "Switching to $version"
 switch_to "$release"
