@@ -21,6 +21,8 @@ echo cert > "\$path/certificates/\$name.crt"; echo key > "\$path/certificates/\$
 SH
 printf '#!/bin/sh\necho "systemctl $*" >> %s/commands.log\n' "$tmp" > "$bin/systemctl"
 printf '#!/bin/sh\necho "chgrp $*" >> %s/commands.log\n' "$tmp" > "$bin/chgrp"
+# The fake caddy: "validate" fails while $tmp/BAD exists.
+printf '#!/bin/sh\necho "caddy $*" >> %s/commands.log\n[ ! -f %s/BAD ]\n' "$tmp" "$tmp" > "$bin/caddy"
 chmod +x "$bin"/*
 export PATH="$bin:$PATH" DALAN_ROOT="$root" Sites__Domain=dalans.ir ARVANCLOUD_API_KEY='Apikey 1234-abcd' CERT_EMAIL=owner@example.ir
 
@@ -45,7 +47,16 @@ grep -qx '\*\.dalans\.ir {' "$block" || fail "no site block for *.dalans.ir: $(c
 grep -qF "tls $certs/wildcard.crt $certs/wildcard.key" "$block" || fail "the site block does not use the certificate: $(cat "$block")"
 grep -qx '	import site' "$block" || fail "the site block does not proxy like the other sites"
 [ "$(grep -c 'systemctl restart caddy.service' "$tmp/commands.log")" = 1 ] || fail "Caddy not restarted once: $(cat "$tmp/commands.log")"
+grep -q "caddy validate --config $root/etc/caddy/Caddyfile --adapter caddyfile" "$tmp/commands.log" || fail "the config was not checked before the restart"
 echo "PASS OPS-18 first certificate: Caddy gets it, its block and one restart"
+
+# Rule: OPS-18 a certificate Caddy cannot use: the block goes, Caddy is not restarted, so dalanet.ir stays up
+touch "$tmp/NEW" "$tmp/BAD"; : > "$tmp/commands.log"
+if bash "$script" > "$tmp/out" 2>&1; then fail "a bad certificate did not fail the hook"; fi
+[ -f "$block" ] && fail "the bad site block stayed: Caddy would not start"
+grep -q 'systemctl restart' "$tmp/commands.log" && fail "Caddy was restarted with a bad config"
+rm "$tmp/BAD"
+echo "PASS OPS-18 a certificate Caddy cannot use leaves Caddy running as it was"
 
 # Rule: OPS-18 nothing due: nothing copied, Caddy not restarted
 rm "$tmp/NEW"; : > "$tmp/commands.log"; : > "$tmp/lego.log"

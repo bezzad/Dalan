@@ -26,6 +26,13 @@ if [ "${1:-}" = hook ]; then
   # The Caddyfile imports wildcard*.caddy; before the first certificate there is none, and each site gets its own (OPS-15).
   printf '# Made by deploy/wildcard-cert.sh (OPS-18). Every site host uses the wildcard certificate.\n*.%s {\n\ttls %s %s\n\timport site\n}\n' \
     "$domain" "$certs/wildcard.crt" "$certs/wildcard.key" > "$root/etc/caddy/wildcard.caddy"
+  # A config Caddy cannot load would keep it down after the restart, dalanet.ir too: then the block goes and Caddy keeps
+  # running as it was (each site with its own certificate).
+  if ! XDG_DATA_HOME="$state" XDG_CONFIG_HOME="$state" caddy validate --config "$root/etc/caddy/Caddyfile" --adapter caddyfile > /dev/null 2>&1; then
+    rm -f "$root/etc/caddy/wildcard.caddy"
+    echo "Caddy cannot use the certificate for *.$domain; Caddy keeps running as it was" >&2
+    exit 1
+  fi
   systemctl restart caddy.service
   echo "New certificate for *.$domain; Caddy restarted"
   exit 0
