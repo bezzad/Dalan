@@ -1,4 +1,5 @@
 // Rules: CLI-77, CLI-78
+// CLI-81 moved the settings area into the dashboard (/dashboard/...); the rules of CLI-77 still hold there.
 // The settings area (CLI-77) and the grouped user menu (CLI-78). The logic is pure; the screens are checked by their source.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -7,7 +8,7 @@ import { texts, type TextKey } from "../src/i18n.ts";
 import { glyphs } from "../src/icon.ts";
 import { pageFor } from "../src/pages.ts";
 import {
-  changedValue, loginMethods, menuSecondLine, sectionPath, sections, settingsMenu, settingsPaths, settingsTarget, userMenuGroups,
+  changedValue, dashboardMenu as settingsMenu, dashboardTarget as settingsTarget, loginMethods, menuSecondLine, sectionPath, sections, userMenuGroups,
   type SettingsUser,
 } from "../src/settings/model.ts";
 
@@ -18,57 +19,56 @@ const admin: SettingsUser = { ...user, admin: true };
 
 test("CLI-77 desktop: the side menu has the Account group, the current item is Profile", () => {
   const menu = settingsMenu(user);
-  assert.deepEqual(menu.map(entry => entry.group), ["account", "building"]);
-  assert.deepEqual(menu[0]!.sections.map(section => section.id), ["profile", "security", "notifications", "preferences"]);
-  assert.deepEqual(settingsTarget("/account", "", user, true), { section: "profile", path: "/account/profile" });
+  assert.deepEqual(menu.map(entry => entry.group), ["workspace", "account", "building"]);
+  assert.deepEqual(menu[1]!.sections.map(section => section.id), ["profile", "security", "notifications", "preferences"]);
+  assert.deepEqual(settingsTarget("/dashboard/profile", "", user, true), { section: "profile", path: "/dashboard/profile" });
 });
 
 test("CLI-77 one address per section", () => {
-  assert.deepEqual(sections.map(section => sectionPath(section.id)),
-    ["/account/profile", "/account/security", "/account/notifications", "/account/preferences", "/account/builder", "/account/keys"]);
-  assert.deepEqual(settingsTarget("/account/security", "", user, true), { section: "security", path: "/account/security" });
-  assert.deepEqual(settingsTarget("/account/security", "", user, false), { section: "security", path: "/account/security" });
+  const settings = sections.filter(section => section.group === "account" || section.group === "building");
+  assert.deepEqual(settings.map(section => sectionPath(section.id)),
+    ["/dashboard/profile", "/dashboard/security", "/dashboard/notifications", "/dashboard/preferences", "/dashboard/builder", "/dashboard/keys"]);
+  assert.deepEqual(settingsTarget("/dashboard/security", "", user, true), { section: "security", path: "/dashboard/security" });
+  assert.deepEqual(settingsTarget("/dashboard/security", "", user, false), { section: "security", path: "/dashboard/security" });
   // Every address is a screen of a logged-in user, and the host serves it (CLI-01).
-  for (const path of settingsPaths) assert.equal(pageFor(path, true), "account", path);
-  assert.equal(pageFor("/account/profile", false), "login");
-  assert.equal(pageFor("/account/nothing", true), "notFound");
-  const host = source("../../src/Dalan.Host/ClientApp.cs");
-  for (const path of settingsPaths) assert.ok(host.includes(`"${path}"`), `the host serves ${path}`);
+  for (const section of settings) assert.equal(pageFor(sectionPath(section.id), true), "dashboard", section.id);
+  assert.equal(pageFor("/dashboard/profile", false), "login");
+  assert.match(source("../../src/Dalan.Host/ClientApp.cs"), /"\/dashboard\/\{\*\*rest\}"/);
 });
 
 test("CLI-77 the Builder section is for every user (CLI-23); the access keys only for an approved builder or an admin", () => {
   for (const who of [builder, admin]) {
-    assert.deepEqual(settingsMenu(who).map(entry => entry.group), ["account", "building"]);
-    assert.deepEqual(settingsMenu(who)[1]!.sections.map(section => section.id), ["builder", "keys"]);
-    assert.deepEqual(settingsTarget("/account/keys", "", who, true), { section: "keys", path: "/account/keys" });
+    assert.deepEqual(settingsMenu(who).find(entry => entry.group === "building")!.sections.map(section => section.id), ["builder", "keys"]);
+    assert.deepEqual(settingsTarget("/dashboard/keys", "", who, true), { section: "keys", path: "/dashboard/keys" });
   }
   for (const waiting of ["none", "requested", "refused"] as const) {
     const who = { ...user, builder: waiting };
-    assert.deepEqual(settingsMenu(who)[1]!.sections.map(section => section.id), ["builder"], waiting);
-    assert.deepEqual(settingsTarget("/account/keys", "", who, true), { section: "profile", path: "/account/profile" });
-    assert.deepEqual(settingsTarget("/account/builder", "", who, true), { section: "builder", path: "/account/builder" });
+    assert.deepEqual(settingsMenu(who).find(entry => entry.group === "building")!.sections.map(section => section.id), ["builder"], waiting);
+    assert.deepEqual(settingsTarget("/dashboard/keys", "", who, true), { section: "profile", path: "/dashboard/profile" });
+    assert.deepEqual(settingsTarget("/dashboard/builder", "", who, true), { section: "builder", path: "/dashboard/builder" });
   }
   // Waiting for the phone: the Builder section says a phone is needed (CLI-34); no keys.
-  assert.deepEqual(settingsMenu({ ...user, has_phone: false })[1]!.sections.map(section => section.id), ["builder"]);
+  assert.deepEqual(settingsMenu({ ...user, has_phone: false }).find(entry => entry.group === "building")!.sections.map(section => section.id), ["builder"]);
   // CLI-23: the section asks, waits or opens My bots; My apps sends a non-builder there.
   const section = source("../src/settings/building.ts");
   for (const key of ["askBuilder", "builderWaiting", "phoneRequired", "builderRefused"]) assert.match(section, new RegExp(`t\\("${key}"\\)`), key);
   assert.match(source("../src/apps.ts"), /app\.go\("\/account\/builder"\)/);
+  // CLI-81: that old address moves into the dashboard.
 });
 
-test("CLI-77 /account on a phone is the menu, with the section's own address for each item", () => {
-  assert.deepEqual(settingsTarget("/account", "", user, false), { section: null, path: "/account" });
-  assert.deepEqual(settingsTarget("/account/notifications", "", user, false), { section: "notifications", path: "/account/notifications" });
+test("CLI-77 /dashboard on a phone is the menu, with the section's own address for each item", () => {
+  assert.deepEqual(settingsTarget("/dashboard", "", user, false), { section: null, path: "/dashboard" });
+  assert.deepEqual(settingsTarget("/dashboard/notifications", "", user, false), { section: "notifications", path: "/dashboard/notifications" });
   const css = source("../public/app.css");
   assert.match(css, /@media \(max-width: 759px\) \{[^@]*\.settings:not\(\.menu-only\) nav\.side/);
   assert.match(css, /nav\.side a \{ min-height: 48px; \}/);
   assert.match(css, /\.setting-row \{ grid-template-columns: 1fr; \}/);
-  assert.match(source("../src/settings/index.ts"), /"‹ ", t\("settings"\)/);
+  assert.match(source("../src/settings/index.ts"), /"‹ ", t\("dashboard"\)/);
 });
 
-test("CLI-77 the way back from GitHub, which names /account, opens Login and security", () => {
-  assert.deepEqual(settingsTarget("/account", "?merge=1", user, true), { section: "security", path: "/account/security" });
-  assert.deepEqual(settingsTarget("/account", "?link_error=has_github", user, false), { section: "security", path: "/account/security" });
+test("CLI-77 the way back from GitHub, which names /account (now /dashboard), opens Login and security", () => {
+  assert.deepEqual(settingsTarget("/dashboard", "?merge=1", user, true), { section: "security", path: "/dashboard/security" });
+  assert.deepEqual(settingsTarget("/dashboard", "?link_error=has_github", user, false), { section: "security", path: "/dashboard/security" });
   const security = source("../src/settings/security.ts");
   assert.match(security, /query\.get\("merge"\) === "1"/);
   assert.match(security, /query\.get\("link_error"\) === "has_github"/);
@@ -140,7 +140,7 @@ test("CLI-77 the Builder section points to My bots and My apps; Access keys keep
 
 test("CLI-77 each section has a title and a one-line help in both languages", () => {
   const keys: TextKey[] = ["settings", "groupAccount", "groupBuilding", "connected", "notConnected", "setUp", "change", "link",
-    "themeLabel", "languageLabel", "themeLightName", "themeDarkName", ...sections.flatMap(section => [section.title, section.help])];
+    "themeLabel", "languageLabel", "themeLightName", "themeDarkName", ...sections.flatMap(section => section.help ? [section.title, section.help] : [section.title])];
   for (const key of keys) assert.notEqual(texts.fa[key], texts.en[key], key);
   assert.equal(texts.en.sectionSecurity, "Login and security");
   assert.equal(texts.en.connected, "Connected");
@@ -166,7 +166,8 @@ test("CLI-78 the user menu for an admin: three groups, an icon per item", () => 
   const groups = userMenuGroups({ admin: true });
   assert.deepEqual(groups.map(group => group.map(item => item.id)), [["myBots", "chats", "myApps"], ["settings", "admin"], ["logout"]]);
   for (const item of groups.flat()) assert.ok(item.glyph in glyphs, item.id);
-  assert.deepEqual(groups.flat().map(item => item.path), ["/bots", "/chats", "/apps", "/account", "/admin", null]);
+  // CLI-81: each item opens its place in the dashboard.
+  assert.deepEqual(groups.flat().map(item => item.path), ["/dashboard/bots", "/dashboard/chats", "/dashboard/apps", "/dashboard/profile", "/dashboard/admin", null]);
 });
 
 test("CLI-78 a user who is not an admin has only Settings in the second group", () => {

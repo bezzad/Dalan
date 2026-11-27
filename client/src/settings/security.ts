@@ -1,5 +1,5 @@
-// CLI-77: Login and security: one card per way to log in (password, phone, email, GitHub), the password form, and the merge
-// question (CLI-70). The way back from GitHub opens "/account/security", or "?merge=1" for a merge (AUTH-30, AUTH-31).
+// CLI-77: Login and security: one card per way to log in (password, phone, email, GitHub), the password form, the merge
+// question (CLI-70) and the second factor (CLI-92). The way back from GitHub opens it, or "?merge=1" for a merge (AUTH-30, AUTH-31).
 import { api } from "../api.ts";
 import type { App } from "../app.ts";
 import { h } from "../dom.ts";
@@ -8,6 +8,7 @@ import { toast } from "../toast.ts";
 import { mergeCard } from "./mergeCard.ts";
 import { loginMethods, sectionPath, type MethodAction, type MethodId } from "./model.ts";
 import { methodCard, rowForm } from "./row.ts";
+import { totpCard } from "./totpCard.ts";
 
 const names: Record<MethodId, TextKey> = { password: "password", phone: "phone", email: "email", github: "github" };
 const actions: Record<MethodAction, TextKey> = { setUp: "setUp", change: "change", link: "link" };
@@ -56,8 +57,11 @@ export function securitySection(app: App): HTMLElement {
     element.replaceChildren(merge.element,
       h("div", { class: "methods" }, ...loginMethods(app.user, app.auth.github_login).map(method =>
         methodCard(t(names[method.id]), method.glyph, method.connected, t, method.action ? action(method.id, method.action) : null, method.detail))),
-      passwordRow.element);
+      passwordRow.element,
+      // CLI-92, AUTH-37: for a user with a password, or an admin (SEC-15).
+      ...(app.user.has_password || app.user.admin ? [secondFactor] : []));
   }
+  const secondFactor = totpCard(app);
   draw();
 
   // Back from GitHub: a merge to answer, or a link that was refused.

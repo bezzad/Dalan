@@ -1,11 +1,7 @@
 // PWA entry point: who is logged in, which screen is open, and the live stream.
 import { ApiError, api, type AuthSettings, type User } from "./api.ts";
-import { adminScreen } from "./admin.ts";
-import { appsScreen } from "./apps.ts";
 import { loginErrorText, type App, type Screen } from "./app.ts";
 import { Backoff } from "./backoff.ts";
-import { botsScreen } from "./bots.ts";
-import { botPageScreen, myBotsScreen, newBotScreen } from "./builder.ts";
 import { chatScreen } from "./chat.ts";
 import { Connection } from "./connection.ts";
 import { Drafts } from "./compose.ts";
@@ -14,15 +10,16 @@ import { Language, type TextKey } from "./i18n.ts";
 import { Live } from "./live.ts";
 import { loginScreen, markReturning } from "./login.ts";
 import { askedNext, loginTarget, rememberNext, startsAtTop, takeNext } from "./next.ts";
-import { botPageUsername, initial, pageFor } from "./pages.ts";
+import { initial, pageFor } from "./pages.ts";
 import { h } from "./dom.ts";
 import { glyph } from "./icon.ts";
 import { toastRegion } from "./toast.ts";
 import { headerTools, homeMark, publicPages, publicScreen, siteBrand, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
+import { totpTicketIn } from "./totp.ts";
 import { appLinksFor, Chats } from "./messages.ts";
-import { settingsScreen } from "./settings/index.ts";
-import { menuSecondLine, userMenuGroups } from "./settings/model.ts";
+import { dashboardScreen } from "./settings/index.ts";
+import { dashboardAddress, menuSecondLine, userMenuGroups } from "./settings/model.ts";
 import { Theme, themeButton } from "./theme.ts";
 
 const language = new Language(document.documentElement, localStorage);
@@ -89,6 +86,8 @@ function render(): void {
 
 /** CLI-26: a visitor gets the public pages; a bot address asks for login first and opens that chat after it. */
 function guest(): void {
+  // CLI-92: back from a GitHub login that needs the second factor: the login screen asks for the code.
+  if (totpTicketIn(location.search)) return showLogin();
   // CLI-36: the GitHub login came back with an error. Show it once, and clean the address.
   const error = loginErrorText(location.search);
   if (error) {
@@ -155,27 +154,20 @@ function publicPage(page: PublicPage, loggedIn: boolean): HTMLElement {
   });
 }
 
-/** CLI-51: draws the screen of the current address, and only of the address: "/" the landing page, "/chats", "/bots", "/@name"... */
+/** CLI-51: draws the screen of the current address, and only of the address: "/" the landing page, "/dashboard/...", "/@name"... */
 function route(): void {
   if (!app) return;
+  // CLI-81: the old addresses (/chats, /bots, /apps, /account/..., /admin) now live in the dashboard; links to them still work.
+  const moved = dashboardAddress(location.pathname);
+  if (moved) history.replaceState(null, "", moved + location.search);
   const page = pageFor(location.pathname, true);
-  // The admin screen is for admins; anyone else gets the chats.
-  if (page === "admin" && !app.user.admin) {
-    history.replaceState(null, "", "/chats");
-    return route();
-  }
   const username = /^\/@([^/]+)$/.exec(decodeURIComponent(location.pathname))?.[1];
   screen = publicPages.includes(page)
     ? { element: publicPage(page as PublicPage, true) }
     // CLI-45: the chat page has its own header, with no site header above it.
     : username ? chatScreen(app, username, [themeButton(theme, language.t.bind(language)), userArea(true), homeMark(language.t("appName"), navigate)])
-    : page === "apps" ? appsScreen(app)
-    : page === "account" ? settingsScreen(app)
-    : page === "admin" ? adminScreen(app)
-    : page === "bots" ? myBotsScreen(app)
-    : page === "botNew" ? newBotScreen(app)
-    : page === "botPage" ? botPageScreen(app, botPageUsername(location.pathname)!)
-    : botsScreen(app);
+    // CLI-81: every other signed-in page is in the dashboard.
+    : dashboardScreen(app);
   // The public pages have the site header; the app screens get the same logo and name on top.
   if (!screen.element.classList.contains("public") && !username) {
     screen.element.prepend(h("header", { class: "site" }, siteBrand(language.t("appName"), navigate), tools()));

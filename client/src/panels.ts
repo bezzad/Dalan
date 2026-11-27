@@ -70,6 +70,39 @@ export interface Setting {
   changed: boolean;
   kind: SettingKind;
   restart: boolean;
+  /** ADM-19: the description; a setting without one shows its key. */
+  group?: string;
+  name?: Partial<Record<"fa" | "en", string>>;
+  help?: Partial<Record<"fa" | "en", string>>;
+  unit?: string;
+  min?: number | null;
+  max?: number | null;
+  risky?: boolean;
+}
+
+/** CLI-83: the readable name in the page language, else the key. */
+export function settingName(setting: Setting, lang: "fa" | "en"): string {
+  return setting.name?.[lang] || setting.name?.en || setting.key;
+}
+
+/** CLI-83: the search box keeps a row whose name (either language), key or help holds the words, without letter case. */
+export function settingMatches(setting: Setting, words: string): boolean {
+  const query = words.trim().toLowerCase();
+  if (!query) return true;
+  return [setting.key, setting.name?.fa, setting.name?.en, setting.help?.fa, setting.help?.en]
+    .some(text => text?.toLowerCase().includes(query));
+}
+
+/** CLI-83: settings by service (ADM-19 `group`, else the key's first part), the services in a fixed order, then any other. */
+export function settingGroups(settings: Setting[]): [string, Setting[]][] {
+  const order = ["Identity", "Relay", "Notification", "Sites", "Admin", "Dalan"];
+  const groups = new Map<string, Setting[]>();
+  for (const setting of settings) {
+    const group = setting.group || setting.key.split(":")[0]!;
+    groups.set(group, [...(groups.get(group) ?? []), setting]);
+  }
+  const rank = (name: string) => order.includes(name) ? order.indexOf(name) : order.length;
+  return [...groups.entries()].sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b));
 }
 
 /** CLI-25: settings grouped by their first part ("Relay:MaxTextLength" is in "Relay"), groups in name order. */
