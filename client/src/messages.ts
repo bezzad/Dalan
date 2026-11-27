@@ -258,6 +258,16 @@ export function appLinksFor(path: string): { manifest: string; icon: string; ico
     : { manifest: "/manifest.webmanifest", icon: "/icons/icon.svg", iconType: "image/svg+xml", appleIcon: "/icons/icon-192.png" };
 }
 
+/**
+ * CLI-55: Safari reads the manifest only when the page loads. So in a browser tab a step into or out of a bot's chat, or to
+ * another bot, loads the page anew, and "Add to Home Screen" gets that page's address, icon and name. An installed app never.
+ */
+export function loadsAnew(from: string, to: string, standalone: boolean): boolean {
+  if (standalone) return false;
+  const bot = (path: string) => /^\/@([A-Za-z0-9_]+)$/.exec(path.split(/[?#]/)[0] ?? "")?.[1]?.toLowerCase() ?? null;
+  return bot(from) !== bot(to);
+}
+
 /** CLI-89: the picture types shown in the page (SEC-12 sends these inline). Not SVG: it can hold script. */
 const pictureTypes = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 

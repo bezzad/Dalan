@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { formatNodes, formatTree, type Part } from "../src/format.ts";
-import { buttonAction, fillText, appLinksFor, isReplySwipe, PressState, quoteLine, type Message } from "../src/messages.ts";
+import { buttonAction, fillText, appLinksFor, loadsAnew, isReplySwipe, PressState, quoteLine, type Message } from "../src/messages.ts";
 
 const m = (id: number, version = id): Message => ({ id, version, from: "bot", text: `text ${id}`, date: "2026-11-24T12:00:00Z" });
 
@@ -80,6 +80,24 @@ test("CLI-55: a bot's chat links that bot's manifest and icons; other screens Da
     manifest: "/manifest.webmanifest", icon: "/icons/icon.svg", iconType: "image/svg+xml", appleIcon: "/icons/icon-192.png",
   });
   assert.equal(appLinksFor("/@bad\"name").manifest, "/manifest.webmanifest");
+});
+
+test("CLI-55: in a browser tab, a step into or out of a bot's chat (or to another bot) loads the page anew", () => {
+  assert.equal(loadsAnew("/dashboard/chats", "/@mofidbot", false), true);
+  assert.equal(loadsAnew("/@mofidbot", "/dashboard/chats", false), true);
+  assert.equal(loadsAnew("/@mofidbot", "/@otherbot", false), true);
+  assert.equal(loadsAnew("/@mofidbot", "/@mofidbot?x=1", false), false, "the same chat");
+  assert.equal(loadsAnew("/dashboard/chats", "/dashboard/bots", false), false, "between Dalan's own screens");
+  assert.equal(loadsAnew("/dashboard/chats", "/@mofidbot", true), false, "an installed app never reloads");
+});
+
+test("CLI-55: navigate and the back button use it; the chat's title is the bot's name", async () => {
+  const { readFileSync } = await import("node:fs");
+  const main = readFileSync(new URL("../src/main.ts", import.meta.url), "utf8");
+  assert.match(main, /if \(loadsAnew\(location\.pathname, path, standalone\(\)\)\) \{\n\s*location\.assign\(path\);/);
+  assert.match(main, /if \(loadsAnew\(shownPath, location\.pathname, standalone\(\)\)\) return location\.reload\(\);/);
+  assert.match(main, /matchMedia\("\(display-mode: standalone\)"\)\.matches/);
+  assert.match(readFileSync(new URL("../src/chat.ts", import.meta.url), "utf8"), /document\.title = bot\.name;/);
 });
 
 /** The tree as short text: [type: parts]. */

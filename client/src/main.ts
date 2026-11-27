@@ -17,7 +17,7 @@ import { toastRegion } from "./toast.ts";
 import { headerTools, homeMark, publicPages, publicScreen, siteBrand, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
 import { totpTicketIn } from "./totp.ts";
-import { appLinksFor, Chats } from "./messages.ts";
+import { appLinksFor, Chats, loadsAnew } from "./messages.ts";
 import { dashboardScreen } from "./settings/index.ts";
 import { dashboardAddress, menuSecondLine, userMenuGroups } from "./settings/model.ts";
 import { Theme, themeButton } from "./theme.ts";
@@ -71,8 +71,18 @@ function showLogin(error: TextKey | null = null): void {
   }, () => navigate("/"), error)), () => connection.setDown());
 }
 
-/** Goes to an address of the site without a page load. */
+/** CLI-55: an installed app (or one added to the home screen) never loads the page anew. */
+const standalone = () => matchMedia("(display-mode: standalone)").matches;
+
+/** The path of the screen shown now, for the back button (CLI-55). */
+let shownPath = location.pathname;
+
+/** Goes to an address of the site without a page load; into or out of a bot's chat in a browser tab, with one (CLI-55). */
 function navigate(path: string): void {
+  if (loadsAnew(location.pathname, path, standalone())) {
+    location.assign(path);
+    return;
+  }
   history.pushState(null, "", path);
   render();
   // CLI-68: a new page starts at the top; an address with a #part goes to that part (show() does it).
@@ -80,6 +90,9 @@ function navigate(path: string): void {
 }
 
 function render(): void {
+  // CLI-55: the back button out of (or into) a bot's chat loads that page anew, like a link does.
+  if (loadsAnew(shownPath, location.pathname, standalone())) return location.reload();
+  shownPath = location.pathname;
   if (app) route();
   else guest();
 }

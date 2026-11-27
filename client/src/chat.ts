@@ -673,6 +673,8 @@ export function chatScreen(app: App, username: string, tools: HTMLElement[]): Sc
       const found = await api.findBot(username);
       bot = found;
       header.showBot(bot.name, botIconUrl(bot.id, bot.icon_version));
+      // CLI-55: "Add to Home Screen" names the shortcut from the title.
+      document.title = bot.name;
       // CLI-25: say it at once, before the user writes.
       suspended = found.suspended;
       if (suspended) error.textContent = t("botSuspended");
