@@ -22,13 +22,14 @@ internal sealed class BotIcons(IDbContextFactory<RelayDb> dbFactory, IOptionsMon
         if (image.Length > MaxBytes) return IconResult.TooBig;
         if (IconType(image) is not { } type) return IconResult.NotAnImage;
 
-        var size = ImageSize(image);
+        // 0 by 0 when the header cannot be read: never fit for an app (REL-54), and never read again.
+        var size = ImageSize(image) ?? (0, 0);
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         await db.Bots.Where(b => b.Id == botId).ExecuteUpdateAsync(set => set
             .SetProperty(b => b.Icon, image)
             .SetProperty(b => b.IconType, type)
-            .SetProperty(b => b.IconWidth, size?.Width)
-            .SetProperty(b => b.IconHeight, size?.Height)
+            .SetProperty(b => b.IconWidth, size.Width)
+            .SetProperty(b => b.IconHeight, size.Height)
             .SetProperty(b => b.IconVersion, b => b.IconVersion + 1), cancellationToken);
         return IconResult.Ok;
     }

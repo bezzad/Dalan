@@ -36,7 +36,9 @@ internal static class BotIconEndpoints
         if (bot is not { IconType: not null, IconWidth: null }) return bot;
 
         var bytes = await db.Bots.AsNoTracking().Where(b => b.Id == bot.Id).Select(b => b.Icon).FirstOrDefaultAsync(cancellationToken);
-        if (bytes is null || BotIcons.ImageSize(bytes) is not { } size) return bot;
+        if (bytes is null) return bot;
+        // 0 by 0 when the header cannot be read: kept, so the picture is not read again on every request.
+        var size = BotIcons.ImageSize(bytes) ?? (0, 0);
 
         await db.Bots.Where(b => b.Id == bot.Id && b.IconVersion == bot.IconVersion).ExecuteUpdateAsync(set => set
             .SetProperty(b => b.IconWidth, size.Width)
