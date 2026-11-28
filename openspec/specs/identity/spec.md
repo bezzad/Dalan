@@ -33,7 +33,7 @@ Identity SHALL keep users in the PostgreSQL schema `identity`. A user has a nume
 - **THEN** the save fails
 
 ### Requirement: AUTH-02 Other services learn only the public profile
-Other services SHALL read a user only through the contract `IUserDirectory`, which gives the user's id, display name and username, and what the user may do (admin, builder, suspended). The contract SHALL NOT carry the phone number. Only the Admin service SHALL use `IUserAdmin`, which carries it for legal complaints (ADM-11).
+Other services SHALL read a user only through the contract `IUserDirectory`, which gives the user's id, display name and username, what the user may do (admin, builder, suspended), and the ids of the admins (SITE-25). The contract SHALL NOT carry the phone number. Only the Admin service SHALL use `IUserAdmin`, which carries it for legal complaints (ADM-11). Only the Notification service SHALL use `IUserPhones`, which gives one user's phone for a notice SMS (NTF-13).
 
 #### Scenario: Known user
 - **WHEN** a service asks for an existing user
@@ -44,8 +44,13 @@ Other services SHALL read a user only through the contract `IUserDirectory`, whi
 - **THEN** it gets nothing
 
 #### Scenario: No phone in the contract
-- **WHEN** the types of `Dalan.Identity.Contracts` other than `IUserAdmin` and `AdminUser` are inspected
+- **WHEN** the types of `Dalan.Identity.Contracts` other than `IUserAdmin`, `AdminUser` and `IUserPhones` are inspected
 - **THEN** none has a member with "phone" in its name
+
+#### Scenario: Admin ids
+- **GIVEN** `Identity:AdminPhones` lists the phone of one user
+- **WHEN** a service asks for the admins
+- **THEN** it gets that user's id and no other
 
 ### Requirement: AUTH-03 Session cookie
 A login SHALL give the browser a cookie named `__Host-dalan_session` with the flags `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/` and a `Max-Age` equal to the token lifetime. Its value SHALL be a JWT signed with ES256 that carries the user id and expires after `Identity:AccessTokenMinutes` (start 15). A missing, expired, changed or wrongly signed token SHALL NOT be accepted.
