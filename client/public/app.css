@@ -915,3 +915,24 @@ dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 8px 24px;
 dl.facts dt { color: var(--muted); }
 dl.facts dd { margin: 0; overflow-wrap: anywhere; }
 a.back { align-self: flex-start; color: var(--muted); text-decoration: none; }
+/* CLI-96: the bell before the user menu: a round 36px button, a small count, a panel of notices (docs/UI.md, "Bell"). */
+.menu.bell { position: relative; }
+.menu.bell summary { position: relative; display: inline-grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--control-line); border-radius: 999px; color: var(--muted); }
+.menu.bell summary:hover, .menu.bell[open] summary { color: var(--text); border-color: var(--brand); }
+.menu.bell summary .glyph { width: 18px; height: 18px; }
+.bell-count { position: absolute; inset-block-start: -6px; inset-inline-end: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--danger); color: var(--on-brand); font-size: 13px; font-weight: 600; line-height: 20px; text-align: center; }
+.bell-count[hidden] { display: none; }
+.menu.bell .panel { inset-inline: auto 0; width: 340px; max-height: min(70dvh, 520px); overflow-y: auto; display: flex; flex-direction: column; gap: 2px; padding: 6px; z-index: 3; }
+.menu.bell .panel .head { padding: 10px; }
+.menu.bell .notices { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.menu.bell .notices .item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: 0; padding: 8px 10px; border: 0; border-radius: var(--radius-s); background: none; color: var(--text); font: inherit; text-align: start; }
+.menu.bell .notices button.item { cursor: pointer; }
+.menu.bell .notices button.item:hover { background: var(--bg); }
+.menu.bell .notices .item.unread .title { font-weight: 700; }
+.menu.bell .notices .note { font-size: 13px; overflow-wrap: anywhere; }
+.menu.bell .notices .when { color: var(--muted); }
+.menu.bell .notices .empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 20px 10px; color: var(--muted); text-align: center; }
+.menu.bell .notices .empty .glyph { width: 32px; height: 32px; }
+.menu.bell .notices .empty strong { color: var(--text); }
+.menu.bell .panel > button.small { align-self: center; margin: 4px; }
+@media (max-width: 420px) { .menu.bell .panel { position: fixed; inset-inline: 16px; top: 64px; width: auto; } }

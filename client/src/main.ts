@@ -14,6 +14,7 @@ import { initial, pageFor } from "./pages.ts";
 import { h } from "./dom.ts";
 import { glyph } from "./icon.ts";
 import { toastRegion } from "./toast.ts";
+import { bellMenu } from "./inbox.ts";
 import { headerTools, homeMark, publicPages, publicScreen, siteBrand, type PublicPage } from "./public.ts";
 import { turnOff } from "./push.ts";
 import { totpTicketIn } from "./totp.ts";
@@ -147,12 +148,18 @@ function userArea(face = false): HTMLElement {
       ...groups));
 }
 
-/** Language, theme and the user area: the same end of the header on every page. */
+/** CLI-96: the bell of a signed-in user; drawn anew with each screen, so its count is new on each screen change. */
+function bell(): HTMLElement | null {
+  if (!app) return null;
+  return bellMenu(language, navigate);
+}
+
+/** Language, theme, the bell and the user area: the same end of the header on every page. */
 function tools(): HTMLElement {
   return headerTools(language, theme, () => {
     language.toggle();
     render();
-  }, userArea());
+  }, userArea(), bell());
 }
 
 function publicPage(page: PublicPage, loggedIn: boolean): HTMLElement {
@@ -178,7 +185,7 @@ function route(): void {
   screen = publicPages.includes(page)
     ? { element: publicPage(page as PublicPage, true) }
     // CLI-45: the chat page has its own header, with no site header above it.
-    : username ? chatScreen(app, username, [themeButton(theme, language.t.bind(language)), userArea(true), homeMark(language.t("appName"), navigate)])
+    : username ? chatScreen(app, username, [themeButton(theme, language.t.bind(language)), bell()!, userArea(true), homeMark(language.t("appName"), navigate)])
     // CLI-81: every other signed-in page is in the dashboard.
     : dashboardScreen(app);
   // The public pages have the site header; the app screens get the same logo and name on top.

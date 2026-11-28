@@ -15,7 +15,8 @@ namespace Dalan.Notification.Inbox;
 
 internal sealed record NoticeJson(long Id, string Title, string Text, string? Link, DateTimeOffset At, bool Read);
 
-internal sealed record InboxJson(IEnumerable<NoticeJson> Notices, int Unread);
+/// <summary><see cref="More"/>: there are older notices (ask with before=the last id).</summary>
+internal sealed record InboxJson(IEnumerable<NoticeJson> Notices, int Unread, bool More);
 
 internal sealed record ReadRequest(long? UpTo);
 
@@ -53,13 +54,14 @@ internal static class InboxEndpoints
         var userId = UserId(http);
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
         var mine = db.Inbox.AsNoTracking().Where(n => n.UserId == userId);
+        var size = options.CurrentValue.InboxPageSize;
         var page = await mine.Where(n => before == null || n.Id < before)
             .OrderByDescending(n => n.Id)
-            .Take(options.CurrentValue.InboxPageSize)
+            .Take(size + 1)
             .Select(n => new NoticeJson(n.Id, n.Title, n.Text, n.Link, n.CreatedAt, n.Read))
             .ToListAsync(http.RequestAborted);
         var unread = await mine.CountAsync(n => !n.Read, http.RequestAborted);
-        return Results.Json(new InboxJson(page, unread), Json);
+        return Results.Json(new InboxJson(page.Take(size), unread, page.Count > size), Json);
     }
 
     /// <summary>Marks the user's notices up to this id read.</summary>

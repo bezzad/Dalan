@@ -47,6 +47,23 @@ export interface MergePlan {
   field: "phone" | "email" | "github" | null;
 }
 
+/** NTF-12: one notice under the bell (CLI-96). `link` is a path on this site, or null. */
+export interface Notice {
+  id: number;
+  title: string;
+  text: string;
+  link: string | null;
+  at: string;
+  read: boolean;
+}
+
+/** NTF-12: a page of the inbox, newest first; `more`: older notices wait. */
+export interface InboxPage {
+  notices: Notice[];
+  unread: number;
+  more: boolean;
+}
+
 /** ADM-11 */
 export interface AdminUser {
   id: number;
@@ -320,6 +337,9 @@ export const api = {
   builderBots: async () => (await call<{ bots: BuilderBot[] }>("GET", "/api/builder/bots")).bots,
   createBot: (username: string, name: string) => call<NewToken>("POST", "/api/builder/bots", { username, name }),
   mySites: () => call<MySites>("GET", "/api/sites"),
+  /** NTF-12: `before` is the oldest id shown. */
+  inbox: (before?: number) => call<InboxPage>("GET", `/api/inbox${before ? `?before=${before}` : ""}`),
+  readInbox: (upTo: number) => call<null>("POST", "/api/inbox/read", { up_to: upTo }),
   deleteSite: (siteId: number) => call<null>("DELETE", `/api/sites/${siteId}`),
   reserveSite: (name: string) => call<Site>("POST", "/api/sites", { name }),
   accessKeys: async () => (await call<{ keys: AccessKey[] }>("GET", "/api/account/keys")).keys,

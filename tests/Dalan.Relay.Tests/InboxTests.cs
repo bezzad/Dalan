@@ -107,6 +107,8 @@ public class InboxTests(PostgresServer postgres)
 
         Assert.Equal(["three", "two"], titles);
         Assert.Equal(3, first.GetProperty("unread").GetInt32());
+        Assert.True(first.GetProperty("more").GetBoolean());
+        Assert.False(second.GetProperty("more").GetBoolean());
         Assert.Equal("one", Assert.Single(second.GetProperty("notices").EnumerateArray()).GetProperty("title").GetString());
     }
 
