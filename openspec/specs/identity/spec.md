@@ -393,7 +393,7 @@ A user SHALL be an admin when the user's phone number is in `Identity:AdminPhone
 - **THEN** the answer has `admin` false
 
 ### Requirement: AUTH-19 Builder request
-`POST /api/account/builder` SHALL set the user's builder state from `none` to `approved` when `Identity:AutoBuilder` is on, else to `requested`; from `refused` to `requested`; `requested` and `approved` stay. It answers the profile. A user with no phone (level 1) SHALL get 403 `phone_required` and nothing changes. `GET /api/me` SHALL say `builder`: `none`, `requested`, `approved` or `refused`. An admin's approval SHALL set `approved`, a refusal `refused`. Admins SHALL count as builders.
+`POST /api/account/builder` SHALL set the builder state: with `Identity:AutoBuilder` on, `none` and `requested` to `approved`, `refused` stays (AUTH-39); off, `none` and `refused` to `requested`; `approved` stays. It answers the profile. No phone (level 1): 403 `phone_required`, nothing changes. `GET /api/me` SHALL say `builder`: `none`, `requested`, `approved` or `refused`. An admin's approval sets `approved`, a refusal `refused`. Admins SHALL count as builders.
 
 #### Scenario: Ask
 - **GIVEN** `Identity:AutoBuilder` is off
@@ -418,7 +418,7 @@ A user SHALL be an admin when the user's phone number is in `Identity:AdminPhone
 #### Scenario: Refused
 - **GIVEN** a user asked
 - **WHEN** an admin refuses
-- **THEN** `GET /api/me` says `builder` `refused`, and a new request waits for the admin even with `Identity:AutoBuilder` on
+- **THEN** `GET /api/me` says `builder` `refused`; with `Identity:AutoBuilder` off a new request waits for the admin, with it on the state stays `refused`
 
 ### Requirement: AUTH-20 Suspended user
 When an admin suspends a user, the server SHALL delete all of the user's sessions, SHALL refuse every call with the user's session token at once with 401 `unauthorized` (even before the token expires), SHALL close the user's live streams (LIVE-01), and SHALL answer SMS and password login of that user with 403 `suspended` without sending an SMS. After unsuspend the user SHALL be able to log in again.
@@ -696,12 +696,17 @@ A pending merge SHALL be made only after the proof that the person owns the othe
 - **THEN** the answer is 404 and nothing changes
 
 ### Requirement: AUTH-32 The account with products is kept
-Products SHALL be bots not deleted, sites, demos and access keys. When one account has products and the other has none, the account with products SHALL be kept. When neither has products, the account of the current session SHALL be kept. When both have products, the merge SHALL be refused with 409 `both_have_products`. A merge SHALL NOT change, move or delete any product.
+Products SHALL be bots not deleted, sites, demos and access keys. When one account has products and the other has none, the account with products SHALL be kept; when neither has, the current session's; an admin's account (SEC-14) SHALL always be kept, and refused with 409 `other_has_products` when the other has products. When both have products: 409 `both_have_products`. A merge SHALL NOT change, move or delete any product.
 
 #### Scenario: The other account has bots
-- **GIVEN** the current email account has no products, and the phone account has 2 bots
-- **WHEN** the merge is done
-- **THEN** the phone account is kept, with its 2 bots unchanged, and now has the email too
+- **GIVEN** Sara's phone account has no products and her email account has a bot
+- **WHEN** she merges them
+- **THEN** the email account is kept with its bot and gets the phone
+
+#### Scenario: Admin
+- **GIVEN** the admin's phone account and an email account of the same person with no products
+- **WHEN** the merge is done with the admin's TOTP code (SEC-15)
+- **THEN** the admin's account is kept and gets the email; the email account is deleted
 
 #### Scenario: Neither has products
 - **WHEN** two accounts with no products are merged
@@ -738,12 +743,16 @@ After a merge the other account SHALL be deleted with its sessions, and the pers
 - **THEN** the audit log has `user 9 merged into user 4`, and the access log rows of user 9 are unchanged
 
 ### Requirement: AUTH-39 A verified phone makes a builder
-When `Identity:AutoBuilder` is on (start true), a user with a verified phone and builder state `none` SHALL become `approved` at an SMS login, when the phone is added (AUTH-26) and after a merge (AUTH-33). `requested` and `refused` SHALL NOT change. The requests open when this change is installed SHALL be approved once.
+With `Identity:AutoBuilder` on (start true), a user with a verified phone SHALL be a builder (`approved`) with no request or approval (owner, 2026-11-27): at an SMS login, when the phone is added (AUTH-26), after a merge (AUTH-33), and once for every such user when this change is installed, whatever the state was, except `refused` by an admin. `POST /api/account/builder` SHALL stay for old clients and do the same. A user with no phone SHALL still get 403 `phone_required`.
 
 #### Scenario: New SMS user
-- **GIVEN** `Identity:AutoBuilder` is on
-- **WHEN** a new person logs in by SMS code
+- **WHEN** a new user logs in by SMS
 - **THEN** `GET /api/me` says `builder` `approved`
+
+#### Scenario: Old states
+- **GIVEN** users with a phone in the states `none`, `requested` and `refused`
+- **WHEN** this change is installed
+- **THEN** the first two are `approved`, and the refused one stays `refused`
 
 #### Scenario: Phone added
 - **GIVEN** `Identity:AutoBuilder` is on and an email user with no phone
