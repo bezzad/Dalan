@@ -46,6 +46,7 @@ public static class NotificationService
             .RemoveAllLoggers();
         services.AddSingleton<InboxService>();
         services.AddSingleton<IInbox>(provider => provider.GetRequiredService<InboxService>());
+        services.AddSingleton<Dalan.Identity.Contracts.IUserMergeListener>(provider => provider.GetRequiredService<InboxService>());
         services.AddSingleton<InboxSweep>();
         services.AddHostedService(provider => provider.GetRequiredService<InboxSweep>());
         return services;

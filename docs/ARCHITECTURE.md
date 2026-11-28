@@ -27,7 +27,7 @@ Identity    Relay      Notification     Admin       Sites
 |---|---|---|
 | **Identity** | users, phone numbers, password hashes, TOTP, refresh tokens, builder approval | **sync** calls (a token is needed now) |
 | **Relay** (core) | bots, memberships, messages, the in-memory queue of each bot | sync in; **async** out to bots (queue + long polling) |
-| **Notification** | push subscriptions | **async**, except the login SMS (`ISmsSender`) and the subscription calls (`IWebPush`), which are sync. It gets "send this to this receiver by this channel" and knows no business. Channels: Web Push and SMS, later Email |
+| **Notification** | push subscriptions, inbox | **async**, except the login SMS (`ISmsSender`) and the subscription calls (`IWebPush`), which are sync. It gets "send this to this receiver by this channel" and knows no business. Channels: Web Push and SMS, later Email |
 | **Admin** | settings the admin changed, audit log, access log; the one admin door `/api/admin/...` | sync. Other services write the access log and audit log through `IAccessLog` and `IAuditLog`; Admin calls `IUserAdmin` (Identity) and `IBotAdmin` (Relay) for users and bots |
 | **Sites** (Layer 2) | site names (`sites.sites`), the open agent sessions and waiting requests (in memory, `TunnelHub`) | sync in (`/api/tunnel`, `/api/sites`); site hosts go through `SiteProxy` before anything else. Uses `IUserDirectory` and `IAccessLog` only. `.Contracts`: `ISiteAdmin` (sites online, for the admin overview) |
 
@@ -83,6 +83,7 @@ Dependency rules (enforced by architecture tests, see `openspec/specs/architectu
 - Only Admin uses `IUserAdmin`, the one contract with phone numbers (AUTH-02).
 - Account merge (m17): Identity writes `identity.merges` in the merge transaction (its outbox), then calls every `IUserMergeListener` (Identity.Contracts); `MergeFollowUp` tries again until all are done. Relay moves and joins the chats, sets `relay.moved_chats`, queues a `chat_moved` update and moves push subscriptions (`IWebPush.MoveAsync`). Which account is kept comes from every `IUserHoldings` (Relay, Sites).
 - Push: `MessageChanged` has a `new` flag. For each new bot message the outbox worker calls `IWebPush.Send` (Notification.Contracts), which only puts the push in an in-memory queue; a few workers in Notification send it. A push lost in a restart is not sent again; the message arrives by sync.
+- Inbox (m38): `IInbox.AddAsync` (Notification.Contracts) stores a notice in `notification.inbox` and returns; the push goes through the same queue, and its worker reports how many devices took it. None (no device, push off, queue full, every device failed or timed out) means one SMS to the user's phone (`IUserPhones`, only Notification uses it), at most `Notification:InboxSmsPerDay` in 24 hours, recorded in the access log. Sites calls it for every admin (`IUserDirectory.AdminIdsAsync`) when a site name is made (SITE-25). The bell reads `/api/inbox` on each screen change.
 
 ## 5. Data
 

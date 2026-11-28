@@ -143,6 +143,22 @@ public class InboxTests(PostgresServer postgres)
             $"SELECT array_agg(title) FROM notification.inbox WHERE user_id = {userId}"));
     }
 
+    [Fact]
+    [Trait("Rule", "NTF-12")]
+    [Trait("Rule", "AUTH-34")]
+    public async Task NTF12_a_merge_moves_the_notices_to_the_kept_account()
+    {
+        await using var app = await StartAsync();
+        var gone = await app.AddUserAsync("Gone");
+        var (kept, keptId) = await app.LoginAsync("Kept");
+        await Inbox(app).AddAsync(gone, "old news", "", null, Cancel);
+
+        foreach (var listener in app.Services.GetServices<Dalan.Identity.Contracts.IUserMergeListener>())
+            await listener.UserMergedAsync(gone, keptId, Cancel);
+
+        Assert.Equal("old news", Assert.Single((await ListAsync(kept)).GetProperty("notices").EnumerateArray()).GetProperty("title").GetString());
+    }
+
     // ---------- NTF-13 ----------
 
     [Fact]

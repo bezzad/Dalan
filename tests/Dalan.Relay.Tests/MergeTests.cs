@@ -15,8 +15,11 @@ public class MergeTests(PostgresServer postgres)
 {
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
-    private static Task MergeAsync(DalanApp app, long fromUserId, long intoUserId) =>
-        app.Services.GetServices<IUserMergeListener>().Single().UserMergedAsync(fromUserId, intoUserId, Cancel);
+    /// <summary>Every listener, as Identity calls them (Relay, and Notification for the inbox).</summary>
+    private static async Task MergeAsync(DalanApp app, long fromUserId, long intoUserId)
+    {
+        foreach (var listener in app.Services.GetServices<IUserMergeListener>()) await listener.UserMergedAsync(fromUserId, intoUserId, Cancel);
+    }
 
     private static async Task<string[]> TextsAsync(HttpClient browser, long botId) =>
         [.. (await browser.HistoryAsync(botId)).Select(m => m.GetProperty("text").GetString()!)];

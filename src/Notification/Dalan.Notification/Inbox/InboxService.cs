@@ -24,7 +24,7 @@ public sealed partial class InboxService(
     IOptionsMonitor<NotificationOptions> options,
     TimeProvider time,
     IHostApplicationLifetime lifetime,
-    ILogger<InboxService> logger) : IInbox
+    ILogger<InboxService> logger) : IInbox, IUserMergeListener
 {
     public async Task AddAsync(long userId, string title, string text, string? link, CancellationToken cancellationToken)
     {
@@ -39,6 +39,14 @@ public sealed partial class InboxService(
         var tag = string.Create(CultureInfo.InvariantCulture, $"inbox-{notice.Id}");
         var delivered = push.DeliverAsync(userId, new PushNote(title, text, link ?? "/dashboard", tag));
         _ = FollowUpAsync(notice, delivered);
+    }
+
+    /// <summary>AUTH-34: the notices of the gone user belong to the kept one. Safe to run twice.</summary>
+    public async Task UserMergedAsync(long fromUserId, long intoUserId, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        await db.Inbox.Where(n => n.UserId == fromUserId)
+            .ExecuteUpdateAsync(set => set.SetProperty(n => n.UserId, intoUserId), cancellationToken);
     }
 
     /// <summary>NTF-13: when the push reached no device, one short SMS, within the daily limit.</summary>
