@@ -20,6 +20,8 @@
     <button type="submit" class="primary">Send</button>
   </form>
 </main>
+<!-- main.ts show(): the connection status for screen readers comes after the screen (CLI-75). -->
+<div class="sr-only" role="status">Connected</div>
 <script type="module">
   import { openHtml, openPicture } from "/viewer.js";
   import { openEditor } from "/editor.js";

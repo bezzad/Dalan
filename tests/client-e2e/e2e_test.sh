@@ -2,6 +2,7 @@
 # Rule: CLI-90
 # Rule: SEC-16
 # Rule: CLI-81
+# Rule: CLI-86
 # The browser tests (m32 task 3.2): the built client in Chromium and in WebKit as an iPhone, with the view host on its own origin.
 # Needs client/dist (the client step builds it first).
 set -euo pipefail

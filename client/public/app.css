@@ -895,7 +895,8 @@ main.wide .card .admin-setting .control .row:first-child { flex-wrap: nowrap; al
 .totp .secret { padding: 4px 8px; border-radius: 6px; background: var(--bg); overflow-wrap: anywhere; }
 ol.recovery { columns: 2; margin: 0; padding-inline-start: 24px; font-family: var(--mono); }
 /* CLI-75: while the live stream is down, a thin ring turns around the header icon. Nothing moves; there is no bar. */
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* At the top: after a full-height screen it would make the page 1px taller, and the page would scroll. */
+.sr-only { position: absolute; inset-block-start: 0; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .ring { position: relative; }
 .ring::after {
   content: "";

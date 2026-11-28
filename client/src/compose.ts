@@ -74,7 +74,8 @@ export function expandShown(lines: number): boolean {
  */
 export function grow(box: HTMLTextAreaElement): number {
   box.style.height = "auto";
-  box.style.height = `${box.scrollHeight}px`;
+  // The height is the border box (box-sizing), and scrollHeight has no border: without it the box is 2px short and scrolls.
+  box.style.height = `${box.scrollHeight + box.offsetHeight - box.clientHeight}px`;
   const style = getComputedStyle(box);
   const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
   return lineCount(box.scrollHeight - padding, parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.4);
