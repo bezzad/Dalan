@@ -1285,7 +1285,7 @@ The admin settings page SHALL group the settings by service and show each as a s
 - **THEN** a question shows the old and the new value, and nothing saves until the admin confirms
 
 ### Requirement: CLI-92 Second factor in the app
-"Login and security" (CLI-77) SHALL have a second-factor card: Set up shows the QR (from the server), the secret to copy and a code box; a right code shows the recovery codes once with Copy and Download. When a login answers `totp_required`, the login screen SHALL ask for the code (or a recovery code) and then finish the login. For an admin the card SHALL have no Turn off.
+"Login and security" (CLI-77) SHALL have a second-factor card: Set up shows the QR, the secret and a code box; a right code shows the recovery codes once with Copy and Download. On `totp_required` the login screen SHALL ask for the code or a recovery code, with a checkbox "Don't ask for the code on this device", off at first, sent as `trust` (AUTH-44). While it is on, the card SHALL list trusted devices with Forget and "Forget all" (AUTH-45); an admin's has no Turn off.
 
 #### Scenario: Set up
 - **WHEN** the user presses Set up and types the code from the authenticator app
@@ -1295,6 +1295,11 @@ The admin settings page SHALL group the settings by service and show each as a s
 - **GIVEN** a password login answered `totp_required`
 - **WHEN** the user types a right code
 - **THEN** the login finishes as usual
+
+#### Scenario: Trust this device
+- **GIVEN** the login step
+- **WHEN** the user ticks "Don't ask for the code on this device" and sends a right code
+- **THEN** the call has `trust` true; without the tick it has `trust` false
 
 ### Requirement: CLI-91 Offline bar in the chat
 While the bot of the open chat is offline (its status, CLI-19, has `online` false), the chat SHALL show a bar above the input. The bar SHALL name the bot as `@username`, say it will not answer now, and say messages wait and show "not delivered" if it does not come back in time. It SHALL NOT show for an online or suspended bot (CLI-25). Sending is not blocked.
