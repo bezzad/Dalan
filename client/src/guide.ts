@@ -1,6 +1,7 @@
 // CLI-38: the step-by-step guide at /guide, for a builder with no AI agent. Pure texts, so tests run without a browser.
 // The addresses and numbers come from the public settings (rule 4), never from this file.
 import { httpCommand, installCommands, serviceCommands } from "./appGuide.ts";
+import { texts } from "./i18n.ts";
 import type { Lang, PublicNumbers } from "./pages.ts";
 
 export interface Sample { name: string; code: string }
