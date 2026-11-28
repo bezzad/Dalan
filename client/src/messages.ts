@@ -268,6 +268,14 @@ export function loadsAnew(from: string, to: string, standalone: boolean): boolea
   return bot(from) !== bot(to);
 }
 
+/** CLI-52: a finger held this long on a message, with no move, opens its menu (Safari sends no "contextmenu" on touch). */
+export const longPressMs = 500;
+
+/** CLI-52: a finger that moved more than 10 pixels is a scroll, not a long press. */
+export function longPressKept(dx: number, dy: number): boolean {
+  return Math.abs(dx) <= 10 && Math.abs(dy) <= 10;
+}
+
 /** CLI-89: the picture types shown in the page (SEC-12 sends these inline). Not SVG: it can hold script. */
 const pictureTypes = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 

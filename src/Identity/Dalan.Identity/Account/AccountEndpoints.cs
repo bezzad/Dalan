@@ -102,8 +102,8 @@ internal static partial class AccountEndpoints
     }
 
     /// <summary>
-    /// AUTH-19: asks for the right to create bots. Needs a phone (level 2). With Identity:AutoBuilder on (AUTH-39) "none"
-    /// is approved at once; a refused user's new request waits for the admin. An approved user stays approved.
+    /// AUTH-19: asks for the right to create bots. Needs a phone (level 2). With Identity:AutoBuilder on (AUTH-39) "none" and
+    /// "requested" are approved at once and "refused" stays; with it off, "none" and "refused" wait for the admin.
     /// </summary>
     private static async Task<IResult> AskBuilderAsync(
         HttpContext http, IDbContextFactory<IdentityDb> dbFactory, UserAdmin users, TimeProvider time,
@@ -118,10 +118,12 @@ internal static partial class AccountEndpoints
                     "To build bots, first verify your mobile number in the account screen.");
             }
 
+            // AUTH-39: with the auto builder a request would be approved at the next SMS login, so "refused" stays.
             var auto = options.CurrentValue.AutoBuilder;
-            await db.Users.Where(u => u.Id == userId && (u.Builder == BuilderState.None || u.Builder == BuilderState.Refused))
+            var from = auto ? BuilderState.Requested : BuilderState.Refused;
+            await db.Users.Where(u => u.Id == userId && (u.Builder == BuilderState.None || u.Builder == from))
                 .ExecuteUpdateAsync(set => set
-                    .SetProperty(u => u.Builder, u => auto && u.Builder == BuilderState.None ? BuilderState.Approved : BuilderState.Requested)
+                    .SetProperty(u => u.Builder, auto ? BuilderState.Approved : BuilderState.Requested)
                     .SetProperty(u => u.BuilderRequestedAt, time.GetUtcNow()), http.RequestAborted);
         }
 

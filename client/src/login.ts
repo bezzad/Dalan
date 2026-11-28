@@ -208,6 +208,8 @@ export function loginScreen(
     const name = nameInput();
     const nameLabel = h("label", { for: "name", hidden: true }, t(way.newName));
     name.hidden = name.disabled = true;
+    // CLI-95: a new email makes a new account; the person may have one already, by mobile number.
+    const newAccount = h("p", { class: "note", hidden: true }, t("newAccountNote"));
 
     // CLI-61: "Send again" is off while the server would refuse it, with the time left on it.
     const again = h("button", { type: "button", class: "link" });
@@ -241,7 +243,7 @@ export function loginScreen(
     const view = form(way.title, way.sent, "login", [
       h("p", { dir: "ltr" }, to),
       h("label", { for: "code" }, t("code")), code,
-      nameLabel, name,
+      newAccount, nameLabel, name,
       again,
       h("button", { type: "button", class: "link", onclick: () => open(channel) }, t(way.change)),
     ], async () => {
@@ -251,6 +253,7 @@ export function loginScreen(
       } catch (failure) {
         if (!(failure instanceof ApiError && failure.code === "name_required")) throw failure;
         nameLabel.hidden = name.hidden = name.disabled = false;
+        newAccount.hidden = channel !== "email";
         name.focus();
       }
     });

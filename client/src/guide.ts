@@ -1,6 +1,7 @@
 // CLI-38: the step-by-step guide at /guide, for a builder with no AI agent. Pure texts, so tests run without a browser.
 // The addresses and numbers come from the public settings (rule 4), never from this file.
 import { httpCommand, installCommands, serviceCommands } from "./appGuide.ts";
+import { texts } from "./i18n.ts";
 import type { Lang, PublicNumbers } from "./pages.ts";
 
 export interface Sample { name: string; code: string }
@@ -148,12 +149,12 @@ export function siteGuideSteps(lang: Lang, numbers: PublicNumbers): GuideStep[] 
     { title: "برنامه‌ی رابط دالان را نصب کنید", text: "روی کامپیوتری که سایت روی آن اجرا می‌شود، این دستور را اجرا کنید:", samples },
     { title: "دسترسی سایت را با کلید ثبت کنید", text: "اگر اولین بار است سایتی به ما می‌سپاری، اول باید دسترسی سایت را با کلید ثبت کنی. «ساخت کلید» را بزنید؛ کلید همین‌جا ساخته می‌شود و دستور ورود را در ترمینال همان کامپیوتر اجرا کنید. کلید فقط یک بار نمایش داده می‌شود.", key: true },
     { title: "امتحان کنید", text: "سایت را روی کامپیوتر خود اجرا کنید (برای نمونه روی پورت ۳۰۰۰) و سپس این دستور را اجرا کنید. تا وقتی ترمینال باز است، سایت آنلاین می‌ماند و با Ctrl+C متوقف می‌شود. آدرس عمومی سایت در «برنامه‌های من» نمایش داده می‌شود.", code: run },
-    { title: "سایت را همیشه آنلاین نگه دارید", text: "وقتی سایت کار کرد، دستور قبلی را با Ctrl+C متوقف کنید و این دستور را اجرا کنید. سایت در پس‌زمینه اجرا می‌شود و پس از روشن شدن دوباره‌ی کامپیوتر هم خودکار اجرا می‌شود. وضعیت را با dalan status ببینید.", code: keep },
+    { title: "سایت را همیشه آنلاین نگه دارید", text: "وقتی سایت کار کرد، دستور قبلی را با Ctrl+C متوقف کنید و این دستور را اجرا کنید. سایت در پس‌زمینه اجرا می‌شود و پس از روشن شدن دوباره‌ی کامپیوتر هم خودکار اجرا می‌شود. وضعیت را با dalan status ببینید. " + texts.fa.serviceWindowsNote, code: keep },
   ] : [
     { title: "Log in and become a builder", text: "Log in, verify your mobile number and ask to become a builder on the \"Account\" screen. After the admin approves, \"My apps\" opens from the user menu." },
     { title: "Install the Dalan agent", text: "On the computer that runs your site, run this one line:", samples },
     { title: "Register the site access with a key", text: "If this is the first time you hand us a site, first register the site access with a key. Press \"Make a key\": the key is made right here, then run the login command in a terminal on that computer. The key is shown only once.", key: true },
     { title: "Try it", text: "Start your site on your computer (for example on port 3000) and run this command. The site is online while the terminal is open; Ctrl+C stops it. The public address of the site is in \"My apps\".", code: run },
-    { title: "Keep it online", text: "When it works, stop the command above with Ctrl+C and run this one. The site runs in the background and starts again after a restart. Check it with dalan status.", code: keep },
+    { title: "Keep it online", text: "When it works, stop the command above with Ctrl+C and run this one. The site runs in the background and starts again after a restart. Check it with dalan status. " + texts.en.serviceWindowsNote, code: keep },
   ];
 }

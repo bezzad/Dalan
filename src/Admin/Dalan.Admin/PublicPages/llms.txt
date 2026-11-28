@@ -81,6 +81,9 @@ An approved builder shows a web app that runs on their own computer at `https://
     dalan http 3000 --name mysite                  try it: online while the terminal is open, Ctrl+C stops it
     dalan service install                          keep it online in the background, also after a restart
     dalan status                                   the service and each site, online or offline
+    dalan service uninstall                        stop the service and remove it
+
+- On Windows the service is the user's Run key: it starts at log-on (not at boot) and is not started again after a crash. Log: `%APPDATA%\dalan\dalan.log`. Linux: `journalctl --user -u dalan`; macOS: `~/Library/Logs/dalan.log`.
 
 - `GET /api/sites`: your sites with `online`; `POST /api/sites` with `{"name": "mysite"}` reserves a name (3 to 32 of a-z, 0-9 and -).
 - Answers stream, so Server-Sent Events work. WebSocket from the visitor to the app does not work yet.

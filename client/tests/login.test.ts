@@ -1,4 +1,4 @@
-// Rules: CLI-36, CLI-62
+// Rules: CLI-36, CLI-62, CLI-95
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
@@ -102,4 +102,17 @@ test("CLI-61 the code screen can send again, and no text says tomorrow", () => {
   }
   assert.match(texts.en.tryAgainIn, /\{time\}/);
   assert.match(texts.fa.tryAgainIn, /\{time\}/);
+});
+
+test("CLI-95 a new email address shows, above the name box, that this makes a new account and how to add the email instead", () => {
+  const login = readFileSync(new URL("../src/login.ts", import.meta.url), "utf8");
+  // The note is hidden until the server asks for a name, and only on the email way.
+  assert.match(login, /const newAccount = h\("p", \{ class: "note", hidden: true \}, t\("newAccountNote"\)\);/);
+  assert.match(login, /newAccount\.hidden = channel !== "email";/);
+  assert.match(login, /newAccount, nameLabel, name,/);
+  assert.match(texts.en.newAccountNote, /new account/);
+  assert.match(texts.en.newAccountNote, /mobile number/);
+  assert.match(texts.en.newAccountNote, new RegExp(texts.en.sectionProfile));
+  assert.match(texts.fa.newAccountNote, /حساب تازه/);
+  assert.match(texts.fa.newAccountNote, new RegExp(texts.fa.sectionProfile));
 });

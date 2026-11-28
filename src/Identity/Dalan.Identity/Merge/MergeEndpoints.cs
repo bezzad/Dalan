@@ -4,6 +4,7 @@ using Dalan.Identity.Codes;
 using Dalan.Identity.Data;
 using Dalan.Identity.EmailLogin;
 using Dalan.Identity.GitHubLogin;
+using Dalan.Identity.Passwords;
 using Dalan.Identity.Sessions;
 using Dalan.Identity.SmsLogin;
 using Dalan.Identity.Users;
@@ -20,6 +21,8 @@ namespace Dalan.Identity.Merge;
 internal static class MergeEndpoints
 {
     private sealed record EmailRequest(string? Email, string? Code);
+
+    private sealed record MergeRequest(string? Code);
 
     public static void MapMerge(this IEndpointRouteBuilder endpoints)
     {
@@ -48,17 +51,33 @@ internal static class MergeEndpoints
         return await merger.PlanAsync(sessionId, userId, http.RequestAborted) is { } plan ? AuthJson.Ok(plan) : NoMerge();
     }
 
-    /// <summary>AUTH-34: the person is then logged in as the kept account.</summary>
+    /// <summary>
+    /// AUTH-34: the person is then logged in as the kept account. SEC-15: a merge with an admin needs the admin's code
+    /// in <c>{"code": "..."}</c>; then the session is the admin's, who just gave the second factor.
+    /// </summary>
     private static async Task<IResult> MergeAsync(
-        HttpContext http, SessionTokens sessions, AccountMerger merger, UserAdmin users, IAccessLog accessLog)
+        HttpContext http, SessionTokens sessions, AccountMerger merger, UserAdmin users, PasswordTries tries, SecurityLog log,
+        IAccessLog accessLog)
     {
         var userId = SessionTokens.UserId(http.User);
         // ADM-01: this door knows its caller.
         await accessLog.RecordAsync(AccessActor.User, userId, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
         if (await sessions.SessionIdAsync(http, userId) is not { } sessionId) return AuthJson.Unauthorized();
-        if (await merger.MergeAsync(sessionId, userId, http.RequestAborted) is not { } plan) return NoMerge();
 
-        if (plan.Refusal is { } refusal) return Refused(refusal, plan.Field);
+        // The body is optional: only a merge with an admin needs it.
+        var code = http.Request.ContentLength is 0 ? null : (await AuthJson.ReadAsync<MergeRequest>(http))?.Code?.Trim();
+        // SEC-09, SEC-15: guessing the admin's code is limited like a password, per user and per address.
+        var address = http.Connection.RemoteIpAddress?.ToString() ?? "";
+        if (!string.IsNullOrEmpty(code) && tries.Check($"merge-code:{userId}", address) is { } wait)
+            return AuthJson.TooManyRequests(http, "rate_limited", wait, $"Too many wrong codes. Wait {AuthJson.Seconds(wait)} second(s).");
+        if (await merger.MergeAsync(sessionId, userId, code, http.RequestAborted) is not { } plan) return NoMerge();
+
+        if (plan.Refusal is { } refusal)
+        {
+            if (refusal == "admin_code" && !string.IsNullOrEmpty(code)) log.LoginFailed("merge", $"wrong admin code from user {userId}");
+            return Refused(refusal, plan.Field);
+        }
+
         await users.ApproveByPhoneAsync(plan.KeptId, http.RequestAborted);
         if (plan.KeptId != userId)
             await sessions.SignInAsync(http, plan.KeptId, http.User.FindFirstValue(SessionTokens.MethodClaim) ?? SessionTokens.ByDevLogin);
@@ -149,12 +168,17 @@ internal static class MergeEndpoints
 
     private static IResult Refused(string refusal, string? field) => refusal switch
     {
+        "other_has_products" => AuthJson.Error(StatusCodes.Status409Conflict, "other_has_products",
+            "The admin's account is kept, and the other account has bots, sites or access keys. Delete them first: a merge never deletes them."),
         "both_have_products" => AuthJson.Error(StatusCodes.Status409Conflict, "both_have_products",
             "Both accounts have bots, sites or access keys. Dalan does not move them, so these accounts cannot be merged."),
         "merge_conflict" => AuthJson.Error(StatusCodes.Status409Conflict, "merge_conflict",
             $"Both accounts have a different {field}. An account has only one, so these accounts cannot be merged."),
         "admin" => AuthJson.Error(StatusCodes.Status403Forbidden, "admin_merge",
-            "One of these accounts is an admin of Dalan. An admin account cannot be merged."),
+            "Both accounts are admins of Dalan. Two admin accounts cannot be merged."),
+        "admin_code" => AuthJson.Error(StatusCodes.Status403Forbidden, "admin_merge",
+            """One of these accounts is an admin of Dalan. Send the admin's code as {"code": "123456"}: the 6 digits """ +
+            "the authenticator app shows now, or an unused recovery code. The admin's account is kept."),
         _ => AuthJson.Suspended(),
     };
 }
