@@ -7,7 +7,7 @@ import { builderView, keysShown, type BuilderState } from "../panels.ts";
 export type SectionId =
   | "chats" | "bots" | "apps"
   | "profile" | "security" | "notifications" | "preferences" | "builder" | "keys"
-  | "overview" | "requests" | "users" | "adminBots" | "showcase" | "messages" | "adminSettings" | "access" | "audit";
+  | "overview" | "requests" | "users" | "adminBots" | "showcase" | "messages" | "adminSettings" | "access" | "audit" | "backup";
 export type GroupId = "workspace" | "account" | "building" | "admin";
 
 export interface Section {
@@ -48,6 +48,7 @@ export const sections: readonly Section[] = [
   { id: "adminSettings", group: "admin", glyph: "settings", title: "tabSettings", help: "adminSettingsHelp" },
   { id: "access", group: "admin", glyph: "list", title: "tabAccess", help: "adminAccessHelp" },
   { id: "audit", group: "admin", glyph: "list", title: "tabAudit", help: "adminAuditHelp" },
+  { id: "backup", group: "admin", glyph: "archive", title: "tabBackup", help: "adminBackupHelp" },
 ];
 
 const groupTitles: Record<GroupId, TextKey> = { workspace: "groupWorkspace", account: "groupAccount", building: "groupBuilding", admin: "groupAdmin" };
@@ -56,7 +57,7 @@ export const dashboardPath = "/dashboard";
 
 /** The last part of each admin address; the overview is `/dashboard/admin` itself. */
 const adminSlugs: Partial<Record<SectionId, string>> = {
-  requests: "requests", users: "users", adminBots: "bots", showcase: "showcase", messages: "messages", adminSettings: "settings", access: "access", audit: "audit",
+  requests: "requests", users: "users", adminBots: "bots", showcase: "showcase", messages: "messages", adminSettings: "settings", access: "access", audit: "audit", backup: "backup",
 };
 
 /** The address of a section: `/dashboard/profile`, `/dashboard/chats`, `/dashboard/admin/settings`. */

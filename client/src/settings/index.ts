@@ -30,7 +30,7 @@ const content: Record<AccountSection, (app: App) => HTMLElement> = {
 };
 
 const workspace = new Set<SectionId>(["chats", "bots", "apps"]);
-const admin = new Set<SectionId>(["overview", "requests", "users", "adminBots", "showcase", "messages", "adminSettings", "access", "audit"]);
+const admin = new Set<SectionId>(["overview", "requests", "users", "adminBots", "showcase", "messages", "adminSettings", "access", "audit", "backup"]);
 
 /** A workspace page is the screen it always was (its own title row, its live updates), now inside the frame. */
 function workspaceScreen(app: App, section: SectionId, sub: string | undefined): Screen {

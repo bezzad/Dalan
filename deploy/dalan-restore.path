@@ -1,0 +1,10 @@
+# OPS-20: the dashboard asks for a restore by writing the archive's name into /var/backups/dalan/requests/restore.
+[Unit]
+Description=Dalan restore on request
+
+[Path]
+PathExists=/var/backups/dalan/requests/restore
+Unit=dalan-restore.service
+
+[Install]
+WantedBy=paths.target

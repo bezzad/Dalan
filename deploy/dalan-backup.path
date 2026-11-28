@@ -1,0 +1,10 @@
+# OPS-20: the dashboard asks for a backup now by writing /var/backups/dalan/requests/backup; backup.sh removes it.
+[Unit]
+Description=Dalan backup on request
+
+[Path]
+PathExists=/var/backups/dalan/requests/backup
+Unit=dalan-backup.service
+
+[Install]
+WantedBy=paths.target

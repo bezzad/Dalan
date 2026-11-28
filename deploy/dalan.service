@@ -14,6 +14,9 @@ Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
 # Files sent in chats. systemd makes /var/lib/dalan, owned by the dalan user.
 StateDirectory=dalan
 Environment=Relay__FileFolder=/var/lib/dalan/files
+# ADM-21, ADM-22, OPS-20: the backups. The server reads the archives and writes only the uploads and the requests.
+Environment=Admin__BackupFolder=/var/backups/dalan
+ReadWritePaths=-/var/backups/dalan/uploads -/var/backups/dalan/requests
 # Secrets live only on the server, never in the repository. deploy/setup.sh writes the file with the database, signing key and push keys.
 # Must hold the database: ConnectionStrings__Dalan=Host=localhost;Database=dalan;Username=dalan;Password=...
 # Must hold the key that signs sessions (without it every restart logs all users out): Identity__SigningKey=<key>

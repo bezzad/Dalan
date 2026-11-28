@@ -65,7 +65,9 @@ chmod 440 "$sudoers"
 echo "Folders"
 install -d -m 755 -o deploy -g deploy "$root/opt/dalan" "$root/opt/dalan/releases"
 install -d -m 750 -o root -g dalan "$root/etc/dalan"
-install -d -m 700 -o postgres -g postgres "$root/var/backups/dalan"
+# OPS-20: root writes the archives; the server reads them and writes only uploads and requests (docs/SERVER.md section 4).
+install -d -m 750 -o root -g dalan "$root/var/backups/dalan"
+install -d -m 700 -o dalan -g dalan "$root/var/backups/dalan/uploads" "$root/var/backups/dalan/requests"
 
 base64url() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
 hex_bytes() { local hex; hex=$(cat); printf '%b' "$(printf '%s' "$hex" | sed 's/../\\x&/g')"; }
@@ -206,13 +208,13 @@ printf 'DALAN_SITE_DOMAIN=%s\nDALAN_API_DOMAIN=%s\nDALAN_TUNNEL_DOMAIN=%s\nAdmin
   "$site" "$api" "$tunnel" "$site" "$api" "$site" "$tunnel" "${SITES_DOMAIN:-}" "${SITES_DOMAIN:-}" > "$domains_file"
 chmod 644 "$domains_file"
 rm -f "$root/etc/dalan/caddy.env"
-install -m 755 "$here/backup.sh" "$here/drill.sh" "$root/opt/dalan/tools/"
-for unit in dalan.service caddy.service dalan-backup.service dalan-backup.timer; do
+install -m 755 "$here/backup.sh" "$here/restore.sh" "$here/drill.sh" "$root/opt/dalan/tools/"
+for unit in dalan.service caddy.service dalan-backup.service dalan-backup.timer dalan-backup.path dalan-restore.path dalan-restore.service; do
   install -m 644 "$here/$unit" "$root/etc/systemd/system/$unit"
 done
 systemctl daemon-reload
 systemctl enable dalan.service
-systemctl enable --now dalan-backup.timer
+systemctl enable --now dalan-backup.timer dalan-backup.path dalan-restore.path
 
 if [ "${PULL_DEPLOY:-}" = 1 ]; then
   echo "Build on this server (OPS-16)"

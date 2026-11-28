@@ -9,7 +9,7 @@ mkdir -p "$bin" "$state" "$root"/{etc/sudoers.d,etc/dkimkeys,etc/systemd/system,
 
 # The setup folder as install.sh copies it: deploy/ plus a fake caddy binary.
 src="$tmp/dalan-setup"; mkdir "$src"
-cp "$deploy"/{setup.sh,backup.sh,drill.sh,Caddyfile,dalan.service,caddy.service,dalan-backup.service,dalan-backup.timer} "$src/"
+cp "$deploy"/{setup.sh,backup.sh,restore.sh,drill.sh,Caddyfile,dalan.service,caddy.service,dalan-backup.service,dalan-backup.timer,dalan-backup.path,dalan-restore.path,dalan-restore.service} "$src/"
 cp "$deploy"/{wildcard-cert.sh,dalan-cert.service,dalan-cert.timer} "$src/"
 printf '#!/bin/sh\n' > "$src/caddy"; echo 'caddy 2.11.9' > "$src/caddy.version"
 echo 'ssh-ed25519 AAAA ci-deploy' > "$src/deploy.pub"
@@ -87,6 +87,21 @@ cmp -s "$src/deploy.pub" "$root/home/deploy/.ssh/authorized_keys" || fail "deplo
 grep -q 'CREATE DATABASE dalan OWNER dalan' "$state/commands.log" || fail "database not made"
 [ -f "$state/forbidden.log" ] && fail "setup called: $(cat "$state/forbidden.log")"
 echo "PASS OPS-09 fresh server"
+
+# Rule: OPS-20 backup and restore on request
+for unit in dalan-backup.path dalan-restore.path dalan-restore.service; do
+  [ -f "$root/etc/systemd/system/$unit" ] || fail "$unit not installed"
+done
+grep -qF 'systemctl enable --now dalan-backup.timer dalan-backup.path dalan-restore.path' "$state/commands.log" || fail "path units not started"
+[ -x "$root/opt/dalan/tools/restore.sh" ] || fail "restore.sh not installed"
+[ -d "$root/var/backups/dalan/uploads" ] && [ -d "$root/var/backups/dalan/requests" ] || fail "backup folders not made"
+[ "$(stat -c %a "$root/var/backups/dalan")" = 750 ] && [ "$(stat -c %a "$root/var/backups/dalan/requests")" = 700 ] || fail "backup folder modes"
+grep -qx 'PathExists=/var/backups/dalan/requests/backup' "$root/etc/systemd/system/dalan-backup.path" || fail "backup path unit"
+grep -qx 'PathExists=/var/backups/dalan/requests/restore' "$root/etc/systemd/system/dalan-restore.path" || fail "restore path unit"
+grep -qx 'ExecStart=/opt/dalan/tools/restore.sh --request' "$root/etc/systemd/system/dalan-restore.service" || fail "restore unit"
+grep -qx 'ReadWritePaths=-/var/backups/dalan/uploads -/var/backups/dalan/requests' "$root/etc/systemd/system/dalan.service" || fail "dalan may not write uploads and requests"
+grep -q '^User=' "$root/etc/systemd/system/dalan-backup.service" && fail "the backup must run as root"
+echo "PASS OPS-20 backup and restore on request"
 
 # Rule: OPS-18 no key: no timer, no key file; Caddy's group is there, so caddy.service still starts
 grep -qF 'dalan-cert.timer' "$state/commands.log" && fail "certificate timer enabled without the key"
@@ -350,7 +365,7 @@ chmod +x "$inst/bin"/*
 mkdir "$inst/pkg" && printf '#!/bin/sh\n' > "$inst/pkg/caddy" && tar -czf "$inst/caddy_${ci_version}_linux_amd64.tar.gz" -C "$inst/pkg" caddy
 PATH="$inst/bin:$PATH" bash "$deploy/install.sh" admin@server dalanet.ir api.dalanet.ir "$src/deploy.pub" >/dev/null || fail "install.sh failed"
 grep -q "releases/download/v${ci_version}/caddy_${ci_version}_linux_amd64.tar.gz" "$inst/urls.log" || fail "install.sh did not fetch Caddy $ci_version"
-for f in caddy setup.sh drill.sh backup.sh Caddyfile caddy.service deploy.pub; do [ -f "$inst/copied/$f" ] || fail "$f not copied"; done
+for f in caddy setup.sh drill.sh backup.sh restore.sh dalan-backup.path dalan-restore.path dalan-restore.service Caddyfile caddy.service deploy.pub; do [ -f "$inst/copied/$f" ] || fail "$f not copied"; done
 grep -q "ssh -t admin@server sudo bash /tmp/dalan-setup/setup.sh 'dalanet.ir' 'api.dalanet.ir' /tmp/dalan-setup/deploy.pub" "$inst/remote.log" || fail "setup not run: $(cat "$inst/remote.log")"
 [ -f "$inst/copied/settings.env" ] && [ ! -s "$inst/copied/settings.env" ] || fail "settings.env should be empty without settings"
 rm -rf "$inst/copied" "$inst/remote.log"

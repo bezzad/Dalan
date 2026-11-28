@@ -1,6 +1,6 @@
 // The admin pages of the dashboard (CLI-81): overview (CLI-82), builder requests, users, bots, showcase review, contact
-// messages (ADM-18), settings (CLI-83), the access log and the audit log. The server still checks every call (SEC-14).
-import { ApiError, api, type AccessRow, type AdminBot, type AdminOverview, type AdminUser, type ContactMessage, type ShowcaseRequest } from "./api.ts";
+// messages (ADM-18), settings (CLI-83), the access log, the audit log and the backups (CLI-99). The server still checks every call (SEC-14).
+import { ApiError, api, type AccessRow, type AdminBot, type Backup, type AdminOverview, type AdminUser, type ContactMessage, type ShowcaseRequest } from "./api.ts";
 import { errorText, type App } from "./app.ts";
 import { h } from "./dom.ts";
 import { toast } from "./toast.ts";
@@ -8,10 +8,10 @@ import type { TextKey } from "./i18n.ts";
 import { categoryName, initial } from "./pages.ts";
 import { cleanValue, settingGroups, settingMatches, settingName, utc, type Setting } from "./panels.ts";
 import { adminDetailPath, sectionPath, type SectionId } from "./settings/model.ts";
-import { botCells, userCells } from "./adminTables.ts";
+import { backupDetail, backupStatus, botCells, restoreAllowed, restoreWord, userCells } from "./adminTables.ts";
 
 /** The admin sections of the dashboard (settings/model.ts). */
-export type AdminSection = Extract<SectionId, "overview" | "requests" | "users" | "adminBots" | "showcase" | "messages" | "adminSettings" | "access" | "audit">;
+export type AdminSection = Extract<SectionId, "overview" | "requests" | "users" | "adminBots" | "showcase" | "messages" | "adminSettings" | "access" | "audit" | "backup">;
 
 /** `sub` is the id of one user or bot (CLI-93). */
 export function adminPage(app: App, section: AdminSection, sub?: string): HTMLElement {
@@ -349,9 +349,74 @@ export function adminPage(app: App, section: AdminSection, sub?: string): HTMLEl
     body.replaceChildren(list, more);
   }
 
+  // ---- backups (CLI-99, ADM-21, ADM-22): root's scripts do the work; the page asks and shows what they said ----
+  async function showBackup(): Promise<void> {
+    const state = await api.backups();
+    const busy = (button: HTMLButtonElement, run: () => Promise<void>) => {
+      button.disabled = true;
+      run().catch(failed).finally(() => { button.disabled = false; });
+    };
+    const when = (iso: string) => app.language.dateTime(iso);
+    const status = (label: TextKey, value: string | null) => {
+      const shown = backupStatus(value, t, when);
+      return shown ? [h("p", { class: shown.ok ? "note" : "error" }, `${t(label)}: ${shown.text} `, h("bdi", { dir: "ltr" }, shown.detail))] : [];
+    };
+
+    const now = h("button", { type: "button", class: "primary" }, t("backupNow"));
+    now.addEventListener("click", () => busy(now, async () => { await api.startBackup(); toast(t("backupStarted")); await showBackup(); }));
+    const file = h("input", { type: "file", accept: ".gz,application/gzip", hidden: true, "aria-label": t("backupUpload") });
+    const upload = h("button", { type: "button", onclick: () => file.click() }, t("backupUpload"));
+    file.addEventListener("change", () => {
+      const chosen = file.files?.[0];
+      if (chosen) busy(upload, async () => { await api.uploadBackup(chosen); toast(t("backupSent")); await showBackup(); });
+    });
+    const actions = h("section", { class: "card column" },
+      h("div", { class: "row wrap" }, now, upload, file),
+      ...status("backupLast", state.backup_status),
+      ...status("restoreLast", state.restore_status),
+      ...(state.backup_waiting ? [h("p", { class: "note" }, t("backupWaiting"))] : []),
+      ...(state.restore_waiting ? [h("p", { class: "error" }, t("restoreWaiting"))] : []),
+      h("p", { class: "note" }, t("backupKeepSafe")));
+
+    // The danger card (docs/UI.md): the word, then a question, then the restore.
+    const danger = h("div", { class: "column" });
+    function openRestore(backup: Backup): void {
+      const word = h("input", { id: "restore-word", type: "text", dir: "ltr", autocomplete: "off", required: true });
+      const go = h("button", { type: "submit", class: "danger", disabled: true }, t("restore"));
+      word.addEventListener("input", () => { go.disabled = !restoreAllowed(word.value); });
+      const form = h("form", {
+        class: "card danger column",
+        onsubmit: event => {
+          event.preventDefault();
+          if (!restoreAllowed(word.value) || !confirm(t("restoreConfirm"))) return;
+          busy(go, async () => { await api.restoreBackup(backup.name, restoreWord); toast(t("restoreStarted")); await showBackup(); });
+        },
+      },
+      h("h3", {}, `${t("restore")} `, h("bdi", { dir: "ltr" }, backup.name)),
+      h("p", { class: "note" }, t("restoreNote").replace("{w}", restoreWord)),
+      h("label", { for: "restore-word" }, t("restoreWordLabel")), word,
+      h("div", { class: "row" }, go, h("button", { type: "button", onclick: () => danger.replaceChildren() }, t("cancel"))));
+      danger.replaceChildren(form);
+      word.focus();
+    }
+
+    // A download is a plain link (the session cookie goes with it); a call first renews an ended session (CLI-11).
+    const download = (backup: Backup) => h("button", { type: "button", class: "small", onclick: () => {
+      api.backups().then(() => { location.href = api.backupUrl(backup.name); }, failed);
+    } }, t("download"));
+    const rows = state.backups.length === 0
+      ? h("p", { class: "note" }, t("noBackups"))
+      : h("section", { class: "card" }, h("h2", {}, t("backupList")), h("ul", { class: "rows" }, ...state.backups.map(backup => h("li", {},
+        h("div", { class: "line" },
+          h("div", { class: "who" }, h("strong", { dir: "ltr" }, backup.name), h("span", { class: "note" }, backupDetail(backup, t, when))),
+          download(backup),
+          h("button", { type: "button", class: "small", onclick: () => openRestore(backup) }, t("restore")))))));
+    body.replaceChildren(actions, danger, rows);
+  }
+
   const shows: Record<AdminSection, () => void | Promise<void>> = {
     overview: showOverview, requests: showRequests, users: showUsers, adminBots: showBots, showcase: showShowcase,
-    messages: showMessages, adminSettings: showSettings, access: () => showAccess(), audit: showAudit,
+    messages: showMessages, adminSettings: showSettings, access: () => showAccess(), audit: showAudit, backup: showBackup,
   };
   const id = sub ? Number(sub) : null;
   const show = id && section === "users" ? () => showUser(id) : id && section === "adminBots" ? () => showBot(id) : shows[section];

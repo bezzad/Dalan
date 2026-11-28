@@ -1,0 +1,11 @@
+# OPS-19, OPS-20: restore the backup the dashboard named (restore.sh --request). Started only by dalan-restore.path.
+[Unit]
+Description=Dalan restore
+After=postgresql.service
+
+[Service]
+Type=oneshot
+Environment=BACKUP_DIR=/var/backups/dalan
+ExecStart=/opt/dalan/tools/restore.sh --request
+TimeoutStartSec=1h
+PrivateTmp=true

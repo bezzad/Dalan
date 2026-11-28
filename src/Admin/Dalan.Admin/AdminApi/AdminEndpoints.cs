@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Text.Json.Serialization;
 using Dalan.Admin.Contracts;
+using Dalan.Admin.ServerBackups;
 using Dalan.Admin.Data;
 using Dalan.Admin.Settings;
 using Dalan.Identity.Contracts;
@@ -88,6 +89,7 @@ internal static class AdminEndpoints
         admin.MapPost("/bots/{botId:long}/suspend", SuspendBotAsync);
         admin.MapGet("/showcase", ShowcaseAsync);
         admin.MapPost("/showcase/{botId:long}", ReviewShowcaseAsync);
+        admin.MapBackups();
     }
 
     /// <summary>"New" users of the overview card: made in the last 7 days (CLI-82).</summary>

@@ -1,12 +1,14 @@
-# Daily database dump (OPS-11). Started by dalan-backup.timer; deploy/setup.sh installs both.
+# The backup of the server (OPS-11): daily by dalan-backup.timer, or now by dalan-backup.path (the dashboard, OPS-20).
+# deploy/setup.sh installs them. Root, because the archive holds root's files (dalan.env, the DKIM key, the certificates).
 [Unit]
-Description=Dalan database backup
+Description=Dalan backup
 After=postgresql.service
 
 [Service]
 Type=oneshot
-User=postgres
 Environment=BACKUP_DIR=/var/backups/dalan BACKUP_KEEP_DAYS=14
 # Optional: BACKUP_KEEP_DAYS=<days>
 EnvironmentFile=-/etc/dalan/backup.env
 ExecStart=/opt/dalan/tools/backup.sh
+Nice=10
+PrivateTmp=true

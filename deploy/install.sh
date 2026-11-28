@@ -68,7 +68,7 @@ send() {
 mkdir "$work/dalan-setup"
 ! send caddy "$version" || tar -xzf "$cache/$file" -C "$work/dalan-setup" caddy
 [ -z "${lego_file:-}" ] || ! send lego "$lego_version" || tar -xzf "$cache/$lego_file" -C "$work/dalan-setup" lego
-cp "$here"/{setup.sh,backup.sh,drill.sh,Caddyfile,dalan.service,caddy.service,dalan-backup.service,dalan-backup.timer} "$work/dalan-setup/"
+cp "$here"/{setup.sh,backup.sh,restore.sh,drill.sh,Caddyfile,dalan.service,caddy.service,dalan-backup.service,dalan-backup.timer,dalan-backup.path,dalan-restore.path,dalan-restore.service} "$work/dalan-setup/"
 cp "$here"/{wildcard-cert.sh,dalan-cert.service,dalan-cert.timer} "$work/dalan-setup/"
 if [ "${PULL_DEPLOY:-}" = 1 ]; then
   cp "$here"/{pull-deploy.sh,dalan-pull.service,dalan-pull.timer} "$work/dalan-setup/"

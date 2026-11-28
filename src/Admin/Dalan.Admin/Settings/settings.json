@@ -47,6 +47,22 @@
     "risky": false,
     "restart": false
   },
+  "Admin:BackupMaxUploadMb": {
+    "group": "Admin",
+    "name": {
+      "fa": "اندازه بکاپ آپلودی",
+      "en": "Uploaded backup size"
+    },
+    "help": {
+      "fa": "بیشترین اندازه فایل بکاپی که ادمین برای بازیابی آپلود می‌کند.",
+      "en": "The largest backup file the admin may upload to restore."
+    },
+    "unit": "MB",
+    "min": 10,
+    "max": 102400,
+    "risky": false,
+    "restart": false
+  },
   "Admin:BotApiUrl": {
     "group": "Admin",
     "name": {

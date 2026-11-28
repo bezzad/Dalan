@@ -37,7 +37,7 @@ bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-depl
 
 The user is root or has sudo. It downloads Caddy here, copies it with `deploy/` to the server and runs `deploy/setup.sh` with sudo. A server with less than 2 GB of memory and no swap gets a 2 GB swap file (`SWAP_MB`). The server downloads only Ubuntu packages from its mirror. It is safe to run again.
 
-Result: users `dalan` (service) and `deploy` (builds and deploys; may only `sudo systemctl restart dalan`), PostgreSQL with database `dalan`, Caddy, `rsync` (the deploy needs it), the units `dalan`, `caddy`, `dalan-backup.timer`, Postfix and OpenDKIM for the login emails, `/etc/dalan/domains.env` (the domains; written each run) and `/etc/dalan/dalan.env` with a new database password, signing key and push keys. The secrets are made once and never overwritten; setup only adds the email lines at the end when it has no `Notification__Smtp__Host` line.
+Result: users `dalan` (service) and `deploy` (builds and deploys; may only `sudo systemctl restart dalan`), PostgreSQL with database `dalan`, Caddy, `rsync` (the deploy needs it), the units `dalan`, `caddy`, `dalan-backup.timer` (with `dalan-backup.path` and `dalan-restore.path`), Postfix and OpenDKIM for the login emails, `/etc/dalan/domains.env` (the domains; written each run) and `/etc/dalan/dalan.env` with a new database password, signing key and push keys. The secrets are made once and never overwritten; setup only adds the email lines at the end when it has no `Notification__Smtp__Host` line.
 
 Admin phone and SMS go in as settings of the same command. Run it again to change them, or to move to new domains; it restarts the server by itself:
 
@@ -241,11 +241,25 @@ gh repo deploy-key add dalan-server.pub --repo bezzad/Dalan --title dalan-server
 
 Check on the server: `sudo -iu deploy git ls-remote git@github.com:bezzad/Dalan.git refs/heads/main` prints one commit.
 
-## 4. Backups
+## 4. Backups and moving the server
 
-`dalan-backup.timer` dumps the database every day to `/var/backups/dalan/dalan-<date>.dump` and keeps 14 days (`BACKUP_KEEP_DAYS` in `/etc/dalan/backup.env`). The dumps are on the same disk: copy them off the server from time to time (`scp root@<server>:/var/backups/dalan/*.dump .`). Files sent in chats are in `/var/lib/dalan/files`.
+`dalan-backup.timer` makes one archive every day: `/var/backups/dalan/dalan-<date>-<time>.tar.gz` (OPS-11). It holds the database, `dalan.env` (all secrets), `arvan.env`, `backup.env`, `/var/lib/dalan` (chat files and the "Login with Dalan" key), the DKIM key and the wildcard certificate. Not `domains.env`: setup writes it. It keeps 14 days (`BACKUP_KEEP_DAYS` in `/etc/dalan/backup.env`), uploads too.
 
-Restore: `sudo systemctl stop dalan`, then `sudo -u postgres pg_restore --clean --if-exists -d dalan <file>`, then `sudo systemctl start dalan`.
+The admin does it in the dashboard, **Admin, Backup** (`/dashboard/admin/backup`): Back up now, Download, Upload a backup, Restore. The page only writes a request file; `dalan-backup.path` and `dalan-restore.path` run the scripts as root (OPS-20). The result of each run is in `backup-status` and `restore-status` (on the page) and in `journalctl -u dalan-backup -u dalan-restore`.
+
+An archive has every secret of the server: keep downloaded ones in a safe place, never in the repository or a chat.
+
+**Move to a new server:**
+1. On the old server: Back up now, then Download (or `scp root@<old>:/var/backups/dalan/dalan-<newest>.tar.gz .`).
+2. Set up the new server with the same domains and settings (section 2). Point the DNS records to it.
+3. Restore, one of:
+   - Dashboard: log in with an admin phone (turn on two-step login), Admin, Backup, Upload a backup, then Restore on it and type `RESTORE`.
+   - Command line: `scp dalan-<date>.tar.gz root@<new>:/var/backups/dalan/`, then `sudo /opt/dalan/tools/restore.sh dalan-<date>.tar.gz`.
+4. Run `install.sh` once more with the same settings: it installs the certificate timer when the backup had `arvan.env`, and keeps every restored secret.
+
+After a restore everyone logs in again, the admin too: the sessions' key is the old server's. `restore.sh` restores the database into a new database first, so a dump that does not restore leaves the server as it was. It never takes units, programs or `domains.env` from an archive.
+
+A server set up before m41 needs `install.sh` run once more for the new folders and units.
 
 ## 5. Shutdown drill
 

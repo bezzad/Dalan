@@ -43,6 +43,8 @@ public sealed class SettingsCatalog(IConfiguration configuration)
         "Identity:GitHub:ClientId", "Identity:GitHub:CallbackUrl", "Identity:GitHub:WebUrl", "Identity:GitHub:ApiUrl",
         // Moving the folder at run time would lose the files.
         "Relay:FileFolder",
+        // OPS-20: root's scripts and the units use this folder; a stolen admin session must not point the downloads elsewhere.
+        "Admin:BackupFolder",
         // A stolen admin session must not point every user's install at other files (AGT-10).
         "Sites:AgentFolder",
         // SITE-13 is checked at start: the sites domain must never become Dalan's own (a site could set Dalan's cookies).

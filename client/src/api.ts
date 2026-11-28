@@ -153,6 +153,23 @@ export interface ContactMessage {
   read: boolean;
 }
 
+/** ADM-21: one archive of the server. */
+export interface Backup {
+  name: string;
+  size: number;
+  at: string;
+  uploaded: boolean;
+}
+
+/** ADM-21: the backups, and what the scripts said last ("ok|failed <time> <text>"). */
+export interface Backups {
+  backups: Backup[];
+  backup_waiting: boolean;
+  restore_waiting: boolean;
+  backup_status: string | null;
+  restore_status: string | null;
+}
+
 /** ADM-09 */
 export interface AuditRow {
   id: number;
@@ -438,6 +455,11 @@ export const api = {
   ownIconUrl: (botId: number) => `/api/builder/bots/${botId}/showcase/icon`,
   leaveShowcase: (botId: number) => call<null>("DELETE", `/api/builder/bots/${botId}/showcase`),
   /** ADM-13 */
+  backups: () => call<Backups>("GET", "/api/admin/backups"),
+  startBackup: () => call<null>("POST", "/api/admin/backups"),
+  backupUrl: (name: string) => `/api/admin/backups/${encodeURIComponent(name)}`,
+  uploadBackup: (file: Blob) => call<Backup>("POST", "/api/admin/backups/upload", file),
+  restoreBackup: (name: string, confirm: string) => call<null>("POST", `/api/admin/backups/${encodeURIComponent(name)}/restore`, { confirm }),
   showcaseRequests: async () => (await call<{ entries: ShowcaseRequest[] }>("GET", "/api/admin/showcase")).entries,
   reviewShowcase: (botId: number, approve: boolean) => call<null>("POST", `/api/admin/showcase/${botId}`, { approve }),
   commands: async (botId: number) =>
