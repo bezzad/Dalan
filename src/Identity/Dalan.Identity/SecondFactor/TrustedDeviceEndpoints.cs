@@ -8,13 +8,13 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Dalan.Identity.SecondFactor;
 
-/// <summary>AUTH-44: one trusted browser in the list. <see cref="Address"/> is null when the address is unknown.</summary>
+/// <summary>AUTH-44, AUTH-45: one trusted browser in the list. <see cref="Address"/> is null when the address is unknown.</summary>
 internal sealed record TrustedDeviceJson(
     long Id, string Browser, string System, string? Address, DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt, bool Current);
 
 internal sealed record TrustedDevicesResponse(IEnumerable<TrustedDeviceJson> Devices);
 
-/// <summary>AUTH-44: the browsers that skip the second factor, and forgetting one or all. Only with a session; each call writes the access log.</summary>
+/// <summary>AUTH-44, AUTH-45: the browsers that skip the second factor, and forgetting one or all. Only with a session; each call writes the access log.</summary>
 internal static class TrustedDeviceEndpoints
 {
     public static void MapTrustedDevices(this IEndpointRouteBuilder endpoints)

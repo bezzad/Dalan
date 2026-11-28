@@ -5,7 +5,7 @@ The owner (2026-11-28): after the password, every login asks for the authenticat
 Opening the app for a code each time is slow. Most sites have "Don't ask again on this device".
 
 ## What changes
-- AUTH-44 (new): the code step has "Don't ask for the code on this device". A right code with it gives a random token
+- AUTH-44, AUTH-45 (new): the code step has "Don't ask for the code on this device". A right code with it gives a random token
   in an HttpOnly, Secure cookie (`__Host-dalan_trusted`, SameSite Lax so it also comes back from GitHub); only its hash
   is kept, with the user, browser, system, address and an end time. Then a login of that user on that browser skips the
   code. Users see their trusted devices in "Login and security" and can forget one or all.

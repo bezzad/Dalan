@@ -6,7 +6,7 @@ using static Dalan.Identity.Tests.Http;
 
 namespace Dalan.Identity.Tests;
 
-/// <summary>AUTH-44 (trust this device for the second factor), and SEC-15 for an admin on a trusted device.</summary>
+/// <summary>AUTH-44 (trust this device for the second factor), AUTH-45 (the list and forgetting), and SEC-15 for an admin on a trusted device.</summary>
 public class TrustedDeviceTests(PostgresServer postgres)
 {
     private const string Phone = "09121234567";
@@ -131,8 +131,8 @@ public class TrustedDeviceTests(PostgresServer postgres)
     }
 
     [Fact]
-    [Trait("Rule", "AUTH-44")]
-    public async Task AUTH44_list_shows_the_current_one_and_forget_makes_the_code_come_back()
+    [Trait("Rule", "AUTH-45")]
+    public async Task AUTH45_list_shows_the_current_one_and_forget_makes_the_code_come_back()
     {
         await using var app = await StartAsync();
         var (browser, secret) = await UserWithTotpAsync(app);
@@ -166,8 +166,8 @@ public class TrustedDeviceTests(PostgresServer postgres)
     }
 
     [Fact]
-    [Trait("Rule", "AUTH-44")]
-    public async Task AUTH44_setting_the_password_forgets_the_others_and_the_second_factor_forgets_all()
+    [Trait("Rule", "AUTH-45")]
+    public async Task AUTH45_setting_the_password_forgets_the_others_and_the_second_factor_forgets_all()
     {
         await using var app = await StartAsync();
         var (browser, secret) = await UserWithTotpAsync(app);
