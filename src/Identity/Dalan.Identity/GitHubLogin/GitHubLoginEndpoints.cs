@@ -117,7 +117,7 @@ internal static class GitHubLoginEndpoints
         await accessLog.RecordAsync(
             AccessActor.User, userId.Value, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
         // SEC-15: an admin with the second factor on gives its code on the page, then POST /api/auth/totp makes the session.
-        if (await factors.TicketIfNeededAsync(userId.Value, SessionTokens.ByGitHub, http.RequestAborted) is { } ticket)
+        if (await factors.TicketIfNeededAsync(http, userId.Value, SessionTokens.ByGitHub) is { } ticket)
             return Results.Redirect($"/?totp={Uri.EscapeDataString(ticket)}");
 
         await sessions.SignInAsync(http, userId.Value, SessionTokens.ByGitHub);

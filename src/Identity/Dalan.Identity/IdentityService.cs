@@ -52,6 +52,7 @@ public static class IdentityService
         services.AddSingleton<PasswordHasher>();
         services.AddSingleton<PasswordTries>();
         services.AddSingleton<SecondFactors>();
+        services.AddSingleton<TrustedDevices>();
         services.AddSingleton<AccountMerger>();
         services.AddSingleton<MergeFollowUp>();
         services.AddSingleton<OAuthKey>();
@@ -90,6 +91,7 @@ public static class IdentityService
         endpoints.MapDeleteAccount();
         endpoints.MapSessionList();
         endpoints.MapSecondFactor();
+        endpoints.MapTrustedDevices();
         endpoints.MapMerge();
         endpoints.MapAccessKeys();
         endpoints.MapAuthorize();

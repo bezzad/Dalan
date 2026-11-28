@@ -116,7 +116,7 @@ internal static class EmailLoginEndpoints
         if ((await users.GetAccessAsync(ids[0], http.RequestAborted)).IsSuspended) return AuthJson.Suspended();
 
         // SEC-15: an admin with the second factor on also gives its code.
-        if (await factors.TicketIfNeededAsync(ids[0], SessionTokens.ByEmail, http.RequestAborted) is { } ticket)
+        if (await factors.TicketIfNeededAsync(http, ids[0], SessionTokens.ByEmail) is { } ticket)
             return SecondFactorEndpoints.Ask(ticket);
 
         await sessions.SignInAsync(http, ids[0], SessionTokens.ByEmail);

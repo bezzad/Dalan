@@ -297,6 +297,18 @@ export interface AccountSession {
   current: boolean;
 }
 
+/** AUTH-44: a browser that skips the second factor. */
+export interface TrustedDevice {
+  id: number;
+  browser: string;
+  system: string;
+  /** Null when the server does not know it. */
+  address: string | null;
+  created_at: string;
+  expires_at: string;
+  current: boolean;
+}
+
 export interface Command {
   command: string;
   description: string;
@@ -333,7 +345,11 @@ export const api = {
   dropMerge: () => call<null>("DELETE", "/api/account/merge"),
   passwordLogin: (login: string, password: string) => call<LoginAnswer>("POST", "/api/auth/password", { login, password }),
   /** AUTH-37: the second step of a login that answered `totp_required`; `code` is a TOTP or a recovery code. */
-  totpLogin: (ticket: string, code: string) => call<User>("POST", "/api/auth/totp", { ticket, code }),
+  /** AUTH-44: `trust` makes this browser skip the code next time. */
+  totpLogin: (ticket: string, code: string, trust: boolean) => call<User>("POST", "/api/auth/totp", { ticket, code, trust }),
+  trustedDevices: async () => (await call<{ devices: TrustedDevice[] }>("GET", "/api/account/trusted-devices")).devices,
+  forgetTrustedDevice: (id: number) => call<null>("DELETE", `/api/account/trusted-devices/${encodeURIComponent(String(id))}`),
+  forgetTrustedDevices: () => call<null>("DELETE", "/api/account/trusted-devices"),
   /** AUTH-37: starts the set-up: the secret, its otpauth address and its QR (SVG). */
   totpStart: () => call<{ secret: string; otpauth_url: string; qr_svg: string }>("POST", "/api/account/totp"),
   totpConfirm: (code: string) => call<{ recovery_codes: string[] }>("POST", "/api/account/totp/confirm", { code }),

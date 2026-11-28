@@ -5,6 +5,7 @@ using System.Text;
 using Dalan.Identity.Data;
 using Dalan.Identity.Sessions;
 using Dalan.Identity.Users;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -18,6 +19,7 @@ internal sealed class SecondFactors(
     IDbContextFactory<IdentityDb> dbFactory,
     SessionKey key,
     UserAdmin users,
+    TrustedDevices trusted,
     IOptionsMonitor<IdentityOptions> options,
     TimeProvider time)
 {
@@ -62,7 +64,10 @@ internal sealed class SecondFactors(
         var now = time.GetUtcNow();
         await db.Database.ExecuteSqlAsync(
             $"UPDATE identity.totp SET on_at = {now}, last_step = {step} WHERE user_id = {userId}", cancellationToken);
-        await db.Database.ExecuteSqlAsync($"DELETE FROM identity.recovery_codes WHERE user_id = {userId}", cancellationToken);
+        await db.Database.ExecuteSqlAsync($"""
+            DELETE FROM identity.recovery_codes WHERE user_id = {userId};
+            DELETE FROM identity.trusted_devices WHERE user_id = {userId};
+            """, cancellationToken);
         var codes = new string[options.CurrentValue.RecoveryCodes];
         for (var i = 0; i < codes.Length; i++)
         {
@@ -107,25 +112,28 @@ internal sealed class SecondFactors(
             """, cancellationToken) == 1;
     }
 
-    /// <summary>Turns the second factor off: the secret and the recovery codes are gone.</summary>
+    /// <summary>Turns the second factor off: the secret, the recovery codes and the trusted browsers (AUTH-44) are gone.</summary>
     public async Task OffAsync(long userId, CancellationToken cancellationToken)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         await db.Database.ExecuteSqlAsync($"""
             DELETE FROM identity.recovery_codes WHERE user_id = {userId};
             DELETE FROM identity.totp WHERE user_id = {userId};
+            DELETE FROM identity.trusted_devices WHERE user_id = {userId};
             """, cancellationToken);
     }
 
     /// <summary>
     /// AUTH-37, SEC-15: a ticket when this login must also give a code: a password login of a user with the second factor
-    /// on, and every login of an admin with it on. Null: the session may start now.
+    /// on, and every login of an admin with it on; not on a browser the user trusted (AUTH-44). Null: the session may start now.
     /// </summary>
-    public async Task<string?> TicketIfNeededAsync(long userId, string method, CancellationToken cancellationToken)
+    public async Task<string?> TicketIfNeededAsync(HttpContext http, long userId, string method)
     {
+        var cancellationToken = http.RequestAborted;
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         if (!await IsOnAsync(db, userId, cancellationToken)) return null;
         if (method != SessionTokens.ByPassword && !(await users.GetAccessAsync(userId, cancellationToken)).IsAdmin) return null;
+        if (await trusted.IsTrustedAsync(http, userId)) return null;
 
         var ticket = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(32));
         var hash = TicketHash(ticket);

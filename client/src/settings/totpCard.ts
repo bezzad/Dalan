@@ -1,7 +1,8 @@
 // CLI-92: the second-factor card (AUTH-37) in "Login and security", and the only admin page while an admin has none (SEC-15).
 // Set up shows the QR from the server, the secret to copy and a code box; the first right code turns it on and shows the
-// recovery codes once, with Copy and Download. An admin has no Turn off (SEC-15).
-import { api } from "../api.ts";
+// recovery codes once, with Copy and Download. An admin has no Turn off (SEC-15). While it is on, the trusted devices
+// (AUTH-44) are listed with Forget and Forget all.
+import { api, type TrustedDevice } from "../api.ts";
 import { errorText, type App } from "../app.ts";
 import { latinDigits } from "../digits.ts";
 import { h } from "../dom.ts";
@@ -16,6 +17,35 @@ function svgNode(svg: string): Node {
   return parsed.nodeName.toLowerCase() === "svg" ? document.importNode(parsed, true) : document.createTextNode("");
 }
 
+/** AUTH-44: the browsers that skip the code. This one comes first. */
+function trustedList(app: App, failed: (failure: unknown) => void): HTMLElement {
+  const t = app.language.t.bind(app.language);
+  const list = h("ul", { class: "sessions" });
+  const all = h("button", { type: "button", hidden: true, onclick: () => {
+    if (!confirm(t("trustedForgetAllConfirm"))) return;
+    api.forgetTrustedDevices().then(load, failed);
+  } }, t("trustedForgetAll"));
+
+  function draw(devices: TrustedDevice[]): void {
+    all.hidden = devices.length === 0;
+    const sorted = [...devices].sort((a, b) => Number(b.current) - Number(a.current));
+    list.replaceChildren(...(sorted.length === 0 ? [h("li", { class: "note" }, t("trustedNone"))] : sorted.map(device => h("li", {},
+      h("div", { class: "line" },
+        h("strong", { dir: "auto" }, [device.browser, device.system].filter(Boolean).join(" · ") || t("unknownDevice")),
+        ...(device.current ? [h("span", { class: "badge ok" }, t("thisDevice"))] : [])),
+      h("span", { class: "note" }, ...(device.address ? [h("bdi", { dir: "ltr" }, device.address), " · "] : []),
+        t("trustedUntil").replace("{n}", app.language.dateTime(device.expires_at))),
+      h("button", { type: "button", class: "link", onclick: () => { api.forgetTrustedDevice(device.id).then(load, failed); } },
+        t("trustedForget"))))));
+  }
+
+  function load(): void {
+    api.trustedDevices().then(draw, failed);
+  }
+  load();
+  return h("div", { class: "column" }, settingRow(t("trustedTitle"), t("trustedHelp"), all), list);
+}
+
 export function totpCard(app: App): HTMLElement {
   const t = app.language.t.bind(app.language);
   const element = h("div", { class: "card totp" });
@@ -28,7 +58,8 @@ export function totpCard(app: App): HTMLElement {
     const start = h("button", { type: "button", onclick: () => void setUp().catch(failed) }, t("setUp"));
     const off = h("button", { type: "button", onclick: () => element.replaceChildren(turnOffForm()) }, t("totpTurnOff"));
     element.replaceChildren(settingRow(t("totpTitle"), t(app.user.admin ? "totpAdminHelp" : "totpHelp"),
-      badge(on, t), ...(on ? (app.user.admin ? [] : [off]) : [start])));
+      badge(on, t), ...(on ? (app.user.admin ? [] : [off]) : [start])),
+    ...(on ? [trustedList(app, failed)] : []));
   }
 
   async function setUp(): Promise<void> {

@@ -935,6 +935,22 @@
     "risky": false,
     "restart": false
   },
+  "Identity:TrustedDeviceDays": {
+    "group": "Identity",
+    "name": {
+      "fa": "اعتماد به دستگاه",
+      "en": "Trusted device"
+    },
+    "help": {
+      "fa": "چند روز دستگاهی که کاربر به آن اعتماد کرده، کد دومرحله‌ای نمی‌خواهد. صفر یعنی خاموش.",
+      "en": "Days a device the user trusted skips the second factor code. 0 turns it off."
+    },
+    "unit": "days",
+    "min": 0,
+    "max": 365,
+    "risky": true,
+    "restart": false
+  },
   "Notification:InboxDays": {
     "group": "Notification",
     "name": {

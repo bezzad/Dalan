@@ -18,7 +18,7 @@ internal static class SecondFactorEndpoints
 {
     private sealed record CodeRequest(string? Code);
 
-    private sealed record LoginRequest(string? Ticket, string? Code);
+    private sealed record LoginRequest(string? Ticket, string? Code, bool? Trust);
 
     public static void MapSecondFactor(this IEndpointRouteBuilder endpoints)
     {
@@ -112,7 +112,8 @@ internal static class SecondFactorEndpoints
 
     /// <summary>The second step of a login: the ticket and a code make the session, with the method of the first step.</summary>
     private static async Task<IResult> LoginAsync(
-        HttpContext http, SecondFactors factors, SessionTokens sessions, UserAdmin users, SecurityLog log, IAccessLog accessLog)
+        HttpContext http, SecondFactors factors, TrustedDevices trusted, SessionTokens sessions, UserAdmin users, SecurityLog log,
+        IAccessLog accessLog)
     {
         var request = await AuthJson.ReadAsync<LoginRequest>(http);
         var ticket = request?.Ticket ?? "";
@@ -140,6 +141,8 @@ internal static class SecondFactorEndpoints
 
         // ADM-01: this door knows its caller.
         await accessLog.RecordAsync(AccessActor.User, userId, http.Connection.RemoteIpAddress, http.Connection.RemotePort, http.RequestAborted);
+        // AUTH-44: "Don't ask for the code on this device".
+        if (request!.Trust == true) await trusted.TrustAsync(http, userId);
         await sessions.SignInAsync(http, userId, method);
         return AuthJson.Ok(await users.ProfileAsync(userId, http.RequestAborted));
     }

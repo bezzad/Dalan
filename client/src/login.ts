@@ -125,15 +125,17 @@ export function loginScreen(
     else onLogin(answer);
   }
 
-  /** CLI-92: the code from the authenticator app, or a recovery code (AUTH-37). */
+  /** CLI-92: the code from the authenticator app, or a recovery code (AUTH-37); "Don't ask on this device" (AUTH-44). */
   function totpStep(ticket: string): HTMLElement {
     const code = h("input", {
       id: "totp", type: "text", inputmode: "numeric", dir: "ltr", autocomplete: "one-time-code", autocapitalize: "none",
       maxlength: "32", required: true });
+    const trust = h("input", { id: "totp-trust", type: "checkbox" });
     return form("totpTitle", "totpNote", "login", [
       h("label", { for: "totp" }, t("totpCode")), code,
+      h("label", { class: "check", for: "totp-trust" }, trust, h("span", {}, t("totpTrust"))),
       backButton(),
-    ], async () => onLogin(await api.totpLogin(ticket, latinDigits(code.value.trim()))));
+    ], async () => onLogin(await api.totpLogin(ticket, latinDigits(code.value.trim()), trust.checked)));
   }
 
   const phoneInput = () => h("input", {
