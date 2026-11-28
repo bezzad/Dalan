@@ -1,6 +1,6 @@
 ## ADDED Requirements
 
-### Requirement: CLI-97 Toasts do not pile up
+### Requirement: CLI-98 Toasts do not pile up
 A toast with the same text as one already shown SHALL replace it, so the same text is never shown twice at once. At most 3 toasts SHALL be shown at once; a new one SHALL remove the oldest.
 
 #### Scenario: The same error on each screen
