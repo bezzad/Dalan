@@ -80,8 +80,10 @@
   --page-width: 1080px;
   --font: Inter, Vazirmatn, system-ui, sans-serif;
   --display: "Dalan Serif", "Dalan Naskh", Georgia, serif;
-  /* System monospace fonts only (rule 7); Chromium knows no ui-monospace, so the common names follow it. */
-  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace;
+  /* System monospace fonts only (rule 7); Chromium knows no ui-monospace, so the common names follow it.
+     --code stays monospace in Persian too (commands and terminals); --mono is Vazirmatn there (labels). */
+  --code: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace;
+  --mono: var(--code);
   --tracking: .12em;
   /* CLI-48: message bubbles like Telegram Desktop at 100% scale. */
   --message-text: 14px;
@@ -494,7 +496,7 @@ header.bot a.home { flex: none; display: inline-flex; }
 .badge.danger { background: var(--danger); color: var(--on-brand); }
 .bots .line { display: flex; flex: 1; align-items: center; gap: 8px; flex-wrap: wrap; }
 .bots li > .note { padding-inline: 12px; }
-.token code, .log code { overflow-wrap: anywhere; font-family: var(--mono); }
+.token code, .log code { overflow-wrap: anywhere; font-family: var(--code); }
 .token code { padding: 8px; border-radius: 8px; background: var(--bg); user-select: all; }
 .tabs { margin-block: 4px; }
 .tabs button { min-height: 36px; padding: 4px 10px; }
@@ -798,7 +800,7 @@ ul.ticks li .soon { margin-inline-start: auto; flex: none; }
 .install .systems button { min-height: 36px; padding: 0 14px; border-radius: 999px; border-color: transparent; background: transparent; color: var(--muted); font: var(--text-small)/1 var(--mono); }
 .install .systems button[aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--text); }
 .install .line { display: flex; align-items: center; gap: var(--space-s); max-width: 100%; padding: 6px 6px 6px 18px; border: 1px solid var(--control-line); border-radius: 999px; background: var(--code-bg); }
-.install code { min-width: 0; overflow-x: auto; white-space: nowrap; font: 15px/1.6 var(--mono); color: var(--code-text); scrollbar-width: none; }
+.install code { min-width: 0; overflow-x: auto; white-space: nowrap; font: 15px/1.6 var(--code); color: var(--code-text); scrollbar-width: none; }
 .install .prompt { color: var(--term-muted); }
 .install .cmd { color: var(--term-yellow); }
 .install .flag { color: var(--term-green); }
@@ -806,20 +808,52 @@ ul.ticks li .soon { margin-inline-start: auto; flex: none; }
 .install .word { color: var(--term-violet); }
 .install button.copy-line { flex: none; width: 36px; height: 36px; min-height: 36px; border-color: transparent; background: transparent; color: var(--code-text); }
 .install button.copy-line:hover { background: rgb(255 255 255 / .1); }
-.terminal { width: 100%; max-width: 640px; margin: 0; border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--code-bg); text-align: left; overflow: hidden; box-shadow: var(--shadow); }
-.terminal .bar { display: flex; gap: 6px; padding: 12px 14px; border-block-end: 1px solid rgb(255 255 255 / .06); }
-.terminal .bar span { width: 10px; height: 10px; border-radius: 50%; background: rgb(255 255 255 / .16); }
-.terminal pre { margin: 0; padding: 14px 18px 18px; font: 14px/1.8 var(--mono); color: var(--code-text); white-space: pre-wrap; overflow-wrap: anywhere; }
-.terminal .prompt { color: var(--term-muted); }
-/* The command types itself, then each line of the agent comes; with reduced motion all is there at once. */
-.terminal .typed { display: inline-block; max-width: 100%; overflow: hidden; white-space: nowrap; vertical-align: bottom; animation: typing 2.2s steps(31) both; }
-.terminal .out { opacity: 0; animation: line-in .3s ease-out both; }
-.terminal .out-1 { animation-delay: 2.6s; color: var(--term-muted); }
-.terminal .out-2 { animation-delay: 3.4s; color: var(--term-green); }
-.terminal .out-3 { animation-delay: 3.8s; color: var(--term-muted); }
-@keyframes typing { from { width: 0; } to { width: 31ch; } }
-@keyframes line-in { to { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .terminal .typed, .terminal .out { animation: none; opacity: 1; width: auto; } }
+/* CLI-106: the live demo: a light browser with the site, and the terminal over its end corner (like ngrok's). */
+.demo { position: relative; width: 100%; max-width: 880px; margin: var(--space-m) 0 0; padding-block-end: 120px; text-align: start; }
+.demo .bar { display: flex; align-items: center; gap: 7px; padding: 10px 14px; }
+.demo .bar i { width: 11px; height: 11px; border-radius: 50%; background: #f25f5c; }
+.demo .bar i:nth-child(2) { background: #f2b33d; }
+.demo .bar i:nth-child(3) { background: #3fc380; }
+.browser { width: 76%; border: 1px solid var(--line); border-radius: var(--radius-m); background: #f4f5f4; color: #1d2120; overflow: hidden; box-shadow: var(--shadow); }
+.browser .address { flex: 1; max-width: 60%; margin-inline: auto; padding: 3px 12px; border: 1px solid #d5d9d7; border-radius: 8px; background: #fff; font: 600 var(--text-small)/1.6 var(--code); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.browser .site { padding: 6px 18px 24px; }
+.browser .site-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block-end: 10px; border-block-end: 1px solid #dde0de; }
+.browser strong { font: 500 24px/1.4 var(--display); }
+.browser nav { display: flex; gap: 2px; }
+.browser nav button { min-height: 32px; padding: 0 8px; border: 0; background: none; color: #3b4240; font-size: 15px; }
+.browser nav button[aria-current="page"] { text-decoration: underline; text-underline-offset: 4px; }
+.browser nav button:hover { color: #000; border: 0; }
+/* The page: grey shapes that change with the link, so a click shows a new page. */
+.browser .view { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; padding-block-start: 16px; min-height: 150px; }
+.browser .view span { height: 12px; border-radius: 4px; background: #dcdfdd; }
+.browser .view span:nth-child(1) { width: 40%; }
+.browser .view span:nth-child(2) { grid-row: span 3; height: auto; background: #e6e8e7; }
+.browser .view span:nth-child(3) { height: 30px; width: 80%; }
+.browser .view span:nth-child(4) { height: 30px; width: 65%; }
+.browser .view span:nth-child(5), .browser .view span:nth-child(6) { grid-column: 1 / -1; width: 90%; }
+.browser .view.page-1 span:nth-child(2) { background: #d9e6f5; }
+.browser .view.page-1 { grid-template-columns: 1fr 1fr; }
+.browser .view.page-2 { grid-template-columns: 1.6fr 1fr; }
+.browser .view.page-2 span:nth-child(2) { background: #eadff7; }
+.demo .terminal { position: absolute; inset-inline-end: 0; bottom: 0; width: 64%; border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--code-bg); color: var(--code-text); overflow: hidden; box-shadow: var(--shadow); text-align: left; }
+[dir="rtl"] .demo .terminal { text-align: left; }
+.demo .terminal pre { min-height: 250px; margin: 0; padding: 4px 16px 16px; font: 14px/1.75 var(--code); white-space: pre-wrap; overflow-wrap: anywhere; }
+.demo .prompt { color: var(--term-yellow); font-weight: 700; }
+.demo .typed { color: #fff; font-weight: 600; }
+.demo .dim { color: var(--term-muted); }
+.demo .ok { color: var(--term-green); }
+.demo .log .time { color: var(--term-muted); }
+.demo .log .method { color: var(--term-blue); font-weight: 700; }
+.demo .log .status { color: var(--term-green); font-weight: 700; }
+.demo .log > div { white-space: pre; animation: line-in .3s ease-out both; }
+@keyframes line-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .demo .log > div { animation: none; } }
+/* On a phone the terminal sits under the browser. */
+@media (max-width: 640px) {
+  .demo { padding-block-end: 0; display: flex; flex-direction: column; gap: 12px; }
+  .browser, .demo .terminal { position: static; width: 100%; }
+  .demo .terminal pre { min-height: 0; font-size: 13px; }
+}
 .try-now .more { justify-content: center; gap: var(--space-l); }
 .try-now a.arrow { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); text-decoration: none; font-size: 15px; }
 :lang(en) .try-now a.arrow { font: 500 var(--text-small)/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
@@ -832,7 +866,7 @@ ul.ticks li .soon { margin-inline-start: auto; flex: none; }
 .command { width: 100%; max-width: 680px; }
 
 .code { position: relative; margin-block-start: auto; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--code-bg); color: var(--code-text); }
-.code pre { margin: 0; padding: 40px 14px 14px; overflow-x: auto; font: 13px/1.7 var(--mono); text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
+.code pre { margin: 0; padding: 40px 14px 14px; overflow-x: auto; font: 13px/1.7 var(--code); text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
 .code button.copy { position: absolute; inset-block-start: 6px; inset-inline-end: 6px; min-height: 28px; padding: 2px 10px; border-color: transparent; background: rgb(255 255 255 / .08); color: var(--code-text); font-size: 12px; }
 
 /* Features: the three messages of DESIGN section 13 */

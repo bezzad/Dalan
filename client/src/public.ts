@@ -12,7 +12,7 @@ import { stepper } from "./stepper.ts";
 import { botDone, siteDone } from "./steps.ts";
 import type { Language } from "./i18n.ts";
 import { themeButton, type Theme } from "./theme.ts";
-import { about, categoryName, closing, faqItems, footerLine, hero, initial, labels, landing, notOffered, offers, privacyPoints, products, security, stripLabel, stripNames, tryNow, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
+import { about, categoryName, closing, faqItems, footerLine, hero, initial, labels, landing, notOffered, offers, privacyPoints, products, security, demoSite, stripLabel, stripNames, tryNow, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
 import { installCommands } from "./appGuide.ts";
 import { toast } from "./toast.ts";
 
@@ -336,25 +336,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
       link("/guide/site", tryNow[lang].site, "arrow"), link("/guide/bot", tryNow[lang].bot, "arrow"));
     for (const a of links.children) a.append(icon("arrow"));
     tryPart.append(links);
-    (numbers ??= api.publicSettings()).then(values => links.before(installLine(values.site_url), terminal(values)), () => numbers = null);
-  }
-
-  /** CLI-26: a small terminal drawn in the page (no video, rule 7): the run command types itself, then the agent's lines. */
-  function terminal(values: PublicNumbers): HTMLElement {
-    const site = new URL(values.site_url);
-    const domain = values.sites_domain || site.host;
-    // Built from parts: the built client names no host of its own (CLI-03).
-    const local = "http" + "://localhost:3000";
-    const lines = [
-      `Connecting to ${values.site_url} ...`,
-      `Online: ${site.protocol}//mysite.${domain}  ->  ${local}`,
-      "Press Ctrl+C to stop.",
-    ];
-    return h("figure", { class: "terminal", dir: "ltr", "aria-label": "dalan http 3000 --name mysite" },
-      h("div", { class: "bar", "aria-hidden": "true" }, h("span"), h("span"), h("span")),
-      h("pre", {},
-        h("span", { class: "typed" }, h("span", { class: "prompt" }, "$ "), "dalan http 3000 --name mysite"), "\n",
-        ...lines.map((line, i) => h("span", { class: `out out-${i + 1}` }, line, "\n"))));
+    (numbers ??= api.publicSettings()).then(values => links.before(installLine(values.site_url), demo(values)), () => numbers = null);
   }
 
   /** CLI-26: one install line in a pill: the system tabs (Linux and macOS, Windows), the colored command and Copy. */
@@ -381,6 +363,93 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
     tabs.append(...systems.map((system, i) => h("button", { type: "button", role: "tab", onclick: () => pick(i) }, system.name)));
     pick(0);
     return h("div", { class: "install" }, tabs, h("div", { class: "line", dir: "ltr" }, line, copy));
+  }
+
+  /**
+   * CLI-106: the live demo, drawn in the page (no video, rule 7): a browser shows the site at its public address, and the
+   * terminal beside it types the commands that put it online, then logs each page the visitor opens in that browser.
+   */
+  function demo(values: PublicNumbers): HTMLElement {
+    const site = new URL(values.site_url);
+    const domain = values.sites_domain || site.host;
+    // Built from parts: the built client names no host of its own (CLI-03).
+    const local = "http" + "://localhost:3000";
+    const address = `${site.protocol}//mysite.${domain}`;
+    const still = matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    // Left to right inside; the terminal box itself follows the page, so it sits at the end corner in both languages.
+    const screen = h("pre", { dir: "ltr" });
+    const log = h("div", { class: "log", "aria-live": "polite" });
+    const two = (value: number) => String(value).padStart(2, "0");
+    const logLine = (path: string) => {
+      const now = new Date();
+      log.prepend(h("div", {}, h("span", { class: "time" }, `[${two(now.getHours())}:${two(now.getMinutes())}:${two(now.getSeconds())}]`), " ",
+        h("span", { class: "method" }, "GET"), " ", h("span", { class: "path" }, path.padEnd(10)), " ", h("span", { class: "status" }, "200")));
+      while (log.children.length > 4) log.lastElementChild!.remove();
+    };
+    // Each step: a command typed letter by letter, or lines that come at once.
+    const steps: { command?: string; lines?: [string, string][] }[] = [
+      { command: "node index.js &" },
+      { lines: [[`Listening on ${local} ...`, "dim"]] },
+      { command: "dalan http 3000 --name mysite" },
+      { lines: [[`Connecting to ${values.site_url} ...`, "dim"], [`Online: ${address}  ->  ${local}`, "ok"], ["Press Ctrl+C to stop.", "dim"], ["-------------", "dim"]] },
+    ];
+    let ready = false;
+    const finish = () => { ready = true; screen.append(log); logLine("/"); };
+    const draw = async () => {
+      const wait = (ms: number) => new Promise(done => setTimeout(done, still ? 0 : ms));
+      for (const step of steps) {
+        if (step.command) {
+          const typed = h("span", { class: "typed" });
+          screen.append(h("span", { class: "prompt" }, "$ "), typed, "\n");
+          for (const letter of step.command) {
+            typed.textContent += letter;
+            if (!still) await wait(45);
+          }
+          await wait(350);
+        }
+        for (const [text, kind] of step.lines ?? []) {
+          screen.append(h("span", { class: kind }, text), "\n");
+          await wait(250);
+        }
+      }
+      finish();
+    };
+    if (still) {
+      for (const step of steps) {
+        if (step.command) screen.append(h("span", { class: "prompt" }, "$ "), h("span", { class: "typed" }, step.command), "\n");
+        for (const [text, kind] of step.lines ?? []) screen.append(h("span", { class: kind }, text), "\n");
+      }
+      finish();
+    } else if (typeof IntersectionObserver === "function") {
+      // The typing starts when the demo comes into view, once.
+      const watch = new IntersectionObserver(entries => {
+        if (!entries.some(entry => entry.isIntersecting)) return;
+        watch.disconnect();
+        void draw();
+      });
+      queueMicrotask(() => watch.observe(screen));
+    } else void draw();
+
+    // The browser: the public address on top, the site's links; each click is one request in the terminal's log.
+    const view = h("div", { class: "view" });
+    const open = (index: number) => {
+      links.forEach((button, i) => i === index ? button.setAttribute("aria-current", "page") : button.removeAttribute("aria-current"));
+      view.className = `view page-${index}`;
+    };
+    const links: HTMLElement[] = demoSite[lang].pages.map((page, i) => h("button", {
+      type: "button",
+      onclick: () => {
+        open(i);
+        if (ready) logLine(page.path);
+      },
+    }, page.label));
+    view.append(h("span"), h("span"), h("span"), h("span"), h("span"), h("span"));
+    open(0);
+    const browser = h("div", { class: "browser" },
+      h("div", { class: "bar" }, h("i"), h("i"), h("i"), h("span", { class: "address", dir: "ltr" }, address)),
+      h("div", { class: "site" }, h("div", { class: "site-head" }, h("strong", {}, demoSite[lang].name), h("nav", {}, ...links)), view));
+    return h("figure", { class: "demo" }, browser,
+      h("div", { class: "terminal" }, h("div", { class: "bar", "aria-hidden": "true" }, h("i"), h("i"), h("i")), screen));
   }
 
   /** A plan: its traffic picture (from, Dalan with its guards, to) and "Get started", which opens its guide. */

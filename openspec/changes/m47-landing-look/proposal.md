@@ -18,4 +18,7 @@ This changes the owner's earlier "no glow" (2026-11-22) for the hero only: a sti
 - CLI-104 (new): each plan and each "What you get" card has its own colour: the badge, the small label, and on a plan
   its traffic picture. On hover a plan card takes a soft tint of its colour and its button turns light.
 - CLI-105 (new): the strip moves slowly to the end side, with faded edges; with reduced motion it stands still and wraps.
+- CLI-106 (new, owner 2026-11-28, like ngrok's "share localhost" page): a live demo in "Try it now": a browser with
+  a small site and a terminal that types `dalan http 3000 --name mysite`; each page opened in that browser adds a line
+  to the terminal's log. Drawn in HTML, no video. The real agent prints this log in a later change (owner's choice).
 - Only the client (CSS, the landing page, two fonts); no server change and no new setting.

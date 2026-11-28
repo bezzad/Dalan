@@ -64,3 +64,16 @@ The strip of names under the hero SHALL move slowly toward the end side with fad
 - **GIVEN** the system asks for reduced motion
 - **WHEN** the home page opens
 - **THEN** the strip of names does not move
+
+### Requirement: CLI-106 The live demo
+"Try it now" SHALL show a demo drawn in the page (no video): a browser with a small site at `mysite.<sites domain>`, and a terminal that types `dalan http 3000 --name mysite` and the agent's lines. Each page opened in that browser SHALL add one log line (time, GET, path, 200), newest on top. With reduced motion all SHALL be there at once. In Persian the demo SHALL be a mirror.
+
+#### Scenario: A click shows in the log
+- **GIVEN** the demo has finished typing
+- **WHEN** the visitor opens "Projects" in the demo's browser
+- **THEN** the top line of the terminal's log is `GET /projects 200` with the time
+
+#### Scenario: Reduced motion
+- **GIVEN** the system asks for reduced motion
+- **WHEN** the home page opens
+- **THEN** the demo's commands and lines are all there at once

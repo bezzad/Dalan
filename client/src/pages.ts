@@ -222,6 +222,12 @@ export const tryNow: Record<Lang, { label: string; title: string; glow: string; 
     text: "Install the Dalan agent with one line; the guide does the rest.", site: "Site guide", bot: "Bot guide" },
 };
 
+/** CLI-106: the live demo of "Try it now": a site in a browser and the terminal that serves it. */
+export const demoSite: Record<Lang, { name: string; pages: { label: string; path: string }[] }> = {
+  fa: { name: "سایت من", pages: [{ label: "خانه", path: "/" }, { label: "پروژه‌ها", path: "/projects" }, { label: "درباره", path: "/about" }] },
+  en: { name: "My site", pages: [{ label: "Home", path: "/" }, { label: "Projects", path: "/projects" }, { label: "About", path: "/about" }] },
+};
+
 /** CLI-26: the closing call of the landing page. */
 export const closing: Record<Lang, { title: string; glow: string; text: string }> = {
   fa: { title: "همین حالا شروع کنید", glow: "بات خود را راه‌اندازی کنید", text: "وارد شوید و اولین بات خود را بسازید، یا بات‌های ویترین را ببینید." },

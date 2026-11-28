@@ -1,4 +1,4 @@
-// Rules: CLI-26, CLI-103, CLI-104, CLI-105
+// Rules: CLI-26, CLI-103, CLI-104, CLI-105, CLI-106
 // In a real browser: the home page in the look of ngrok's (owner, 2026-11-28): one call in the hero, the display font
 // served by Dalan, a colour per card, "Try it now" with its install line, the strip, and no sideways scroll on a phone.
 import { expect, test, type Page } from "@playwright/test";
@@ -56,4 +56,30 @@ test("CLI-105 the strip stands still with reduced motion", async ({ page }) => {
   await open(page, "en");
   expect(await page.locator(".strip .track").evaluate(element => getComputedStyle(element).animationName)).toBe("none");
   await expect(page.locator(".strip ul[aria-hidden]")).toBeHidden();
+});
+
+test("CLI-106 the demo types its commands, and each page opened in its browser is a line in the log", async ({ page }) => {
+  await open(page, "en");
+  await page.locator(".demo").scrollIntoViewIfNeeded();
+  const terminal = page.locator(".demo .terminal pre");
+  await expect(terminal).toContainText("$ dalan http 3000 --name mysite", { timeout: 10_000 });
+  await expect(terminal).toContainText(/Online: http:\/\/mysite\.localhost:\d+ {2}-> {2}http:\/\/localhost:3000/);
+  const top = page.locator(".demo .log > div").first();
+  await expect(top).toHaveText(/^\[\d\d:\d\d:\d\d\] GET \/ +200$/);
+  await page.locator(".browser nav button", { hasText: "Projects" }).click();
+  await expect(top).toHaveText(/^\[\d\d:\d\d:\d\d\] GET \/projects +200$/);
+  await expect(page.locator(".browser nav button", { hasText: "Projects" })).toHaveAttribute("aria-current", "page");
+});
+
+test("CLI-106 with reduced motion the demo is all there at once; in Persian it is a mirror", async ({ page, isMobile }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await open(page, "fa");
+  await expect(page.locator(".demo .log > div")).toHaveCount(1);
+  await expect(page.locator(".demo .terminal pre")).toContainText("$ node index.js &");
+  test.skip(isMobile, "on a phone the terminal sits under the browser");
+  const box = (selector: string) => page.locator(selector).evaluate(element => element.getBoundingClientRect().toJSON());
+  const browser = await box(".browser");
+  const terminal = await box(".demo .terminal");
+  // English has the browser at the left and the terminal at the right corner; Persian the other way.
+  expect(terminal.left).toBeLessThan(browser.left);
 });
