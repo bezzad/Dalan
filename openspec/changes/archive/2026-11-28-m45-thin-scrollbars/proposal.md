@@ -1,4 +1,4 @@
-# m44: thin scrollbars that show on hover
+# m45: thin scrollbars that show on hover
 
 ## Why
 The owner (2026-11-28): scrollbars should be invisible and show only while the mouse is over the page, like Telegram, and
