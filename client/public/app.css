@@ -14,6 +14,22 @@
   font-weight: 100 900;
   font-display: swap;
 }
+/* CLI-103: the display font of the home page's big titles: a serif for Latin letters, a Naskh for Persian.
+   A browser loads each file only when a title needs it. */
+@font-face {
+  font-family: "Dalan Serif";
+  src: url("/fonts/serif.woff2") format("woff2");
+  font-weight: 200 900;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-200B, U+2010-206F, U+20AC, U+2122, U+2212;
+}
+@font-face {
+  font-family: "Dalan Naskh";
+  src: url("/fonts/naskh.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+  unicode-range: U+0600-06FF, U+0750-077F, U+200C-200F, U+FB50-FDFF, U+FE70-FEFC;
+}
 
 /* CLI-35: light by default in this file; dark when the device asks for it, or when the visitor chose it (data-theme on <html>).
    Neutral greys and one green, after ngrok (owner, 2026-11-18). */
@@ -29,6 +45,11 @@
   --brand: #0b7a61;
   /* CLI-94: the colours of the big titles' accent line, like ngrok's; their own set in the dark theme. */
   --rainbow: #6aa514, #0b9a78, #2f7fd0, #8a5bd6, #d0558c;
+  /* CLI-104: a colour per card of the home page (its badge, label and picture). */
+  --green: #0b7a61;
+  --blue: #2563c9;
+  --violet: #7a4cc4;
+  --amber: #a8620a;
   --on-brand: #fff;
   --mine: #dcf2ea;
   --danger: #b3261e;
@@ -40,6 +61,12 @@
   --brand-soft: #e0f3ec;
   --code-bg: #14181a;
   --code-text: #d7f5ea;
+  /* CLI-26: terminal colours on --code-bg, which is dark in both themes. */
+  --term-muted: #8b958f;
+  --term-yellow: #f2d36b;
+  --term-green: #6fe0b8;
+  --term-blue: #7cc4ff;
+  --term-violet: #d6a8ff;
   --shadow: 0 1px 2px rgb(0 0 0 / .05), 0 8px 24px rgb(0 0 0 / .06);
   --radius-s: 10px;
   --radius-m: 16px;
@@ -52,7 +79,11 @@
   --text-title: clamp(22px, 3.2vw, 30px);
   --page-width: 1080px;
   --font: Inter, Vazirmatn, system-ui, sans-serif;
-  --mono: ui-monospace, monospace;
+  --display: "Dalan Serif", "Dalan Naskh", Georgia, serif;
+  /* System monospace fonts only (rule 7); Chromium knows no ui-monospace, so the common names follow it.
+     --code stays monospace in Persian too (commands and terminals); --mono is Vazirmatn there (labels). */
+  --code: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace;
+  --mono: var(--code);
   --tracking: .12em;
   /* CLI-48: message bubbles like Telegram Desktop at 100% scale. */
   --message-text: 14px;
@@ -82,6 +113,10 @@
     --control-line: #2f3533;
     --brand: #3fd0a8;
     --rainbow: #c6e05a, #3fd0a8, #5aa9f2, #b78af2, #f28ab2;
+    --green: #3fd0a8;
+    --blue: #6cb2f5;
+    --violet: #b78af2;
+    --amber: #f2b45a;
     --on-brand: #06231c;
     --mine: #1f4037;
     --danger: #ff8a80;
@@ -104,6 +139,10 @@
   --control-line: #2f3533;
   --brand: #3fd0a8;
   --rainbow: #c6e05a, #3fd0a8, #5aa9f2, #b78af2, #f28ab2;
+  --green: #3fd0a8;
+  --blue: #6cb2f5;
+  --violet: #b78af2;
+  --amber: #f2b45a;
   --on-brand: #06231c;
   --mine: #1f4037;
   --danger: #ff8a80;
@@ -457,7 +496,7 @@ header.bot a.home { flex: none; display: inline-flex; }
 .badge.danger { background: var(--danger); color: var(--on-brand); }
 .bots .line { display: flex; flex: 1; align-items: center; gap: 8px; flex-wrap: wrap; }
 .bots li > .note { padding-inline: 12px; }
-.token code, .log code { overflow-wrap: anywhere; font-family: ui-monospace, monospace; }
+.token code, .log code { overflow-wrap: anywhere; font-family: var(--code); }
 .token code { padding: 8px; border-radius: 8px; background: var(--bg); user-select: all; }
 .tabs { margin-block: 4px; }
 .tabs button { min-height: 36px; padding: 4px 10px; }
@@ -489,6 +528,8 @@ header.site .links a {
   display: inline-flex; align-items: center; min-height: 36px; padding: 0 10px; border-radius: 8px; font-size: 14px; line-height: 1; white-space: nowrap;
 }
 header.site .links a:hover { background: var(--surface); }
+/* CLI-103: in English the header links are small monospace capitals, like the hero button. */
+:lang(en) header.site .links a { font: 500 var(--text-small)/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
 .links a, .links button.link { color: var(--muted); text-decoration: none; font-size: 14px; }
 .links a:hover, .links button.link:hover { color: var(--text); }
 button.burger { display: none; }
@@ -624,7 +665,6 @@ a.button.primary { border-color: var(--brand); background: var(--brand); color: 
 .public button.primary { border-radius: 999px; }
 a.button:hover, .public button:hover { border-color: var(--brand); }
 
-/* One accent: the second line of a big title is green (simple, like ngrok: no glow, no rainbow). */
 /* CLI-94: the accent line of a big title: five colours that move slowly along the text (two copies, so the loop has no seam). */
 .accent {
   background-image: linear-gradient(90deg, var(--rainbow), var(--rainbow));
@@ -639,32 +679,81 @@ a.button:hover, .public button:hover { border-color: var(--brand); }
 @media (prefers-reduced-motion: reduce) { .accent { animation: none; } }
 
 /* Hero */
-.hero { display: flex; flex-direction: column; align-items: center; gap: var(--space-m); padding-block: var(--space-xl) var(--space-l); text-align: center; }
-.hero h2 { font-size: clamp(32px, 6.4vw, 64px); line-height: 1.3; }
+.hero { position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: center; gap: var(--space-m); padding-block: var(--space-xl) var(--space-l); text-align: center; }
+/* CLI-103: the hero and the big titles in the display font (owner, 2026-11-28: like ngrok's home page). */
+.hero h2, .cta h2, .landing-title { font-family: var(--display); }
+:lang(en) .public .hero h2, :lang(en) .public .cta h2, :lang(en) .public .landing-title { font-weight: 500; letter-spacing: -.015em; }
+:lang(fa) .public .hero h2, :lang(fa) .public .cta h2, :lang(fa) .public .landing-title { font-weight: 700; }
+.hero h2 { font-size: clamp(36px, 7vw, 76px); line-height: 1.15; }
+:lang(fa) .hero h2 { font-size: clamp(32px, 5.6vw, 60px); line-height: 1.5; }
+/* CLI-103: a soft, still cloud of the title colours behind the hero title; fainter in the light theme. */
+.hero::before {
+  content: ""; position: absolute; z-index: -1; inset: 6% 12% 10%;
+  background: radial-gradient(closest-side at 30% 55%, color-mix(in srgb, var(--green) 55%, transparent), transparent),
+    radial-gradient(closest-side at 55% 40%, color-mix(in srgb, var(--blue) 55%, transparent), transparent),
+    radial-gradient(closest-side at 72% 60%, color-mix(in srgb, var(--violet) 50%, transparent), transparent);
+  filter: blur(70px); opacity: .16; pointer-events: none;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hero::before { opacity: .3; } }
+:root[data-theme="dark"] .hero::before { opacity: .3; }
 .hero .lead { max-width: 560px; font-size: 18px; }
 .hero .row, .cta .row { justify-content: center; }
 .hero button.primary, .cta button.primary { padding-inline: 24px; background: var(--text); border-color: var(--text); color: var(--bg); }
+.hero button.primary { min-height: 48px; padding-inline: 28px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 30%, transparent), 0 8px 32px color-mix(in srgb, var(--violet) 30%, transparent); }
+:lang(en) .hero button.primary, :lang(en) .cta button.primary { font: 600 14px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+
+/* CLI-26, CLI-105: the strip of names under the hero; it moves slowly to the end side, with faded edges. */
+.strip { display: flex; flex-direction: column; align-items: center; gap: var(--space-m); margin-block-start: calc(var(--space-xl) * -1); }
+.strip > p { margin: 0; font-size: 14px; }
+.strip .rail {
+  width: 100%; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+.strip .track { display: flex; width: max-content; animation: strip 40s linear infinite; }
+.strip ul { display: flex; gap: 56px; margin: 0; padding: 0 28px; list-style: none; }
+.strip li { font-size: 24px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; color: color-mix(in srgb, var(--muted) 70%, var(--bg)); }
+@keyframes strip { to { transform: translateX(-50%); } }
+:lang(fa) .strip .track { animation-direction: reverse; }
+@media (prefers-reduced-motion: reduce) {
+  .strip .track { animation: none; width: auto; justify-content: center; }
+  .strip ul { flex-wrap: wrap; justify-content: center; row-gap: 12px; }
+  .strip ul[aria-hidden] { display: none; }
+}
 
 /* Product cards with a traffic picture */
 .products { display: flex; flex-direction: column; align-items: center; gap: var(--space-m); }
 .products .cards { display: grid; gap: var(--space-m); width: 100%; }
 @media (min-width: 880px) { .products .cards { grid-template-columns: 1fr 1fr; } }
-.product { display: flex; flex-direction: column; align-items: center; gap: var(--space-s); padding: var(--space-l) var(--space-m); border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--surface); text-align: center; }
-.product h3 { font-size: 22px; }
-.product > .label { color: var(--brand); }
-.badge-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: var(--radius-s); background: var(--brand-soft); color: var(--brand); }
+.product { display: flex; flex-direction: column; align-items: center; gap: var(--space-s); padding: var(--space-l) var(--space-m); border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--surface); text-align: center; transition: border-color .3s, background-image .3s; }
+.product h3 { font-size: 24px; }
+/* CLI-104: each card has its own colour (--tone): its badge, its label and its picture. */
+.tone-green { --tone: var(--green); }
+.tone-blue { --tone: var(--blue); }
+.tone-violet { --tone: var(--violet); }
+.tone-amber { --tone: var(--amber); }
+.product > .label, .offers article > .label, .try-now > .label { color: var(--tone, var(--brand)); }
+.badge-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: var(--radius-s); background: color-mix(in srgb, var(--tone, var(--brand)) 16%, var(--surface)); color: var(--tone, var(--brand)); }
+/* CLI-104: on hover a plan takes a soft tint of its colour, and its button turns light (like ngrok's cards). */
+.product:hover {
+  border-color: color-mix(in srgb, var(--tone, var(--brand)) 45%, var(--line));
+  background-image: linear-gradient(to top, color-mix(in srgb, var(--tone, var(--brand)) 14%, transparent), transparent 70%);
+}
+.product a.button.learn { margin-block-start: var(--space-m); min-height: 44px; padding-inline: 22px; border-color: var(--line); background: color-mix(in srgb, var(--text) 8%, var(--surface)); color: var(--text); font-weight: 600; }
+:lang(en) .product a.button.learn { font: 600 14px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.product:hover a.button { background: var(--text); border-color: var(--text); color: var(--bg); }
 .traffic { display: flex; flex-direction: column; align-items: center; margin: var(--space-m) 0 0; width: 100%; }
 .tag { padding: 2px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font: var(--text-small)/1.7 var(--mono); color: var(--text); }
-.wire { position: relative; width: 0; height: 32px; border-inline-start: 2px dashed var(--brand); }
+.wire { position: relative; width: 0; height: 32px; border-inline-start: 2px dashed var(--tone, var(--brand)); }
 /* The dot moves down from the users and up from your computer: the computer only calls out. */
-.wire::after { content: ""; position: absolute; inset-inline-start: -5px; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 10px var(--brand); animation: down 1.4s linear infinite; }
+.wire::after { content: ""; position: absolute; inset-inline-start: -5px; width: 8px; height: 8px; border-radius: 50%; background: var(--tone, var(--brand)); box-shadow: 0 0 10px var(--tone, var(--brand)); animation: down 1.4s linear infinite; }
 .wire.up::after { animation-name: up; }
 @keyframes down { from { top: 0; opacity: 0; } 30% { opacity: 1; } to { top: calc(100% - 8px); opacity: 1; } }
 @keyframes up { from { top: calc(100% - 8px); opacity: 0; } 30% { opacity: 1; } to { top: 0; opacity: 1; } }
 /* The traffic splits in two below Dalan (owner, 2026-11-18), like ngrok's gateway picture. */
 .split { position: relative; display: grid; grid-template-columns: 1fr 1fr; width: 100%; padding-block-end: 22px; }
-.split::before { content: ""; position: absolute; top: 0; inset-inline: 25%; border-block-start: 2px dashed var(--brand); }
-.split::after { content: ""; position: absolute; inset-inline: 0; bottom: 8px; height: 76px; border: 1px solid var(--brand-soft); border-radius: 14px; pointer-events: none; }
+.split::before { content: ""; position: absolute; top: 0; inset-inline: 25%; border-block-start: 2px dashed var(--tone, var(--brand)); }
+.split::after { content: ""; position: absolute; inset-inline: 0; bottom: 8px; height: 76px; border: 1px solid color-mix(in srgb, var(--tone, var(--brand)) 25%, transparent); border-radius: 14px; pointer-events: none; }
 .branch { display: flex; flex-direction: column; align-items: center; min-width: 0; }
 .branch .box { position: relative; z-index: 1; max-width: 100%; padding: 8px 10px; font-size: var(--text-small); }
 .frame-label { margin-block-start: -20px; padding: 0 8px; background: var(--surface); color: var(--muted); font: var(--text-small)/1.6 var(--mono); position: relative; z-index: 1; }
@@ -672,13 +761,16 @@ a.button:hover, .public button:hover { border-color: var(--brand); }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgb(63 208 168 / .45); } 70% { box-shadow: 0 0 0 14px rgb(63 208 168 / 0); } 100% { box-shadow: 0 0 0 0 rgb(63 208 168 / 0); } }
 @media (prefers-reduced-motion: reduce) { .wire::after { animation: none; top: 10px; } .hub { animation: none; } }
 .hub-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-m); width: 100%; }
-.hub { grid-column: 2; display: grid; place-items: center; width: 72px; height: 72px; border: 1px solid var(--line); border-radius: 50%; background: var(--bg); color: var(--text); box-shadow: 0 0 0 6px var(--brand-soft); }
+.hub { grid-column: 2; display: grid; place-items: center; width: 72px; height: 72px; border: 1px solid var(--line); border-radius: 50%; background: var(--bg); color: var(--text); box-shadow: 0 0 0 6px color-mix(in srgb, var(--tone, var(--brand)) 16%, transparent); }
 .hub .icon { width: 34px; height: 34px; }
 ul.guards { grid-column: 3; gap: 4px; font: var(--text-small)/1.5 var(--mono); color: var(--muted); text-align: start; }
 ul.guards li { gap: 6px; }
 ul.ticks.guards li .icon { width: 14px; height: 14px; margin-block-start: calc((1lh - 14px) / 2); }
 .box { display: flex; align-items: center; gap: var(--space-s); padding: 10px 16px; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--bg); font: 13px/1.6 var(--mono); }
-.box .icon { color: var(--brand); }
+.box .icon { color: var(--tone, var(--brand)); }
+/* On a narrow phone the two computer boxes keep only their address, so they fit side by side. */
+@media (max-width: 420px) { .branch .box .icon { display: none; } .branch .box { padding-inline: 8px; } }
+.product ul.ticks li .icon { color: var(--tone, var(--brand)); }
 
 /* What you get */
 .offers { display: flex; flex-direction: column; align-items: center; gap: var(--space-m); text-align: center; }
@@ -694,14 +786,87 @@ ul.ticks li { display: flex; align-items: flex-start; gap: var(--space-s); }
 ul.ticks li .icon { flex: none; width: 20px; height: 20px; margin-block-start: calc((1lh - 20px) / 2); color: var(--brand); }
 ul.ticks li > span:not(.soon) { min-width: 0; }
 ul.ticks li .soon { margin-inline-start: auto; flex: none; }
-.offers h2, .security h2, .products h2 { font-size: var(--text-title); }
+.offers h2, .security h2, .products h2, .try-now h2 { font-size: clamp(28px, 4.4vw, 44px); line-height: 1.25; }
+.offers article .badge-icon { width: 44px; height: 44px; }
+.offers article ul.ticks li .icon { color: var(--tone, var(--brand)); }
+
+/* CLI-26: "Try it now": the install line in a pill, a small terminal, and two links (like ngrok's "share localhost"). */
+.try-now { display: flex; flex-direction: column; align-items: center; gap: var(--space-m); text-align: center; }
+.try-now h2 em { font-style: italic; }
+:lang(fa) .try-now h2 em { font-style: normal; color: var(--tone); }
+.try-now > p { margin: 0; max-width: 560px; }
+.install { display: flex; flex-direction: column; align-items: center; gap: var(--space-m); width: 100%; }
+.install .systems { display: flex; gap: 6px; }
+.install .systems button { min-height: 36px; padding: 0 14px; border-radius: 999px; border-color: transparent; background: transparent; color: var(--muted); font: var(--text-small)/1 var(--mono); }
+.install .systems button[aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--text); }
+.install .line { display: flex; align-items: center; gap: var(--space-s); max-width: 100%; padding: 6px 6px 6px 18px; border: 1px solid var(--control-line); border-radius: 999px; background: var(--code-bg); }
+.install code { min-width: 0; overflow-x: auto; white-space: nowrap; font: 15px/1.6 var(--code); color: var(--code-text); scrollbar-width: none; }
+.install .prompt { color: var(--term-muted); }
+.install .cmd { color: var(--term-yellow); }
+.install .flag { color: var(--term-green); }
+.install .url { color: var(--term-blue); }
+.install .word { color: var(--term-violet); }
+.install button.copy-line { flex: none; width: 36px; height: 36px; min-height: 36px; border-color: transparent; background: transparent; color: var(--code-text); }
+.install button.copy-line:hover { background: rgb(255 255 255 / .1); }
+/* CLI-106: the live demo: a light browser with the site, and the terminal over its end corner (like ngrok's). */
+.demo { position: relative; width: 100%; max-width: 880px; margin: var(--space-m) 0 0; padding-block-end: 120px; text-align: start; }
+.demo .bar { display: flex; align-items: center; gap: 7px; padding: 10px 14px; }
+.demo .bar i { width: 11px; height: 11px; border-radius: 50%; background: #f25f5c; }
+.demo .bar i:nth-child(2) { background: #f2b33d; }
+.demo .bar i:nth-child(3) { background: #3fc380; }
+.browser { width: 76%; border: 1px solid var(--line); border-radius: var(--radius-m); background: #f4f5f4; color: #1d2120; overflow: hidden; box-shadow: var(--shadow); }
+.browser .address { flex: 1; max-width: 60%; margin-inline: auto; padding: 3px 12px; border: 1px solid #d5d9d7; border-radius: 8px; background: #fff; font: 600 var(--text-small)/1.6 var(--code); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.browser .site { padding: 6px 18px 24px; }
+.browser .site-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block-end: 10px; border-block-end: 1px solid #dde0de; }
+.browser strong { font: 500 24px/1.4 var(--display); }
+.browser nav { display: flex; gap: 2px; }
+.browser nav button { min-height: 32px; padding: 0 8px; border: 0; background: none; color: #3b4240; font-size: 15px; }
+.browser nav button[aria-current="page"] { text-decoration: underline; text-underline-offset: 4px; }
+.browser nav button:hover { color: #000; border: 0; }
+/* The page: grey shapes that change with the link, so a click shows a new page. */
+.browser .view { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; padding-block-start: 16px; min-height: 150px; }
+.browser .view span { height: 12px; border-radius: 4px; background: #dcdfdd; }
+.browser .view span:nth-child(1) { width: 40%; }
+.browser .view span:nth-child(2) { grid-row: span 3; height: auto; background: #e6e8e7; }
+.browser .view span:nth-child(3) { height: 30px; width: 80%; }
+.browser .view span:nth-child(4) { height: 30px; width: 65%; }
+.browser .view span:nth-child(5), .browser .view span:nth-child(6) { grid-column: 1 / -1; width: 90%; }
+.browser .view.page-1 span:nth-child(2) { background: #d9e6f5; }
+.browser .view.page-1 { grid-template-columns: 1fr 1fr; }
+.browser .view.page-2 { grid-template-columns: 1.6fr 1fr; }
+.browser .view.page-2 span:nth-child(2) { background: #eadff7; }
+.demo .terminal { position: absolute; inset-inline-end: 0; bottom: 0; width: 64%; border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--code-bg); color: var(--code-text); overflow: hidden; box-shadow: var(--shadow); text-align: left; }
+[dir="rtl"] .demo .terminal { text-align: left; }
+.demo .terminal pre { min-height: 250px; margin: 0; padding: 4px 16px 16px; font: 14px/1.75 var(--code); white-space: pre-wrap; overflow-wrap: anywhere; }
+.demo .prompt { color: var(--term-yellow); font-weight: 700; }
+.demo .typed { color: #fff; font-weight: 600; }
+.demo .dim { color: var(--term-muted); }
+.demo .ok { color: var(--term-green); }
+.demo .log .time { color: var(--term-muted); }
+.demo .log .method { color: var(--term-blue); font-weight: 700; }
+.demo .log .status { color: var(--term-green); font-weight: 700; }
+.demo .log > div { white-space: pre; animation: line-in .3s ease-out both; }
+@keyframes line-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .demo .log > div { animation: none; } }
+/* On a phone the terminal sits under the browser. */
+@media (max-width: 640px) {
+  .demo { padding-block-end: 0; display: flex; flex-direction: column; gap: 12px; }
+  .browser, .demo .terminal { position: static; width: 100%; }
+  .demo .terminal pre { min-height: 0; font-size: 13px; }
+}
+.try-now .more { justify-content: center; gap: var(--space-l); }
+.try-now a.arrow { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); text-decoration: none; font-size: 15px; }
+:lang(en) .try-now a.arrow { font: 500 var(--text-small)/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.try-now a.arrow:hover { color: var(--text); }
+.try-now a.arrow .icon { width: 18px; height: 18px; }
+[dir="rtl"] .try-now a.arrow .icon { transform: scaleX(-1); }
 .os-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .os-tabs button { min-height: 36px; padding: 4px 14px; border-radius: 999px; background: transparent; color: var(--muted); font: 13px/1.6 var(--mono); }
 .os-tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); border-color: var(--brand); }
 .command { width: 100%; max-width: 680px; }
 
 .code { position: relative; margin-block-start: auto; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--code-bg); color: var(--code-text); }
-.code pre { margin: 0; padding: 40px 14px 14px; overflow-x: auto; font: 13px/1.7 ui-monospace, monospace; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
+.code pre { margin: 0; padding: 40px 14px 14px; overflow-x: auto; font: 13px/1.7 var(--code); text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
 .code button.copy { position: absolute; inset-block-start: 6px; inset-inline-end: 6px; min-height: 28px; padding: 2px 10px; border-color: transparent; background: rgb(255 255 255 / .08); color: var(--code-text); font-size: 12px; }
 
 /* Features: the three messages of DESIGN section 13 */
@@ -717,7 +882,7 @@ ul.ticks li .soon { margin-inline-start: auto; flex: none; }
 
 /* Closing call and footer */
 .cta { display: flex; flex-direction: column; align-items: center; gap: var(--space-m); padding: var(--space-xl) var(--space-m); text-align: center; }
-.cta h2 { font-size: clamp(30px, 5vw, 52px); line-height: 1.3; }
+.cta h2 { font-size: clamp(32px, 5.6vw, 60px); line-height: 1.25; }
 footer.site { position: relative; margin-block-start: auto; display: flex; flex-direction: column; gap: var(--space-l); padding-block: var(--space-l) 0; border-block-start: 1px solid var(--line); overflow: hidden; }
 footer.site .columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-l); }
 footer.site .column { gap: 6px; font: 14px/1.8 var(--mono); color: var(--muted); }

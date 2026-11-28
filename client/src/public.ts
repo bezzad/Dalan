@@ -12,7 +12,9 @@ import { stepper } from "./stepper.ts";
 import { botDone, siteDone } from "./steps.ts";
 import type { Language } from "./i18n.ts";
 import { themeButton, type Theme } from "./theme.ts";
-import { about, categoryName, closing, faqItems, footerLine, hero, initial, labels, landing, notOffered, offers, privacyPoints, products, security, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
+import { about, categoryName, closing, faqItems, footerLine, hero, initial, labels, landing, notOffered, offers, privacyPoints, products, security, demoSite, stripLabel, stripNames, tryNow, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
+import { installCommands } from "./appGuide.ts";
+import { toast } from "./toast.ts";
 
 export type PublicPage = "landing" | "privacy" | "faq" | "showcase" | "guide" | "guideBot" | "guideSite" | "guideLogin" | "about" | "contact" | "notFound";
 
@@ -72,6 +74,10 @@ const icons = {
   expand: ["M14 4h6v6", "M20 4l-7 7", "M10 20H4v-6", "M4 20l7-7"],
   download: ["M12 3v12", "M7 10l5 5 5-5", "M4 20h16"],
   external: ["M14 4h6v6", "M20 4l-9 9", "M18 14v6H4V6h6"],
+  // CLI-26: "Try it now" (an arrow out of a box), copy, and the arrow after a link.
+  share: ["M14 5l6 6-6 6", "M20 11H11a7 7 0 0 0-7 7v1"],
+  copy: ["M9 9h11v11H9z", "M5 15H4V4h11v1"],
+  arrow: ["M4 12h16", "M14 6l6 6-6 6"],
 };
 
 /** CLI-45: the Dalan mark alone, a link to the home page, at the end of the chat header. */
@@ -280,19 +286,35 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
     const ticks = (items: Node[][]) => h("ul", { class: "ticks" }, ...items.map(item => h("li", {}, icon("check"), ...item)));
     const featureIcons: (keyof typeof icons)[] = ["home", "shield", "offline"];
     const offerIcons: (keyof typeof icons)[] = ["gate", "shield", "terminal", "globe"];
+    // CLI-104: a colour per card; the plans are green and blue, the offers green, amber, violet and blue.
+    const planTones = ["green", "blue"];
+    const offerTones = ["green", "amber", "violet", "blue"];
+    /** CLI-103: a big section title in the display font. */
+    const title = (text: string) => h("h2", { class: "landing-title" }, text);
+    /** CLI-105: the names twice in a row, so the loop has no seam; the second copy is for the eye only. */
+    const names = (hidden: boolean) => h("ul", hidden ? { "aria-hidden": "true" } : {}, ...stripNames.map(name => h("li", {}, name)));
+    const tryPart = h("section", { id: "try", class: "try-now tone-violet" },
+      h("span", { class: "badge-icon" }, icon("share")),
+      label(tryNow[lang].label),
+      h("h2", { class: "landing-title" }, tryNow[lang].title, h("br"), h("em", {}, tryNow[lang].glow)),
+      h("p", {}, tryNow[lang].text));
     target.append(
       h("section", { class: "hero" },
         h("h2", {}, hero[lang].title, h("br"), h("span", { class: "accent" }, hero[lang].glow)),
         h("p", { class: "lead" }, hero[lang].text),
-        h("div", { class: "row wrap" }, enterButton(labels[lang].start), link("/#plans", hero[lang].plans, "button"))),
+        h("div", { class: "row" }, enterButton(labels[lang].start))),
+      h("section", { class: "strip", "aria-label": stripLabel[lang] },
+        h("p", {}, stripLabel[lang]),
+        h("div", { class: "rail", dir: "ltr" }, h("div", { class: "track" }, names(false), names(true)))),
       h("section", { id: "plans", class: "products" },
         label(labels[lang].plans),
-        h("h2", {}, labels[lang].plansTitle),
-        h("div", { class: "cards" }, ...products[lang].map((product, i) => productCard(product, i === 0 ? "gate" : "globe")))),
+        title(labels[lang].plansTitle),
+        h("div", { class: "cards" }, ...products[lang].map((product, i) => productCard(product, i === 0 ? "gate" : "globe", planTones[i]!)))),
+      tryPart,
       h("section", { id: "offers", class: "offers" },
         label(labels[lang].offers),
-        h("h2", {}, labels[lang].offersTitle),
-        h("div", { class: "groups" }, ...offers[lang].map((group, i) => h("article", {},
+        title(labels[lang].offersTitle),
+        h("div", { class: "groups" }, ...offers[lang].map((group, i) => h("article", { class: `tone-${offerTones[i]}` },
           h("span", { class: "badge-icon" }, icon(offerIcons[i]!)),
           h("h3", {}, group.title),
           h("p", {}, group.text),
@@ -303,17 +325,136 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
         h("div", { class: "cards" }, ...landing[lang].map((message, i) => h("article", {},
           h("span", { class: "bubble" }, icon(featureIcons[i]!)), h("h3", {}, message.title), h("p", {}, message.text))))),
       h("section", { class: "security" },
-        h("h2", {}, labels[lang].security),
+        title(labels[lang].security),
         ticks(security[lang].map(item => [h("span", {}, item)]))),
       h("section", { class: "cta" },
         h("h2", {}, closing[lang].title, h("br"), h("span", { class: "accent" }, closing[lang].glow)),
         h("p", {}, closing[lang].text),
         h("div", { class: "row wrap" }, enterButton(labels[lang].start), link("/showcase", t("showcase"), "button"))));
+    // The install line needs the site address from the public settings; the links come right away.
+    const links = h("div", { class: "row wrap more" },
+      link("/guide/site", tryNow[lang].site, "arrow"), link("/guide/bot", tryNow[lang].bot, "arrow"));
+    for (const a of links.children) a.append(icon("arrow"));
+    tryPart.append(links);
+    (numbers ??= api.publicSettings()).then(values => links.before(installLine(values.site_url), demo(values)), () => numbers = null);
+  }
+
+  /** CLI-26: one install line in a pill: the system tabs (Linux and macOS, Windows), the colored command and Copy. */
+  function installLine(siteUrl: string): HTMLElement {
+    const install = installCommands(siteUrl);
+    const systems = [{ name: "Linux / macOS", code: install.unix }, { name: "Windows", code: install.windows }];
+    const line = h("code", {});
+    const tabs = h("div", { class: "systems", role: "tablist" });
+    let current = systems[0]!.code;
+    const copy = h("button", {
+      type: "button", class: "round copy-line", title: t("copy"), "aria-label": t("copy"),
+      onclick: async () => {
+        await navigator.clipboard.writeText(current);
+        toast(t("copied"), "ok");
+      },
+    }, icon("copy"));
+    const pick = (index: number) => {
+      current = systems[index]!.code;
+      for (const [i, tab] of [...tabs.children].entries()) tab.setAttribute("aria-selected", String(i === index));
+      // The first word, the flags, the address and the rest each have their colour, like a terminal.
+      line.replaceChildren(h("span", { class: "prompt" }, index === 0 ? "$ " : "> "), ...current.split(" ").flatMap((word, i) => [
+        h("span", { class: i === 0 ? "cmd" : word.startsWith("-") ? "flag" : word.startsWith("http") ? "url" : "word" }, word), " "]).slice(0, -1));
+    };
+    tabs.append(...systems.map((system, i) => h("button", { type: "button", role: "tab", onclick: () => pick(i) }, system.name)));
+    pick(0);
+    return h("div", { class: "install" }, tabs, h("div", { class: "line", dir: "ltr" }, line, copy));
+  }
+
+  /**
+   * CLI-106: the live demo, drawn in the page (no video, rule 7): a browser shows the site at its public address, and the
+   * terminal beside it types the commands that put it online, then logs each page the visitor opens in that browser.
+   */
+  function demo(values: PublicNumbers): HTMLElement {
+    const site = new URL(values.site_url);
+    const domain = values.sites_domain || site.host;
+    // Built from parts: the built client names no host of its own (CLI-03).
+    const local = "http" + "://localhost:3000";
+    const address = `${site.protocol}//mysite.${domain}`;
+    const still = matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    // Left to right inside; the terminal box itself follows the page, so it sits at the end corner in both languages.
+    const screen = h("pre", { dir: "ltr" });
+    const log = h("div", { class: "log", "aria-live": "polite" });
+    const two = (value: number) => String(value).padStart(2, "0");
+    const logLine = (path: string) => {
+      const now = new Date();
+      log.prepend(h("div", {}, h("span", { class: "time" }, `[${two(now.getHours())}:${two(now.getMinutes())}:${two(now.getSeconds())}]`), " ",
+        h("span", { class: "method" }, "GET"), " ", h("span", { class: "path" }, path.padEnd(10)), " ", h("span", { class: "status" }, "200")));
+      while (log.children.length > 4) log.lastElementChild!.remove();
+    };
+    // Each step: a command typed letter by letter, or lines that come at once.
+    const steps: { command?: string; lines?: [string, string][] }[] = [
+      { command: "node index.js &" },
+      { lines: [[`Listening on ${local} ...`, "dim"]] },
+      { command: "dalan http 3000 --name mysite" },
+      { lines: [[`Connecting to ${values.site_url} ...`, "dim"], [`Online: ${address}  ->  ${local}`, "ok"], ["Press Ctrl+C to stop.", "dim"], ["-------------", "dim"]] },
+    ];
+    let ready = false;
+    const finish = () => { ready = true; screen.append(log); logLine("/"); };
+    const draw = async () => {
+      const wait = (ms: number) => new Promise(done => setTimeout(done, still ? 0 : ms));
+      for (const step of steps) {
+        if (step.command) {
+          const typed = h("span", { class: "typed" });
+          screen.append(h("span", { class: "prompt" }, "$ "), typed, "\n");
+          for (const letter of step.command) {
+            typed.textContent += letter;
+            if (!still) await wait(45);
+          }
+          await wait(350);
+        }
+        for (const [text, kind] of step.lines ?? []) {
+          screen.append(h("span", { class: kind }, text), "\n");
+          await wait(250);
+        }
+      }
+      finish();
+    };
+    if (still) {
+      for (const step of steps) {
+        if (step.command) screen.append(h("span", { class: "prompt" }, "$ "), h("span", { class: "typed" }, step.command), "\n");
+        for (const [text, kind] of step.lines ?? []) screen.append(h("span", { class: kind }, text), "\n");
+      }
+      finish();
+    } else if (typeof IntersectionObserver === "function") {
+      // The typing starts when the demo comes into view, once.
+      const watch = new IntersectionObserver(entries => {
+        if (!entries.some(entry => entry.isIntersecting)) return;
+        watch.disconnect();
+        void draw();
+      });
+      queueMicrotask(() => watch.observe(screen));
+    } else void draw();
+
+    // The browser: the public address on top, the site's links; each click is one request in the terminal's log.
+    const view = h("div", { class: "view" });
+    const open = (index: number) => {
+      links.forEach((button, i) => i === index ? button.setAttribute("aria-current", "page") : button.removeAttribute("aria-current"));
+      view.className = `view page-${index}`;
+    };
+    const links: HTMLElement[] = demoSite[lang].pages.map((page, i) => h("button", {
+      type: "button",
+      onclick: () => {
+        open(i);
+        if (ready) logLine(page.path);
+      },
+    }, page.label));
+    view.append(h("span"), h("span"), h("span"), h("span"), h("span"), h("span"));
+    open(0);
+    const browser = h("div", { class: "browser" },
+      h("div", { class: "bar" }, h("i"), h("i"), h("i"), h("span", { class: "address", dir: "ltr" }, address)),
+      h("div", { class: "site" }, h("div", { class: "site-head" }, h("strong", {}, demoSite[lang].name), h("nav", {}, ...links)), view));
+    return h("figure", { class: "demo" }, browser,
+      h("div", { class: "terminal" }, h("div", { class: "bar", "aria-hidden": "true" }, h("i"), h("i"), h("i")), screen));
   }
 
   /** A plan: its traffic picture (from, Dalan with its guards, to) and "Get started", which opens its guide. */
-  function productCard(product: Product, name: keyof typeof icons): HTMLElement {
-    return h("article", { class: "product" },
+  function productCard(product: Product, name: keyof typeof icons, tone: string): HTMLElement {
+    return h("article", { class: `product tone-${tone}` },
       h("span", { class: "badge-icon" }, icon(name)),
       h("span", { class: "label" }, product.label),
       h("h3", {}, product.title),
@@ -331,7 +472,7 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
           h("span", { class: "wire up" }),
           h("span", { class: "box" }, icon("computer"), h("span", { dir: "ltr" }, branch.to))))),
         h("span", { class: "frame-label" }, product.frame)),
-      link(product.guide, labels[lang].getStarted, "button primary"));
+      link(product.guide, labels[lang].getStarted, "button learn"));
   }
 
   /** CLI-57: an email to answer to (the user's own, locked, when they have one) and the text. */

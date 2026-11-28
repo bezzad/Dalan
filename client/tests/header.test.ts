@@ -1,4 +1,4 @@
-// Rules: CLI-35, CLI-42, CLI-26, CLI-56, CLI-57
+// Rules: CLI-35, CLI-42, CLI-26, CLI-56, CLI-57, CLI-104
 // The header (language and theme buttons, three links, the ☰ menu), the footer links, and a landing page with no install steps.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -148,6 +148,36 @@ test("CLI-26 the landing page has the plans with their guides and no install ste
     assert.deepEqual(hrefs(plans), ["/guide/bot", "/guide/site"]);
     // Every list of the landing page with icons uses the shared ticks class.
     for (const list of byTag(content, "ul").filter(list => byTag(list, "svg").length)) assert.ok(hasClass(list, "ticks"), list.className);
+  }
+});
+
+test("CLI-26 the hero has one call, and the strip of names follows it", () => {
+  for (const lang of ["fa", "en"] as const) {
+    const content = all(landing(lang)).find(element => hasClass(element, "content"))!;
+    const sections = content.children as FakeElement[];
+    const hero = sections[0]!;
+    assert.ok(hasClass(hero, "hero"));
+    assert.equal(byTag(hero, "button").length + byTag(hero, "a").length, 1, `${lang}: one call in the hero`);
+    assert.ok(hasClass(sections[1]!, "strip"), `${lang}: the strip follows the hero`);
+    // The names are Latin words, left to right in both languages; the second copy (for the loop) is hidden from readers.
+    const lists = byTag(sections[1]!, "ul");
+    assert.equal(lists.length, 2);
+    assert.ok(byTag(lists[0]!, "li").length >= 6);
+    assert.equal(lists[1]!.getAttribute("aria-hidden"), "true");
+  }
+});
+
+test("CLI-104 each plan and each 'What you get' card has its own colour", () => {
+  for (const lang of ["fa", "en"] as const) {
+    const content = all(landing(lang)).find(element => hasClass(element, "content"))!;
+    const tones = (id: string) => byTag(all(content).find(element => element.getAttribute("id") === id)!, "article")
+      .map(card => card.className.split(" ").find(name => name.startsWith("tone-")));
+    for (const [id, count] of [["plans", 2], ["offers", 4]] as const) {
+      const found = tones(id);
+      assert.equal(found.length, count, id);
+      assert.ok(found.every(Boolean), `${id}: every card has a tone`);
+      assert.equal(new Set(found).size, count, `${id}: all different`);
+    }
   }
 });
 

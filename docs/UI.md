@@ -1,12 +1,13 @@
 # UI design system
 
-Every screen follows this page. The reference is ngrok: clean and simple, neutral greys, one green (owner, 2026-11-18). Its principles only, never its brand or words: few words, much space, no glow or rainbow text (owner, 2026-11-22). Change this page first when a rule changes.
+Every screen follows this page. The reference is ngrok: clean and simple, neutral greys, one green (owner, 2026-11-18). Its principles only, never its brand or words: few words, much space (owner, 2026-11-22). The home page follows ngrok's home page more closely (owner, 2026-11-28): serif titles, a coloured title line, one soft still cloud behind the hero, a colour per card. Change this page first when a rule changes.
 
 ## Theme
 - Light and dark. The first open follows the device; the theme button switches light and dark only and keeps the choice (CLI-35).
 - Colours only from the tokens in `client/public/app.css` (`--bg`, `--surface`, `--line`, `--text`, `--muted`, `--brand`, `--danger`). The dark tokens are set twice (media query and `[data-theme="dark"]`); keep both in sync.
 - Nothing from another host: fonts and icons are in the page (rule 7).
 - Font: Inter for Latin letters, Vazirmatn for Persian (both OFL, copied from npm by `client/build.mjs`).
+- Display font (CLI-103), only for the big titles of the home page (`--display`): Source Serif 4 for Latin letters, Noto Naskh Arabic for Persian (both OFL, from npm). Monospace is the system's own (`--mono`).
 - Small text on public pages (CLI-76): section labels (`.label`) use `--text-label`, 14px (15px in Persian); diagram and tag text (`.frame-label`, `ul.guards`, `.branch .box`, `.tag`, `.soon`) uses `--text-small`, 13px (14px in Persian). Nothing on a public page is smaller; code blocks keep their own size.
 - Logo: the Dalan gate (`client/src/logo.ts`), an outer arch around a door. The favicon is the round version (`public/icons/icon.svg`); the app icons are square. The not-found page (CLI-40) shows the gate closed.
 
@@ -17,7 +18,10 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - **Header links** (public pages, CLI-42): only Plans, Showcase and Guide. FAQ and Privacy live in the footer only, and so do About us and Contact us (CLI-56).
 - **Phone (below 760px)**: the links fold into a round ☰ button after the tools; it opens a panel with one 48px row per link, closed by a link, a click outside or Escape. "Log in or sign up" becomes "Log in"; a long user name is cut with "…". Under 360px the logo stands without the name. Every page fits 320px and 360 by 740 portrait and 740 by 360 landscape, with no sideways scroll.
 - **Public pages**: the full site header, and the footer with the big half-cut wordmark. On a short page the footer sits at the bottom of the screen (CLI-73: `margin-block-start: auto`, never fixed); on a long page it follows the content. Under the footer columns, one small grey line `© 2026 Dalan v1.1.0` (CLI-72): this year, and the version from `/api/public/settings` (`/health` is private).
-- **Landing page**: only what Dalan does, its features and its plans. No install steps or commands: each plan has "Get started" to its guide, and `/guide` first asks which plan.
+- **Landing page** (CLI-26): only what Dalan does, its features and its plans. The hero has one call ("Try it (free)", a light pill, monospace capitals in English) on a soft still cloud; under it a strip of names (languages and frameworks) that moves slowly to the end side with faded edges, still and wrapped with reduced motion (CLI-105). Each plan card has "Get started" to its guide; `/guide` first asks which plan.
+- **Try it now** (`#try`, CLI-26): the only command on the landing page: the site agent's install line in a dark pill (Linux and macOS, or Windows) with a Copy icon, the live demo (CLI-106): a light browser with a small site at `mysite.<sites domain>` and a dark terminal over its end corner that types the commands, then logs each page opened in that browser (newest on top); all at once with reduced motion; on a phone the terminal sits under the browser. Then two arrow links to the site and bot guides.
+- **A colour per card** (CLI-104): `.tone-green`, `.tone-blue`, `.tone-violet`, `.tone-amber` set `--tone`; the badge, the label, the ticks and the traffic picture use it. On hover a plan card takes a soft tint of it and its button turns light.
+- **Header links** in English are small monospace capitals (CLI-103).
 - **Width**: public pages up to `--page-width`. Inner pages (`main.wide`) up to 960px; a simple list or chat may stay narrow. Below that, a 16px side gutter. No sideways scroll on a phone.
 - **Page title row**: Back, the title, then the main action of the page as one primary button at the end (for example "Create bot").
 
