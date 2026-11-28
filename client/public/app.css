@@ -805,7 +805,7 @@ input, textarea, select { font-size: 16px; }
 .stepper .step-body { display: flex; flex-direction: column; gap: 12px; padding: 0 16px 16px; }
 .stepper .step, .stepper .step-body { max-width: none; }
 .stepper .step-heading { display: none; }
-/* CLI-101: on a computer the guide uses the page width: the step names are a list at the start side, and the open
+/* CLI-102: on a computer the guide uses the page width: the step names are a list at the start side, and the open
    step is one big card beside it. A phone keeps the cards one under another. */
 @media (min-width: 960px) {
   .page .content:has(> ol.stepper) { max-width: none; }

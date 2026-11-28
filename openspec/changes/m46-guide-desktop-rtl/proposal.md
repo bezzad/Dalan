@@ -8,7 +8,7 @@ the scroller is left to right for its scrollbar, so a column narrower than the p
 
 ## What changes
 - CLI-101 (new): in Persian a public page's column starts at the right edge, the mirror of English.
-- CLI-101: on a computer (960px and wider) a guide uses the page width: the step names are a list at the start side,
+- CLI-102 (new): on a computer (960px and wider) a guide uses the page width: the step names are a list at the start side,
   and the open step is one big card beside it, with its own title. One step is always open there.
   A phone and a tablet keep the cards one under another, now as wide as the page.
 - Only CSS and the stepper; no server change and no new setting.

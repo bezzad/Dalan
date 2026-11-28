@@ -1,4 +1,4 @@
-// Rules: CLI-101
+// Rules: CLI-101, CLI-102
 // In a real browser: Persian is the mirror of English (the column sits at the right edge, never in the middle), and on
 // a computer the guide uses the page width: the step names at the start side, the open step beside them.
 import { expect, test, type Page } from "@playwright/test";
@@ -44,7 +44,7 @@ for (const lang of ["en", "fa"] as const) {
   });
 }
 
-test("CLI-101 on a computer the step names are at the start side and the open step is a wide card beside them", async ({ page, isMobile }) => {
+test("CLI-102 on a computer the step names are at the start side and the open step is a wide card beside them", async ({ page, isMobile }) => {
   test.skip(isMobile, "a phone keeps the cards one under another");
   for (const lang of ["en", "fa"] as const) {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -63,7 +63,7 @@ test("CLI-101 on a computer the step names are at the start side and the open st
   }
 });
 
-test("CLI-101 on a phone the steps are cards one under another, as wide as the page", async ({ page, isMobile }) => {
+test("CLI-102 on a phone the steps are cards one under another, as wide as the page", async ({ page, isMobile }) => {
   test.skip(!isMobile, "only on a phone");
   await open(page, "/guide/site", "fa");
   await expect(page.locator(".step-body")).toBeVisible();
