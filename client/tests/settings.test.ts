@@ -49,9 +49,9 @@ test("CLI-77 the Builder section is for every user (CLI-23); the access keys onl
   }
   // Waiting for the phone: the Builder section says a phone is needed (CLI-34); no keys.
   assert.deepEqual(settingsMenu({ ...user, has_phone: false }).find(entry => entry.group === "building")!.sections.map(section => section.id), ["builder"]);
-  // CLI-23: the section asks, waits or opens My bots; My apps sends a non-builder there.
+  // CLI-23: the section says a phone is needed, refused, or opens My bots; My apps sends a non-builder there.
   const section = source("../src/settings/building.ts");
-  for (const key of ["askBuilder", "builderWaiting", "phoneRequired", "builderRefused"]) assert.match(section, new RegExp(`t\\("${key}"\\)`), key);
+  for (const key of ["builderCan", "phoneRequired", "builderRefused"]) assert.match(section, new RegExp(`t\\("${key}"\\)`), key);
   assert.match(source("../src/apps.ts"), /app\.go\("\/account\/builder"\)/);
   // CLI-81: that old address moves into the dashboard.
 });
@@ -162,12 +162,12 @@ test("CLI-77 the design system describes the settings area and its pieces", () =
     assert.ok(css.includes(rule), rule);
 });
 
-test("CLI-78 the user menu for an admin: three groups, an icon per item; Dashboard opens the admin overview", () => {
+test("CLI-78 the user menu for an admin: three groups, an icon per item; Dashboard opens /dashboard", () => {
   const groups = userMenuGroups({ admin: true });
   assert.deepEqual(groups.map(group => group.map(item => item.id)), [["myBots", "chats", "myApps"], ["dashboard"], ["logout"]]);
   for (const item of groups.flat()) assert.ok(item.glyph in glyphs, item.id);
   // CLI-81: each item opens its place in the dashboard.
-  assert.deepEqual(groups.flat().map(item => item.path), ["/dashboard/bots", "/dashboard/chats", "/dashboard/apps", "/dashboard/admin", null]);
+  assert.deepEqual(groups.flat().map(item => item.path), ["/dashboard/bots", "/dashboard/chats", "/dashboard/apps", "/dashboard", null]);
 });
 
 test("CLI-78 a user who is not an admin has only Dashboard in the second group, opening /dashboard", () => {

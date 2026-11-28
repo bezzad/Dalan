@@ -22,9 +22,10 @@ export function mergeRefusal(plan: MergePlan, t: Translate): string | null {
   switch (plan.refusal) {
     case null: return null;
     case "both_have_products": return t("bothHaveProducts");
+    case "other_has_products": return t("otherHasProducts");
     case "merge_conflict": return t("mergeConflict").replace("{field}", t(wayKeys[plan.field ?? "phone"]));
-    // SEC-15: a merge must not give an admin's session without the second factor.
-    case "admin": return t("adminMerge");
+    // SEC-15: two admin accounts are never one. One admin side needs the code (plan.needs_code), not a refusal.
+    case "admin": return t("adminMergeBoth");
     default: return t("accountSuspended");
   }
 }

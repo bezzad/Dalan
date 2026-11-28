@@ -88,6 +88,7 @@ export function errorText(error: unknown): TextKey {
     case "merge_needed": return "mergeNeeded";
     case "no_merge": return "noMerge";
     case "both_have_products": return "bothHaveProducts";
+    case "other_has_products": return "otherHasProducts";
     case "wrong_login": return "wrongLogin";
     case "weak_password": return "weakPassword";
     case "wrong_password": return "wrongPassword";

@@ -172,17 +172,17 @@ export interface MenuItem {
 }
 
 /**
- * CLI-78: the user menu groups: (My bots, Chats, My apps), (Dashboard), (Log out). Dashboard opens the admin overview for an
- * admin and the dashboard for anyone else (owner, 2026-11-27: no separate Settings or Admin item; the side menu has both).
+ * CLI-78: the user menu groups: (My bots, Chats, My apps), (Dashboard), (Log out). Dashboard opens /dashboard for everyone
+ * (owner, 2026-11-27); Settings and Admin are in its side menu.
  */
-export function userMenuGroups(user: { admin: boolean }): MenuItem[][] {
+export function userMenuGroups(_user: { admin: boolean }): MenuItem[][] {
   return [
     [
       { id: "myBots", glyph: "bots", text: "myBots", path: sectionPath("bots") },
       { id: "chats", glyph: "chats", text: "chats", path: sectionPath("chats") },
       { id: "myApps", glyph: "apps", text: "myApps", path: sectionPath("apps") },
     ],
-    [{ id: "dashboard", glyph: "grid", text: "dashboard", path: user.admin ? sectionPath("overview") : dashboardPath }],
+    [{ id: "dashboard", glyph: "grid", text: "dashboard", path: dashboardPath }],
     [{ id: "logout", glyph: "logout", text: "logout", path: null }],
   ];
 }
