@@ -49,9 +49,9 @@ test("CLI-77 the Builder section is for every user (CLI-23); the access keys onl
   }
   // Waiting for the phone: the Builder section says a phone is needed (CLI-34); no keys.
   assert.deepEqual(settingsMenu({ ...user, has_phone: false }).find(entry => entry.group === "building")!.sections.map(section => section.id), ["builder"]);
-  // CLI-23: the section asks, waits or opens My bots; My apps sends a non-builder there.
+  // CLI-23: the section says a phone is needed, refused, or opens My bots; My apps sends a non-builder there.
   const section = source("../src/settings/building.ts");
-  for (const key of ["askBuilder", "builderWaiting", "phoneRequired", "builderRefused"]) assert.match(section, new RegExp(`t\\("${key}"\\)`), key);
+  for (const key of ["builderCan", "phoneRequired", "builderRefused"]) assert.match(section, new RegExp(`t\\("${key}"\\)`), key);
   assert.match(source("../src/apps.ts"), /app\.go\("\/account\/builder"\)/);
   // CLI-81: that old address moves into the dashboard.
 });

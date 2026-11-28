@@ -166,8 +166,8 @@ test("CLI-92 the new refusals have their own words: admin merge, admin without t
     assert.equal(errorText(new ApiError(403, code)), key, code);
     assert.ok(texts.fa[key] && texts.en[key] && texts.fa[key] !== texts.en[key], key);
   }
-  // SEC-15: a merge refused because one side is an admin says so, not "suspended".
+  // SEC-15: a merge refused because both sides are admins says so, not "suspended".
   const t = (key: TextKey) => texts.en[key];
   const side = { name: "x", bots: 0, sites: 0, keys: 0, chats: 0 };
-  assert.equal(mergeRefusal({ way: "phone", keep: "this", this: side, other: side, refusal: "admin" } as never, t), texts.en.adminMerge);
+  assert.equal(mergeRefusal({ way: "phone", keep: "this", this: side, other: side, refusal: "admin" } as never, t), texts.en.adminMergeBoth);
 });
