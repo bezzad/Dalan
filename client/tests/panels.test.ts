@@ -6,11 +6,16 @@ import { errorText } from "../src/app.ts";
 import { texts } from "../src/i18n.ts";
 import { botByUsername, builderView, keysShown, TokenHandOver, cleanValue, groupSettings, utc, type Setting } from "../src/panels.ts";
 
-test("CLI-23 the account screen shows the request button, the waiting note or the bots button", () => {
-  assert.equal(builderView({ builder: "none", admin: false, has_phone: true }), "request");
-  assert.equal(builderView({ builder: "requested", admin: false, has_phone: true }), "waiting");
+test("CLI-23 a verified phone builds with no request: the phone note, the refused note or the bots", () => {
+  // AUTH-39: the server makes every verified phone a builder. A phone that is not one (the admin turned
+  // Identity:AutoBuilder off) gets a note, not a request button and not "waiting".
+  assert.equal(builderView({ builder: "none", admin: false, has_phone: true }), "closed");
+  assert.equal(builderView({ builder: "requested", admin: false, has_phone: true }), "closed");
   assert.equal(builderView({ builder: "approved", admin: false, has_phone: true }), "bots");
   assert.equal(builderView({ builder: "none", admin: true, has_phone: true }), "bots");
+  assert.equal(builderView({ builder: "none", admin: false, has_phone: false }), "phone");
+  assert.equal(builderView({ builder: "requested", admin: false, has_phone: false }), "phone");
+  assert.equal(builderView({ builder: "refused", admin: false, has_phone: true }), "refused");
 });
 
 test("CLI-34 a user with no phone is asked to verify one before the builder request", () => {

@@ -202,7 +202,7 @@ The client is one PWA at `dalanet.ir`, served by the same server. Persian (right
 Two levels (owner, 2026-11-18):
 
 - **Level 1:** "Log in with GitHub", or a one-time code sent by email. The user can use bots. The login screen says to check the spam folder too.
-- **Level 2:** a verified Iranian mobile number (SMS code), at sign-up or later from the account screen. Only level 2 can ask to become a builder, because by law the owner of a bot or site must be known by phone.
+- **Level 2:** a verified Iranian mobile number (SMS code), at sign-up or later from the account screen. Only level 2 can build: a verified phone makes a builder with no request (AUTH-39), because by law the owner of a bot or site must be known by phone.
 
 **Login flow:**
 

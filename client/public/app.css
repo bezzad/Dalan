@@ -27,6 +27,8 @@
   /* CLI-71: the edge of a plain button; 3:1 against --surface and --bg (WCAG 1.4.11). */
   --control-line: #868f9a;
   --brand: #0b7a61;
+  /* CLI-94: the colours of the big titles' accent line, like ngrok's; their own set in the dark theme. */
+  --rainbow: #6aa514, #0b9a78, #2f7fd0, #8a5bd6, #d0558c;
   --on-brand: #fff;
   --mine: #dcf2ea;
   --danger: #b3261e;
@@ -79,6 +81,7 @@
     --line: #2f3533;
     --control-line: #2f3533;
     --brand: #3fd0a8;
+    --rainbow: #c6e05a, #3fd0a8, #5aa9f2, #b78af2, #f28ab2;
     --on-brand: #06231c;
     --mine: #1f4037;
     --danger: #ff8a80;
@@ -100,6 +103,7 @@
   --line: #2f3533;
   --control-line: #2f3533;
   --brand: #3fd0a8;
+  --rainbow: #c6e05a, #3fd0a8, #5aa9f2, #b78af2, #f28ab2;
   --on-brand: #06231c;
   --mine: #1f4037;
   --danger: #ff8a80;
@@ -618,7 +622,18 @@ a.button.primary { border-color: var(--brand); background: var(--brand); color: 
 a.button:hover, .public button:hover { border-color: var(--brand); }
 
 /* One accent: the second line of a big title is green (simple, like ngrok: no glow, no rainbow). */
-.accent { color: var(--brand); }
+/* CLI-94: the accent line of a big title: five colours that move slowly along the text (two copies, so the loop has no seam). */
+.accent {
+  background-image: linear-gradient(90deg, var(--rainbow), var(--rainbow));
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: title-colors 8s linear infinite;
+}
+:lang(fa) .accent { background-image: linear-gradient(270deg, var(--rainbow), var(--rainbow)); animation-direction: reverse; }
+@keyframes title-colors { to { background-position: 100% 50%; } }
+@media (prefers-reduced-motion: reduce) { .accent { animation: none; } }
 
 /* Hero */
 .hero { display: flex; flex-direction: column; align-items: center; gap: var(--space-m); padding-block: var(--space-xl) var(--space-l); text-align: center; }
@@ -936,3 +951,7 @@ a.back { align-self: flex-start; color: var(--muted); text-decoration: none; }
 .menu.bell .notices .empty strong { color: var(--text); }
 .menu.bell .panel > button.small { align-self: center; margin: 4px; }
 @media (max-width: 420px) { .menu.bell .panel { position: fixed; inset-inline: 16px; top: 64px; width: auto; } }
+/* CLI-52: on a touch screen a long press opens Dalan's message menu, not the system's text menu or picture callout. */
+@media (pointer: coarse) {
+  .messages li { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+}

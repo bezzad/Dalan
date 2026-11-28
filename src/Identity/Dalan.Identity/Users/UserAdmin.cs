@@ -110,14 +110,15 @@ internal sealed class UserAdmin(
     }
 
     /// <summary>
-    /// AUTH-39: with Identity:AutoBuilder on, a user with a verified phone and no builder state becomes a builder.
-    /// "requested" and "refused" wait for the admin.
+    /// AUTH-39: with Identity:AutoBuilder on, a user with a verified phone becomes a builder with no request.
+    /// Only "refused" (by an admin) stays.
     /// </summary>
     public async Task ApproveByPhoneAsync(long userId, CancellationToken cancellationToken)
     {
         if (!options.CurrentValue.AutoBuilder) return;
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        await db.Users.Where(u => u.Id == userId && u.Phone != null && u.Builder == BuilderState.None)
+        await db.Users.Where(u => u.Id == userId && u.Phone != null
+                && (u.Builder == BuilderState.None || u.Builder == BuilderState.Requested))
             .ExecuteUpdateAsync(set => set.SetProperty(u => u.Builder, BuilderState.Approved), cancellationToken);
     }
 
