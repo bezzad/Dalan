@@ -9,5 +9,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Dalan.Notification.Contracts/Dalan.Notification.Contracts.csproj" />
+    <ProjectReference Include="../../Admin/Dalan.Admin.Contracts/Dalan.Admin.Contracts.csproj" />
+    <ProjectReference Include="../../Identity/Dalan.Identity.Contracts/Dalan.Identity.Contracts.csproj" />
   </ItemGroup>
 </Project>

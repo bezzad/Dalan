@@ -522,6 +522,9 @@ None of these is planned work. They are recorded so the design does not block th
 | Second factor login ticket (`Identity:TotpTicketMinutes`, `Identity:TotpMaxTries`) | 5 minutes, 5 wrong codes | Assumed (milestone 29) |
 | Words that confirm "delete my account" (`Identity:DeleteConfirmWords`) | `DELETE,حذف` | Assumed (milestone 27) |
 | Addresses or ranges per access key (`Identity:MaxKeyAddresses`) | 20 | Assumed (milestone 27) |
+| Inbox: notices per page, kept, cleanup (`Notification:InboxPageSize`, `Notification:InboxDays`, `Notification:InboxSweepMinutes`) | 30, 90 days, every 60 minutes | Assumed (milestone 38) |
+| SMS of a notice that push could not bring (`Notification:InboxSmsPerDay`, `Notification:InboxSmsLength`) | 5 per user in 24 hours, 120 characters | Assumed (milestone 38) |
+| SMS.ir notice template (`Notification:SmsIr:NoticeTemplateId`, `Notification:SmsIr:NoticeParameter`) | 0 (no notice SMS until a template is approved), `TEXT` | Assumed (milestone 38) |
 
 **Confirmed by the owner on 2026-11-16:**
 
