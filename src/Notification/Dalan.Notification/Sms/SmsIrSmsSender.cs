@@ -16,7 +16,26 @@ internal sealed partial class SmsIrSmsSender(
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    public async Task<bool> SendLoginCodeAsync(string phone, string code, CancellationToken cancellationToken)
+    public Task<bool> SendLoginCodeAsync(string phone, string code, CancellationToken cancellationToken)
+    {
+        var smsIr = options.CurrentValue.SmsIr;
+        return SendAsync(phone, smsIr.TemplateId, smsIr.CodeParameter, code, cancellationToken);
+    }
+
+    /// <summary>NTF-13: the same call with the notice template; template 0 means no notice SMS.</summary>
+    public Task<bool> SendNoticeAsync(string phone, string text, CancellationToken cancellationToken)
+    {
+        var smsIr = options.CurrentValue.SmsIr;
+        if (smsIr.NoticeTemplateId == 0)
+        {
+            LogNoNoticeTemplate(logger);
+            return Task.FromResult(false);
+        }
+
+        return SendAsync(phone, smsIr.NoticeTemplateId, smsIr.NoticeParameter, text, cancellationToken);
+    }
+
+    private async Task<bool> SendAsync(string phone, int templateId, string parameter, string value, CancellationToken cancellationToken)
     {
         var smsIr = options.CurrentValue.SmsIr;
         using var request = new HttpRequestMessage(HttpMethod.Post, new Uri($"{smsIr.BaseUrl.TrimEnd('/')}/v1/send/verify"))
@@ -25,8 +44,8 @@ internal sealed partial class SmsIrSmsSender(
                 new VerifyRequest(
                     // As people write it in Iran: 09121234567. SMS.ir takes 9121234567 too.
                     "0" + phone.Replace("+98", "", StringComparison.Ordinal),
-                    smsIr.TemplateId,
-                    [new VerifyParameter(smsIr.CodeParameter, code)]),
+                    templateId,
+                    [new VerifyParameter(parameter, value)]),
                 options: Json),
         };
         request.Headers.Add("x-api-key", smsIr.ApiKey);
@@ -75,4 +94,7 @@ internal sealed partial class SmsIrSmsSender(
 
     [LoggerMessage(LogLevel.Error, "SMS.ir could not be reached ({Reason}).")]
     private static partial void LogDown(ILogger logger, string reason);
+
+    [LoggerMessage(LogLevel.Warning, "A notice SMS was not sent: Notification:SmsIr:NoticeTemplateId is 0.")]
+    private static partial void LogNoNoticeTemplate(ILogger logger);
 }

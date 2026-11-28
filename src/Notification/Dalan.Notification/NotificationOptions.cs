@@ -20,6 +20,21 @@ public sealed class NotificationOptions
     public SmtpOptions Smtp { get; set; } = new();
 
     public PushOptions Push { get; set; } = new();
+
+    /// <summary>NTF-12: notices in one page of the inbox.</summary>
+    public int InboxPageSize { get; set; }
+
+    /// <summary>NTF-12: a notice older than this is removed.</summary>
+    public int InboxDays { get; set; }
+
+    /// <summary>NTF-13: SMS notices one user may get in 24 hours.</summary>
+    public int InboxSmsPerDay { get; set; }
+
+    /// <summary>NTF-13: the longest SMS of a notice, in characters.</summary>
+    public int InboxSmsLength { get; set; }
+
+    /// <summary>NTF-12: how often old notices are removed.</summary>
+    public int InboxSweepMinutes { get; set; }
 }
 
 /// <summary>NTF-02: SMS.ir "verify" (fast send).</summary>
@@ -35,6 +50,12 @@ public sealed class SmsIrOptions
 
     /// <summary>Name of the code variable in the template text: CODE for #CODE#.</summary>
     public string CodeParameter { get; set; } = "";
+
+    /// <summary>NTF-13: number of the approved notice template; 0 = no notice SMS.</summary>
+    public int NoticeTemplateId { get; set; }
+
+    /// <summary>NTF-13: name of the text variable in the notice template: TEXT for #TEXT#.</summary>
+    public string NoticeParameter { get; set; } = "";
 
     public int TimeoutSeconds { get; set; }
 }

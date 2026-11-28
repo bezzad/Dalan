@@ -33,7 +33,9 @@ public static class IdentityService
                 provider.GetRequiredService<IConfiguration>().GetConnectionString("Dalan"),
                 npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", IdentityDb.Schema))
             .UseSnakeCaseNamingConvention());
-        services.AddSingleton<IUserDirectory, UserDirectory>();
+        services.AddSingleton<UserDirectory>();
+        services.AddSingleton<IUserDirectory>(provider => provider.GetRequiredService<UserDirectory>());
+        services.AddSingleton<IUserPhones>(provider => provider.GetRequiredService<UserDirectory>());
         services.AddSingleton<SuspendedUsers>();
         services.AddSingleton<UserAdmin>();
         services.AddSingleton<IUserAdmin>(provider => provider.GetRequiredService<UserAdmin>());

@@ -15,10 +15,13 @@ internal sealed class UserAdmin(
     TimeProvider time) : IUserAdmin
 {
     /// <summary>AUTH-18: read on every call, so a change of the setting works at once.</summary>
-    public bool IsAdminPhone(string? phone) =>
-        phone is not null && (options.CurrentValue.AdminPhones ?? "")
-            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-            .Any(p => PhoneNumber.Normalize(p) == phone);
+    public bool IsAdminPhone(string? phone) => phone is not null && AdminPhones().Contains(phone);
+
+    /// <summary>The numbers of Identity:AdminPhones as +989121234567.</summary>
+    public List<string> AdminPhones() => [.. (options.CurrentValue.AdminPhones ?? "")
+        .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+        .Select(PhoneNumber.Normalize)
+        .OfType<string>()];
 
     public async Task<UserAccess> GetAccessAsync(long userId, CancellationToken cancellationToken)
     {
