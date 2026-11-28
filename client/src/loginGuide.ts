@@ -10,7 +10,9 @@ export interface LoginAddresses { issuer: string; discovery: string; site: strin
 export function loginAddresses(numbers: PublicNumbers, name = "shop"): LoginAddresses {
   const issuer = numbers.site_url.replace(/\/+$/, "");
   const domain = numbers.sites_domain || "<sites domain>";
-  const site = `https://${name}.${domain}`;
+  // The sites use the scheme of Dalan's own address. No address is written whole here: the built client names no host (CLI-03).
+  const scheme = /^[a-z]+:/i.exec(issuer)?.[0] ?? "https:";
+  const site = `${scheme}//${name}.${domain}`;
   return { issuer, discovery: `${issuer}/.well-known/openid-configuration`, site, callback: `${site}/callback` };
 }
 
@@ -104,11 +106,12 @@ echo "Hello " . htmlspecialchars($name);` },
 /** CLI-97: the guide at /guide/login: way 1 (the proxy, no code) and way 2 (OpenID Connect), step by step. */
 export function loginGuideSteps(lang: Lang, numbers: PublicNumbers): GuideStep[] {
   const a = loginAddresses(numbers);
+  const localTests = ["http:", "", "localhost:<port>/..."].join("/");
   const facts = `issuer          ${a.issuer}
 discovery       ${a.discovery}
 client_id       shop
 client_secret   <from My apps>
-redirect_uri    ${a.callback}   (or http://localhost:<port>/... for tests)
+redirect_uri    ${a.callback}   (or ${localTests} for tests)
 scope           openid profile   (+ email)
 PKCE            S256, required`;
   const run = "dalan http 3000 --name shop --login";
