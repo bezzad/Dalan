@@ -25,6 +25,10 @@ export function stepper(options: StepperOptions): HTMLElement {
   const isDone = () => stepsDone(options.done, pressed, keyStep, hasKey);
   let open = Math.max(0, isDone().indexOf(false) === -1 ? steps.length - 1 : isDone().indexOf(false));
   const list = h("ol", { class: "stepper" });
+  // CLI-101: the grid of a wide screen has one row per name; the page policy allows no style attribute, so it is set here.
+  list.style.setProperty("--steps", String(steps.length));
+  // CLI-101: on a wide screen the step names are a list beside the open step, so one step is always open.
+  const wide = () => typeof matchMedia === "function" && matchMedia("(min-width: 960px)").matches;
 
   function draw(): void {
     const states = stepStates(isDone());
@@ -32,7 +36,7 @@ export function stepper(options: StepperOptions): HTMLElement {
       const state = states[i]!;
       const isOpen = i === open;
       return h("li", { class: `card step ${state}${isOpen ? " open" : ""}` },
-        h("button", { type: "button", class: "step-head", "aria-expanded": String(isOpen), onclick: () => { open = isOpen ? -1 : i; draw(); } },
+        h("button", { type: "button", class: "step-head", "aria-expanded": String(isOpen), onclick: () => { open = isOpen && !wide() ? -1 : i; draw(); } },
           h("span", { class: "step-mark" }, state === "done" ? "✓" : n(i + 1)),
           h("span", { class: "step-title" }, step.title),
           ...(state === "done" ? [h("span", { class: "step-done" }, t("stepDone"))] : [h("span", { class: "step-show" }, isOpen ? "" : t("stepShow"))])),
@@ -42,6 +46,8 @@ export function stepper(options: StepperOptions): HTMLElement {
 
   function body(step: GuideStep, i: number): HTMLElement {
     return h("div", { class: "step-body" },
+      // CLI-101: on a wide screen the body stands beside the list of names, so it has its own title.
+      h("h3", { class: "step-heading" }, step.title),
       h("p", {}, step.text),
       ...(step.code ? [codeBlock(step.code, t)] : []),
       ...(step.samples ? tabbed(step.samples, t) : []),

@@ -1,5 +1,5 @@
 // The test server of the browser tests (CLI-87, CLI-89, CLI-90, SEC-16). Two origins, like Dalan in production:
-// - the app (http://localhost:APP_PORT): client/dist and harness.html, which sets a cookie and localStorage like a logged-in page;
+// - the app (http://localhost:APP_PORT): client/dist (and index.html for a few app pages) and harness.html, which sets a cookie and localStorage like a logged-in page;
 // - the view host (http://127.0.0.1:VIEW_PORT): only GET /v/report, the sample report with the SEC-16 headers.
 // Plain Node, no packages.
 import { createServer } from "node:http";
@@ -18,7 +18,9 @@ const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", "
 createServer((request, response) => {
   const path = new URL(request.url, appOrigin).pathname;
   const harness = ["/harness.html", "/dashboard.html"].includes(path);
-  const file = harness ? join(here, path.slice(1)) : normalize(join(dist, path));
+  // CLI-101: a page of the app itself; the spec answers its /api calls.
+  const app = ["/guide/site", "/guide/bot", "/faq"].includes(path);
+  const file = harness ? join(here, path.slice(1)) : normalize(join(dist, app ? "index.html" : path));
   if (!file.startsWith(dist) && !harness || !existsSync(file) || statSync(file).isDirectory()) {
     response.writeHead(404).end();
     return;

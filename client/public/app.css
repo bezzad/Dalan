@@ -604,6 +604,9 @@ label.button.file input { position: absolute; inset: 0; opacity: 0; cursor: poin
 .page .content:not(:has(.hero)) { width: 100%; max-width: 760px; padding-block-start: var(--space-m); }
 .page .content > .card { max-width: none; flex: none; }
 .page .content > .bots { flex: none; overflow: visible; }
+/* CLI-101: the scroller is left to right only for its scrollbar, so in Persian the column must be pushed to the right
+   edge itself: Persian is the mirror of English, never a column in the middle. */
+[dir="rtl"] .page .content:not(:has(.hero)) { margin-inline-end: auto; }
 /* CLI-57: the contact form. A locked email looks locked. */
 .contact textarea { min-height: 8em; }
 .contact input[readonly] { color: var(--muted); }
@@ -788,8 +791,10 @@ input, textarea, select { font-size: 16px; }
 
 /* CLI-64: the guide as a stepper; a done step is green and closed. CLI-65: the key modal. */
 .stepper { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+/* .page ol gives a list a start padding; a stepper has none. */
+.page ol.stepper { padding: 0; }
 .stepper .step { padding: 0; }
-.stepper .step-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; border: 0; background: transparent; text-align: start; cursor: pointer; }
+.stepper .step-head { display: flex; align-items: center; gap: 12px; width: 100%; margin: 0; padding: 14px 16px; border: 0; background: transparent; text-align: start; cursor: pointer; }
 .stepper .step-mark { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); font-size: 14px; }
 .stepper .step.current .step-mark { border-color: var(--brand); color: var(--brand); }
 .stepper .step.done { border-color: var(--brand); }
@@ -798,6 +803,29 @@ input, textarea, select { font-size: 16px; }
 .stepper .step-done { color: var(--brand); font-size: 14px; }
 .stepper .step-show { color: var(--muted); font-size: 14px; }
 .stepper .step-body { display: flex; flex-direction: column; gap: 12px; padding: 0 16px 16px; }
+.stepper .step, .stepper .step-body { max-width: none; }
+.stepper .step-heading { display: none; }
+/* CLI-101: on a computer the guide uses the page width: the step names are a list at the start side, and the open
+   step is one big card beside it. A phone keeps the cards one under another. */
+@media (min-width: 960px) {
+  .page .content:has(> ol.stepper) { max-width: none; }
+  ol.stepper {
+    display: grid; grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: repeat(var(--steps, 1), auto) 1fr;
+    gap: 6px var(--space-l); align-items: start;
+  }
+  .stepper .step { display: contents; }
+  .stepper .step-head { grid-column: 1; padding: 10px 12px; border: 1px solid transparent; border-radius: var(--radius-s); }
+  .stepper .step-head:hover { background: var(--surface); border-color: var(--line); }
+  .stepper .step.open .step-head { background: var(--surface); border-color: var(--brand); }
+  .stepper .step-show { display: none; }
+  .stepper .step-body {
+    grid-column: 2; grid-row: 1 / -1; gap: 16px; padding: 28px 32px;
+    border: 1px solid var(--line); border-radius: 16px; background: var(--surface);
+  }
+  .stepper .step-heading { display: block; font-size: 22px; }
+  .stepper .step-body > p { font-size: 17px; line-height: 1.7; }
+  .stepper .step-body > .row:last-child { margin-block-start: 8px; }
+}
 dialog.modal { width: min(560px, calc(100% - 32px)); padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); }
 dialog.modal::backdrop { background: rgb(0 0 0 / .5); }
 dialog.modal > h2 { margin-block-end: 12px; }
