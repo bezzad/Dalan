@@ -134,16 +134,25 @@ The agent files come with each deploy (`/opt/dalan/current/agent`, DEL-08); `/do
 
 Without it each site gets its own certificate on its first visit, so in an internet shutdown a new site has no HTTPS. With it the server keeps one Let's Encrypt certificate for `*.<sites domain>`, made with a DNS challenge at ArvanCloud by lego, and Caddy uses it for every site host, also new ones, with no question to anyone.
 
-1. ArvanCloud panel, the account that holds the sites domain: make an API key with **DNS administrator** rights (only DNS).
-2. Run `install.sh` once with the key, written exactly as ArvanCloud shows it: `Apikey <key>`. `install.sh` downloads lego (`LEGO_VERSION`, default 5.8.0) on your computer, checks its SHA-256 and copies it; the key goes in a file, never on a command line.
+1. ArvanCloud panel, the account that holds the sites domain (done for `dalans.ir`, 2026-11-28):
+   1. IAM (user management): make a **machine user**, for example `dalan`, and make an API key for it. Copy the key; Arvan shows it once.
+   2. IAM, **resource management** (access rules): give the machine user DNS administrator access **on the resource `dalans.ir`** (only DNS). A role on the user alone is not enough: then Arvan answers 403 "access restricted" and lego fails with `dns01: error presenting token`.
+2. On your computer, update the repository first: `git checkout main && git pull`. A detached HEAD or an old branch has an old `install.sh` with no wildcard part (then the server has no `dalan-cert` unit). Check: `grep -c ARVAN_API_KEY deploy/install.sh` prints more than 0. Then run `install.sh` once with the key, written exactly as ArvanCloud shows it: `Apikey <key>`. `install.sh` downloads lego (`LEGO_VERSION`, default 5.8.0) on your computer, checks its SHA-256 and copies it; the key goes in a file, never on a command line. Both settings go before `bash` on the same line. The run prints `lego <version>` and `Wildcard certificate of the sites (OPS-18)`.
 
    ```bash
    SITES_DOMAIN=dalans.ir ARVAN_API_KEY='Apikey xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' \
      bash deploy/install.sh root@<server> dalanet.ir api.dalanet.ir ~/.ssh/dalan-deploy.pub
    ```
 
-   Optional `CERT_EMAIL=<you@example.com>`: the Let's Encrypt account email. Later runs need no key: the server keeps it.
-3. Check: `journalctl -u dalan-cert` (setup starts the first run at once), then `ls /etc/caddy/certs` and `/etc/caddy/wildcard.caddy`.
+   Optional `CERT_EMAIL=<you@example.com>`: the Let's Encrypt account email. Later runs need no key: the server keeps it. The last line of setup ("Next: the first deploy") is the same on every run; a server that already runs needs no deploy.
+3. Check on the server (setup starts the first run at once):
+
+   ```bash
+   journalctl -u dalan-cert -n 40 --no-pager      # the full lines; the error is often at the end of a long line
+   ls -l /etc/caddy/certs /etc/caddy/wildcard.caddy
+   ```
+
+   After a fix in Arvan, run it again: `sudo systemctl start dalan-cert`. A new key: run `install.sh` again with it.
 
 How it works: the key is in `/etc/dalan/arvan.env` (root, 600), read only by `dalan-cert.service`. `dalan-cert.timer` runs `/opt/dalan/tools/wildcard-cert.sh` every day at about 04:17 Tehran time (a missed run runs at boot): `lego run --dns arvancloud -d '*.<sites domain>' --renew-days 30 ...` in `/var/lib/dalan-cert`. Only when lego made or renewed the certificate, its deploy hook copies it to `/etc/caddy/certs` (key `root:dalan-cert 640`; Caddy is in that group), writes the site block `/etc/caddy/wildcard.caddy` (the Caddyfile imports `wildcard*.caddy`) and restarts Caddy. Run it now: `sudo systemctl start dalan-cert`.
 
