@@ -38,8 +38,8 @@ createServer((request, response) => {
     return;
   }
   const harness = ["/harness.html", "/dashboard.html"].includes(path);
-  // CLI-101: a page of the app itself; the spec answers its /api calls.
-  const app = ["/guide/site", "/guide/bot", "/faq"].includes(path);
+  // CLI-101, CLI-26: a page of the app itself (the home page too); the spec answers its /api calls.
+  const app = ["/", "/guide/site", "/guide/bot", "/faq"].includes(path);
   const file = harness ? join(here, path.slice(1)) : normalize(join(dist, app ? "index.html" : path));
   if (!file.startsWith(dist) && !harness || !existsSync(file) || statSync(file).isDirectory()) {
     response.writeHead(404).end();

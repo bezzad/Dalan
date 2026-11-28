@@ -1,4 +1,4 @@
-// Rules: CLI-71, CLI-48, CLI-13, CLI-07, CLI-58, CLI-76, CLI-94
+// Rules: CLI-71, CLI-48, CLI-13, CLI-07, CLI-58, CLI-76, CLI-94, CLI-103, CLI-104, CLI-105
 // Reads the style sheet: message sizes like Telegram Desktop, and button colours readable in both themes.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -111,4 +111,40 @@ test("CLI-94 the accent line of a big title is a five-colour gradient that moves
   // The hero and the closing title use it.
   const pub = readFileSync(new URL("../src/public.ts", import.meta.url), "utf8");
   assert.equal(pub.match(/h\("span", \{ class: "accent" \}/g)?.length, 2);
+});
+
+test("CLI-103 the big titles of the home page use the display font, served by Dalan; a still cloud behind the hero", () => {
+  for (const [family, file] of [["Dalan Serif", "serif"], ["Dalan Naskh", "naskh"]] as const) {
+    assert.match(css, new RegExp(`@font-face \\{[^}]*font-family: "${family}";[^}]*url\\("/fonts/${file}\\.woff2"\\)`), family);
+  }
+  assert.match(tokens(":root").get("--display") ?? "", /^"Dalan Serif", "Dalan Naskh",/);
+  for (const selector of [".hero h2", ".cta h2", ".landing-title"]) {
+    assert.match(new RegExp(`${selector.replace(".", "\\.")}[^{]*\\{([^}]*)\\}`).exec(css)?.[1] ?? "", /font-family: var\(--display\)/, selector);
+  }
+  const cloud = /\.hero::before \{([^}]*)\}/.exec(css)?.[1] ?? "";
+  assert.match(cloud, /radial-gradient/);
+  assert.match(cloud, /filter: blur\(/);
+  assert.doesNotMatch(cloud, /animation/);
+  const build = readFileSync(new URL("../build.mjs", import.meta.url), "utf8");
+  assert.match(build, /dist\/fonts\/serif\.woff2/);
+  assert.match(build, /dist\/fonts\/naskh\.woff2/);
+});
+
+test("CLI-104 a card's colour drives its badge, label and picture; hover tints the card and lights its button", () => {
+  const tones = [...css.matchAll(/\.tone-(\w+) \{ --tone: var\(--(\w+)\); \}/g)].map(m => m[2]);
+  assert.ok(tones.length >= 4, "four tones");
+  assert.equal(new Set(tones).size, tones.length);
+  for (const selector of [":root", ":root[data-theme=\"dark\"]"]) {
+    for (const tone of tones) assert.ok(tokens(selector).get(`--${tone}`), `${selector} --${tone}`);
+  }
+  assert.match(css, /\.badge-icon \{[^}]*color: var\(--tone, var\(--brand\)\)/);
+  assert.match(css, /\.wire \{[^}]*var\(--tone, var\(--brand\)\)/);
+  assert.match(css, /\.product:hover \{[^}]*color-mix\(in srgb, var\(--tone/);
+  assert.match(css, /\.product:hover a\.button \{[^}]*background: var\(--text\)/);
+});
+
+test("CLI-105 the strip of names moves slowly with faded edges; still and wrapped with reduced motion", () => {
+  assert.match(css, /\.strip \.rail \{[^}]*mask-image: linear-gradient/);
+  assert.match(css, /\.strip \.track \{[^}]*animation: strip \d+s linear infinite/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[^@]*\.strip \.track \{ animation: none;[^@]*\.strip ul\[aria-hidden\] \{ display: none; \}/);
 });

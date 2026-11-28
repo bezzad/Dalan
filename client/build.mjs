@@ -18,3 +18,8 @@ cpSync(path("node_modules/vazirmatn/OFL.txt"), path("dist/fonts/OFL.txt"));
 // Inter for Latin letters (owner, 2026-11-20: Vazirmatn's Latin looked poor); Vazirmatn draws everything else.
 cpSync(path("node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2"), path("dist/fonts/inter.woff2"));
 cpSync(path("node_modules/@fontsource-variable/inter/LICENSE"), path("dist/fonts/OFL-Inter.txt"));
+// CLI-103: the display font of the home page's big titles: Source Serif 4 for Latin letters, Noto Naskh Arabic for Persian.
+cpSync(path("node_modules/@fontsource-variable/source-serif-4/files/source-serif-4-latin-wght-normal.woff2"), path("dist/fonts/serif.woff2"));
+cpSync(path("node_modules/@fontsource-variable/source-serif-4/LICENSE"), path("dist/fonts/OFL-SourceSerif4.txt"));
+cpSync(path("node_modules/@fontsource-variable/noto-naskh-arabic/files/noto-naskh-arabic-arabic-wght-normal.woff2"), path("dist/fonts/naskh.woff2"));
+cpSync(path("node_modules/@fontsource-variable/noto-naskh-arabic/LICENSE"), path("dist/fonts/OFL-NotoNaskhArabic.txt"));

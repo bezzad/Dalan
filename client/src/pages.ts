@@ -84,18 +84,16 @@ export const about: Record<Lang, { title: string; text: string }[]> = {
 };
 
 /** CLI-26: the hero at the top of the landing page. `glow` is drawn in the accent green on its own line. */
-export const hero: Record<Lang, { title: string; glow: string; text: string; plans: string }> = {
+export const hero: Record<Lang, { title: string; glow: string; text: string }> = {
   fa: {
     title: "بات روی کامپیوتر خودتان؛",
     glow: "در دسترس کاربران سراسر ایران",
     text: "دالان کاربران تأییدشده را به بات یا برنامه‌ای که روی کامپیوتر شما اجرا می‌شود متصل می‌کند؛ بدون نیاز به سرور، IP عمومی یا باز کردن پورت.",
-    plans: "طرح‌ها را ببینید",
   },
   en: {
     title: "Your bot on your computer,",
     glow: "reachable from anywhere",
     text: "Dalan brings verified users to the bot or app on your own computer. No server, no public IP, no open port.",
-    plans: "See the plans",
   },
 };
 
@@ -207,6 +205,21 @@ export const security: Record<Lang, string[]> = {
     "محدودیت تعداد درخواست در همه‌ی بخش‌ها", "بررسی امنیتی پیش از هر پیامک", "ثبت گزارش فعالیت‌های مدیر", "سرور در ایران", "بدون اسکریپت و فونت خارجی", "فقط HTTPS"],
   en: ["Users verified by email or SMS", "Bots never see phone numbers", "Hashed bot tokens", "Slow password hashing", "Rate limits on every door",
     "Proof of work before each SMS", "Admin audit log", "Servers inside the country", "No foreign scripts or fonts", "HTTPS only"],
+};
+
+/** CLI-26: the strip under the hero: what Dalan works with. Names of languages and tools, the same in both languages. */
+export const stripNames: readonly string[] = ["Python", "Node.js", ".NET", "Go", "PHP", "Java", "Rust", "Ruby", "Django", "Laravel", "Next.js", "Flask"];
+export const stripLabel: Record<Lang, string> = {
+  fa: "با هر زبانی که بات یا سایت شما با آن نوشته شده کار می‌کند",
+  en: "Works with whatever your bot or site is written in",
+};
+
+/** CLI-26: "Try it now": the one install line of the site agent, with links to both guides (owner, 2026-11-28). */
+export const tryNow: Record<Lang, { label: string; title: string; glow: string; text: string; site: string; bot: string }> = {
+  fa: { label: "سایت روی کامپیوتر شما", title: "سایت خود را از کامپیوتر خودتان آنلاین کنید", glow: "همین حالا",
+    text: "برنامه‌ی رابط دالان را با یک خط نصب کنید؛ بقیه‌ی کار در راهنما است.", site: "راهنمای سایت", bot: "راهنمای بات" },
+  en: { label: "Share a local site", title: "Put a site on your computer online", glow: "Right now",
+    text: "Install the Dalan agent with one line; the guide does the rest.", site: "Site guide", bot: "Bot guide" },
 };
 
 /** CLI-26: the closing call of the landing page. */
