@@ -277,6 +277,43 @@ public class ReplyAndFormatTests(PostgresServer postgres)
 
     [Fact]
     [Trait("Rule", "REL-54")]
+    public async Task REL54_a_jpeg_icon_goes_into_the_manifest_as_an_svg_that_holds_it()
+    {
+        await using var app = await RelayApp.StartAsync(postgres);
+        var jpeg = JpegOf(512, 512);
+        var icon = (await ManifestWithIconAsync(app, jpeg)).GetProperty("icons");
+
+        Assert.Equal(1, icon.GetArrayLength());
+        var src = icon[0].GetProperty("src").GetString()!;
+        Assert.Matches(@"^/api/bots/\d+/icon\.svg\?v=\d+$", src);
+        Assert.Equal("image/svg+xml", icon[0].GetProperty("type").GetString());
+        Assert.Equal("512x512", icon[0].GetProperty("sizes").GetString());
+        Assert.Equal("any", icon[0].GetProperty("purpose").GetString());
+
+        var response = await app.CreateClient().GetAsync(src, Cancel);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/svg+xml", response.Content.Headers.ContentType?.MediaType);
+        Assert.StartsWith("default-src 'none'", response.Headers.GetValues("Content-Security-Policy").Single(), StringComparison.Ordinal);
+        var svg = await response.Content.ReadAsStringAsync(Cancel);
+        Assert.Contains("""width="512" height="512" """, svg, StringComparison.Ordinal);
+        Assert.Contains("data:image/jpeg;base64," + Convert.ToBase64String(jpeg), svg, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("Rule", "REL-54")]
+    public async Task REL54_a_png_icon_has_no_svg()
+    {
+        await using var app = await RelayApp.StartAsync(postgres);
+        var (botId, _) = await app.AddBotAsync("mofidbot");
+        Assert.Equal(BotError.None, await app.Services.GetRequiredService<IBotGateway>().SetIconAsync(botId, new MemoryStream(PngOf(512, 512)), Cancel));
+
+        var response = await app.CreateClient().GetAsync($"/api/bots/{botId}/icon.svg", Cancel);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    [Trait("Rule", "REL-54")]
     public async Task REL54_size_is_read_from_png_jpeg_and_webp_headers()
     {
         await using var app = await RelayApp.StartAsync(postgres);

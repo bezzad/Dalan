@@ -12,6 +12,7 @@ internal static class BotIconEndpoints
     public static void MapPublicBotIcon(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGet("/api/bots/{botId:long}/icon", GetAsync);
+        endpoints.MapGet("/api/bots/{botId:long}/icon.svg", JpegAsSvgAsync);
         endpoints.MapGet("/@{username}/manifest.webmanifest", ManifestAsync);
         endpoints.MapGet("/@{username}/icon", AppIconAsync);
     }
@@ -62,8 +63,11 @@ internal static class BotIconEndpoints
 
         var home = $"/@{bot.Username}";
         // No "maskable": a bot's picture may reach its edges, and a mask would cut it.
+        // Chrome takes only PNG, SVG or WebP: a JPEG goes in an SVG that holds it.
+        var jpeg = bot.IconType == "image/jpeg";
         List<ManifestIcon> icons = FitForApp(bot)
-            ? [new ManifestIcon($"/api/bots/{bot.Id}/icon?v={bot.IconVersion}", $"{bot.IconWidth}x{bot.IconHeight}", bot.IconType!, "any")]
+            ? [new ManifestIcon($"/api/bots/{bot.Id}/icon{(jpeg ? ".svg" : "")}?v={bot.IconVersion}", $"{bot.IconWidth}x{bot.IconHeight}",
+                jpeg ? "image/svg+xml" : bot.IconType!, "any")]
             : [new ManifestIcon("/icons/icon-192.png", "192x192", "image/png", "any"), new ManifestIcon("/icons/icon-512.png", "512x512", "image/png", "any maskable")];
 
         http.Response.Headers.CacheControl = "public, max-age=300";
@@ -111,6 +115,27 @@ internal static class BotIconEndpoints
         if (icon is null) return NotFound();
 
         return Image(http, icon.Icon!, icon.IconType!);
+    }
+
+    /// <summary>
+    /// REL-54: a JPEG icon as an SVG of the same size that holds it, for Chrome's install (it takes no JPEG). The bytes are not
+    /// decoded or changed. The policy lets the SVG load only its own data, so no script runs even when opened as a page.
+    /// </summary>
+    private static async Task<IResult> JpegAsSvgAsync(long botId, HttpContext http, IDbContextFactory<RelayDb> dbFactory)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
+        var icon = await db.Bots.AsNoTracking()
+            .Where(b => b.Id == botId && b.DeletedAt == null && b.SuspendedAt == null && b.Icon != null && b.IconType == "image/jpeg"
+                && b.IconWidth > 0 && b.IconHeight > 0)
+            .Select(b => new { b.Icon, b.IconWidth, b.IconHeight })
+            .FirstOrDefaultAsync(http.RequestAborted);
+        if (icon is null) return NotFound();
+
+        var (w, h) = (icon.IconWidth, icon.IconHeight);
+        var svg = $"""<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">""" +
+            $"""<image width="{w}" height="{h}" href="data:image/jpeg;base64,{Convert.ToBase64String(icon.Icon!)}"/></svg>""";
+        http.Response.Headers.ContentSecurityPolicy = "default-src 'none'; img-src data:; frame-ancestors 'none'";
+        return Image(http, System.Text.Encoding.UTF8.GetBytes(svg), "image/svg+xml");
     }
 
     public static IResult Image(HttpContext http, byte[] bytes, string type)
