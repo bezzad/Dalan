@@ -62,7 +62,7 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - **Every action the user takes ends in a toast**: saved, created, copied, sent, deleted, and every error. Use `toast(text, kind)` from `client/src/toast.ts`; kind `ok` (green dot), `error` (red dot, stays longer), `info` (grey dot).
 - One short sentence, what happened and, if needed, what to do next ("Bot created. Copy the token now.").
 - Bottom corner at the end side, above the page; gone after a few seconds or a click. Errors in form fields may also show next to the field.
-- The same text is shown once (a new one replaces it), and at most 3 at a time; a new one removes the oldest, so toasts never cover the menu for long (CLI-97).
+- The same text is shown once (a new one replaces it), and at most 3 at a time; a new one removes the oldest, so toasts never cover the menu for long (CLI-98).
 
 ## Motion
 - Small and fast (under half a second). Nothing moves when the visitor asks for reduced motion.

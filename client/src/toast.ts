@@ -3,7 +3,7 @@ import { h } from "./dom.ts";
 
 export type ToastKind = "ok" | "error" | "info";
 
-/** CLI-97: the most toasts shown at once. On a phone they are as wide as the screen and would cover the menu. */
+/** CLI-98: the most toasts shown at once. On a phone they are as wide as the screen and would cover the menu. */
 export const maxToasts = 3;
 
 let region: HTMLElement | null = null;
@@ -14,7 +14,7 @@ export function toastRegion(): HTMLElement {
 }
 
 /**
- * CLI-97: which of the shown toasts (oldest first) go when a toast with `text` comes: one with the same text,
+ * CLI-98: which of the shown toasts (oldest first) go when a toast with `text` comes: one with the same text,
  * then the oldest, until the new one fits under `maxToasts`.
  */
 export function toastsToDrop(shown: readonly string[], text: string): number[] {
