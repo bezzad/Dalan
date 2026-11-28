@@ -149,6 +149,7 @@ export function appsScreen(app: App): Screen {
       h("h3", {}, t("step5Title")),
       h("p", { class: "note" }, t("step5Note")),
       codeBlock(serviceCommands.install),
+      h("p", { class: "note" }, t("serviceWindowsNote")),
       h("p", { class: "note" }, t("statusNote")),
       codeBlock(serviceCommands.status));
   }

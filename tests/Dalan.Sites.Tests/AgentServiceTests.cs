@@ -146,17 +146,92 @@ public class AgentServiceTests(PostgresServer postgres)
         Assert.Contains("systemctl --user disable --now dalan", setup.Calls);
     }
 
+    private const string WindowsAgent = @"C:\Users\Sara Ahmadi\AppData\Local\dalan\dalan.exe";
+    private const string WindowsConfig = @"C:\Users\Sara Ahmadi\AppData\Roaming\dalan\dalan.json";
+    private const string WindowsRunKey = @"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
+
     [Fact]
     [Trait("Rule", "AGT-14")]
-    public void AGT14_windows_uses_the_run_key_and_starts_in_the_background()
+    public void AGT14_windows_run_key_has_the_quoted_path_and_the_config_and_the_agent_is_started_and_checked()
     {
-        using var setup = new Setup(ServiceSystem.Windows);
+        using var setup = Setup.Windows();
+
+        setup.Installer.Install(Saved);
+        var output = setup.Output.ToString();
+
+        Assert.Equal(["reg", "add", WindowsRunKey, "/v", "Dalan", "/t", "REG_SZ", "/d",
+            $"\"{WindowsAgent}\" start --background --config \"{WindowsConfig}\"", "/f"], setup.Arguments[0]);
+        Assert.Equal([WindowsAgent, "start", "--background", "--config", WindowsConfig], setup.StartedArguments.Single());
+        Assert.Equal(1, setup.Checks); // Is the started agent still running after a few seconds?
+        Assert.Contains(@"Log: C:\Users\Sara Ahmadi\AppData\Roaming\dalan\dalan.log", output, StringComparison.Ordinal);
+        Assert.Contains("when you log on to Windows (not at boot)", output, StringComparison.Ordinal);
+        Assert.Contains("not started again after a crash", output, StringComparison.Ordinal);
+        Assert.Contains("dalan service uninstall", output, StringComparison.Ordinal);
+        Assert.Contains("dalan status", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("Rule", "AGT-14")]
+    public void AGT14_windows_reg_failure_says_not_installed_with_regs_message_and_dalan_start()
+    {
+        using var setup = Setup.Windows((file, _) => file == "reg" ? (1, "ERROR: Access is denied.") : (0, ""));
+
+        var stop = Assert.Throws<AgentStopException>(() => setup.Installer.Install(Saved));
+
+        Assert.Contains("not installed", stop.Message, StringComparison.Ordinal);
+        Assert.Contains("ERROR: Access is denied.", stop.Message, StringComparison.Ordinal);
+        Assert.Contains("dalan start", stop.Message, StringComparison.Ordinal);
+        Assert.Contains($"/d \"\\\"{WindowsAgent}\\\" start --background", stop.Message, StringComparison.Ordinal); // Quoted as typed.
+        Assert.Empty(setup.StartedArguments);
+        Assert.DoesNotContain("Done", setup.Output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("Rule", "AGT-14")]
+    public void AGT14_windows_agent_that_cannot_start_or_stops_at_once_points_to_the_log()
+    {
+        using var cannot = Setup.Windows();
+        cannot.StartError = new System.ComponentModel.Win32Exception("The file is blocked.");
+        using var stops = Setup.Windows();
+        stops.StartedDies = true;
+
+        var notStarted = Assert.Throws<AgentStopException>(() => cannot.Installer.Install(Saved));
+        var stopped = Assert.Throws<AgentStopException>(() => stops.Installer.Install(Saved));
+
+        Assert.Contains("The file is blocked.", notStarted.Message, StringComparison.Ordinal);
+        Assert.Contains("dalan start", notStarted.Message, StringComparison.Ordinal);
+        Assert.Contains(@"C:\Users\Sara Ahmadi\AppData\Roaming\dalan\dalan.log", stopped.Message, StringComparison.Ordinal);
+        Assert.Contains("dalan service uninstall", stopped.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("Done", stops.Output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("Rule", "AGT-14")]
+    public void AGT14_windows_stops_only_agents_of_the_same_file_and_warns_first()
+    {
+        using var setup = Setup.Windows();
+        setup.Running.AddRange([(11, WindowsAgent.ToUpperInvariant()), (12, @"C:\Tools\dalan.exe"), (Environment.ProcessId, WindowsAgent)]);
 
         setup.Installer.Install(Saved);
 
-        Assert.Contains(@"reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v Dalan /t REG_SZ /d ""/opt/dalan/dalan"" start --background /f",
-            setup.Calls);
-        Assert.Equal(["/opt/dalan/dalan start --background"], setup.Started);
+        Assert.Equal(["taskkill /PID 11 /F"], setup.Calls.Where(call => call.StartsWith("taskkill", StringComparison.Ordinal)));
+        Assert.Contains("\"dalan http\"", setup.Output.ToString(), StringComparison.Ordinal);
+        Assert.Equal(["warning", "taskkill /PID 11 /F"], setup.Log.Where(line => line is "warning" || line.StartsWith("taskkill", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    [Trait("Rule", "AGT-14")]
+    public void AGT14_windows_status_and_uninstall_look_at_the_run_key_and_this_file_only()
+    {
+        using var setup = Setup.Windows((file, arguments) => file == "reg" && arguments[0] == "delete" ? (1, "ERROR: Access is denied.") : (0, ""));
+        setup.Running.Add((12, @"C:\Tools\dalan.exe"));
+
+        var status = setup.Installer.Status();
+        var stop = Assert.Throws<AgentStopException>(setup.Installer.Uninstall);
+
+        Assert.Equal("Service: installed, not running", status);
+        Assert.Contains("ERROR: Access is denied.", stop.Message, StringComparison.Ordinal);
+        Assert.Equal(["reg", "delete", WindowsRunKey, "/v", "Dalan", "/f"], setup.Arguments.Last());
     }
 
     [Fact]
@@ -193,6 +268,10 @@ public class AgentServiceTests(PostgresServer postgres)
         Assert.Equal(("uninstall", CommandKind.Service), Kind(CommandLine.Parse(["service", "uninstall"])));
         Assert.Equal(CommandKind.Status, CommandLine.Parse(["status"]).Kind);
         Assert.True(CommandLine.Parse(["start", "--background"]).Background);
+        Assert.Equal(WindowsConfig, CommandLine.Parse(["start", "--background", "--config", WindowsConfig]).Config);
+        Assert.Throws<AgentStopException>(() => CommandLine.Parse(["start", "--config"]));
+        Assert.Contains("--config <file>", CommandLine.Help, StringComparison.Ordinal);
+        Assert.Contains("log on", CommandLine.Help, StringComparison.Ordinal);
         Assert.Throws<AgentStopException>(() => CommandLine.Parse(["service"]));
         Assert.Contains("dalan service install", CommandLine.Help, StringComparison.Ordinal);
 
@@ -223,31 +302,71 @@ public class AgentServiceTests(PostgresServer postgres)
 
     private static readonly AgentConfig Saved = new("https://tunnel.test", "dalan_key", [new SiteEntry("mysite", 3000)]);
 
-    /// <summary>A home folder of its own and a recorded system: no real systemctl, launchctl or reg runs.</summary>
+    /// <summary>A home folder of its own and a recorded system: no real systemctl, launchctl, reg or process runs.</summary>
     private sealed class Setup : IDisposable
     {
         private readonly string _home = Path.Combine(Path.GetTempPath(), "dalan-tests", Guid.NewGuid().ToString("N"));
 
         public Setup(ServiceSystem system, Func<string, string[], int>? exitCode = null)
+            : this(system, "/opt/dalan/dalan", null, (file, arguments) => (exitCode?.Invoke(file, arguments) ?? 0, file == "id" ? "0" : ""))
         {
-            Config = Path.Combine(_home, ".config", "dalan", "dalan.json");
-            Installer = new ServiceInstaller(system, _home, "/opt/dalan/dalan", Config, (file, arguments) =>
-            {
-                Calls.Add(string.Join(' ', [file, .. arguments]));
-                return (exitCode?.Invoke(file, arguments) ?? 0, file == "id" ? "0" : "");
-            }, (file, arguments) => Started.Add(string.Join(' ', [file, .. arguments])), Output);
         }
+
+        private Setup(ServiceSystem system, string agent, string? config, Func<string, string[], (int, string)> answer)
+        {
+            Config = config ?? Path.Combine(_home, ".config", "dalan", "dalan.json");
+            Output = new LogWriter(Log);
+            Installer = new ServiceInstaller(system, _home, agent, Config, (file, arguments) =>
+            {
+                Arguments.Add([file, .. arguments]);
+                Calls.Add(string.Join(' ', [file, .. arguments]));
+                Log.Add(string.Join(' ', [file, .. arguments]));
+                return answer(file, arguments);
+            }, (file, arguments) =>
+            {
+                if (StartError is not null) throw StartError;
+                StartedArguments.Add([file, .. arguments]);
+                if (!StartedDies) Running.Add((4242, file));
+                return 4242;
+            }, Output)
+            {
+                Agents = () => Running,
+                Wait = () => Checks++,
+            };
+        }
+
+        /// <summary>Windows, with the agent in a folder whose name has a space.</summary>
+        public static Setup Windows(Func<string, string[], (int, string)>? answer = null) =>
+            new(ServiceSystem.Windows, WindowsAgent, WindowsConfig, answer ?? ((_, _) => (0, "")));
 
         public string Config { get; }
         public ServiceInstaller Installer { get; }
         public List<string> Calls { get; } = [];
-        public List<string> Started { get; } = [];
-        public StringWriter Output { get; } = new();
+        public List<string[]> Arguments { get; } = [];
+        public List<string[]> StartedArguments { get; } = [];
+        public List<(int Id, string File)> Running { get; } = [];
+        public Exception? StartError { get; set; }
+        public bool StartedDies { get; set; }
+        public int Checks { get; private set; }
+
+        /// <summary>Calls and printed lines in order ("warning" for the line about stopping other agents).</summary>
+        public List<string> Log { get; } = [];
+
+        public StringWriter Output { get; }
 
         public void Dispose()
         {
             Output.Dispose();
             if (Directory.Exists(_home)) Directory.Delete(_home, recursive: true);
+        }
+
+        private sealed class LogWriter(List<string> log) : StringWriter(System.Globalization.CultureInfo.InvariantCulture)
+        {
+            public override void WriteLine(string? value)
+            {
+                if (value?.Contains("\"dalan http\"", StringComparison.Ordinal) == true) log.Add("warning");
+                base.WriteLine(value);
+            }
         }
     }
 

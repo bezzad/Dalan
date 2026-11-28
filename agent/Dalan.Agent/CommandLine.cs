@@ -8,9 +8,14 @@ public enum CommandKind { Help, Version, Login, Http, Demo, Start, Service, Stat
 /// <summary>
 /// What the user asked for. <see cref="Sites"/> holds port and name pairs of "http"; a null name means "choose one".
 /// <see cref="Action"/> is "install" or "uninstall" for "service"; <see cref="Background"/> is "start --background" (Windows).
+/// <see cref="Config"/> is "--config &lt;file&gt;": the Windows Run key names the config file with it (AGT-14).
 /// </summary>
 public sealed record Command(
-    CommandKind Kind, string? Key, string? Server, IReadOnlyList<(int Port, string? Name)> Sites, string? Action = null, bool Background = false, bool NoOpen = false);
+    CommandKind Kind, string? Key, string? Server, IReadOnlyList<(int Port, string? Name)> Sites, string? Action = null, bool Background = false,
+    bool NoOpen = false)
+{
+    public string? Config { get; init; }
+}
 
 /// <summary>AGT-02 to AGT-04, AGT-09, AGT-14 and AGT-15: reads the command line.</summary>
 public static class CommandLine
@@ -31,22 +36,33 @@ public static class CommandLine
           dalan version
 
           --server <url>   another Dalan server (also the environment DALAN_SERVER)
+          --config <file>  another config file (also the environment DALAN_CONFIG)
           --no-open        with "dalan http": do not open the site in the browser (it opens once, on a desktop)
+
+        The service on Windows starts when you log on (not at boot) and is not started again after a crash.
+        Its log is %APPDATA%\dalan\dalan.log. Linux: journalctl --user -u dalan. macOS: ~/Library/Logs/dalan.log
         """;
 
     public static Command Parse(IReadOnlyList<string> args)
     {
         var rest = new List<string>();
         string? server = null;
+        string? config = null;
         var noOpen = false;
         for (var i = 0; i < args.Count; i++)
         {
             if (args[i] == "--no-open") noOpen = true;
             else if (args[i] == "--server") server = i + 1 < args.Count ? args[++i] : throw new AgentStopException("--server needs an address.");
+            else if (args[i] == "--config") config = i + 1 < args.Count ? args[++i] : throw new AgentStopException("--config needs a file.");
             else rest.Add(args[i]);
         }
 
-        if (rest.Count == 0) return new(CommandKind.Help, null, server, []);
+        if (rest.Count == 0) return new(CommandKind.Help, null, server, []) { Config = config };
+        return Read(rest, server, noOpen) with { Config = config };
+    }
+
+    private static Command Read(List<string> rest, string? server, bool noOpen)
+    {
         return rest[0] switch
         {
             "login" when rest.Count == 2 => new(CommandKind.Login, Key(rest[1]), server, []),
