@@ -3,24 +3,8 @@
 // a computer the guide uses the page width: the step names at the start side, the open step beside them.
 import { expect, test, type Page } from "@playwright/test";
 
-const user = { id: 1, name: "Test", username: "test", email: "test@example.com", has_password: true, has_phone: true, admin: false, builder: "approved", has_github: false };
-const answers: Record<string, unknown> = {
-  "/api/me": user,
-  "/api/public/settings": { history_messages: 100, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60, site_url: "http://localhost:4173", bot_api_url: "http://localhost:4173", contact_max_length: 2000, version: "dev" },
-  "/api/account/keys": { keys: [] },
-  "/api/sites": { domain: "localhost", scheme: "http", tunnel_url: "", sites: [] },
-  "/api/builder/bots": { bots: [] },
-  // The app's own numbers: their defaults are enough here.
-  "/api/settings": {},
-  "/api/auth/settings": {},
-  "/api/inbox": { notices: [], unread: 0 },
-};
-
+// The test server (server.mjs) answers the app's /api calls as a logged-in builder with no key and no site.
 async function open(page: Page, path: string, lang: "fa" | "en"): Promise<void> {
-  await page.route("**/api/**", route => {
-    const body = answers[new URL(route.request().url()).pathname];
-    return body === undefined ? route.fulfill({ status: 404, json: {} }) : route.fulfill({ json: body });
-  });
   await page.addInitScript(value => localStorage.setItem("dalan.lang", value), lang);
   await page.goto(path);
 }

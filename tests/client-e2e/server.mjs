@@ -15,8 +15,28 @@ const viewPort = Number(process.env.VIEW_PORT ?? 4174);
 const appOrigin = `http://localhost:${appPort}`;
 const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml", ".woff2": "font/woff2" };
 
+// CLI-101, CLI-102: the answers of the app's /api calls for its own pages: a logged-in builder with no key and no site.
+// Served here, not by page.route: WebKit sends some of these calls past the route.
+const user = { id: 1, name: "Test", username: "test", email: "test@example.com", has_password: true, has_phone: true, admin: false, builder: "approved", has_github: false };
+const answers = {
+  "/api/me": user,
+  "/api/public/settings": { history_messages: 100, history_days: 30, access_log_days: 180, file_days: 30, update_expiry_seconds: 60, site_url: appOrigin, bot_api_url: appOrigin, contact_max_length: 2000, version: "dev" },
+  "/api/account/keys": { keys: [] },
+  "/api/sites": { domain: "localhost", scheme: "http", tunnel_url: "", sites: [] },
+  "/api/builder/bots": { bots: [] },
+  // The app's own numbers: their defaults are enough here.
+  "/api/settings": {},
+  "/api/auth/settings": {},
+  "/api/inbox": { notices: [], unread: 0 },
+};
+
 createServer((request, response) => {
   const path = new URL(request.url, appOrigin).pathname;
+  if (path.startsWith("/api/")) {
+    const body = answers[path];
+    response.writeHead(body ? 200 : 404, { "Content-Type": "application/json" }).end(JSON.stringify(body ?? {}));
+    return;
+  }
   const harness = ["/harness.html", "/dashboard.html"].includes(path);
   // CLI-101: a page of the app itself; the spec answers its /api calls.
   const app = ["/guide/site", "/guide/bot", "/faq"].includes(path);
