@@ -5,7 +5,8 @@ namespace Dalan.Agent;
 // The tunnel protocol of the server (openspec change l2-site-tunnel, design.md). The agent shares no code with the server;
 // the end-to-end tests in tests/Dalan.Sites.Tests run this agent against the real server, so both sides stay the same.
 
-public sealed record OpenSession(string[] Sites, string? Demo = null);
+/// <summary><see cref="Login"/> true (SITE-26, "--login") asks the server to require Dalan's login on these sites; null leaves it.</summary>
+public sealed record OpenSession(string[] Sites, string? Demo = null, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Login = null);
 
 public sealed record SiteAddress(string Name, string Url);
 
