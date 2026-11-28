@@ -64,6 +64,9 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - Bottom corner at the end side, above the page; gone after a few seconds or a click. Errors in form fields may also show next to the field.
 - The same text is shown once (a new one replaces it), and at most 3 at a time; a new one removes the oldest, so toasts never cover the menu for long (CLI-98).
 
+## Scrollbars
+- On a computer: 6px, and clear until the mouse is over the part that scrolls (or the keyboard is in it), like Telegram. A touch screen keeps its own (CLI-100).
+
 ## Motion
 - Small and fast (under half a second). Nothing moves when the visitor asks for reduced motion.
 

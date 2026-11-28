@@ -969,3 +969,19 @@ label.check input { flex: none; width: 18px; height: 18px; margin: 0; margin-blo
 .login-site { display: flex; flex-direction: column; gap: var(--space-s); padding-block: var(--space-s); border-block-start: 1px solid var(--line); }
 .login-site:first-of-type { border-block-start: 0; }
 .login-site dl.facts { margin: 0; }
+
+/* CLI-100: scrollbars like Telegram on a computer: thin, and seen only while the mouse is over the part that scrolls (or the
+   keyboard is in it). A touch screen keeps the system's own overlay scrollbars. The colour is a variable set on every element,
+   so it never comes down from a hovered parent, and its change makes Chrome paint the scrollbar again. */
+@media (hover: hover) and (pointer: fine) {
+  * { --thumb: transparent; }
+  :hover, :focus-within { --thumb: color-mix(in srgb, var(--muted) 55%, transparent); }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+  ::-webkit-scrollbar-thumb { border-radius: 3px; background: var(--thumb); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+  /* Firefox has no ::-webkit-scrollbar: the standard properties do the same. */
+  @supports not selector(::-webkit-scrollbar) {
+    * { scrollbar-width: thin; scrollbar-color: var(--thumb) transparent; }
+  }
+}
