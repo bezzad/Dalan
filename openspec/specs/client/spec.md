@@ -1251,6 +1251,11 @@ Every signed-in page except a bot's chat SHALL be in one dashboard frame at `/da
 - **WHEN** a user opens `/admin` or `/bots`
 - **THEN** the address becomes `/dashboard/admin` or `/dashboard/bots`
 
+#### Scenario: The menu takes every click
+- **GIVEN** a wide window and a workspace page with a list (My bots with two bots)
+- **WHEN** the user moves the pointer over a side menu item and clicks it
+- **THEN** the item is the top element there, and its page opens
+
 ### Requirement: CLI-82 Admin overview
 The first admin page SHALL show cards with counts, each a link to its page: users (and new in the last 7 days), bots (and online now), builder and showcase requests waiting, unread support messages, sites online.
 
