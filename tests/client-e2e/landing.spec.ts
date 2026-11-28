@@ -21,15 +21,15 @@ for (const lang of ["en", "fa"] as const) {
   });
 
   test(`CLI-103 the hero title is in the display font, served by Dalan, with no sideways scroll (${lang})`, async ({ page }) => {
-    const fonts: string[] = [];
-    page.on("request", request => { if (request.resourceType() === "font") fonts.push(request.url()); });
     await open(page, lang);
     await page.evaluate(() => document.fonts.ready);
+    const fonts = await page.evaluate(() => performance.getEntriesByType("resource").map(entry => entry.name).filter(name => name.endsWith(".woff2")));
     const family = await page.locator(".hero h2").evaluate(element => getComputedStyle(element).fontFamily);
-    expect(family).toMatch(/^"Dalan Serif", "Dalan Naskh"/);
+    // WebKit writes the names without quotes.
+    expect(family).toMatch(/^"?Dalan Serif"?, "?Dalan Naskh"?,/);
     const font = lang === "fa" ? "Dalan Naskh" : "Dalan Serif";
     expect(await page.evaluate(name => document.fonts.check(`600 48px "${name}"`, name === "Dalan Naskh" ? "دالان" : "Dalan"), font)).toBe(true);
-    expect(fonts.length).toBeGreaterThan(0);
+    expect(fonts.some(url => url.endsWith(lang === "fa" ? "/fonts/naskh.woff2" : "/fonts/serif.woff2")), fonts.join(" ")).toBe(true);
     for (const url of fonts) expect(new URL(url).origin).toBe(new URL(page.url()).origin);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
