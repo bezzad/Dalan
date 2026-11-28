@@ -1,6 +1,7 @@
 using Dalan.Admin.Contracts;
 using Dalan.Identity.Contracts;
 using Dalan.Identity.Data;
+using Dalan.Identity.SecondFactor;
 using Dalan.Identity.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -16,9 +17,12 @@ internal sealed record MergeSideJson(long Id, string Name, int Bots, int Sites, 
 
 /// <summary>
 /// AUTH-31: the merge question. <see cref="Keep"/> is "this" or "other" (AUTH-32). <see cref="Refusal"/> is null,
-/// "both_have_products", "merge_conflict" (with <see cref="Field"/>), "suspended" or "admin" (SEC-15).
+/// "both_have_products", "merge_conflict" (with <see cref="Field"/>), "suspended", "admin" (both are admins) or
+/// "admin_code" (SEC-15: no right code of the admin). <see cref="NeedsCode"/>: one side is an admin, so the merge needs
+/// the admin's TOTP or recovery code.
 /// </summary>
-internal sealed record MergePlanJson(string Way, string Keep, MergeSideJson This, MergeSideJson Other, string? Refusal, string? Field)
+internal sealed record MergePlanJson(
+    string Way, string Keep, MergeSideJson This, MergeSideJson Other, string? Refusal, string? Field, bool NeedsCode)
 {
     public long KeptId => Keep == "this" ? This.Id : Other.Id;
 
@@ -33,6 +37,7 @@ internal sealed class AccountMerger(
     IAuditLog audit,
     UserAdmin users,
     SecurityLog log,
+    SecondFactors factors,
     IOptionsMonitor<IdentityOptions> options,
     TimeProvider time)
 {
@@ -75,8 +80,9 @@ internal sealed class AccountMerger(
     /// <summary>
     /// AUTH-32 to AUTH-34: does the pending merge. Null: no pending merge. A plan with a refusal: nothing changed.
     /// Else the kept account has the other's empty fields, the other account is gone, and the other services follow.
+    /// <paramref name="code"/>: the admin's TOTP or recovery code when one side is an admin (SEC-15); a recovery code is spent.
     /// </summary>
-    public async Task<MergePlanJson?> MergeAsync(long sessionId, long userId, CancellationToken cancellationToken)
+    public async Task<MergePlanJson?> MergeAsync(long sessionId, long userId, string? code, CancellationToken cancellationToken)
     {
         MergePlanJson? plan;
         long mergeId;
@@ -93,6 +99,9 @@ internal sealed class AccountMerger(
 
             plan = await PlanAsync(db, me, other, way, cancellationToken);
             if (plan.Refusal is not null) return plan;
+            // SEC-15: the admin's account is the kept one (AUTH-32), so the code is the kept account's.
+            if (plan.NeedsCode && !await factors.CheckAsync(plan.KeptId, code, cancellationToken))
+                return plan with { Refusal = "admin_code" };
 
             var (kept, gone) = plan.Keep == "this" ? (me, other) : (other, me);
             // AUTH-33, AUTH-37: like the password, the second factor moves when the kept account has none. A set-up the kept
@@ -178,15 +187,18 @@ internal sealed class AccountMerger(
         var mine = await SideAsync(db, me, cancellationToken);
         var theirs = await SideAsync(db, other, cancellationToken);
         var field = Conflict(me, other);
+        var (meAdmin, otherAdmin) = (users.IsAdminPhone(me.Phone), users.IsAdminPhone(other.Phone));
         var refusal = me.SuspendedAt is not null || other.SuspendedAt is not null ? "suspended"
-            // SEC-15: a merge must not be a way into an admin account without the second factor.
-            : users.IsAdminPhone(me.Phone) || users.IsAdminPhone(other.Phone) ? "admin"
+            // SEC-15: two admin accounts are never one.
+            : meAdmin && otherAdmin ? "admin"
             : mine.HasProducts && theirs.HasProducts ? "both_have_products"
             : field is not null ? "merge_conflict"
             : null;
-        // AUTH-32: the account with products stays; with none on either side, the account of this session stays.
-        var keep = mine.HasProducts || !theirs.HasProducts ? "this" : "other";
-        return new MergePlanJson(way, keep, mine, theirs, refusal, refusal == "merge_conflict" ? field : null);
+        // AUTH-32: an admin's account always stays; else the account with products; with none on either side, the account
+        // of this session.
+        var keep = meAdmin ? "this" : otherAdmin ? "other" : mine.HasProducts || !theirs.HasProducts ? "this" : "other";
+        // SEC-15: a merge must not be a way into an admin account without the second factor.
+        return new MergePlanJson(way, keep, mine, theirs, refusal, refusal == "merge_conflict" ? field : null, meAdmin != otherAdmin);
     }
 
     private async Task<MergeSideJson> SideAsync(IdentityDb db, User user, CancellationToken cancellationToken)
