@@ -72,6 +72,7 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 
 ## Language
 - Persian (right to left) and English. Use logical CSS properties only (inline-start, inline-end). Latin names inside Persian text go in `<bdi>`.
+- Persian is the mirror of English, never centred (CLI-101). The scroller (`main > .scroller`) is left to right for its scrollbar, so a child narrower than it must push itself to the right in Persian (`margin-inline-end: auto`), like `.page .content`.
 - Short, plain words.
 - A title, heading, label or button never ends with a full stop (CLI-44). Sentences in paragraphs, notes and toasts keep theirs.
 - Persian is a little formal and uses the common word, never a literal translation (CLI-43). Glossary: «بات» (not «ربات»), «اتصال بات» (not «رله»), «برنامه» (not «اپ»), «برنامه‌ی رابط دالان» (not «ایجنت»), «توسعه‌دهنده» for the builder role, «مدیر» (not «ادمین»), «رمز عبور», «جدید» (not «تازه»), «طرح‌ها» (not «پلن»), «گزارش» (not «لاگ»), «پوسته» (not «تم»), «پرسش‌های متداول», «گفت‌وگو». «می‌» and «ها» always with a zero-width non-joiner.
@@ -89,6 +90,7 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 
 ## Guides as steppers (CLI-64 to CLI-66)
 - A guide is a list of step cards (`ol.stepper`). The step to do now is open, with Back and Next. A step already done is green with a check and "Done", closed, and opens on a press.
+- On a computer (960px and wider) the guide uses the page width (CLI-102): the step names are a list at the start side (300px), and the open step is one big card beside it with its title on top. One step is always open there. Below 960px the cards stay one under another, as wide as the page.
 - What is done comes from the server (logged in, builder, a key, a site online, a bot made), never from a guess. A step the server cannot know is done by Next.
 - The key step has a button that opens a modal (`dialog.modal`) on the same page: it makes the key and shows the login command once, with Copy. It never leaves the page.
 - A visitor on the site guide sees only "Log in first" and a Log in button; after the login the same address shows the steps (CLI-63).
