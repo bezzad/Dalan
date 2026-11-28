@@ -34,6 +34,7 @@ public static class SitesService
                 provider.GetRequiredService<IConfiguration>().GetConnectionString("Dalan"),
                 npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", SitesDb.Schema))
             .UseSnakeCaseNamingConvention());
+        services.AddSingleton<NewSiteNotice>();
         services.AddSingleton<SiteBook>();
         services.AddSingleton<IUserHoldings, SiteHoldings>();
         services.AddSingleton<DemoBook>();

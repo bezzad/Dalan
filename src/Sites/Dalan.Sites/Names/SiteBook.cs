@@ -8,7 +8,8 @@ namespace Dalan.Sites.Names;
 public enum ClaimError { None, BadName, NameTaken, SiteLimit }
 
 /// <summary>The stored sites: who owns which name.</summary>
-public sealed class SiteBook(IDbContextFactory<SitesDb> dbFactory, IOptionsMonitor<SitesOptions> options, TimeProvider time)
+public sealed class SiteBook(
+    IDbContextFactory<SitesDb> dbFactory, IOptionsMonitor<SitesOptions> options, TimeProvider time, NewSiteNotice notice)
 {
     /// <summary>
     /// SITE-02 and SITE-03: every name must be good, and free or the caller's. Free names become the caller's sites.
@@ -46,6 +47,8 @@ public sealed class SiteBook(IDbContextFactory<SitesDb> dbFactory, IOptionsMonit
             return (ClaimError.NameTaken, fresh[0], []);
         }
 
+        // SITE-25: only the names made now; a name the caller had already (a reconnect) says nothing.
+        await notice.TellAdminsAsync(userId, fresh, settings, cancellationToken);
         return (ClaimError.None, null, [.. clean]);
     }
 
