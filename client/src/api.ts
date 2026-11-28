@@ -42,9 +42,11 @@ export interface MergePlan {
   keep: "this" | "other";
   this: MergeSide;
   other: MergeSide;
-  /** SEC-15: "admin" when one side is an admin. */
+  /** SEC-15: "admin" when both sides are admins. */
   refusal: "both_have_products" | "merge_conflict" | "suspended" | "admin" | null;
   field: "phone" | "email" | "github" | null;
+  /** SEC-15: one side is an admin, so "Merge" needs the admin's TOTP or recovery code; the admin's account is kept. */
+  needs_code: boolean;
 }
 
 /** ADM-11 */
@@ -260,8 +262,8 @@ export const api = {
   addEmail: (email: string, code: string) => call<User>("POST", "/api/account/email", { email, code }),
   /** AUTH-31 */
   mergePlan: () => call<MergePlan>("GET", "/api/account/merge"),
-  /** AUTH-34: the answer is the kept account. */
-  merge: () => call<User>("POST", "/api/account/merge"),
+  /** AUTH-34: the answer is the kept account. SEC-15: `code` is the admin's TOTP or recovery code. */
+  merge: (code?: string) => call<User>("POST", "/api/account/merge", code ? { code } : undefined),
   dropMerge: () => call<null>("DELETE", "/api/account/merge"),
   passwordLogin: (login: string, password: string) => call<LoginAnswer>("POST", "/api/auth/password", { login, password }),
   /** AUTH-37: the second step of a login that answered `totp_required`; `code` is a TOTP or a recovery code. */
@@ -316,7 +318,6 @@ export const api = {
   pushKey: async () => (await call<{ key: string | null }>("GET", "/api/push")).key,
   subscribe: (subscription: PushSubscriptionJSON) => call<null>("POST", "/api/push/subscribe", subscription),
   unsubscribe: (endpoint: string) => call<null>("POST", "/api/push/unsubscribe", { endpoint }),
-  askBuilder: () => call<User>("POST", "/api/account/builder"),
   builderBots: async () => (await call<{ bots: BuilderBot[] }>("GET", "/api/builder/bots")).bots,
   createBot: (username: string, name: string) => call<NewToken>("POST", "/api/builder/bots", { username, name }),
   mySites: () => call<MySites>("GET", "/api/sites"),

@@ -25,24 +25,13 @@ function titleRow(back: () => void, backText: string, title: string, ...action: 
 }
 
 /** CLI-23: for a user who is not a builder yet, the next step, right here. */
-function builderStep(app: App, redraw: () => void): HTMLElement {
+function builderStep(app: App): HTMLElement {
   const t = app.language.t.bind(app.language);
   const view = builderView(app.user);
   const body = view === "phone"
     ? [h("p", { class: "note" }, t("phoneRequired")),
       h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => app.go("/account/profile") }, t("verifyPhone")))]
-    : view === "waiting"
-      ? [h("p", { class: "note" }, t("builderWaiting"))]
-      : [...(view === "refused" ? [h("p", { class: "note" }, t("builderRefused"))] : []), h("div", { class: "row" }, h("button", {
-        type: "button", class: "primary", onclick: async () => {
-          try {
-            app.user = await api.askBuilder();
-            redraw();
-          } catch (failure) {
-            toast(t(errorText(failure)), "error");
-          }
-        },
-      }, t("askBuilder")))];
+    : [h("p", { class: "note" }, view === "closed" ? t("builderClosed") : t("builderRefused"))];
   return h("section", { class: "card" }, h("h2", {}, t("building")), h("p", { class: "note" }, t("buildingNote")), ...body);
 }
 
@@ -69,7 +58,7 @@ export function myBotsScreen(app: App): Screen {
     const create = h("button", { type: "button", class: "primary", onclick: () => app.go("/bots/new") }, t("createBot"));
     element.replaceChildren(titleRow(() => app.go("/chats"), t("back"), t("myBots"), ...(builder ? [create] : [])), body);
     if (!builder) {
-      body.replaceChildren(builderStep(app, draw));
+      body.replaceChildren(builderStep(app));
       return;
     }
     const list = h("ul", { class: "rows bot-list" });
