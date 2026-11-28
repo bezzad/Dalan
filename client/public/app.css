@@ -877,7 +877,8 @@ ul.sessions li button.link { align-self: flex-start; }
 @media (min-width: 760px) { .to-menu { display: none; } }
 /* CLI-81: the dashboard is the settings frame with more groups. A workspace page keeps its own screen and title row. */
 .dashboard .page.workspace { max-width: none; }
-.dashboard .page.workspace > main { height: auto; min-height: 0; padding: 0; }
+/* No gutter inside the frame: the scroller of a workspace page must not reach over the side menu (CLI-81). */
+.dashboard .page.workspace > main { --gutter: 0px; height: auto; min-height: 0; padding: 0; }
 /* CLI-82: the overview: cards with one big number each, a link to their page. */
 .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
 .card.stat { gap: 2px; color: var(--text); text-decoration: none; }
