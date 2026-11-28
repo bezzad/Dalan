@@ -279,12 +279,17 @@ Hiding admin items in the client SHALL NOT be the only guard. Every `/api/admin`
 - **THEN** none holds another user's phone or email, a setting value, or a log row
 
 ### Requirement: SEC-15 Second factor for admins
-An admin (SEC-14: a phone in `Identity:AdminPhones`) SHALL have the second factor (AUTH-37) on. Every login of an admin, by password, SMS, email or GitHub, SHALL also need a TOTP code or an unused recovery code before a session is made. While an admin has no second factor yet, every `/api/admin` call SHALL be refused with 403 `admin_needs_2fa`, and the dashboard SHALL show only the page to set it up. An admin SHALL NOT be able to turn the second factor off.
+An admin (SEC-14) SHALL have the second factor (AUTH-37) on. Every login of an admin, by password, SMS, email or GitHub, SHALL also need a TOTP or an unused recovery code before a session is made; so SHALL a merge (AUTH-31) where one side is an admin: `POST /api/account/merge` with `code`, else 403 `admin_merge`. While an admin has no second factor, every `/api/admin` call SHALL get 403 `admin_needs_2fa`, and the dashboard SHALL show only its set-up. It SHALL NOT be turned off.
 
 #### Scenario: Admin logs in by SMS
 - **GIVEN** an admin with the second factor on
 - **WHEN** the admin enters the right SMS code
-- **THEN** the answer asks for the TOTP code, and no session is made until a right code comes
+- **THEN** the answer asks for the TOTP code (`totp_required`) and no session is made until it is right
+
+#### Scenario: Merge with an admin
+- **GIVEN** a pending merge between the admin's account and another account
+- **WHEN** the merge is sent without a code, then with a wrong code, then with the admin's right TOTP code
+- **THEN** the first two get 403 `admin_merge` and change nothing; the third merges, keeping the admin's account
 
 #### Scenario: No second factor yet
 - **GIVEN** an admin without the second factor
