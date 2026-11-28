@@ -520,6 +520,7 @@ None of these is planned work. They are recorded so the design does not block th
 | Second factor (TOTP) time step and window (`Identity:TotpStepSeconds`, `Identity:TotpWindowSteps`) | 30 seconds, 1 step before and after | Assumed (milestone 29, RFC 6238) |
 | Recovery codes (`Identity:RecoveryCodes`) | 10 | Assumed (milestone 29) |
 | Second factor login ticket (`Identity:TotpTicketMinutes`, `Identity:TotpMaxTries`) | 5 minutes, 5 wrong codes | Assumed (milestone 29) |
+| Trusted device skips the second factor (`Identity:TrustedDeviceDays`) | 30 days; 0 turns it off | Assumed (milestone 46) |
 | Words that confirm "delete my account" (`Identity:DeleteConfirmWords`) | `DELETE,حذف` | Assumed (milestone 27) |
 | Addresses or ranges per access key (`Identity:MaxKeyAddresses`) | 20 | Assumed (milestone 27) |
 | Inbox: notices per page, kept, cleanup (`Notification:InboxPageSize`, `Notification:InboxDays`, `Notification:InboxSweepMinutes`) | 30, 90 days, every 60 minutes | Assumed (milestone 38) |

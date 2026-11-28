@@ -118,6 +118,9 @@ public sealed class IdentityOptions
     /// <summary>AUTH-37: wrong codes one ticket may take; then the person logs in again.</summary>
     public int TotpMaxTries { get; set; }
 
+    /// <summary>AUTH-44: days a trusted browser skips the second factor. 0: no browser is trusted.</summary>
+    public int TrustedDeviceDays { get; set; }
+
     /// <summary>AUTH-36: the words that confirm "delete my account", comma separated. Compared trimmed, without regard to case.</summary>
     public string? DeleteConfirmWords { get; set; }
 

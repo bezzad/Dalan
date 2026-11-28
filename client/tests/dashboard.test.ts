@@ -130,7 +130,7 @@ test("CLI-92 a login that needs the code asks for it; GitHub comes back with ?to
   assert.equal(totpTicketIn("?merge=1"), null);
   const login = source("../src/login.ts");
   assert.match(login, /if \(isTotpStep\(answer\)\) show\(totpStep\(answer\.ticket\)\);/);
-  assert.match(login, /onLogin\(await api\.totpLogin\(ticket, latinDigits\(code\.value\.trim\(\)\)\)\)/);
+  assert.match(login, /onLogin\(await api\.totpLogin\(ticket, latinDigits\(code\.value\.trim\(\)\), trust\.checked\)\)/);
   // Every login way goes through the step: SMS and email codes, password and the development login.
   for (const way of ["way.verify(", "api.passwordLogin(", "api.devLogin("]) assert.ok(login.includes(`loggedIn(await ${way}`), way);
   assert.match(source("../src/main.ts"), /if \(totpTicketIn\(location\.search\)\) return showLogin\(\);/);
@@ -146,6 +146,24 @@ test("CLI-92 the card: QR as SVG nodes (never HTML), recovery codes once with Co
   // In Login and security for a user with a password or an admin; the admin pages show only it until it is on (SEC-15).
   assert.match(source("../src/settings/security.ts"), /app\.user\.has_password \|\| app\.user\.admin \? \[secondFactor\] : \[\]/);
   assert.match(source("../src/settings/index.ts"), /app\.user\.totp \? adminPage\(app, section as AdminSection, target\.sub\) : h\("div", \{ class: "column" \},\n\s*h\("p", \{ class: "note" \}, t\("adminNeeds2fa"\)\), totpCard\(app\)\)/);
+});
+
+test("CLI-92 AUTH-44 trust this device: a checkbox off at first sent as trust, and the trusted devices in the card", () => {
+  const login = source("../src/login.ts");
+  assert.match(login, /const trust = h\("input", \{ id: "totp-trust", type: "checkbox" \}\);/);
+  assert.match(login, /h\("label", \{ class: "check", for: "totp-trust" \}, trust, h\("span", \{\}, t\("totpTrust"\)\)\)/);
+  const api = source("../src/api.ts");
+  assert.match(api, /call<User>\("POST", "\/api\/auth\/totp", \{ ticket, code, trust \}\)/);
+  assert.match(api, /"DELETE", "\/api\/account\/trusted-devices"\)/);
+  const card = source("../src/settings/totpCard.ts");
+  assert.match(card, /\.\.\.\(on \? \[trustedList\(app, failed\)\] : \[\]\)/);
+  assert.match(card, /api\.forgetTrustedDevice\(device\.id\)/);
+  assert.match(card, /if \(!confirm\(t\("trustedForgetAllConfirm"\)\)\) return;/);
+  for (const key of ["totpTrust", "trustedTitle", "trustedHelp", "trustedNone", "trustedUntil", "trustedForget", "trustedForgetAll",
+    "trustedForgetAllConfirm"] as TextKey[]) {
+    assert.ok(texts.fa[key] && texts.en[key], key);
+    assert.notEqual(texts.fa[key], texts.en[key], key);
+  }
 });
 
 test("CLI-81 CLI-82 CLI-83 CLI-92 every new text in both languages, every menu icon drawn in the page", () => {

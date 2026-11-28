@@ -119,7 +119,7 @@ internal static class PasswordLogin
         }
 
         // AUTH-37: with the second factor on, the session waits for the code.
-        if (await factors.TicketIfNeededAsync(user.Id, SessionTokens.ByPassword, http.RequestAborted) is { } ticket)
+        if (await factors.TicketIfNeededAsync(http, user.Id, SessionTokens.ByPassword) is { } ticket)
             return SecondFactorEndpoints.Ask(ticket);
 
         await sessions.SignInAsync(http, user.Id, SessionTokens.ByPassword);

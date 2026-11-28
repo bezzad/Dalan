@@ -121,7 +121,7 @@ internal static class SmsLoginEndpoints
 
         await users.ApproveByPhoneAsync(ids[0], http.RequestAborted);
         // SEC-15: an admin with the second factor on also gives its code.
-        if (await factors.TicketIfNeededAsync(ids[0], SessionTokens.BySms, http.RequestAborted) is { } ticket)
+        if (await factors.TicketIfNeededAsync(http, ids[0], SessionTokens.BySms) is { } ticket)
             return SecondFactorEndpoints.Ask(ticket);
 
         await sessions.SignInAsync(http, ids[0], SessionTokens.BySms);

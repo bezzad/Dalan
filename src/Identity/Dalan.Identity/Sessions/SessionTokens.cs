@@ -126,11 +126,15 @@ internal sealed class SessionTokens(
         DeleteCookies(http);
     }
 
-    /// <summary>AUTH-13, AUTH-35: ends every session of the user except the one of this browser. Returns how many ended.</summary>
+    /// <summary>
+    /// AUTH-13, AUTH-35: ends every session of the user except the one of this browser, and forgets the other trusted
+    /// browsers (AUTH-44). Returns how many sessions ended.
+    /// </summary>
     public async Task<int> SignOutOtherDevicesAsync(HttpContext http, long userId)
     {
         var current = RefreshHash(http) ?? [];
         await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
+        await SecondFactor.TrustedDevices.ForgetOthersAsync(db, http, userId);
         return await db.Sessions.Where(s => s.UserId == userId && s.TokenHash != current).ExecuteDeleteAsync(http.RequestAborted);
     }
 
