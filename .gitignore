@@ -432,5 +432,6 @@ client/node_modules/
 out/
 client/dist/
 src/Dalan.Host/files/
+src/Dalan.Host/backups/
 playwright-report/
 test-results/
