@@ -20,6 +20,24 @@ public sealed class FakeSmsSender : ISmsSender
         _sent.Enqueue((phone, code));
         return Task.FromResult(true);
     }
+
+    private readonly ConcurrentQueue<(string Phone, string Text)> _notices = new();
+
+    /// <summary>NTF-13: the notice texts that would have been sent.</summary>
+    public IReadOnlyList<(string Phone, string Text)> Notices => [.. _notices];
+
+    private int _noticeTries;
+
+    /// <summary>NTF-13: notice sends asked for, sent or not.</summary>
+    public int NoticeTries => Volatile.Read(ref _noticeTries);
+
+    public Task<bool> SendNoticeAsync(string phone, string text, CancellationToken cancellationToken)
+    {
+        Interlocked.Increment(ref _noticeTries);
+        if (Fails) return Task.FromResult(false);
+        _notices.Enqueue((phone, text));
+        return Task.FromResult(true);
+    }
 }
 
 /// <summary>Stands in for the email provider: it keeps what would have been sent.</summary>

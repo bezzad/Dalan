@@ -102,12 +102,15 @@ export function siteBrand(name: string, go: (path: string) => void): HTMLElement
  * The end of every site header (docs/UI.md): language and theme as small round buttons, then "Log in" or the user menu.
  * The language button shows only a globe; the page itself shows the new language (owner, 2026-11-21). Its name says the other language.
  */
-export function headerTools(language: Language, theme: Theme, onLanguage: () => void, userArea: HTMLElement): HTMLElement {
+export function headerTools(
+  language: Language, theme: Theme, onLanguage: () => void, userArea: HTMLElement, bell: HTMLElement | null = null): HTMLElement {
   const t = language.t.bind(language);
   return h("div", { class: "tools" },
     h("button", { type: "button", class: "round lang", title: t("language"), "aria-label": t("language"), onclick: onLanguage },
       icon("globe")),
     themeButton(theme, t),
+    // CLI-96: the bell of a signed-in user, before the user menu.
+    ...(bell ? [bell] : []),
     userArea);
 }
 

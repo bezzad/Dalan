@@ -38,17 +38,24 @@ public sealed partial class PushWorker(
 
         try
         {
-            await foreach (var (userId, note) in service.Queue.ReadAllAsync(stoppingToken))
+            await foreach (var job in service.Queue.ReadAllAsync(stoppingToken))
             {
+                var delivered = 0;
                 try
                 {
-                    await SendAsync(client, userId, note, stoppingToken);
+                    delivered = await SendAsync(client, job.UserId, job.Note, stoppingToken);
                 }
 #pragma warning disable CA1031 // One failed push (database down) must not stop the worker. The message arrives by sync.
                 catch (Exception exception) when (exception is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
 #pragma warning restore CA1031
                 {
                     LogPushFailed(exception.GetType().Name);
+                }
+                finally
+                {
+                    // NTF-13: on a stop the notice is not "failed"; nothing more is sent for it.
+                    if (stoppingToken.IsCancellationRequested) job.Delivered?.TrySetCanceled(stoppingToken);
+                    else job.Delivered?.TrySetResult(delivered);
                 }
             }
         }
@@ -57,16 +64,17 @@ public sealed partial class PushWorker(
         }
     }
 
-    /// <summary>NTF-06: one encrypted POST to each device of the user.</summary>
-    private async Task SendAsync(PushServiceClient client, long userId, PushNote note, CancellationToken cancellationToken)
+    /// <summary>NTF-06: one encrypted POST to each device of the user. Returns how many devices took it (NTF-13).</summary>
+    private async Task<int> SendAsync(PushServiceClient client, long userId, PushNote note, CancellationToken cancellationToken)
     {
         List<Subscription> devices;
         await using (var db = await dbFactory.CreateDbContextAsync(cancellationToken))
             devices = await db.Subscriptions.AsNoTracking().Where(s => s.UserId == userId).ToListAsync(cancellationToken);
-        if (devices.Count == 0) return;
+        if (devices.Count == 0) return 0;
 
         var push = options.CurrentValue.Push;
         var payload = JsonSerializer.Serialize(note with { Body = Cut(note.Body, push.MaxBodyLength) }, Json);
+        var delivered = 0;
         foreach (var device in devices)
         {
             var subscription = new PushSubscription { Endpoint = device.Endpoint };
@@ -77,6 +85,7 @@ public sealed partial class PushWorker(
             try
             {
                 await client.RequestPushMessageDeliveryAsync(subscription, message, cancellationToken);
+                delivered++;
             }
             catch (PushServiceClientException exception) when (exception.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone)
             {
@@ -96,6 +105,8 @@ public sealed partial class PushWorker(
                 LogUnreachable(host, exception.GetType().Name);
             }
         }
+
+        return delivered;
     }
 
     /// <summary>NTF-06: at most <paramref name="max"/> characters, never half a character.</summary>

@@ -27,7 +27,7 @@ public class PushTests(PostgresServer postgres)
     }
 
     /// <summary>A browser's push subscription: its own key pair and auth secret, so a test can decrypt what it gets.</summary>
-    private sealed class Device : IDisposable
+    internal sealed class Device : IDisposable
     {
         public ECDiffieHellman Key { get; } = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
         public byte[] AuthSecret { get; } = RandomNumberGenerator.GetBytes(16);
@@ -78,10 +78,10 @@ public class PushTests(PostgresServer postgres)
         public void Dispose() => Key.Dispose();
     }
 
-    private sealed record Sent(string Endpoint, HttpRequestMessage Request, byte[] Body);
+    internal sealed record Sent(string Endpoint, HttpRequestMessage Request, byte[] Body);
 
     /// <summary>Plays the push services: keeps each request and answers with the status the test chooses.</summary>
-    private sealed class FakePushService : HttpMessageHandler
+    internal sealed class FakePushService : HttpMessageHandler
     {
         public Channel<Sent> Requests { get; } = Channel.CreateUnbounded<Sent>();
         public Func<string, HttpStatusCode> Status { get; set; } = _ => HttpStatusCode.Created;
@@ -126,7 +126,7 @@ public class PushTests(PostgresServer postgres)
         }
     }
 
-    private static Dictionary<string, string> PushSettings(params (string Key, string Value)[] more)
+    internal static Dictionary<string, string> PushSettings(params (string Key, string Value)[] more)
     {
         var settings = new Dictionary<string, string>
         {
@@ -141,7 +141,7 @@ public class PushTests(PostgresServer postgres)
         return settings;
     }
 
-    private static DalanApp App(string database, FakePushService service, Dictionary<string, string> settings) => new(
+    internal static DalanApp App(string database, FakePushService service, Dictionary<string, string> settings) => new(
         database,
         settings,
         web => web.ConfigureServices(services =>

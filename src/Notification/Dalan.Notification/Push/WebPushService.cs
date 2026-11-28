@@ -9,6 +9,9 @@ using Microsoft.Extensions.Options;
 
 namespace Dalan.Notification.Push;
 
+/// <summary>One push in the queue. <see cref="Delivered"/>, when set, gets the number of devices that took it (NTF-13).</summary>
+internal sealed record PushJob(long UserId, PushNote Note, TaskCompletionSource<int>? Delivered);
+
 /// <summary>NTF-03 to NTF-07: the subscriptions, and the queue that <see cref="PushWorker"/> sends from.</summary>
 public sealed partial class WebPushService : IWebPush
 {
@@ -16,7 +19,7 @@ public sealed partial class WebPushService : IWebPush
     private readonly IOptionsMonitor<NotificationOptions> _options;
     private readonly TimeProvider _time;
     private readonly ILogger<WebPushService> _logger;
-    private readonly Channel<(long UserId, PushNote Note)> _queue;
+    private readonly Channel<PushJob> _queue;
 
     public WebPushService(
         IDbContextFactory<NotificationDb> dbFactory,
@@ -30,12 +33,12 @@ public sealed partial class WebPushService : IWebPush
         _logger = logger;
         var push = options.CurrentValue.Push;
         PublicKey = CheckKeys(push);
-        _queue = Channel.CreateBounded<(long, PushNote)>(push.QueueSize);
+        _queue = Channel.CreateBounded<PushJob>(push.QueueSize);
     }
 
     public string? PublicKey { get; }
 
-    internal ChannelReader<(long UserId, PushNote Note)> Queue => _queue.Reader;
+    internal ChannelReader<PushJob> Queue => _queue.Reader;
 
     public async Task<SubscribeResult> SubscribeAsync(long userId, PushDevice device, CancellationToken cancellationToken)
     {
@@ -88,7 +91,20 @@ public sealed partial class WebPushService : IWebPush
     public void Send(long userId, PushNote note)
     {
         if (PublicKey is null) return;
-        if (!_queue.Writer.TryWrite((userId, note))) LogDropped();
+        if (!_queue.Writer.TryWrite(new PushJob(userId, note, null))) LogDropped();
+    }
+
+    /// <summary>
+    /// NTF-13: like <see cref="Send"/>, and the task tells how many devices took the push once it was tried:
+    /// 0 when push is off, the queue is full, the user has no device, or every device failed.
+    /// </summary>
+    internal Task<int> DeliverAsync(long userId, PushNote note)
+    {
+        if (PublicKey is null) return Task.FromResult(0);
+        var delivered = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (_queue.Writer.TryWrite(new PushJob(userId, note, delivered))) return delivered.Task;
+        LogDropped();
+        return Task.FromResult(0);
     }
 
     /// <summary>NTF-05: null when push is off; a wrong pair stops the start.</summary>

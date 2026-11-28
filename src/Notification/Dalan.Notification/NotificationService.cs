@@ -1,6 +1,7 @@
 using Dalan.Notification.Contracts;
 using Dalan.Notification.Data;
 using Dalan.Notification.Email;
+using Dalan.Notification.Inbox;
 using Dalan.Notification.Push;
 using Dalan.Notification.Sms;
 using Microsoft.AspNetCore.Routing;
@@ -43,6 +44,11 @@ public static class NotificationService
         services.AddHttpClient(nameof(PushWorker), (provider, client) => client.Timeout =
                 TimeSpan.FromSeconds(provider.GetRequiredService<IOptions<NotificationOptions>>().Value.Push.TimeoutSeconds))
             .RemoveAllLoggers();
+        services.AddSingleton<InboxService>();
+        services.AddSingleton<IInbox>(provider => provider.GetRequiredService<InboxService>());
+        services.AddSingleton<Dalan.Identity.Contracts.IUserMergeListener>(provider => provider.GetRequiredService<InboxService>());
+        services.AddSingleton<InboxSweep>();
+        services.AddHostedService(provider => provider.GetRequiredService<InboxSweep>());
         return services;
     }
 
@@ -54,6 +60,7 @@ public static class NotificationService
         endpoints.ServiceProvider.GetRequiredService<IEmailSender>();
         // NTF-05: so do wrong push keys.
         endpoints.ServiceProvider.GetRequiredService<IWebPush>();
+        endpoints.MapInbox();
         return endpoints;
     }
 

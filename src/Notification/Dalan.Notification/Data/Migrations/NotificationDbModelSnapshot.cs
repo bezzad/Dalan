@@ -23,6 +23,57 @@ namespace Dalan.Notification.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Dalan.Notification.Inbox.Notice", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Link")
+                        .HasColumnType("text")
+                        .HasColumnName("link");
+
+                    b.Property<bool>("Read")
+                        .HasColumnType("boolean")
+                        .HasColumnName("read");
+
+                    b.Property<DateTimeOffset?>("SmsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sms_at");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_inbox");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_inbox_created_at");
+
+                    b.HasIndex("UserId", "Id")
+                        .HasDatabaseName("ix_inbox_user_id_id");
+
+                    b.ToTable("inbox", "notification");
+                });
+
             modelBuilder.Entity("Dalan.Notification.Push.Subscription", b =>
                 {
                     b.Property<long>("Id")
