@@ -3,7 +3,9 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Dalan.Identity.SecondFactor;
+using Dalan.Relay.Bots;
 using Dalan.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using static Dalan.Identity.Tests.Http;
 
 namespace Dalan.Identity.Tests;
@@ -430,6 +432,25 @@ public class SecondFactorTests(PostgresServer postgres)
         Assert.Equal(0, await PostgresServer.ScalarAsync<long>(app.ConnectionString, $"SELECT count(*) FROM identity.users WHERE id = {otherId}"));
         Assert.Equal(1, await PostgresServer.ScalarAsync<long>(app.ConnectionString,
             $"SELECT count(*) FROM admin.audit_log WHERE action = 'account.merge' AND detail = 'user {otherId} merged into user {adminId} (phone)'"));
+    }
+
+    [Fact]
+    [Trait("Rule", "AUTH-32")]
+    public async Task AUTH32_an_admin_is_not_kept_over_the_other_accounts_products()
+    {
+        await using var app = await StartAsync();
+        var (other, _, otherId, secret, _) = await AdminMergeAsync(app);
+        await app.Services.GetRequiredService<BotRegistry>().CreateAsync(otherId, "email_bot", "Bot", Cancel);
+
+        var plan = await other.GetFromJsonAsync<JsonElement>("/api/account/merge", Cancel);
+        var response = await MergeAsync(other, app.TotpCode(secret));
+
+        // The admin's account would be kept and the other deleted with its bot: a merge never deletes a product.
+        Assert.Equal("other_has_products", plan.GetProperty("refusal").GetString());
+        Assert.Equal((HttpStatusCode.Conflict, "other_has_products"), (response.StatusCode, await ErrorCodeAsync(response)));
+        Assert.Equal(2, await UsersAsync(app));
+        Assert.Equal(1, await PostgresServer.ScalarAsync<long>(app.ConnectionString,
+            $"SELECT count(*) FROM relay.bots WHERE owner_user_id = {otherId} AND deleted_at IS NULL"));
     }
 
     [Fact]

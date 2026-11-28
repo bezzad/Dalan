@@ -17,7 +17,8 @@ internal sealed record MergeSideJson(long Id, string Name, int Bots, int Sites, 
 
 /// <summary>
 /// AUTH-31: the merge question. <see cref="Keep"/> is "this" or "other" (AUTH-32). <see cref="Refusal"/> is null,
-/// "both_have_products", "merge_conflict" (with <see cref="Field"/>), "suspended", "admin" (both are admins) or
+/// "both_have_products", "other_has_products" (the admin is kept, the other account has products), "merge_conflict" (with
+/// <see cref="Field"/>), "suspended", "admin" (both are admins) or
 /// "admin_code" (SEC-15: no right code of the admin). <see cref="NeedsCode"/>: one side is an admin, so the merge needs
 /// the admin's TOTP or recovery code.
 /// </summary>
@@ -192,6 +193,8 @@ internal sealed class AccountMerger(
             // SEC-15: two admin accounts are never one.
             : meAdmin && otherAdmin ? "admin"
             : mine.HasProducts && theirs.HasProducts ? "both_have_products"
+            // AUTH-32: an admin's account is always kept, so a non-admin account with products would be deleted with them.
+            : (meAdmin && theirs.HasProducts) || (otherAdmin && mine.HasProducts) ? "other_has_products"
             : field is not null ? "merge_conflict"
             : null;
         // AUTH-32: an admin's account always stays; else the account with products; with none on either side, the account

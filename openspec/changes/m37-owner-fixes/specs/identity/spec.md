@@ -58,7 +58,7 @@ With `Identity:AutoBuilder` on (start true), a user with a verified phone SHALL 
 
 
 ### Requirement: AUTH-32 The account with products is kept
-Products SHALL be bots not deleted, sites, demos and access keys. When one account has products and the other has none, the account with products SHALL be kept; when neither has, the current session's; an admin's account (SEC-14) SHALL always be the kept one. When both have products, the merge SHALL be refused with 409 `both_have_products`. A merge SHALL NOT change, move or delete any product.
+Products SHALL be bots not deleted, sites, demos and access keys. When one account has products and the other has none, the account with products SHALL be kept; when neither has, the current session's; an admin's account (SEC-14) SHALL always be kept, and refused with 409 `other_has_products` when the other has products. When both have products: 409 `both_have_products`. A merge SHALL NOT change, move or delete any product.
 
 #### Scenario: The other account has bots
 - **GIVEN** Sara's phone account has no products and her email account has a bot

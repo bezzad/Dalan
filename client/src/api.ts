@@ -43,7 +43,7 @@ export interface MergePlan {
   this: MergeSide;
   other: MergeSide;
   /** SEC-15: "admin" when both sides are admins. */
-  refusal: "both_have_products" | "merge_conflict" | "suspended" | "admin" | null;
+  refusal: "both_have_products" | "other_has_products" | "merge_conflict" | "suspended" | "admin" | null;
   field: "phone" | "email" | "github" | null;
   /** SEC-15: one side is an admin, so "Merge" needs the admin's TOTP or recovery code; the admin's account is kept. */
   needs_code: boolean;

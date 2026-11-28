@@ -168,6 +168,8 @@ internal static class MergeEndpoints
 
     private static IResult Refused(string refusal, string? field) => refusal switch
     {
+        "other_has_products" => AuthJson.Error(StatusCodes.Status409Conflict, "other_has_products",
+            "The admin's account is kept, and the other account has bots, sites or access keys. Delete them first: a merge never deletes them."),
         "both_have_products" => AuthJson.Error(StatusCodes.Status409Conflict, "both_have_products",
             "Both accounts have bots, sites or access keys. Dalan does not move them, so these accounts cannot be merged."),
         "merge_conflict" => AuthJson.Error(StatusCodes.Status409Conflict, "merge_conflict",
