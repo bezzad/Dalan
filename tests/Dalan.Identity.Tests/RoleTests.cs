@@ -117,18 +117,18 @@ public class RoleTests(PostgresServer postgres)
 
     [Fact]
     [Trait("Rule", "AUTH-19")]
-    public async Task AUTH19_a_refused_users_request_waits_for_the_admin_even_with_auto_builder()
+    [Trait("Rule", "AUTH-39")]
+    public async Task AUTH19_with_auto_builder_a_refused_user_stays_refused()
     {
         await using var app = await Http.StartAsync(postgres, ("Identity:AutoBuilder", "true"), ("Identity:AdminPhones", AdminPhone));
         var (admin, _) = await app.LoginAsync("Owner", AdminPhone);
         var (browser, userId) = await app.LoginAsync();
 
         (await admin.PostAsJsonAsync($"/api/admin/users/{userId}/builder", new { approve = false }, Cancel)).EnsureSuccessStatusCode();
-        var afterRefusal = await BuilderAsync(browser);
         (await browser.PostAsync("/api/account/builder", null, Cancel)).EnsureSuccessStatusCode();
 
-        Assert.Equal("refused", afterRefusal);
-        Assert.Equal("requested", await BuilderAsync(browser));
+        // A request would be approved at the next SMS login (AUTH-39), so it would undo the admin's refusal.
+        Assert.Equal("refused", await BuilderAsync(browser));
     }
 
     // ---- AUTH-20 suspended user ----

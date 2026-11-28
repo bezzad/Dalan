@@ -28,6 +28,35 @@ With `Identity:AutoBuilder` on (start true), a user with a verified phone SHALL 
 - **THEN** `GET /api/me` says `builder` `none`
 
 
+### Requirement: AUTH-19 Builder request
+`POST /api/account/builder` SHALL set the user's builder state, when `Identity:AutoBuilder` is on, from `none` and `requested` to `approved`, and `refused` stays (AUTH-39: a request would be approved at the next SMS login); when it is off, from `none` and `refused` to `requested`. `approved` stays. It answers the profile. A user with no phone (level 1) SHALL get 403 `phone_required` and nothing changes. `GET /api/me` SHALL say `builder`: `none`, `requested`, `approved` or `refused`. An admin's approval SHALL set `approved`, a refusal `refused`. Admins SHALL count as builders.
+
+#### Scenario: Ask
+- **GIVEN** `Identity:AutoBuilder` is off
+- **WHEN** a user asks to become a builder
+- **THEN** `GET /api/me` says `builder` `requested`
+
+#### Scenario: Ask with auto builder
+- **GIVEN** `Identity:AutoBuilder` is on and a user with a phone in state `none`
+- **WHEN** the user asks to become a builder
+- **THEN** `GET /api/me` says `builder` `approved`
+
+#### Scenario: No phone
+- **GIVEN** a user who logged in by email and has no phone
+- **WHEN** the user asks to become a builder
+- **THEN** the answer is 403 `phone_required` and `builder` stays `none`
+
+#### Scenario: Approved
+- **GIVEN** a user asked
+- **WHEN** an admin approves
+- **THEN** `GET /api/me` says `builder` `approved`, and the user can create a bot at once (REL-36)
+
+#### Scenario: Refused
+- **GIVEN** a user asked
+- **WHEN** an admin refuses
+- **THEN** `GET /api/me` says `builder` `refused`; with `Identity:AutoBuilder` off a new request waits for the admin, with it on the state stays `refused`
+
+
 ### Requirement: AUTH-32 The account with products is kept
 Products SHALL be bots not deleted, sites, demos and access keys. When one account has products and the other has none, the account with products SHALL be kept; when neither has, the current session's; an admin's account (SEC-14) SHALL always be the kept one. When both have products, the merge SHALL be refused with 409 `both_have_products`. A merge SHALL NOT change, move or delete any product.
 

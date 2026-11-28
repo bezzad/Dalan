@@ -5,14 +5,14 @@ import type { ShowcaseEntry } from "./pages.ts";
 export type BuilderState = "none" | "requested" | "approved" | "refused";
 
 /**
- * CLI-23: what the account screen shows about building bots. A user with no phone must verify one first (CLI-34).
- * CLI-84: a refused user sees why, and may ask again.
+ * CLI-23: what the account screen shows about building bots. A verified phone makes a builder with no request (AUTH-39);
+ * a user with no phone must verify one first (CLI-34). CLI-84: a refused user sees why. "closed": a phone that is not a
+ * builder, only while the admin has turned Identity:AutoBuilder off.
  */
-export function builderView(user: { builder: BuilderState; admin: boolean; has_phone: boolean }): "phone" | "request" | "refused" | "waiting" | "bots" {
+export function builderView(user: { builder: BuilderState; admin: boolean; has_phone: boolean }): "phone" | "refused" | "closed" | "bots" {
   if (user.admin || user.builder === "approved") return "bots";
-  if (user.builder === "requested") return "waiting";
   if (!user.has_phone) return "phone";
-  return user.builder === "refused" ? "refused" : "request";
+  return user.builder === "refused" ? "refused" : "closed";
 }
 
 /** CLI-30: the account screen shows the access keys and the ready prompt only to an approved builder or an admin. */
