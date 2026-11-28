@@ -28,7 +28,7 @@ Areas: `OPS` operations, `ARC` architecture, `DEL` delivery, `Q` bot queue, `REL
 | Contract | xUnit v3 + JSON files + the `Telegram.Bot` package | Telegram adapter answers compared with saved examples of the pinned Bot API version (`tests/Dalan.Telegram.Tests/Examples`); one test drives the real `Telegram.Bot` client against the test server |
 | Architecture | xUnit v3 + reflection on assemblies | Dependency rules `ARC-*` |
 | Client | Node test runner (`node --test`), TypeScript run directly, no test package | Pure client logic: message list, sync, reply buttons, reconnect wait, languages; a scan of the built files for foreign hosts. No browser test in the gate yet: the screens are checked by hand in a real browser |
-| Shell | bash | Deploy, server setup, backup and drill scripts with fake system commands and a fake server folder |
+| Shell | bash | Deploy, server setup, backup, restore and drill scripts with fake system commands and a fake server folder |
 | Load | chosen when the first load test is written | Target in `docs/ARCHITECTURE.md` section 8; run before each release to the Iran server, not on every push |
 
 ## 4. Rules for writing tests

@@ -30,12 +30,12 @@ test("CLI-81 a common user: Workspace with Chats only, and Account; no Admin gro
   assert.equal(ids(dashboardMenu(builder), "admin"), undefined);
 });
 
-test("CLI-81 an admin also has the Admin group with its nine items", () => {
+test("CLI-81 an admin also has the Admin group with its ten items", () => {
   assert.deepEqual(ids(dashboardMenu(admin), "admin"),
-    ["overview", "requests", "users", "adminBots", "showcase", "messages", "adminSettings", "access", "audit"]);
+    ["overview", "requests", "users", "adminBots", "showcase", "messages", "adminSettings", "access", "audit", "backup"]);
   assert.deepEqual(sections.filter(section => section.group === "admin").map(section => sectionPath(section.id)), [
     "/dashboard/admin", "/dashboard/admin/requests", "/dashboard/admin/users", "/dashboard/admin/bots", "/dashboard/admin/showcase",
-    "/dashboard/admin/messages", "/dashboard/admin/settings", "/dashboard/admin/access", "/dashboard/admin/audit"]);
+    "/dashboard/admin/messages", "/dashboard/admin/settings", "/dashboard/admin/access", "/dashboard/admin/audit", "/dashboard/admin/backup"]);
   assert.deepEqual(dashboardTarget("/dashboard/admin/settings", "", admin, true), { section: "adminSettings", path: "/dashboard/admin/settings" });
 });
 

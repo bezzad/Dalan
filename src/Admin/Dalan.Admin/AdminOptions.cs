@@ -15,6 +15,12 @@ public sealed class AdminOptions
     /// <summary>ADM-17: contact messages one address may send in 24 hours.</summary>
     public int ContactPerAddressPerDay { get; set; }
 
+    /// <summary>ADM-21: the folder of the backups (deploy/backup.sh); a relative path is under the program's folder.</summary>
+    public string BackupFolder { get; set; } = "";
+
+    /// <summary>ADM-22: the largest backup the admin may upload, in MB.</summary>
+    public int BackupMaxUploadMb { get; set; }
+
     /// <summary>ADM-15: the address of the site, for llms.txt and the ready prompt.</summary>
     public string SiteUrl { get; set; } = "";
 

@@ -41,7 +41,7 @@ src/Plugins/Dalan.Telegram         Telegram adapter plugin (no data, no domain)
 agent/Dalan.Agent                  the site agent on the home computer: Native AOT, no package, no Dalan project
 tests/                             one project or script folder per area
 client/                            PWA, plain TypeScript, no framework, no bundler; src, public, tests; built into dist
-deploy/                            deploy.sh, server setup (install.sh, setup.sh), units, Caddyfile, backup, shutdown drill; docs/SERVER.md
+deploy/                            deploy.sh, server setup (install.sh, setup.sh), units, Caddyfile, backup and restore, shutdown drill; docs/SERVER.md
 compose.yaml                       PostgreSQL for local work only
 openspec/                          specs and changes
 ```
