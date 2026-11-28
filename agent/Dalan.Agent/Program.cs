@@ -6,7 +6,7 @@ using Dalan.Agent;
 try
 {
     var command = CommandLine.Parse(args);
-    var file = ConfigFile.Default();
+    var file = command.Config is { Length: > 0 } path ? new ConfigFile(path) : ConfigFile.Default();
     var config = file.Load();
     switch (command.Kind)
     {
@@ -30,7 +30,14 @@ try
 
         case CommandKind.Service:
             var installer = Installer(file);
-            if (command.Action == "install") installer.Install(config);
+            if (command.Action == "install")
+            {
+                // The service reads only the config file: a server given now (--server, DALAN_SERVER) is saved in it.
+                var server = CommandLine.ServerOf(command, config, Environment.GetEnvironmentVariable("DALAN_SERVER"));
+                if (config.Key is not null && server != (config.Server ?? CommandLine.DefaultServer).TrimEnd('/'))
+                    file.Save(config = config with { Server = server });
+                installer.Install(config);
+            }
             else installer.Uninstall();
             return 0;
 
