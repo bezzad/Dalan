@@ -130,6 +130,12 @@ public sealed class IdentityOptions
     /// </summary>
     public string? OAuthSigningKey { get; set; }
 
+    /// <summary>
+    /// AUTH-42: with no <see cref="OAuthSigningKey"/>, the file that keeps the key the server made itself (made once, mode 600).
+    /// Empty: "oauth-signing-key" in systemd's state folder ($STATE_DIRECTORY, /var/lib/dalan), else a temporary key.
+    /// </summary>
+    public string? OAuthKeyFile { get; set; }
+
     /// <summary>AUTH-41: life of an authorization code.</summary>
     public int OAuthCodeSeconds { get; set; }
 

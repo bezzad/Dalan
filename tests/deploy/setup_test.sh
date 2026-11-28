@@ -314,6 +314,14 @@ grep -qE '^Identity__OAuthSigningKey=.{100,}$' "$env_file" || fail "older server
 [ "$(stat -c %a "$env_file")" = 640 ] || fail "dalan.env mode changed"
 echo "PASS AUTH-43 OAuth key is kept, and made on an older server"
 
+# Rule: AUTH-43 a server that made its own key (in its state folder) keeps it when setup runs later
+grep -v '^Identity__OAuthSigningKey=' "$env_file" > "$tmp/env" && cat "$tmp/env" > "$env_file"
+mkdir -p "$root/var/lib/dalan" && printf '%s\n' "$oauth_key" > "$root/var/lib/dalan/oauth-signing-key"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || fail "run with the server's own key failed"
+grep -qxF "Identity__OAuthSigningKey=$oauth_key" "$env_file" || fail "the server's own OAuth key was not kept"
+rm "$root/var/lib/dalan/oauth-signing-key"
+echo "PASS AUTH-43 the server's own OAuth key is kept"
+
 # Rule: OPS-09 install.sh downloads Caddy on the owner's machine (the CI version, checked) and runs setup over SSH
 inst="$tmp/inst"; mkdir -p "$inst/bin"
 export DALAN_CACHE="$inst/cache"

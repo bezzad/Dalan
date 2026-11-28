@@ -955,3 +955,15 @@ a.back { align-self: flex-start; color: var(--muted); text-decoration: none; }
 @media (pointer: coarse) {
   .messages li { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 }
+
+/* AUTH-41, CLI-97: the consent screen of Login with Dalan: one card in the app column. */
+main.consent-page { --gutter: max(16px, calc((100vw - 960px) / 2)); height: auto; min-height: 100dvh; }
+main.consent-page > .consent { align-self: center; max-width: 480px; margin-block-start: var(--space-l, 32px); }
+.consent h1 { flex: none; margin: 0; font-size: 22px; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
+.consent ul.ticks .glyph { flex: none; width: 18px; height: 18px; margin-block-start: calc((1lh - 18px) / 2); }
+label.check { display: flex; align-items: flex-start; gap: var(--space-s); cursor: pointer; }
+label.check input { flex: none; width: 18px; height: 18px; margin: 0; margin-block-start: calc((1lh - 18px) / 2); accent-color: var(--brand); }
+/* CLI-97: Login with Dalan of one site in My apps. */
+.login-site { display: flex; flex-direction: column; gap: var(--space-s); padding-block: var(--space-s); border-block-start: 1px solid var(--line); }
+.login-site:first-of-type { border-block-start: 0; }
+.login-site dl.facts { margin: 0; }

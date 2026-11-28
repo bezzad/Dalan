@@ -19,6 +19,7 @@ import { headerTools, homeMark, publicPages, publicScreen, siteBrand, type Publi
 import { turnOff } from "./push.ts";
 import { totpTicketIn } from "./totp.ts";
 import { appLinksFor, Chats, loadsAnew } from "./messages.ts";
+import { authorizeScreen } from "./authorize.ts";
 import { dashboardScreen } from "./settings/index.ts";
 import { dashboardAddress, menuSecondLine, userMenuGroups } from "./settings/model.ts";
 import { Theme, themeButton } from "./theme.ts";
@@ -184,6 +185,8 @@ function route(): void {
   const username = /^\/@([^/]+)$/.exec(decodeURIComponent(location.pathname))?.[1];
   screen = publicPages.includes(page)
     ? { element: publicPage(page as PublicPage, true) }
+    // AUTH-41: the consent screen of Login with Dalan.
+    : page === "authorize" ? { element: authorizeScreen(app) }
     // CLI-45: the chat page has its own header, with no site header above it.
     : username ? chatScreen(app, username, [themeButton(theme, language.t.bind(language)), bell()!, userArea(true), homeMark(language.t("appName"), navigate)])
     // CLI-81: every other signed-in page is in the dashboard.

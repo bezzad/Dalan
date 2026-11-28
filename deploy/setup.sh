@@ -129,9 +129,16 @@ if [ "${ROTATE_SECRETS:-}" = 1 ]; then
 fi
 # AUTH-42, AUTH-43: the key of "Login with Dalan" signs the sites' ID tokens, and each site's user ids are made from it.
 # Made once, also on an older server, and never with ROTATE_SECRETS: a new one would give every site's users new ids.
+# A server that ran a release before this setup made the key itself in its state folder: keep that one.
+oauth_file="$root/var/lib/dalan/oauth-signing-key"
 if ! grep -q '^Identity__OAuthSigningKey=.' "$env_file"; then
-  echo "Login with Dalan key (new)"
-  set_env Identity__OAuthSigningKey "$(openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 | openssl pkcs8 -topk8 -nocrypt -outform DER | base64 -w0)"
+  if [ -s "$oauth_file" ]; then
+    echo "Login with Dalan key (kept from $oauth_file)"
+    set_env Identity__OAuthSigningKey "$(tr -d ' \n' < "$oauth_file")"
+  else
+    echo "Login with Dalan key (new)"
+    set_env Identity__OAuthSigningKey "$(openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 | openssl pkcs8 -topk8 -nocrypt -outform DER | base64 -w0)"
+  fi
 fi
 
 [ -z "${ADMIN_PHONES:-}" ] || set_env Identity__AdminPhones "$ADMIN_PHONES"

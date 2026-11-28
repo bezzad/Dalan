@@ -216,6 +216,38 @@ export interface Site {
   name: string;
   url: string;
   online: boolean;
+  /** SITE-26: the proxy asks for Dalan's login. */
+  login?: boolean;
+}
+
+/** AUTH-40: a site with Login with Dalan on; `secret` only right after turn on or New secret. */
+export interface LoginClient {
+  client_id: string;
+  created_at: string;
+  secret?: string;
+}
+
+/** AUTH-41: what the consent screen shows. Never the phone (AUTH-43). */
+export interface Consent {
+  client_id: string;
+  url: string;
+  name: string;
+  username: string | null;
+  email: string | null;
+  scopes: string[];
+  ask_email: boolean;
+}
+
+/** AUTH-41: the consent question, or the address back to the site. */
+export type AuthorizeAnswer = { consent: Consent } | { redirect: string };
+
+/** AUTH-43: a site the user allowed. `url` is null when the site is gone. */
+export interface AllowedSite {
+  client_id: string;
+  url: string | null;
+  scopes: string[];
+  email: boolean;
+  created_at: string;
 }
 
 /** SITE-16: the sites, the sites domain (empty: sites are off) and the agent's server. */
@@ -343,6 +375,19 @@ export const api = {
   readInbox: (upTo: number) => call<null>("POST", "/api/inbox/read", { up_to: upTo }),
   deleteSite: (siteId: number) => call<null>("DELETE", `/api/sites/${siteId}`),
   reserveSite: (name: string) => call<Site>("POST", "/api/sites", { name }),
+  /** SITE-26 */
+  setProxyLogin: (siteId: number, on: boolean) => call<Site>("PUT", `/api/sites/${siteId}/login`, { on }),
+  /** AUTH-40 */
+  loginClients: async () => (await call<{ clients: LoginClient[] }>("GET", "/api/oauth/clients")).clients,
+  turnOnLogin: (site: string) => call<LoginClient>("POST", "/api/oauth/clients", { site }),
+  newLoginSecret: (site: string) => call<LoginClient>("POST", `/api/oauth/clients/${encodeURIComponent(site)}/secret`),
+  turnOffLogin: (site: string) => call<null>("DELETE", `/api/oauth/clients/${encodeURIComponent(site)}`),
+  /** AUTH-41: `query` is the query of /oauth/authorize as the site sent it; answer null only asks. */
+  authorize: (query: string, answer: "allow" | "deny" | null, email: boolean) =>
+    call<AuthorizeAnswer>("POST", "/oauth/authorize", { query, answer, email }),
+  /** AUTH-43 */
+  allowedSites: async () => (await call<{ sites: AllowedSite[] }>("GET", "/api/account/allowed-sites")).sites,
+  removeAllowedSite: (clientId: string) => call<null>("DELETE", `/api/account/allowed-sites/${encodeURIComponent(clientId)}`),
   accessKeys: async () => (await call<{ keys: AccessKey[] }>("GET", "/api/account/keys")).keys,
   makeKey: (name: string) => call<AccessKey & { key: string }>("POST", "/api/account/keys", { name }),
   deleteKey: (keyId: number) => call<null>("DELETE", `/api/account/keys/${keyId}`),

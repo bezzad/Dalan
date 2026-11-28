@@ -78,6 +78,11 @@ Every screen follows this page. The reference is ngrok: clean and simple, neutra
 - The card opens with the password form. A line "or" separates it from the other ways: SMS (phone icon), email (envelope icon), GitHub (its mark), one equal button each, in the order of CLI-36. The development login is a small link under the card.
 - Every icon is drawn in the page (rule 7).
 
+## Login with Dalan (CLI-97, AUTH-41)
+- Consent screen (`/oauth/authorize`): the site header, then one card in the app column: "Log in to shop.dalans.ir with Dalan", who is logged in, what the site gets (an id only for it; the name), an email tick box (off) only when the site asks for email, the line "never your phone", then Allow (primary) and Deny. A visitor logs in first and comes back to the same address. A bad site or return address is an error card with Home, never a redirect.
+- My apps: a "Login with Dalan" card under the sites, one block per site: the OpenID Connect switch, then the client id and discovery address (`dl.facts`), the secret once in a code block with Copy, "New secret" (asks first); and the switch "Require login on the proxy" with one grey line about the headers. Turning a switch off asks first when it cannot be undone.
+- Login and security: a "Sites you allowed" card, one row per site with Remove (asks first).
+
 ## Guides as steppers (CLI-64 to CLI-66)
 - A guide is a list of step cards (`ol.stepper`). The step to do now is open, with Back and Next. A step already done is green with a check and "Done", closed, and opens on a press.
 - What is done comes from the server (logged in, builder, a key, a site online, a bot made), never from a guess. A step the server cannot know is done by Next.

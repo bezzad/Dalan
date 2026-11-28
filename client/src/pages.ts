@@ -19,10 +19,13 @@ export interface PublicNumbers {
   contact_max_length: number;
   /** CLI-72: the running version, like v1.1.3 (OPS-17); "dev" on a local run. */
   version?: string;
+  /** CLI-97: the sites domain (empty: sites are off), for the guide of Login with Dalan. */
+  sites_domain?: string;
 }
 
 /** CLI-26: which screen an address shows. Unknown addresses never reach the page: the server answers 404. */
-export type Page = "landing" | "privacy" | "faq" | "showcase" | "guide" | "about" | "contact" | "guideBot" | "guideSite" | "login"
+export type Page = "landing" | "privacy" | "faq" | "showcase" | "guide" | "about" | "contact" | "guideBot" | "guideSite" | "guideLogin" | "login"
+  | "authorize"
   | "dashboard" | "chat" | "notFound";
 
 
@@ -39,6 +42,9 @@ export function pageFor(path: string, loggedIn: boolean): Page {
   // CLI-38: the guide of each plan.
   if (path === "/guide/bot") return "guideBot";
   if (path === "/guide/site") return "guideSite";
+  // CLI-97: the guide of Login with Dalan; AUTH-41: its consent screen, after Dalan's own login.
+  if (path === "/guide/login") return "guideLogin";
+  if (path === "/oauth/authorize") return loggedIn ? "authorize" : "login";
   if (path.startsWith("/@")) return loggedIn ? "chat" : "login";
   // CLI-81: the dashboard; the old addresses move into it after login (dashboardAddress), so a visitor is asked to log in.
   if (path === dashboardPath || path.startsWith(`${dashboardPath}/`)) return loggedIn ? "dashboard" : "login";

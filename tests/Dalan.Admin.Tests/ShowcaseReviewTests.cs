@@ -172,6 +172,33 @@ public class ShowcaseReviewTests(PostgresServer postgres)
     }
 
     [Fact]
+    [Trait("Rule", "CLI-97")]
+    public async Task CLI97_llms_txt_explains_login_with_dalan_both_ways()
+    {
+        await using var app = await AdminApp.StartAsync(postgres);
+
+        var text = await app.CreateClient().GetStringAsync("/llms.txt", TestContext.Current.CancellationToken);
+
+        Assert.Contains("## Login with Dalan", text, StringComparison.Ordinal);
+        Assert.Contains("https://dalanet.ir/.well-known/openid-configuration", text, StringComparison.Ordinal);
+        Assert.Contains("https://dalanet.ir/guide/login", text, StringComparison.Ordinal);
+        Assert.Contains("--login", text, StringComparison.Ordinal);
+        Assert.Contains("X-Dalan-User", text, StringComparison.Ordinal);
+        Assert.Contains("PKCE", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("Rule", "CLI-97")]
+    public async Task CLI97_public_settings_give_the_sites_domain_for_the_guide()
+    {
+        await using var app = await AdminApp.StartAsync(postgres, ("Sites:Domain", "sites.test"));
+
+        var body = await app.CreateClient().GetFromJsonAsync<System.Text.Json.JsonElement>("/api/public/settings", TestContext.Current.CancellationToken);
+
+        Assert.Equal("sites.test", body.GetProperty("sites_domain").GetString());
+    }
+
+    [Fact]
     [Trait("Rule", "CLI-41")]
     public async Task CLI41_llms_txt_never_names_iran()
     {

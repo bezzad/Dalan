@@ -2,6 +2,7 @@
   <ItemGroup>
     <Compile Include="../Shared/*.cs" LinkBase="Shared" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <PackageReference Include="Testcontainers.PostgreSql" />
   </ItemGroup>

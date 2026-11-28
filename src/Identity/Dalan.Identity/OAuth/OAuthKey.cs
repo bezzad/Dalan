@@ -25,6 +25,7 @@ internal sealed partial class OAuthKey : IDisposable
     public OAuthKey(IOptions<IdentityOptions> options, ILogger<OAuthKey> logger)
     {
         var text = options.Value.OAuthSigningKey?.Trim();
+        if (string.IsNullOrEmpty(text) && KeyFile(options.Value) is { } file) text = ReadOrMake(file, logger);
         if (string.IsNullOrEmpty(text))
         {
             _ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
@@ -59,6 +60,40 @@ internal sealed partial class OAuthKey : IDisposable
         HMACSHA256.HashData(_subjectKey, Encoding.UTF8.GetBytes(string.Create(CultureInfo.InvariantCulture, $"{clientId}:{userId}"))));
 
     public void Dispose() => _ecdsa.Dispose();
+
+    /// <summary>Identity:OAuthKeyFile, else the file in systemd's state folder (the server on a release that setup.sh did not see).</summary>
+    private static string? KeyFile(IdentityOptions options)
+    {
+        if (!string.IsNullOrWhiteSpace(options.OAuthKeyFile)) return options.OAuthKeyFile;
+        var state = Environment.GetEnvironmentVariable("STATE_DIRECTORY")?.Split(':')[0];
+        return string.IsNullOrEmpty(state) ? null : Path.Combine(state, "oauth-signing-key");
+    }
+
+    /// <summary>The key kept in the file, or a new one written there once, readable only by this user.</summary>
+    private static string ReadOrMake(string file, ILogger logger)
+    {
+        if (File.Exists(file)) return File.ReadAllText(file).Trim();
+        using var made = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var text = Convert.ToBase64String(made.ExportPkcs8PrivateKey());
+        var create = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write };
+        if (!OperatingSystem.IsWindows()) create.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        try
+        {
+            using (var writer = new StreamWriter(file, Encoding.ASCII, create)) writer.Write(text);
+        }
+        catch (IOException) when (File.Exists(file))
+        {
+            // Another start wrote it first: use that one.
+            return File.ReadAllText(file).Trim();
+        }
+
+        LogKeyMade(logger, file);
+        return text;
+    }
+
+    [LoggerMessage(LogLevel.Warning,
+        "Made the Login with Dalan key in {File}. Keep this file (and back it up): the sites' user ids come from it.")]
+    private static partial void LogKeyMade(ILogger logger, string file);
 
     [LoggerMessage(LogLevel.Warning,
         "Identity:OAuthSigningKey is not set. Using a temporary key: the sites' user ids and keys change when the server restarts.")]

@@ -20,7 +20,7 @@ test("CLI-63 an internal path is accepted", () => {
 
 test("CLI-63 anything that can leave the site is ignored", () => {
   for (const bad of ["//evil.example", "https://evil.example", "/\\evil.example", "javascript:alert(1)", "evil", "", "/a\\b",
-    "/a\nb", "/" + "x".repeat(200), null, undefined]) {
+    "/a\nb", "/" + "x".repeat(2048), null, undefined]) {
     assert.equal(safeNext(bad), null, String(bad));
   }
 });
