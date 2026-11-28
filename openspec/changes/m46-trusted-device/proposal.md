@@ -14,4 +14,4 @@ Opening the app for a code each time is slow. Most sites have "Don't ask again o
 - SEC-15: an admin's login on a trusted device also skips the code. `Identity:TrustedDeviceDays` 0 turns trust off for all.
 - CLI-92: the checkbox on the code step, and the list in the second-factor card.
 
-New setting: `Identity:TrustedDeviceDays` (30, 0 to 365; 0 = off).
+New setting: `Identity:TrustedDeviceDays` (30; 1 to 365 in the panel; 0 in the server config turns it off).
