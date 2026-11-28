@@ -17,8 +17,9 @@ const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", "
 
 createServer((request, response) => {
   const path = new URL(request.url, appOrigin).pathname;
-  const file = path === "/harness.html" ? join(here, "harness.html") : normalize(join(dist, path));
-  if (!file.startsWith(dist) && path !== "/harness.html" || !existsSync(file) || statSync(file).isDirectory()) {
+  const harness = ["/harness.html", "/dashboard.html"].includes(path);
+  const file = harness ? join(here, path.slice(1)) : normalize(join(dist, path));
+  if (!file.startsWith(dist) && !harness || !existsSync(file) || statSync(file).isDirectory()) {
     response.writeHead(404).end();
     return;
   }

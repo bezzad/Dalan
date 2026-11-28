@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- CLI-81: the dashboard frame as dashboardScreen() draws it (client/src/settings/index.ts), with a workspace page (My bots)
+     as myBotsScreen() draws it (client/src/builder.ts). Plain markup, so only the layout of app.css is under test. -->
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dalan dashboard harness</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<main class="wide settings dashboard">
+  <header><h1>Dashboard</h1></header>
+  <div class="scroller"><div class="settings-body">
+    <nav class="side" aria-label="Dashboard">
+      <span class="label">Workspace</span>
+      <a href="#chats"><span class="name">Chats</span></a>
+      <a href="#bots" aria-current="page"><span class="name">My bots</span></a>
+      <a href="#apps"><span class="name">My apps</span></a>
+      <span class="label">Account</span>
+      <a href="#profile"><span class="name">Profile</span></a>
+      <a href="#security"><span class="name">Login and security</span></a>
+    </nav>
+    <section class="page workspace">
+      <main class="wide">
+        <header><button type="button" class="link">Back</button><h1>My bots</h1><button type="button" class="primary">Create bot</button></header>
+        <div class="scroller">
+          <section class="card"><ul class="rows bot-list">
+            <li><a class="line" href="#mofidbot"><div class="who"><strong>Mofid</strong><span class="note">@mofidbot</span></div></a></li>
+            <li><a class="line" href="#weather_bot"><div class="who"><strong>Weather</strong><span class="note">@weather_bot</span></div></a></li>
+          </ul></section>
+          <a href="#keys">Access keys</a>
+        </div>
+      </main>
+    </section>
+  </div></div>
+</main>
+</body>
+</html>
