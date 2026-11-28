@@ -333,11 +333,16 @@ The service worker SHALL show each push as a notification with its title, body a
 - **THEN** an open window goes to `/@shopbot` and gets focus, or a new one opens there
 
 ### Requirement: CLI-23 Builder request in the account screen
-The account screen (`/account`) and the My bots screen (`/bots`) SHALL show the user's builder state when the user is not a builder: a button "become a builder" when it is `none`, "waiting for approval" when `requested`. A user with no phone SHALL see, instead of the request button, a note that building needs a verified mobile number, with a button to verify it (CLI-34). For a builder or an admin the account screen SHALL have a button to `/bots`; admins SHALL also see a button to `/admin`.
+A user with a verified phone SHALL be a builder with no request (AUTH-39): no "become a builder" button and no "waiting for approval". A user with no phone SHALL see, on the Builder section and on My bots, a note that building needs a verified mobile number, with a button to verify it (CLI-34). A user the admin refused SHALL see that note. For a builder the dashboard SHALL show My bots and My apps.
 
 #### Scenario: What the account screen shows
-- **WHEN** the builder state is `none`, `requested` or `approved`, or the user is an admin
-- **THEN** the screen shows the request button, the waiting note, the "My bots" button, or the "My bots" and "Admin" buttons
+- **GIVEN** a user with no phone
+- **WHEN** the Builder section opens
+- **THEN** it says building needs a verified mobile number and has a button to verify it, and no request button
+
+#### Scenario: A verified phone
+- **WHEN** a user with a verified phone opens the Builder section
+- **THEN** it says they can build, with a link to My bots, and no request button
 
 #### Scenario: No phone
 - **WHEN** a user with no phone and builder state `none` opens the account screen
@@ -985,12 +990,21 @@ Each screen SHALL have its own address, and opening it (reload, Back, a shared l
 - **THEN** the address is `/bots/new`
 
 ### Requirement: CLI-52 Reply in the chat
-The user SHALL start a reply by a message's menu (right-click or long press) → Reply, a double-click, or a swipe to the left. A bar above the input SHALL show the quote, with ✕ and Esc to cancel; the next message or file SHALL carry `reply_to` (REL-52). A message that replies SHALL show the quote on top: the writer ("You" or the bot's name) and the first line, or the file name. A click on a quote SHALL go to that message like CLI-14.
+The user SHALL start a reply by a message's menu (right-click, or on a touch screen a long press of half a second with no move) → Reply or Copy, a double-click, or a swipe to the left; a long press SHALL NOT open the system's text menu. A bar above the input SHALL show the quote, with ✕ and Esc to cancel; the next message or file SHALL carry `reply_to` (REL-52). A replying message SHALL show the quote on top; a click on it SHALL go to that message like CLI-14.
 
 #### Scenario: Reply to an answer
-- **GIVEN** bot message 2 "Which session?"
-- **WHEN** the user picks Reply on it and sends "the second"
-- **THEN** the send has `reply_to` 2, the bar is gone, and the new message shows a quote of "Which session?"
+- **GIVEN** a bot answer in the chat
+- **WHEN** the user opens its menu and picks Reply, then sends "ok"
+- **THEN** the message "ok" has `reply_to` of that answer and shows its quote
+
+#### Scenario: Long press on a phone
+- **GIVEN** a touch screen
+- **WHEN** the user holds a finger on a bot message for half a second without moving
+- **THEN** the menu with Reply and Copy opens there, and Copy puts the message text on the clipboard
+
+#### Scenario: A scroll is not a long press
+- **WHEN** the finger moves more than 10 pixels before the time
+- **THEN** no menu opens
 
 #### Scenario: Cancel
 - **GIVEN** the reply bar is open
@@ -1197,12 +1211,12 @@ The account screen SHALL be a settings area: a side menu and one section per pag
 - **THEN** no button on it is primary; after the username is changed, its "Save" is primary
 
 ### Requirement: CLI-78 Grouped user menu
-The user menu SHALL open with the user's name and, in grey, the phone or the email. Under it SHALL come groups with an icon per item and a line between groups: My bots, Chats, My apps; then Dashboard; then Log out alone. Dashboard SHALL open the admin overview for an admin and `/dashboard` for anyone else (owner, 2026-11-27: no separate Settings or Admin item; both are in the dashboard's side menu).
+The user menu SHALL open with the user's name and, in grey, the phone or the email. Under it SHALL come groups with an icon per item and a line between groups: My bots, Chats, My apps; then Dashboard; then Log out alone. Dashboard SHALL open `/dashboard` for everyone (owner, 2026-11-27); Settings and Admin are in the dashboard's side menu.
 
 #### Scenario: Admin
 - **GIVEN** an admin with the email `a@example.com` and no phone
 - **WHEN** the user menu opens
-- **THEN** it shows the name, `a@example.com` in grey, then three groups: (My bots, Chats, My apps), (Dashboard), (Log out), each item with an icon, and Dashboard opens `/dashboard/admin`
+- **THEN** it shows the name, `a@example.com` in grey, then three groups: (My bots, Chats, My apps), (Dashboard), (Log out), each item with an icon, and Dashboard opens `/dashboard`
 
 #### Scenario: Not an admin
 - **WHEN** a user who is not an admin opens the menu
@@ -1447,3 +1461,35 @@ Users and Bots in the admin dashboard SHALL open as tables of everyone, newest f
 #### Scenario: Not an admin
 - **WHEN** a user who is not an admin opens `/dashboard/admin/users/7`
 - **THEN** the page is "Not found"
+
+### Requirement: CLI-94 Colored titles on public pages
+The accent line of each big title on public pages (the home page hero and section titles) SHALL be drawn in a gradient of five colors (`--rainbow`, its own set for the dark theme), as text. The gradient SHALL move slowly along the text, like ngrok's titles; with `prefers-reduced-motion` it SHALL stand still. In Persian it SHALL run from the right.
+
+#### Scenario: Home page title
+- **WHEN** the home page opens
+- **THEN** the second line of the hero title is the colored gradient, moving slowly
+
+#### Scenario: Reduced motion
+- **GIVEN** the system asks for reduced motion
+- **WHEN** the home page opens
+- **THEN** the title is colored and does not move
+
+### Requirement: CLI-95 A new email login says it makes an account
+When the email login's code is right but the address belongs to no account (the server asks for a name), the login screen SHALL say, above the name box, that this makes a new account, and that someone who already has an account with a mobile number SHALL log in with it and add the email in Profile instead. The same note SHALL show for a GitHub login that would make a new account.
+
+#### Scenario: New address
+- **GIVEN** no account has `sara@example.com`
+- **WHEN** Sara enters the right email code
+- **THEN** the name box shows with the note that a new account will be made and how to add the email to an existing one
+
+### Requirement: CLI-96 The bell
+Every signed-in page SHALL have a bell in the header with the unread count (none when 0). It SHALL open a panel with the newest notices (unread ones bold) and "More"; opening it SHALL mark them read; a notice with a link SHALL open it. A push for a notice SHALL open its link (CLI-22). The count SHALL refresh with the live stream, or on each screen change.
+
+#### Scenario: Unread
+- **GIVEN** two unread notices
+- **WHEN** the user opens any signed-in page
+- **THEN** the bell shows 2; after the panel opens it shows none
+
+#### Scenario: Open a notice
+- **WHEN** the admin taps the notice of a new site
+- **THEN** that user's admin page opens

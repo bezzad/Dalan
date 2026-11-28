@@ -14,6 +14,12 @@ internal sealed partial class NoSmsSender(ILogger<NoSmsSender> logger) : ISmsSen
         return Task.FromResult(false);
     }
 
+    public Task<bool> SendNoticeAsync(string phone, string text, CancellationToken cancellationToken)
+    {
+        LogNoProvider(logger);
+        return Task.FromResult(false);
+    }
+
     [LoggerMessage(LogLevel.Error, "An SMS was asked for, but Notification:SmsProvider is not set. Nobody can log in by SMS.")]
     private static partial void LogNoProvider(ILogger logger);
 }
@@ -37,6 +43,19 @@ internal sealed partial class LogSmsSender(
         return Task.FromResult(true);
     }
 
+    /// <summary>NTF-13: the notice text, by the same rules as a code.</summary>
+    public Task<bool> SendNoticeAsync(string phone, string text, CancellationToken cancellationToken)
+    {
+        if (!environment.IsDevelopment() && !IsListed(phone))
+        {
+            LogNotListed(logger, phone);
+            return Task.FromResult(false);
+        }
+
+        LogNotice(logger, phone, text);
+        return Task.FromResult(true);
+    }
+
     /// <summary>The last ten digits decide, so 09121234567 and +989121234567 are the same number.</summary>
     private bool IsListed(string phone) =>
         (options.CurrentValue.LogSmsPhones ?? "")
@@ -51,6 +70,9 @@ internal sealed partial class LogSmsSender(
 
     [LoggerMessage(LogLevel.Information, "SMS (not sent, log sender): login code for {Phone} is {Code}")]
     private static partial void LogCode(ILogger logger, string phone, string code);
+
+    [LoggerMessage(LogLevel.Information, "SMS (not sent, log sender): notice for {Phone}: {Text}")]
+    private static partial void LogNotice(ILogger logger, string phone, string text);
 
     [LoggerMessage(LogLevel.Warning, "SMS (not sent, log sender): {Phone} is not in Notification:LogSmsPhones")]
     private static partial void LogNotListed(ILogger logger, string phone);

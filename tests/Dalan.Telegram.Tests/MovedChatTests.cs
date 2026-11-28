@@ -14,7 +14,7 @@ public class MovedChatTests(PostgresServer postgres)
         var from = await app.AddUserAsync("Sara");
         var to = await app.AddUserAsync("Sara phone");
         await app.UserSaysAsync(botId, from, "/start");
-        await app.Services.GetServices<IUserMergeListener>().Single().UserMergedAsync(from, to, TestContext.Current.CancellationToken);
+        foreach (var listener in app.Services.GetServices<IUserMergeListener>()) await listener.UserMergedAsync(from, to, TestContext.Current.CancellationToken);
         return (app, bot, from, to);
     }
 

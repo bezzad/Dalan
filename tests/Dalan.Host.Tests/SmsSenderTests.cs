@@ -32,7 +32,7 @@ public class SmsSenderTests
         }
     }
 
-    private static DalanApp App(string provider, string environment = "Development", FakeProvider? fake = null, string logSmsPhones = "") => new(
+    private static DalanApp App(string provider, string environment = "Development", FakeProvider? fake = null, string logSmsPhones = "", bool notice = false) => new(
         NoDatabase,
         new Dictionary<string, string>
         {
@@ -43,6 +43,8 @@ public class SmsSenderTests
             ["Notification:SmsIr:TemplateId"] = "123456",
             ["Notification:SmsIr:CodeParameter"] = "CODE",
             ["Notification:SmsIr:TimeoutSeconds"] = "10",
+            ["Notification:SmsIr:NoticeTemplateId"] = notice ? "654321" : "0",
+            ["Notification:SmsIr:NoticeParameter"] = "TEXT",
             ["Identity:DevLogin"] = "false",
         },
         web =>
@@ -136,6 +138,36 @@ public class SmsSenderTests
         Assert.Equal("/v1/send/verify", call.Path);
         Assert.Equal(ApiKey, call.Key);
         Assert.Equal("""{"mobile":"09121234567","templateId":123456,"parameters":[{"name":"CODE","value":"123456"}]}""", call.Body);
+    }
+
+    [Fact]
+    [Trait("Rule", "NTF-13")]
+    public async Task NTF13_smsir_sends_a_notice_with_the_notice_template()
+    {
+        var provider = new FakeProvider();
+        await using var app = App("smsir", "Production", provider, notice: true);
+
+        var sent = await app.Services.GetRequiredService<ISmsSender>()
+            .SendNoticeAsync("+989121234567", "سایت جدید https://dalanet.ir/x", Cancel);
+
+        Assert.True(sent);
+        var call = Assert.Single(provider.Calls);
+        Assert.Equal("/v1/send/verify", call.Path);
+        Assert.Equal("""{"mobile":"09121234567","templateId":654321,"parameters":[{"name":"TEXT","value":"سایت جدید https://dalanet.ir/x"}]}""",
+            System.Text.RegularExpressions.Regex.Unescape(call.Body));
+    }
+
+    [Fact]
+    [Trait("Rule", "NTF-13")]
+    public async Task NTF13_smsir_without_a_notice_template_sends_no_notice()
+    {
+        var provider = new FakeProvider();
+        await using var app = App("smsir", "Production", provider);
+
+        var sent = await app.Services.GetRequiredService<ISmsSender>().SendNoticeAsync("+989121234567", "hi", Cancel);
+
+        Assert.False(sent);
+        Assert.Empty(provider.Calls);
     }
 
     [Fact]

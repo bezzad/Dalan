@@ -15,7 +15,7 @@ public class SettingDescriptionTests
          "connections", "parts", "requests", "addresses"];
 
     /// <summary>Numbers that are ids, not amounts: no range.</summary>
-    private static readonly string[] NoRange = ["Notification:SmsIr:TemplateId"];
+    private static readonly string[] NoRange = ["Notification:SmsIr:TemplateId", "Notification:SmsIr:NoticeTemplateId"];
 
     /// <summary>The catalog as the server builds it from appsettings.json alone.</summary>
     private static IReadOnlyList<SettingEntry> Catalog()

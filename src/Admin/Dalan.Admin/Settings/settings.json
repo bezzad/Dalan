@@ -919,6 +919,86 @@
     "risky": false,
     "restart": false
   },
+  "Notification:InboxDays": {
+    "group": "Notification",
+    "name": {
+      "fa": "نگهداری اعلان‌ها",
+      "en": "Notices kept for"
+    },
+    "help": {
+      "fa": "اعلان‌های قدیمی‌تر از این از صندوق کاربر پاک می‌شوند.",
+      "en": "Notices older than this are removed from the inbox."
+    },
+    "unit": "days",
+    "min": 1,
+    "max": 3650,
+    "risky": false,
+    "restart": false
+  },
+  "Notification:InboxPageSize": {
+    "group": "Notification",
+    "name": {
+      "fa": "اعلان‌های هر صفحه",
+      "en": "Notices per page"
+    },
+    "help": {
+      "fa": "تعداد اعلان‌هایی که زیر زنگ در هر صفحه نشان داده می‌شود.",
+      "en": "Notices shown under the bell in one page."
+    },
+    "unit": "",
+    "min": 5,
+    "max": 200,
+    "risky": false,
+    "restart": false
+  },
+  "Notification:InboxSmsLength": {
+    "group": "Notification",
+    "name": {
+      "fa": "طول پیامک اعلان",
+      "en": "Notice SMS length"
+    },
+    "help": {
+      "fa": "بیشترین تعداد نویسه‌های پیامک یک اعلان: عنوان و پیوند.",
+      "en": "The longest SMS of a notice: its title and link."
+    },
+    "unit": "characters",
+    "min": 40,
+    "max": 500,
+    "risky": false,
+    "restart": false
+  },
+  "Notification:InboxSmsPerDay": {
+    "group": "Notification",
+    "name": {
+      "fa": "پیامک اعلان در روز",
+      "en": "Notice SMS per day"
+    },
+    "help": {
+      "fa": "وقتی اعلان به هیچ دستگاهی نرسد، کاربر در ۲۴ ساعت حداکثر این تعداد پیامک می‌گیرد. هر پیامک هزینه دارد.",
+      "en": "When push reaches no device, a user gets at most this many SMS in 24 hours. Each SMS costs money."
+    },
+    "unit": "",
+    "min": 1,
+    "max": 100,
+    "risky": true,
+    "restart": false
+  },
+  "Notification:InboxSweepMinutes": {
+    "group": "Notification",
+    "name": {
+      "fa": "پاک‌سازی اعلان‌ها",
+      "en": "Notice cleanup"
+    },
+    "help": {
+      "fa": "هر چند دقیقه اعلان‌های قدیمی پاک شوند.",
+      "en": "How often old notices are removed."
+    },
+    "unit": "minutes",
+    "min": 1,
+    "max": 1440,
+    "risky": false,
+    "restart": false
+  },
   "Notification:Push:AllowedHosts": {
     "group": "Notification",
     "name": {
@@ -1068,6 +1148,34 @@
     "help": {
       "fa": "نام متغیر کد در قالب SMS.ir (برای #CODE# بنویسید CODE). مقدار اشتباه ورود با پیامک را از کار می‌اندازد.",
       "en": "Name of the code in the SMS.ir template (CODE for #CODE#). A wrong value stops SMS login."
+    },
+    "unit": "",
+    "risky": true,
+    "restart": false
+  },
+  "Notification:SmsIr:NoticeParameter": {
+    "group": "Notification",
+    "name": {
+      "fa": "نام متن در قالب اعلان",
+      "en": "SMS.ir notice text name"
+    },
+    "help": {
+      "fa": "نام متغیر متن در قالب اعلان SMS.ir (برای #TEXT# بنویسید TEXT).",
+      "en": "Name of the text in the SMS.ir notice template (TEXT for #TEXT#)."
+    },
+    "unit": "",
+    "risky": true,
+    "restart": false
+  },
+  "Notification:SmsIr:NoticeTemplateId": {
+    "group": "Notification",
+    "name": {
+      "fa": "قالب اعلان SMS.ir",
+      "en": "SMS.ir notice template"
+    },
+    "help": {
+      "fa": "شماره قالب تأییدشده‌ی اعلان در پنل SMS.ir؛ صفر یعنی پیامک اعلان فرستاده نمی‌شود.",
+      "en": "Number of the approved notice template in the SMS.ir panel; 0 sends no notice SMS."
     },
     "unit": "",
     "risky": true,
