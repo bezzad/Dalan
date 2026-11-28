@@ -1,7 +1,8 @@
 // CLI-63: the address a person came from, kept across the login (also across the GitHub round trip). Pure, so tests run without a browser.
 
 const NextKey = "dalan.next";
-const MaxLength = 200;
+/** The consent screen of Login with Dalan (AUTH-41) keeps its whole query, PKCE challenge and state too. */
+const MaxLength = 2048;
 
 /** CLI-63: the path when it stays on this site (one `/` at the start, nothing that can mean another host), else null. */
 export function safeNext(raw: string | null | undefined): string | null {
@@ -45,7 +46,11 @@ export function askedNext(search: string, kept: string | null): string | null {
   return safeNext(new URLSearchParams(search).get("next")) ?? safeNext(kept);
 }
 
+/** AUTH-41: the consent screen; its query is the site's request, so a login there keeps it. */
+export const authorizePath = "/oauth/authorize";
+
 /** CLI-63: where a finished login goes: the asked address, else the current one, and from `/` "My bots". */
 export function loginTarget(pathname: string, search: string, kept: string | null): string {
+  if (pathname === authorizePath) return pathname + search;
   return askedNext(search, kept) ?? (pathname === "/" || pathname === "" ? "/bots" : pathname);
 }

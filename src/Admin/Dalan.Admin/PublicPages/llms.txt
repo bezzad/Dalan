@@ -88,3 +88,22 @@ An approved builder shows a web app that runs on their own computer at `https://
 - `GET /api/sites`: your sites with `online`; `POST /api/sites` with `{"name": "mysite"}` reserves a name (3 to 32 of a-z, 0-9 and -).
 - Answers stream, so Server-Sent Events work. WebSocket from the visitor to the app does not work yet.
 - The real visitor address is in `X-Forwarded-For`; the app is reached as `Host: localhost:<port>`, the site's name is in `X-Forwarded-Host`.
+
+## Login with Dalan (OpenID Connect)
+
+A site of Dalan can let its visitors log in with their Dalan account. Two ways; guide for people: {site}/guide/login.
+
+1. The proxy does it (no code): in "My apps" turn on "Require login on the proxy" for the site, or run `dalan http 3000 --name shop --login`. A visitor with no login goes to Dalan's login and back. Every request then reaches your app with `X-Dalan-User` (the user's id for this site) and `X-Dalan-Name` (the name, percent-encoded UTF-8). A visitor cannot send these headers themselves. A call that is not a page load (POST, fetch) with no login gets 401. `/.dalan/logout` on the site logs out.
+2. OpenID Connect in your app (any library): in "My apps" turn on "Login with Dalan" for the site and copy the secret (shown once; "New secret" replaces it).
+
+    issuer / discovery    {site}  ->  {site}/.well-known/openid-configuration
+    client_id             the site name, for example shop
+    client_secret         from My apps
+    redirect_uri          https://shop.<sites domain>/... or http://localhost:<port>/... for tests
+    flow                  authorization code with PKCE (S256, required); client_secret_basic or client_secret_post
+    scopes                openid (needed), profile (name, preferred_username), email (email, email_verified, only when the user ticks it)
+
+- The `sub` is different for each site, so two sites cannot match their users. A site never gets the phone number.
+- The code works once and only for a short time; the ID token and access token (for `{site}/oauth/userinfo`) are short too. There are no refresh tokens: keep your own session after login.
+- Errors come back to `redirect_uri` as `error=access_denied` (the user said no) or `error=invalid_request` (no PKCE). A wrong return address is refused on Dalan's own page.
+- The user sees and removes the sites they allowed in "Login and security"; the next login then asks again.

@@ -12,7 +12,7 @@ public enum CommandKind { Help, Version, Login, Http, Demo, Start, Service, Stat
 /// </summary>
 public sealed record Command(
     CommandKind Kind, string? Key, string? Server, IReadOnlyList<(int Port, string? Name)> Sites, string? Action = null, bool Background = false,
-    bool NoOpen = false)
+    bool NoOpen = false, bool Login = false)
 {
     public string? Config { get; init; }
 }
@@ -38,6 +38,8 @@ public static class CommandLine
           --server <url>   another Dalan server (also the environment DALAN_SERVER)
           --config <file>  another config file (also the environment DALAN_CONFIG)
           --no-open        with "dalan http": do not open the site in the browser (it opens once, on a desktop)
+          --login          with "dalan http": visitors log in with Dalan first, and your app gets X-Dalan-User and X-Dalan-Name
+                           (it stays on; turn it off in "My apps")
 
         The service on Windows starts when you log on (not at boot) and is not started again after a crash.
         Its log is %APPDATA%\dalan\dalan.log. Linux: journalctl --user -u dalan. macOS: ~/Library/Logs/dalan.log
@@ -49,25 +51,27 @@ public static class CommandLine
         string? server = null;
         string? config = null;
         var noOpen = false;
+        var login = false;
         for (var i = 0; i < args.Count; i++)
         {
             if (args[i] == "--no-open") noOpen = true;
+            else if (args[i] == "--login") login = true;
             else if (args[i] == "--server") server = i + 1 < args.Count ? args[++i] : throw new AgentStopException("--server needs an address.");
             else if (args[i] == "--config") config = i + 1 < args.Count ? args[++i] : throw new AgentStopException("--config needs a file.");
             else rest.Add(args[i]);
         }
 
         if (rest.Count == 0) return new(CommandKind.Help, null, server, []) { Config = config };
-        return Read(rest, server, noOpen) with { Config = config };
+        return Read(rest, server, noOpen, login) with { Config = config };
     }
 
-    private static Command Read(List<string> rest, string? server, bool noOpen)
+    private static Command Read(List<string> rest, string? server, bool noOpen, bool login)
     {
         return rest[0] switch
         {
             "login" when rest.Count == 2 => new(CommandKind.Login, Key(rest[1]), server, []),
             "login" => throw new AgentStopException("Use: dalan login <key>"),
-            "http" => new(CommandKind.Http, null, server, Pairs(rest), NoOpen: noOpen),
+            "http" => new(CommandKind.Http, null, server, Pairs(rest), NoOpen: noOpen, Login: login),
             "demo" => new(CommandKind.Demo, null, server, [(DemoPort(rest), null)]),
             "start" when rest.Count == 1 => new(CommandKind.Start, null, server, []),
             "start" when rest.Count == 2 && rest[1] == "--background" => new(CommandKind.Start, null, server, [], Background: true),

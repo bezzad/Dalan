@@ -124,6 +124,24 @@ public sealed class IdentityOptions
     /// <summary>AUTH-38: addresses or ranges one access key may have.</summary>
     public int MaxKeyAddresses { get; set; }
 
+    /// <summary>
+    /// AUTH-42: the P-256 private key that signs the ID tokens of "Login with Dalan", PKCS#8 as PEM or base64. A secret: it lives
+    /// only in the server's environment. AUTH-43: each site's user ids are made from it too, so never change it on a live server.
+    /// </summary>
+    public string? OAuthSigningKey { get; set; }
+
+    /// <summary>
+    /// AUTH-42: with no <see cref="OAuthSigningKey"/>, the file that keeps the key the server made itself (made once, mode 600).
+    /// Empty: "oauth-signing-key" in systemd's state folder ($STATE_DIRECTORY, /var/lib/dalan), else a temporary key.
+    /// </summary>
+    public string? OAuthKeyFile { get; set; }
+
+    /// <summary>AUTH-41: life of an authorization code.</summary>
+    public int OAuthCodeSeconds { get; set; }
+
+    /// <summary>AUTH-42: life of an ID token and of an access token for /oauth/userinfo.</summary>
+    public int OAuthTokenMinutes { get; set; }
+
     public GitHubOptions GitHub { get; set; } = new();
 }
 

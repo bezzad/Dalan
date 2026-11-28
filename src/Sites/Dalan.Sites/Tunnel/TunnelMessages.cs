@@ -13,8 +13,11 @@ public sealed record TunnelResponse(long Id, int Status, Dictionary<string, stri
 /// <summary>SITE-22: from the server to the agent over WebSocket: "ack" (one part was written) or "cancel" (stop this answer).</summary>
 public sealed record TunnelControl(long Id, bool? Ack = null, bool? Cancel = null);
 
-/// <summary>Sites to serve, and optionally a demo: "new" or the id of a demo of the caller (SITE-18).</summary>
-internal sealed record OpenSessionRequest(string[]? Sites, string? Demo = null);
+/// <summary>
+/// Sites to serve, and optionally a demo: "new" or the id of a demo of the caller (SITE-18).
+/// <see cref="Login"/> true (SITE-26, "dalan http --login") turns the proxy login on for these sites; null leaves it as it is.
+/// </summary>
+internal sealed record OpenSessionRequest(string[]? Sites, string? Demo = null, bool? Login = null);
 
 internal sealed record SiteAddress(string Name, string Url);
 

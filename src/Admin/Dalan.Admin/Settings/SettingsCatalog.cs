@@ -35,7 +35,7 @@ public sealed class SettingsCatalog(IConfiguration configuration)
     {
         // Secrets.
         "Identity:SigningKey", "Notification:SmsIr:ApiKey", "Notification:Smtp:Password", "Notification:Push:PrivateKey", "Notification:Push:PublicKey",
-        "Identity:GitHub:ClientSecret",
+        "Identity:GitHub:ClientSecret", "Identity:OAuthSigningKey", "Identity:OAuthKeyFile",
         // A stolen admin session must not open these.
         "Identity:DevLogin", "Identity:AdminPhones", "Notification:SmsProvider", "Notification:LogSmsPhones", "Notification:SmsIr:BaseUrl",
         "Notification:EmailProvider", "Notification:LogEmailAddresses", "Notification:Smtp:Host", "Notification:Smtp:Port",

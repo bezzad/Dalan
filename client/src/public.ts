@@ -5,6 +5,7 @@ import { h } from "./dom.ts";
 import { botFace } from "./icon.ts";
 import { gate } from "./logo.ts";
 import { guideSteps, siteGuideSteps } from "./guide.ts";
+import { loginGuideSteps } from "./loginGuide.ts";
 import { openKeyModal } from "./keyModal.ts";
 import type { BuilderState } from "./panels.ts";
 import { stepper } from "./stepper.ts";
@@ -13,10 +14,10 @@ import type { Language } from "./i18n.ts";
 import { themeButton, type Theme } from "./theme.ts";
 import { about, categoryName, closing, faqItems, footerLine, hero, initial, labels, landing, notOffered, offers, privacyPoints, products, security, type Product, type PublicNumbers, type ShowcaseBot } from "./pages.ts";
 
-export type PublicPage = "landing" | "privacy" | "faq" | "showcase" | "guide" | "guideBot" | "guideSite" | "about" | "contact" | "notFound";
+export type PublicPage = "landing" | "privacy" | "faq" | "showcase" | "guide" | "guideBot" | "guideSite" | "guideLogin" | "about" | "contact" | "notFound";
 
 /** Every public page: the same for a visitor and a logged-in user. */
-export const publicPages: readonly string[] = ["landing", "privacy", "faq", "showcase", "guide", "guideBot", "guideSite", "about", "contact", "notFound"];
+export const publicPages: readonly string[] = ["landing", "privacy", "faq", "showcase", "guide", "guideBot", "guideSite", "guideLogin", "about", "contact", "notFound"];
 
 export interface PublicContext {
   language: Language;
@@ -239,13 +240,20 @@ export function publicScreen(page: PublicPage, context: PublicContext): HTMLElem
           h("span", { class: "label" }, product.label),
           h("h3", {}, product.title),
           h("p", {}, product.text),
-          link(product.guide, labels[lang].getStarted, "button primary")))));
+          link(product.guide, labels[lang].getStarted, "button primary")))),
+        // CLI-97: a site's visitors can log in with Dalan.
+        h("p", { class: "note" }, t("guideLoginAsk"), " ", link("/guide/login", t("guideLoginLink"))));
       break;
     case "guideBot":
       body.append(h("h2", { class: "title" }, t("guideTitle")));
       // CLI-64: a logged-in person sees what is already done; a visitor sees the same steps, the first one open.
       withNumbers(values => void botFacts(context.user).then(done =>
         body.append(stepper({ steps: guideSteps(lang, values, n), done, t, n }))));
+      break;
+    case "guideLogin":
+      // CLI-97: both ways of Login with Dalan, for everyone; the server knows none of these steps, so each is done by Next.
+      body.append(h("h2", { class: "title" }, t("guideLoginTitle")), h("p", { class: "note" }, t("guideLoginNote")));
+      withNumbers(values => body.append(stepper({ steps: loginGuideSteps(lang, values), done: [], t, n })));
       break;
     case "guideSite":
       body.append(h("h2", { class: "title" }, t("guideSiteTitle")));

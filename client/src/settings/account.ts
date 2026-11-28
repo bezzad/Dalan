@@ -1,6 +1,6 @@
 // The account's own care: the sessions list in Login and security (AUTH-35), the "Delete my account" danger card in Profile
 // (AUTH-36) and the helpers of the key address editor (AUTH-38). The pure parts are tested in tests/account.test.ts.
-import { api, type AccountSession } from "../api.ts";
+import { api, type AccountSession, type AllowedSite } from "../api.ts";
 import { errorText, type App } from "../app.ts";
 import { latinDigits } from "../digits.ts";
 import { h } from "../dom.ts";
@@ -66,6 +66,31 @@ export function sessionsCard(app: App): HTMLElement {
   load();
   return h("section", { class: "card column" },
     settingRow(t("sessionsTitle"), t("sessionsHelp"), others), list);
+}
+
+/** AUTH-43: the sites the user let log in with Dalan; Remove makes the next login there ask again. */
+export function allowedSitesCard(app: App): HTMLElement {
+  const t = app.language.t.bind(app.language);
+  const failed = (failure: unknown) => toast(t(errorText(failure)), "error");
+  const list = h("ul", { class: "sessions" });
+
+  function draw(sites: AllowedSite[]): void {
+    list.replaceChildren(...(sites.length === 0 ? [h("li", { class: "note" }, t("allowedSitesNone"))] : sites.map(site => h("li", {},
+      h("div", { class: "line" }, h("strong", { dir: "ltr" }, site.url ? new URL(site.url).host : site.client_id)),
+      h("span", { class: "note" }, t(site.email ? "allowedWithEmail" : "allowedNoEmail"), " · ",
+        t("allowedSince").replace("{n}", app.language.dateTime(site.created_at))),
+      h("button", { type: "button", class: "link", onclick: () => {
+        if (!confirm(t("allowedRemoveConfirm").replace("{name}", site.client_id))) return;
+        api.removeAllowedSite(site.client_id).then(() => { toast(t("allowedRemoved")); load(); }, failed);
+      } }, t("allowedRemove"))))));
+  }
+
+  function load(): void {
+    api.allowedSites().then(draw, failed);
+  }
+  load();
+  return h("section", { class: "card column" },
+    h("h3", {}, t("allowedSitesTitle")), h("p", { class: "note" }, t("allowedSitesHelp")), list);
 }
 
 /** AUTH-36: the danger card: the word, the password (or a code sent to the own phone or email), then the account is gone. */

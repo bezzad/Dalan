@@ -104,6 +104,7 @@ static async Task<int> RunAsync(Command command, AgentConfig config, IReadOnlyLi
     var client = new TunnelClient(http, config.Key, TunnelClient.RealWebSocket, local, Console.Out)
     {
         OpenBrowser = opener ? BrowserOpener.OpenReal : null,
+        Login = command.Login,
     };
     Console.WriteLine($"Connecting to {server} ...");
     await client.RunAsync(sites, stop.Token, demoPort);

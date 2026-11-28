@@ -9,6 +9,7 @@ using Dalan.Identity.Codes;
 using Dalan.Identity.EmailLogin;
 using Dalan.Identity.GitHubLogin;
 using Dalan.Identity.Merge;
+using Dalan.Identity.OAuth;
 using Dalan.Identity.SecondFactor;
 using Dalan.Identity.SmsLogin;
 using Dalan.Identity.Users;
@@ -53,6 +54,9 @@ public static class IdentityService
         services.AddSingleton<SecondFactors>();
         services.AddSingleton<AccountMerger>();
         services.AddSingleton<MergeFollowUp>();
+        services.AddSingleton<OAuthKey>();
+        services.AddSingleton<OAuthStore>();
+        services.AddSingleton<IProxyLogin, ProxyLogin>();
         services.AddHostedService(provider => provider.GetRequiredService<MergeFollowUp>());
         services.AddHttpClient<GitHubClient>((provider, client) =>
         {
@@ -88,6 +92,9 @@ public static class IdentityService
         endpoints.MapSecondFactor();
         endpoints.MapMerge();
         endpoints.MapAccessKeys();
+        endpoints.MapAuthorize();
+        endpoints.MapTokens();
+        endpoints.MapOAuthClients();
         endpoints.MapDevLogin();
         return endpoints;
     }

@@ -16,6 +16,12 @@ internal static class SitePages
         ["demo_ended"] = ("مهلت این دمو به پایان رسیده است.", "This demo has ended."),
         ["demo_not_found"] = ("دمویی با این آدرس در دالان وجود ندارد.", "There is no demo at this address on Dalan."),
         ["bad_answer"] = ("پاسخ این سایت معتبر نبود.", "This site sent an answer that is not valid."),
+        ["login_required"] = ("این سایت ورود با دالان را لازم دارد. صفحه را دوباره باز کنید تا وارد شوید.",
+            "This site needs you to log in with Dalan. Open the page again to log in."),
+        ["login_failed"] = ("ورود کامل نشد یا مهلت آن تمام شد. صفحه‌ی سایت را دوباره باز کنید.",
+            "The login did not finish, or it took too long. Open the site's page again."),
+        ["login_denied"] = ("شما اجازه ندادید؛ بدون ورود نمی‌توانید این سایت را ببینید.", "You did not allow it. This site needs a login."),
+        ["logged_out"] = ("از این سایت خارج شدید.", "You logged out of this site."),
     };
 
     public static string Render(string code)

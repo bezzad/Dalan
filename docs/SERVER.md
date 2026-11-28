@@ -195,6 +195,8 @@ NEW=$(openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 | openssl p
 sudo sed -i "s|^Identity__SigningKey=.*|Identity__SigningKey=$NEW|" /etc/dalan/dalan.env && sudo systemctl restart dalan
 ```
 
+The key of "Login with Dalan" (AUTH-42) is `Identity__OAuthSigningKey` in `dalan.env` (setup.sh makes it once). A server set up before milestone 39 makes it itself at the first start in `/var/lib/dalan/oauth-signing-key` (mode 600). Keep a copy of that file or line with `dalan.env`, and never change it: each site's user ids come from it.
+
 ### The server builds main itself (OPS-16)
 
 The main way a release reaches the server (DEL-06). The server needs GitHub, but nothing else from abroad after the first build (NuGet and npm packages stay in `/home/deploy`).

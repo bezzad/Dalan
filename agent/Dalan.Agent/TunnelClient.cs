@@ -30,6 +30,9 @@ public sealed class TunnelClient(
 
     private bool _opened;
 
+    /// <summary>SITE-26: "dalan http --login": the server requires Dalan's login on these sites.</summary>
+    public bool Login { get; init; }
+
     /// <summary>How the last connection was served: "websocket" or "polling" (for tests and the status line).</summary>
     public string? Transport { get; private set; }
 
@@ -118,7 +121,7 @@ public sealed class TunnelClient(
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/tunnel/sessions")
         {
-            Content = JsonContent.Create(new OpenSession([.. sites.Select(s => s.Name)], demo), AgentJson.Default.OpenSession),
+            Content = JsonContent.Create(new OpenSession([.. sites.Select(s => s.Name)], demo, Login ? true : null), AgentJson.Default.OpenSession),
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
         using var response = await server.SendAsync(request, cancellationToken);
@@ -162,6 +165,7 @@ public sealed class TunnelClient(
             output.WriteLine($"Online: {site.Url}  ->  http://localhost:{port}");
         }
 
+        if (Login) output.WriteLine("Visitors log in with Dalan first; your app gets X-Dalan-User and X-Dalan-Name.");
         output.WriteLine(_demoId is null ? "Press Ctrl+C to stop." : "Press Ctrl+C to stop and end the demo.");
 
         // AGT-16: the first time only, never again after a reconnect.

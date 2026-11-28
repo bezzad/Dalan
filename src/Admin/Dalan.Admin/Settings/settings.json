@@ -487,6 +487,38 @@
     "risky": false,
     "restart": false
   },
+  "Identity:OAuthCodeSeconds": {
+    "group": "Identity",
+    "name": {
+      "fa": "عمر کد ورود با دالان",
+      "en": "Login with Dalan code life"
+    },
+    "help": {
+      "fa": "مدتی که سایت فرصت دارد کد ورود را با توکن عوض کند. هر کد فقط یک بار کار می‌کند.",
+      "en": "Time a site has to swap a login code for tokens. Each code works only once."
+    },
+    "unit": "seconds",
+    "min": 10,
+    "max": 600,
+    "risky": false,
+    "restart": false
+  },
+  "Identity:OAuthTokenMinutes": {
+    "group": "Identity",
+    "name": {
+      "fa": "عمر توکن ورود با دالان",
+      "en": "Login with Dalan token life"
+    },
+    "help": {
+      "fa": "عمر ID token و توکن دسترسی که سایت پس از ورود می‌گیرد. توکن تمدید وجود ندارد.",
+      "en": "Life of the ID token and the access token a site gets after a login. There are no refresh tokens."
+    },
+    "unit": "minutes",
+    "min": 1,
+    "max": 1440,
+    "risky": false,
+    "restart": false
+  },
   "Identity:PasswordHashConcurrency": {
     "group": "Identity",
     "name": {
@@ -1989,6 +2021,38 @@
     "min": 8,
     "max": 64,
     "risky": true,
+    "restart": false
+  },
+  "Sites:LoginCookieHours": {
+    "group": "Sites",
+    "name": {
+      "fa": "عمر ورود روی پراکسی سایت",
+      "en": "Proxy login lasts"
+    },
+    "help": {
+      "fa": "وقتی سایتی ورود روی پراکسی را لازم دارد، بازدیدکننده پس از این مدت دوباره وارد می‌شود.",
+      "en": "When a site requires login on the proxy, a visitor logs in again after this time."
+    },
+    "unit": "hours",
+    "min": 1,
+    "max": 720,
+    "risky": false,
+    "restart": false
+  },
+  "Sites:LoginStateMinutes": {
+    "group": "Sites",
+    "name": {
+      "fa": "مهلت ورود روی پراکسی سایت",
+      "en": "Proxy login wait"
+    },
+    "help": {
+      "fa": "مدتی که بازدیدکننده برای ورود و اجازه در دالان دارد؛ پس از آن ورود از نو شروع می‌شود.",
+      "en": "Time a visitor has to log in and allow on Dalan; after it the login starts again."
+    },
+    "unit": "minutes",
+    "min": 1,
+    "max": 60,
+    "risky": false,
     "restart": false
   },
   "Sites:MaxAnswerMb": {
