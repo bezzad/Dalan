@@ -1351,6 +1351,14 @@ The message box SHALL grow with its text up to `--compose-max-height` (about six
 - **WHEN** the user sends 5 lines
 - **THEN** the box is one row high and empty
 
+#### Scenario: No scrollbar before the largest size
+- **WHEN** the box is empty, or holds one to five short lines
+- **THEN** the box shows no scrollbar
+
+#### Scenario: Only the message list scrolls
+- **WHEN** a chat is open on a computer or a phone
+- **THEN** the page itself is never taller than the window; only the message list (and the box past its largest size) scrolls
+
 ### Requirement: CLI-87 Big editor
 Over 3 lines of text (wrapped lines count), a small expand button (two diagonal arrows) SHALL show in the box's corner. It SHALL open a modal with the same box: full screen on a coarse pointer or under 600px, otherwise large in the middle. It SHALL have Send and Close; Close and Esc SHALL keep the text, selection and undo. CLI-85 SHALL apply in it. Ctrl+B and Ctrl+I (Cmd on macOS) SHALL put `**` and `_` around the selection.
 
