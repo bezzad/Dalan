@@ -55,6 +55,12 @@ public sealed class SitesOptions
     public int DemoIdLength { get; set; }
     public int MaxDemosPerBuilder { get; set; }
 
+    /// <summary>SITE-26: life of the login cookie of the proxy login on a site host.</summary>
+    public int LoginCookieHours { get; set; }
+
+    /// <summary>SITE-26: time a visitor has on Dalan's login and consent screen before the proxy starts the login again.</summary>
+    public int LoginStateMinutes { get; set; }
+
     public long MaxBodyBytes => MaxBodyMb * 1024L * 1024L;
 
     public long MaxAnswerBytes => MaxAnswerMb * 1024L * 1024L;

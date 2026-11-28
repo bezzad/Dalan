@@ -1,5 +1,6 @@
 using System.Net;
 using Dalan.Sites.Demos;
+using Dalan.Sites.Login;
 using Dalan.Sites.Names;
 using Dalan.Sites.Tunnel;
 using Microsoft.AspNetCore.Http;
@@ -11,8 +12,14 @@ namespace Dalan.Sites.Proxy;
 
 /// <summary>SITE-08 to SITE-12: a visitor request to "name.(sites domain)" goes through the site's session and back.</summary>
 internal sealed class SiteProxy(
-    TunnelHub hub, SiteBook book, DemoBook demos, IOptionsMonitor<SitesOptions> options, TimeProvider time, IConfiguration configuration)
+    TunnelHub hub, SiteBook book, DemoBook demos, IOptionsMonitor<SitesOptions> options, TimeProvider time, IConfiguration configuration,
+    SiteLogins logins, LoginGate gate)
 {
+    /// <summary>SITE-26: who the visitor is, for the site. Only the proxy sets them; a visitor's own are always dropped.</summary>
+    public const string UserHeader = "X-Dalan-User";
+
+    public const string NameHeader = "X-Dalan-Name";
+
     /// <summary>Headers of one connection only; they never pass a proxy (RFC 9110 section 7.6.1).</summary>
     private static readonly HashSet<string> HopByHop = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -40,6 +47,22 @@ internal sealed class SiteProxy(
 
     public async Task HandleAsync(HttpContext http, string site)
     {
+        // SITE-26: the proxy's own paths, on every site host, never reach the site.
+        if (site.Length > 0 && http.Request.Path.StartsWithSegments(LoginGate.Prefix, out var own))
+        {
+            await OwnPathAsync(http, site, own);
+            return;
+        }
+
+        LoginTicket? login = null;
+        if (site.Length > 0 && logins.IsOn(site) && (login = gate.Read(http, site)) is null)
+        {
+            // A page load goes to Dalan's login; any other call cannot follow a login page, so it gets 401.
+            if (HttpMethods.IsGet(http.Request.Method) || HttpMethods.IsHead(http.Request.Method)) gate.Challenge(http, site);
+            else await PageAsync(http, StatusCodes.Status401Unauthorized, "login_required");
+            return;
+        }
+
         var session = site.Length == 0 ? null : hub.Find(site);
         if (session is null)
         {
@@ -49,7 +72,34 @@ internal sealed class SiteProxy(
             return;
         }
 
-        await RelayAsync(http, session, site, http.Request.Path, null);
+        await RelayAsync(http, session, site, http.Request.Path, null, login);
+    }
+
+    /// <summary>SITE-26: "/.dalan/callback" ends a login and goes back to the page it started on; "/.dalan/logout" ends it.</summary>
+    private async Task OwnPathAsync(HttpContext http, string site, PathString own)
+    {
+        if (own == "/callback" && logins.IsOn(site))
+        {
+            var (back, error) = await gate.CallbackAsync(http, site);
+            if (error is not null)
+            {
+                await PageAsync(http, error == "login_denied" ? StatusCodes.Status403Forbidden : StatusCodes.Status400BadRequest, error);
+                return;
+            }
+
+            http.Response.Headers.CacheControl = "no-store";
+            http.Response.Redirect(back!);
+            return;
+        }
+
+        if (own == "/logout")
+        {
+            LoginGate.Logout(http);
+            await PageAsync(http, StatusCodes.Status200OK, "logged_out");
+            return;
+        }
+
+        await PageAsync(http, StatusCodes.Status404NotFound, "site_not_found");
     }
 
     /// <summary>
@@ -103,7 +153,7 @@ internal sealed class SiteProxy(
         }
 
         var cookie = fromAddress ? $"{DemoCookie}={demo.Id}; Path=/; Secure; HttpOnly; SameSite=Lax" : null;
-        await RelayAsync(http, session, key, rest, cookie);
+        await RelayAsync(http, session, key, rest, cookie, login: null);
     }
 
     /// <summary>The demo key in the hub, and in <c>TunnelRequest.Site</c>.</summary>
@@ -123,7 +173,7 @@ internal sealed class SiteProxy(
         return (text[1..end], text[end..]);
     }
 
-    private async Task RelayAsync(HttpContext http, TunnelSession session, string site, PathString path, string? cookie)
+    private async Task RelayAsync(HttpContext http, TunnelSession session, string site, PathString path, string? cookie, LoginTicket? login)
     {
         var settings = options.CurrentValue;
         var address = http.Connection.RemoteIpAddress;
@@ -150,7 +200,7 @@ internal sealed class SiteProxy(
                 return;
             }
 
-            await ForwardAsync(http, session, site, path, cookie, body, settings);
+            await ForwardAsync(http, session, site, path, cookie, body, settings, login);
         }
         finally
         {
@@ -159,10 +209,11 @@ internal sealed class SiteProxy(
     }
 
     private async Task ForwardAsync(
-        HttpContext http, TunnelSession session, string site, PathString path, string? cookie, byte[] body, SitesOptions settings)
+        HttpContext http, TunnelSession session, string site, PathString path, string? cookie, byte[] body, SitesOptions settings,
+        LoginTicket? login)
     {
         var (id, answer) = hub.Send(session, new TunnelRequestDraft(
-            site, http.Request.Method, path + http.Request.QueryString, RequestHeaders(http), Base64(body)));
+            site, http.Request.Method, path + http.Request.QueryString, RequestHeaders(http, login), Base64(body)));
         TunnelResponse? response;
         try
         {
@@ -277,8 +328,12 @@ internal sealed class SiteProxy(
         http.Abort();
     }
 
-    /// <summary>SITE-08: the visitor's headers, without hop-by-hop and forwarded ones; then the real address, scheme and host.</summary>
-    private static Dictionary<string, string[]> RequestHeaders(HttpContext http)
+    /// <summary>
+    /// SITE-08: the visitor's headers, without hop-by-hop and forwarded ones; then the real address, scheme and host.
+    /// SITE-26: never the visitor's own X-Dalan-User or X-Dalan-Name, nor the proxy's cookies; then the login, when there is one.
+    /// The name is percent-encoded UTF-8, because a header carries only ASCII.
+    /// </summary>
+    private static Dictionary<string, string[]> RequestHeaders(HttpContext http, LoginTicket? login)
     {
         var headers = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
         // "Connection" may name more headers of this connection only.
@@ -286,8 +341,29 @@ internal sealed class SiteProxy(
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var (name, values) in http.Request.Headers)
         {
-            if (HopByHop.Contains(name) || named.Contains(name) || name.StartsWith("X-Forwarded-", StringComparison.OrdinalIgnoreCase)) continue;
+            if (HopByHop.Contains(name) || named.Contains(name) || name.StartsWith("X-Forwarded-", StringComparison.OrdinalIgnoreCase)
+                || name.Equals(UserHeader, StringComparison.OrdinalIgnoreCase) || name.Equals(NameHeader, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             headers[name] = [.. values.OfType<string>()];
+        }
+
+        if (headers.TryGetValue("Cookie", out var cookies))
+        {
+            var kept = cookies.SelectMany(line => line.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                .Where(pair => !pair.StartsWith(LoginGate.Cookie + "=", StringComparison.Ordinal)
+                    && !pair.StartsWith(LoginGate.StateCookie + "=", StringComparison.Ordinal))
+                .ToArray();
+            if (kept.Length == 0) headers.Remove("Cookie");
+            else headers["Cookie"] = [string.Join("; ", kept)];
+        }
+
+        if (login is not null)
+        {
+            headers[UserHeader] = [login.Subject];
+            headers[NameHeader] = [Uri.EscapeDataString(login.Name)];
         }
 
         if (http.Connection.RemoteIpAddress is { } address) headers["X-Forwarded-For"] = [Text(address)];

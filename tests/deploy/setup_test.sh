@@ -123,6 +123,13 @@ grep -qE '^Notification__Push__PrivateKey=[A-Za-z0-9_-]{43}$' "$env_file" || fai
 grep -q '^# Notification__SmsIr__ApiKey=' "$env_file" || fail "no line for the SMS key"
 echo "PASS OPS-10 first run makes the secrets"
 
+# Rule: AUTH-42 the first run makes the key of Login with Dalan, a P-256 PKCS#8 key other than the session key
+oauth_key=$(sed -nE 's/^Identity__OAuthSigningKey=(.*)/\1/p' "$env_file")
+[[ "$(echo "$oauth_key" | base64 -d | od -An -tx1 -N 19 | tr -d ' \n')" == 30818702010030130607*2a8648ce3d0201* ]] || fail "OAuth key is not PKCS#8"
+echo "$oauth_key" | base64 -d | openssl pkey -inform DER -noout -text 2>/dev/null | grep -q 'P-256' || fail "OAuth key is not P-256"
+[ "$oauth_key" != "$signing" ] || fail "OAuth key is the session key"
+echo "PASS AUTH-42 first run makes the OAuth key"
+
 # Rule: OPS-13 mail on a new server
 grep -q 'apt-get install .*postfix opendkim opendkim-tools' "$state/commands.log" || fail "Postfix and OpenDKIM not installed"
 grep -qx 'postfix postfix/mailname string dalanet.ir' "$state/debconf.txt" || fail "Postfix not told its name"
@@ -295,6 +302,17 @@ echo "$signing" | base64 -d | openssl pkey -inform DER -noout 2>/dev/null || fai
 grep -qx 'Notification__SmsIr__ApiKey=new-key' "$env_file" || fail "other settings lost"
 [ "$(stat -c %a "$env_file")" = 640 ] || fail "dalan.env mode changed"
 echo "PASS OPS-10 secrets can be made again"
+
+# Rule: AUTH-43 the OAuth key stays (the sites' user ids come from it); an older server without one gets one
+[ "$(grep -c '^Identity__OAuthSigningKey=' "$env_file")" = 1 ] || fail "OAuth key should be in dalan.env once"
+grep -qxF "Identity__OAuthSigningKey=$oauth_key" "$env_file" || fail "ROTATE_SECRETS changed the OAuth key"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || fail "run again failed"
+grep -qxF "Identity__OAuthSigningKey=$oauth_key" "$env_file" || fail "a run again changed the OAuth key"
+grep -v '^Identity__OAuthSigningKey=' "$env_file" > "$tmp/env" && cat "$tmp/env" > "$env_file"
+bash "$src/setup.sh" dalanet.ir api.dalanet.ir "$src/deploy.pub" > /dev/null || fail "run on an older server failed"
+grep -qE '^Identity__OAuthSigningKey=.{100,}$' "$env_file" || fail "older server got no OAuth key"
+[ "$(stat -c %a "$env_file")" = 640 ] || fail "dalan.env mode changed"
+echo "PASS AUTH-43 OAuth key is kept, and made on an older server"
 
 # Rule: OPS-09 install.sh downloads Caddy on the owner's machine (the CI version, checked) and runs setup over SSH
 inst="$tmp/inst"; mkdir -p "$inst/bin"

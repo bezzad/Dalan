@@ -3,6 +3,7 @@ using Dalan.Sites.Contracts;
 using Dalan.Sites.Data;
 using Dalan.Sites.Demos;
 using Dalan.Sites.Downloads;
+using Dalan.Sites.Login;
 using Dalan.Sites.MySites;
 using Dalan.Sites.Names;
 using Dalan.Sites.Proxy;
@@ -40,6 +41,11 @@ public static class SitesService
         services.AddSingleton<TunnelHub>();
         services.AddSingleton<ISiteAdmin>(provider => provider.GetRequiredService<TunnelHub>());
         services.AddSingleton<SiteProxy>();
+        // SITE-26: the proxy login; AUTH-40: what Identity asks of a site.
+        services.AddDataProtection();
+        services.AddSingleton<SiteLogins>();
+        services.AddSingleton<ISiteDirectory>(provider => provider.GetRequiredService<SiteLogins>());
+        services.AddSingleton<LoginGate>();
         return services;
     }
 
@@ -77,6 +83,7 @@ public static class SitesService
     {
         await using var db = await services.GetRequiredService<IDbContextFactory<SitesDb>>().CreateDbContextAsync(cancellationToken);
         await db.Database.MigrateAsync(cancellationToken);
+        await services.GetRequiredService<SiteLogins>().LoadAsync(cancellationToken);
     }
 
     /// <summary>SITE-13: true when the sites domain is Dalan's own host or a name under it.</summary>

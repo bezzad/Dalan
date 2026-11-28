@@ -7,6 +7,7 @@ using System.Threading.Channels;
 using Dalan.Admin.Contracts;
 using Dalan.Identity.Contracts;
 using Dalan.Sites.Demos;
+using Dalan.Sites.Login;
 using Dalan.Sites.Names;
 using Dalan.Sites.Proxy;
 using Microsoft.AspNetCore.Builder;
@@ -40,7 +41,7 @@ internal static class TunnelEndpoints
         long.Parse(http.User.FindFirstValue("sub")!, CultureInfo.InvariantCulture);
 
     private static async Task<IResult> OpenAsync(
-        HttpContext http, SiteBook book, DemoBook demos, TunnelHub hub, IOptionsMonitor<SitesOptions> options)
+        HttpContext http, SiteBook book, DemoBook demos, TunnelHub hub, SiteLogins logins, IAuditLog audit, IOptionsMonitor<SitesOptions> options)
     {
         var settings = options.CurrentValue;
         if (settings.Domain.Length == 0)
@@ -60,6 +61,13 @@ internal static class TunnelEndpoints
             var (error, name, claimed) = await book.ClaimAsync(userId, names, http.RequestAborted);
             if (error != ClaimError.None) return ClaimFailed(error, name, settings);
             clean = claimed;
+        }
+
+        // SITE-26: "dalan http --login".
+        if (body.Login == true)
+        {
+            foreach (var site in await logins.TurnOnAsync(userId, clean, http.RequestAborted))
+                await audit.RecordAsync(userId, "site.login.on", $"site {site}", null, http.RequestAborted);
         }
 
         DemoAddress? address = null;

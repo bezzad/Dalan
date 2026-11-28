@@ -522,6 +522,10 @@ None of these is planned work. They are recorded so the design does not block th
 | Second factor login ticket (`Identity:TotpTicketMinutes`, `Identity:TotpMaxTries`) | 5 minutes, 5 wrong codes | Assumed (milestone 29) |
 | Words that confirm "delete my account" (`Identity:DeleteConfirmWords`) | `DELETE,حذف` | Assumed (milestone 27) |
 | Addresses or ranges per access key (`Identity:MaxKeyAddresses`) | 20 | Assumed (milestone 27) |
+| Login with Dalan: code life (`Identity:OAuthCodeSeconds`) | 60 seconds, one use | Assumed (milestone 39) |
+| Login with Dalan: ID token and access token life (`Identity:OAuthTokenMinutes`) | 10 minutes, no refresh token | Assumed (milestone 39) |
+| Login with Dalan: signing key (`Identity:OAuthSigningKey`) | ES256, made once by `deploy/setup.sh`; never changed (the sites' user ids come from it) | Assumed (milestone 39) |
+| Proxy login on a site: cookie life, time to log in (`Sites:LoginCookieHours`, `Sites:LoginStateMinutes`) | 24 hours, 10 minutes | Assumed (milestone 39) |
 
 **Confirmed by the owner on 2026-11-16:**
 
